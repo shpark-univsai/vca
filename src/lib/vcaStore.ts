@@ -2452,15 +2452,11 @@ export type AppAction =
    */
   | "redface"
   | "trail"
-  | "export"
-  /**
-   * RETIRED 2026-09-23. Nothing writes it and it is not in `APP_ACTIONS`, so no row renders it and
-   * no preset carries it. It stays in the union for exactly one reason: one reader in
-   * PortalUsersPage still tests for it, and that file is held by another session this evening.
-   * DELETE THIS MEMBER once that reader is gone — a leftover action in the type is how a dead
-   * grant comes back to life in a seed.
-   */
-  | "personSearch";
+  | "export";
+/* `personSearch` used to be here and was deleted 2026-09-23 once its last reader was gone. It was
+   one grant doing two jobs — opening RedFace and switching on three screens' search boxes — and it
+   is now `redface` plus the two per-screen steps. Kept as a note rather than a member: a retired
+   action left in the type is how a dead grant comes back to life in a seed. */
 
 /**
  * ORDERED BY HOW MUCH THEY REVEAL ABOUT A PERSON, not by where they sit in the app.

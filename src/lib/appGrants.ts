@@ -75,8 +75,6 @@ export const APP_GRANT_LABELS = {
       redface: "Data > RedFace",
       trail: "Redmap",
       export: "Evidence export",
-      /* Retired — see AppAction. Present so this map stays complete for the type. */
-      personSearch: "Person search",
     } satisfies Record<AppAction, string>,
     /**
      * THE SAME ROW, NAMED SHORTER, BECAUSE THE LIST NOW HAS CAPTIONS OVER IT (2026-09-23).
@@ -120,7 +118,6 @@ export const APP_GRANT_LABELS = {
       redface: "Face search",
       trail: "One person's route on the map. It also switches on the dashboard's trail rows",
       export: "Takes what Redmap found out of the console as a file",
-      personSearch: "Retired",
     } satisfies Record<AppAction, string>,
   },
   ko: {
@@ -137,7 +134,6 @@ export const APP_GRANT_LABELS = {
       redface: "데이터 > RedFace",
       trail: "레드맵",
       export: "증거 내보내기",
-      personSearch: "인물 검색",
     } satisfies Record<AppAction, string>,
     /** 영어 쪽 주석 참조 — 캡션 아래에서 쓰는 짧은 이름. `actionName`은 목록 밖에서도 쓰므로 그대로 둔다. */
     rowName: {
@@ -163,7 +159,6 @@ export const APP_GRANT_LABELS = {
       redface: "얼굴로 찾습니다",
       trail: "지도 위에 한 사람의 경로를 그립니다. 대시보드 이벤트의 동선 줄도 켭니다",
       export: "레드맵에서 찾은 것을 파일로 콘솔 밖으로 냅니다",
-      personSearch: "쓰지 않습니다",
     } satisfies Record<AppAction, string>,
   },
 } as const;
