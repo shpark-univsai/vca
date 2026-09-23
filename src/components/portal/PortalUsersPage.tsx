@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Asterisk, Boxes, CircleHelp, ClipboardList, ClipboardPlus, Eye, KeyRound, KeySquare, Link2, MailQuestion, MonitorOff, MoreVertical, Pencil, Plus, Trash2, UserCheck, UserMinus, UserSearch, UserX, Users as UsersIcon, Users2 } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Asterisk, Boxes, CircleHelp, ClipboardList, Eye, KeyRound, KeySquare, Link2, MailQuestion, MonitorOff, MoreVertical, Pencil, Plus, Trash2, UserCheck, UserMinus, UserSearch, UserX, Users as UsersIcon, Users2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type CameraGroup, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -62,11 +62,15 @@ const T = {
     railPeople: "Users",
     railGrants: "Permissions",
     peopleTabAccounts: "Accounts",
-    peopleTabRoster: "On the roster",
+    peopleTabRoster: "Awaiting sign-up",
     // On the tabs themselves. The Accounts one answers the thing this table is most often read
     // wrongly for: an invited account is already here, before anybody has signed in with it.
     peopleTabAccountsHint: "Accounts that can reach this project — including people who have been invited and have not signed in yet.",
-    peopleTabRosterHint: "On the staff roster with no account yet. Issue a registration code and hand it over on paper — they sign up without mail.",
+    /* THE LADDER, SAID ONCE (owner, 2026-09-23: 명부 대기랑 계정이랑 두 가지 차이를 바로 보고
+       모를 수 있을 것 같아). This is the one fact neither list can show: that the rows here BECOME
+       accounts. Both hint strings existed and neither was ever rendered, so the tab carried no
+       explanation at all. */
+    peopleTabRosterHint: "No account yet. Hand over a registration code — signing up with it creates the account.",
     peopleTabPresets: "App presets",
     peopleTabPresetsHint: "Editing one reaches every account following it.",
     peopleTabGroups: "Camera groups",
@@ -74,21 +78,25 @@ const T = {
     peopleTabGroupsHint: "Named sets of cameras, handed out as one when granting camera access.",
     colPlannedPermission: "Permission on signup",
     colCode: "Registration code",
-    countRosterWaiting: "On the roster",
-    rosterWaitingHint: "On the staff roster with no account yet — they sign up with a registration code, no mail needed.",
-    stageRosterListed: "Listed",
+    countRosterWaiting: "Awaiting sign-up",
+    stageRosterListed: "Written down",
     stageCodeIssued: "Code issued",
     stageCodeExpired: "Code expired",
     // Roster tools, moved here with the rows they act on.
-    addToRoster: "Add to roster",
+    addToRoster: "Add with a code",
+    addPerson: "Add a user",
+    addPersonMail: "Invite by mail",
+    addPersonMailWhy: "Sends an invitation to their address.",
+    addPersonCode: "Add with a registration code",
+    addPersonCodeWhy: "For somebody with no address — you hand the code over on paper.",
     importRoster: "Import CSV",
     bulkIssue: (n: number) => `Issue ${n} code${n === 1 ? "" : "s"}`,
     printHandout: "Print code slips",
     exportRoster: "Export CSV",
-    nothingToExport: "The roster is empty — there is nothing to export yet.",
+    nothingToExport: "Nobody is awaiting sign-up, so there is nothing to export yet.",
     nothingToPrint: "No unused codes to print. A slip is printed once, for a code nobody has redeemed.",
     toastRosterExported: (n: number) => `${n} roster row(s) exported`,
-    rosterEmpty: "Nobody is waiting on the roster.",
+    rosterEmpty: "Nobody is awaiting sign-up.",
     toastBulkIssued: (n: number) => `${n} registration code(s) issued`,
     countPortalOnly: "Portal only",
     // WHAT THE FIGURE COUNTS, NOT THE NAME OF A STATE. "Invited 1" and "Suspended 1" read as a
@@ -462,7 +470,7 @@ const T = {
     guideLead: "접근은 계정에 열리는 문을 정하고, 역할은 Portal 안에서 할 수 있는 일을 정합니다.",
     guideRolesHeading: "Portal 역할 — 서로 다른 것만",
     guideRowGrant: "사용자 · 권한 부여",
-    guideRowSettings: "카메라 · VIP · 명부 · 라이선스 · 서버",
+    guideRowSettings: "카메라 · VIP · 등록 대기 · 라이선스 · 서버",
     guideRowAudit: "감사 로그",
     guideEdit: "변경",
     guideViewOnly: "보기만",
@@ -475,9 +483,9 @@ const T = {
     railPeople: "사용자",
     railGrants: "권한",
     peopleTabAccounts: "계정",
-    peopleTabRoster: "명부 대기",
+    peopleTabRoster: "등록 대기",
     peopleTabAccountsHint: "이 프로젝트에 닿을 수 있는 계정입니다 — 초대만 받고 아직 로그인하지 않은 사람도 포함합니다.",
-    peopleTabRosterHint: "명부에 있고 아직 계정이 없는 사람입니다. 등록 코드를 발급해 종이로 건네면 메일 없이 가입합니다.",
+    peopleTabRosterHint: "아직 계정이 없는 사람입니다. 등록 코드를 건네주고, 그 코드로 가입하면 계정이 됩니다.",
     peopleTabPresets: "앱 권한 프리셋",
     peopleTabPresetsHint: "하나를 고치면 그것을 따르는 계정 전부에 닿습니다.",
     peopleTabGroups: "카메라 그룹",
@@ -485,20 +493,24 @@ const T = {
     peopleTabGroupsHint: "이름 붙인 카메라 묶음입니다. 카메라 권한을 줄 때 한 덩어리로 줍니다.",
     colPlannedPermission: "가입 시 권한",
     colCode: "등록 코드",
-    countRosterWaiting: "명부 대기",
-    rosterWaitingHint: "직원 명부에 있고 아직 계정이 없습니다 — 등록 코드로 가입하며 메일이 필요 없습니다.",
-    stageRosterListed: "명부 등록",
+    countRosterWaiting: "등록 대기",
+    stageRosterListed: "적어둠",
     stageCodeIssued: "코드 발급",
     stageCodeExpired: "코드 만료",
-    addToRoster: "명부에 추가",
+    addToRoster: "등록 코드로 추가",
+    addPerson: "사용자 추가",
+    addPersonMail: "메일로 초대",
+    addPersonMailWhy: "그 주소로 초대장을 보냅니다.",
+    addPersonCode: "등록 코드로 추가",
+    addPersonCodeWhy: "메일 주소가 없는 사람 — 코드를 종이로 건네줍니다.",
     importRoster: "CSV 가져오기",
     bulkIssue: (n: number) => `코드 ${n}개 발급`,
     printHandout: "코드 슬립 인쇄",
     exportRoster: "CSV 내보내기",
-    nothingToExport: "명부가 비어 있어 내보낼 것이 없습니다.",
+    nothingToExport: "등록을 기다리는 사람이 없어 내보낼 것이 없습니다.",
     nothingToPrint: "인쇄할 미사용 코드가 없습니다. 슬립은 아직 아무도 쓰지 않은 코드에 대해 한 번 찍습니다.",
     toastRosterExported: (n: number) => `명부 ${n}개 행을 내보냈습니다`,
-    rosterEmpty: "명부에서 기다리는 사람이 없습니다.",
+    rosterEmpty: "등록을 기다리는 사람이 없습니다.",
     toastBulkIssued: (n: number) => `등록 코드 ${n}개를 발급했습니다`,
     countPortalOnly: "Portal 전용",
     countInvited: "초대 수락 안 함",
@@ -548,7 +560,7 @@ const T = {
     permAuditor: "읽기 전용 관리자",
     permNone: "Portal 역할 없음",
     permOwnerDesc: "권한을 주고 회수하고, 사람을 지웁니다. 이걸 할 수 있는 유일한 역할입니다.",
-    permAdminDesc: "카메라·VIP 등록·명부·라이선스를 바꿉니다. 누가 접근하는지는 못 바꿉니다.",
+    permAdminDesc: "카메라·VIP 등록·등록 대기·라이선스를 바꿉니다. 누가 접근하는지는 못 바꿉니다.",
     permAuditorDesc: "Portal의 모든 화면과 감사 로그를 봅니다. 아무것도 바꾸지 않습니다.",
     permNoneDesc: "Portal에는 들어오지 않습니다.",
     accessBoth: "Portal + 앱",
@@ -2859,6 +2871,79 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
   );
 }
 
+/**
+ * THE ONE DOOR FOR ADDING A PERSON, AND THE TWO WAYS IN.
+ *
+ * A labelled button with a small menu rather than a panel: it is a two-way choice, and a
+ * full-height panel to ask one question and then open another panel is a step the reader has to
+ * pay for twice. Each option carries the line that tells them apart — the difference is whether
+ * the person has a mail address, which is a fact about the person and not about our data model.
+ *
+ * An option they may not use stays visible with its reason on it, the way every other gated
+ * control on this page does: a control that vanishes reads as a missing feature.
+ */
+function AddPersonMenu({ t, mayInvite, inviteReason, mayAddCode, codeReason, onMail, onCode }: {
+  t: (typeof T)["en"] | (typeof T)["ko"];
+  mayInvite: boolean;
+  inviteReason: string;
+  mayAddCode: boolean;
+  codeReason?: string;
+  onMail: () => void;
+  onCode: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  useEscapeKey(() => setOpen(false), open);
+  /* Closes on a click anywhere else, like the other menus on this page. Pointerdown rather than
+     click, so a press that starts outside cannot also land on whatever is underneath. */
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [open]);
+
+  const option = (title: string, why: string, allowed: boolean, reason: string | undefined, run: () => void) => (
+    <button type="button" key={title}
+      onClick={() => { if (!allowed) return; setOpen(false); run(); }}
+      title={allowed ? undefined : reason}
+      style={{
+        display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-start",
+        width: "100%", textAlign: "left", padding: "10px 12px", border: "none",
+        background: "none", cursor: allowed ? "pointer" : "not-allowed", fontFamily: "inherit",
+      }}>
+      <span style={{ fontSize: "12.5px", fontWeight: 700, color: allowed ? "var(--gray-900)" : "var(--gray-400)" }}>{title}</span>
+      <span style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{allowed ? why : reason}</span>
+    </button>
+  );
+
+  return (
+    <div ref={wrap} style={{ position: "relative", flexShrink: 0 }}>
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
+        style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+        <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.22" strokeLinecap="round"/></svg>
+        {t.addPerson}
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true"
+          style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}>
+          <path d="M4 6l4 4 4-4" stroke="white" strokeWidth="1.87" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "100%", right: 0, marginTop: "4px", zIndex: 50,
+          width: "272px", backgroundColor: "white", border: BORDER, borderRadius: "10px",
+          boxShadow: "var(--shadow-popover)", padding: "4px", display: "flex", flexDirection: "column",
+        }}>
+          {option(t.addPersonMail, t.addPersonMailWhy, mayInvite, inviteReason, onMail)}
+          {option(t.addPersonCode, t.addPersonCodeWhy, mayAddCode, codeReason, onCode)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** One badge for every rung of the ladder, so a reader compares like with like down the column. */
 function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string; stageCodeIssued: string; stageCodeExpired: string } }) {
   const meta: Record<"rosterListed" | "codeIssued" | "codeExpired", { label: string; bg: string; color: string }> = {
@@ -3739,18 +3824,28 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               absorbs the free space on whichever line the group lands on, so it stays at the right
               end in both states. */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto" }}>
-          {peopleTab !== "roster" && (
-          /* Disabled with the reason on it rather than hidden: a control that vanishes reads as a
-             missing feature and sends the admin looking elsewhere for it. */
-          <button
-            onClick={() => manageAccess && setShowInvite(true)}
-            disabled={!manageAccess}
-            title={manageAccess ? undefined : t.reasonNotOwner}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: manageAccess ? "var(--primary-400)" : "var(--gray-100)", color: manageAccess ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed", flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke={manageAccess ? "white" : "var(--gray-400)"} strokeWidth="1.22" strokeLinecap="round"/></svg>
-            {t.inviteUser}
-          </button>
-          )}
+          {/*
+            ONE DOOR, AND IT ASKS HOW THEY GET IN (owner, 2026-09-23: 각각 초대하는 게 있는데 그
+            차이를 모를 수 있을 것 같아 해결해야 해).
+
+            There were two: 「사용자 초대」 on the accounts tab and 「명부에 추가」 on the other, and
+            choosing between them meant already knowing which list a person belongs in — a question
+            nobody can answer before they know what the lists are. Ten member screens on Mobbin
+            (Upwork, Canva, Clerk, Fiverr, Productboard, User Interviews, Midday, Krea, Juicebox,
+            Profound) have exactly ONE invite control between them; not one has two.
+
+            So the choice moves inside, where it can be a question with an answerable answer: does
+            this person have an address. Same reasoning as the invite panel's own ordering — the
+            answer that decides the others is asked first. Picking the code path also switches to
+            the list the row will land in, so the result is never somewhere you were not looking.
+          */}
+          <AddPersonMenu
+            t={t}
+            mayInvite={manageAccess} inviteReason={t.reasonNotOwner}
+            mayAddCode={mayEdit} codeReason={readOnlyReason}
+            onMail={() => { setPeopleTab("accounts"); setShowInvite(true); }}
+            onCode={() => { setPeopleTab("roster"); setRosterEditorFor({ entry: null }); }}
+          />
           {/* Icons on the secondary tools too. Only the invite button had one, so on a page whose
               neighbours put a mark on every action these five read as unfinished — and a row of five
               identical grey pills is a row you have to read word by word. 14px at stroke 2.4 is the
@@ -3787,17 +3882,6 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             style={{ ...SECONDARY_BTN, color: "var(--gray-600)", cursor: "pointer" }}>
             <KeyRound size={14} strokeWidth={2.4} />
             {t.bulkIssue(notIssuedIds.length)}
-          </button>
-          )}
-          {peopleTab === "roster" && (
-          <button
-            onClick={() => mayEdit && setRosterEditorFor({ entry: null })}
-            disabled={!mayEdit}
-            title={readOnlyReason}
-            style={{ ...SECONDARY_BTN, padding: "10px 16px", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-100)", border: "none", color: mayEdit ? "white" : "var(--gray-400)", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}
-          >
-            <ClipboardPlus size={14} strokeWidth={2.4} />
-            {t.addToRoster}
           </button>
           )}
           {peopleTab === "roster" && (
@@ -3876,6 +3960,21 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             ))}
           </div>
         </ConfirmModal>
+      )}
+
+      {/*
+        WHAT THIS LIST IS, SAID ONCE (owner, 2026-09-23: 명부 대기랑 계정이랑 두 가지 차이를 바로
+        보고 모를 수 있을 것 같아).
+
+        The one fact neither list can show is that these rows BECOME the rows in 계정 — a person
+        here has no account until somebody hands them a code and they use it. Two strings for this
+        existed in the dictionary and neither had ever been rendered, so the tab explained nothing.
+        On the roster tab only: 계정 needs no explanation, its rows are accounts.
+      */}
+      {peopleTab === "roster" && (
+        <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginBottom: "10px" }}>
+          {t.peopleTabRosterHint}
+        </p>
       )}
 
       {/* No overflow:hidden here — it used to clip the header row's flat corners to match the
