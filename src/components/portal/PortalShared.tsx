@@ -2363,7 +2363,12 @@ export function SectionNav({ sections, active, onSelect }: {
               display: "flex", alignItems: "center", gap: "9px",
               // Extra left padding leaves room for the bar, and every row carries it so the labels
               // stay on one line whether or not the bar is drawn.
-              padding: "9px 10px 9px 16px", borderRadius: "8px", border: "none",
+              // 7px, not 9 (owner, 2026-09-23: 계정이랑 명부대기 사이를 살짝 더 줄여줘 ·
+              // 아래 카메라 그룹이랑 프리셋 둘 사이 간격도). Two rows of one group sat 22px apart
+              // while the caption above each group already separates the groups — so the rows read
+              // as four separate things rather than two pairs. The captions keep their own 14px of
+              // air above them, so tightening the rows widens the gap that means something.
+              padding: "7px 10px 7px 16px", borderRadius: "8px", border: "none",
               // Grey, not purple. Purple is reserved for things that need attention, and "where
               // you are" is not one — see the colour note in globals.css.
               //
@@ -2406,12 +2411,21 @@ export function SectionNav({ sections, active, onSelect }: {
               }} />
             )}
             <span style={{ display: "flex", flexShrink: 0, color: on ? "var(--gray-900)" : warm ? "var(--gray-600)" : "var(--gray-400)" }}>{sec.icon}</span>
-            <span style={{ minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sec.label}</span>
-            {sec.count !== undefined && (
-              <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 600, color: warm ? "var(--gray-500)" : "var(--gray-400)", fontVariantNumeric: "tabular-nums" }}>
-                {sec.count}
-              </span>
-            )}
+            {/* THE COUNT BELONGS TO THE LABEL, NOT TO THE RAIL'S EDGE (owner, 2026-09-23: 리스트에
+                숫자가 글자랑 너무 떨어져 있는 것 같아, 그러다 보니 숫자 오른쪽으로 컨텐츠랑 너무
+                가까워). The label was the growing cell, so the number was pushed to the far right —
+                40-odd pixels from the word it counts and about ten from the card beside the rail,
+                which made it read as the content's number rather than the row's. Now the pair grows
+                together and the slack goes after them: 6px from the label, and the rest of the row
+                is empty. */}
+            <span style={{ minWidth: 0, flex: 1, display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sec.label}</span>
+              {sec.count !== undefined && (
+                <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 600, color: warm ? "var(--gray-500)" : "var(--gray-400)", fontVariantNumeric: "tabular-nums" }}>
+                  {sec.count}
+                </span>
+              )}
+            </span>
           </button>
           </React.Fragment>
         );

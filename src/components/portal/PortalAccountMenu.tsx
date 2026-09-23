@@ -156,7 +156,16 @@ function Avatar({ name }: { name: string }) {
     <span style={{
       display: "flex", alignItems: "center", justifyContent: "center",
       width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
-      backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700,
+      /*
+        A QUIETER DISC (owner, 2026-09-23: 이거 G 색깔도 살짝 죽여줘). It was a filled
+        primary-400 circle — the colour this console reserves for the one button that acts — so
+        the loudest thing in the header was a letter standing in for a name. The fill drops to
+        primary-100 and the letter takes the -400 instead: same family, a fraction of the ink.
+        The letter, not the fill, keeps the colour because white on a light purple is the one
+        pairing that would not be readable (white on #f0f0ff is no contrast at all, and white on
+        the -300 step is about 2.8:1).
+      */
+      backgroundColor: "var(--primary-100)", color: "var(--primary-400)", fontSize: "12px", fontWeight: 700,
     }}>
       {name.charAt(0).toUpperCase()}
     </span>
