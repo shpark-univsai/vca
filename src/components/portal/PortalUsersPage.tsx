@@ -3839,6 +3839,26 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             answer that decides the others is asked first. Picking the code path also switches to
             the list the row will land in, so the result is never somewhere you were not looking.
           */}
+          {/*
+            THE DOOR LIVES ON 계정 ONLY (owner, 2026-09-23: 등록 대기라는 타이틀만 봤을 때는
+            대기 중인 명단만 있어야 할 것 같거든, 그래서 초대하고 코드 발급 자체는 모두 계정
+            화면에서 해야 할 것만 같아).
+
+            Right, and it draws the line in the words themselves: 등록 대기 is a list of people
+            waiting, so it holds the things you do TO a row that is already there — issue or reissue
+            that person's code, edit them, take them off. Making a person is a different act and it
+            belongs where the outcome is administered. Choosing the code path still carries the
+            reader to 등록 대기, so the new row is never left on a list they were not looking at.
+
+            It also fixes something that was measured: the same button sat at (1283, 176) on 계정
+            and (1123, 64) on 등록 대기, because the two toolbars hold a different number of
+            controls and wrapped differently — a primary action that jumps 160px sideways between
+            two tabs does not read as the same button.
+
+            The CSV import stays on 등록 대기, in its ⋮ menu: it is a tool of the list it fills,
+            not the one-person door, and it is not a primary action there.
+          */}
+          {peopleTab === "accounts" && (
           <AddPersonMenu
             t={t}
             mayInvite={manageAccess} inviteReason={t.reasonNotOwner}
@@ -3846,6 +3866,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
             onMail={() => { setPeopleTab("accounts"); setShowInvite(true); }}
             onCode={() => { setPeopleTab("roster"); setRosterEditorFor({ entry: null }); }}
           />
+          )}
           {/* Icons on the secondary tools too. Only the invite button had one, so on a page whose
               neighbours put a mark on every action these five read as unfinished — and a row of five
               identical grey pills is a row you have to read word by word. 14px at stroke 2.4 is the
