@@ -2074,15 +2074,31 @@ export function useProjectCameras(): Camera[] {
 }
 
 /**
- * Whether the person using the monitoring app may run person searches.
+ * Whether the person using the monitoring app may run a search ON ONE SCREEN.
+ *
+ * IT TAKES A SCREEN NOW (2026-09-23). It used to answer once for the whole app, off a single
+ * `personSearch` grant, which made "may search on 모니터링 but not on Re-ID" impossible to say and
+ * left the 모니터링 permission row with nowhere to show its own search state.
+ *
+ * The two screens with no unsearched state answer with their screen grant, because on them the
+ * search IS the screen: RedFace shows nothing but search results, and Redmap draws nothing until
+ * somebody is found. Reading `redface`/`trail` here rather than inventing a second grant is what
+ * keeps the permission list from carrying a control that can never be off while the screen is on.
  *
  * HANDOFF NOTE: same stand-in as currentPortalRole — there is no session, so this resolves
  * SIGNED_IN_USER's address against the account list. When the address matches nobody (the default
  * demo identity does not), it answers true so the app stays fully explorable; a real build reads
  * the flag off the session and defaults to denied. Replace the body, not the call sites.
  */
-export function canSearchInApp(users: PortalUser[]): boolean {
-  return holdsAppAction(users, "personSearch");
+export function canSearchIn(users: PortalUser[], screen: AppScreen): boolean {
+  switch (screen) {
+    case "live": return holdsAppAction(users, "liveMonitoringSearch");
+    case "reid": return holdsAppAction(users, "reidSearch");
+    case "redface": return holdsAppAction(users, "redface");
+    case "redmap": return holdsAppAction(users, "trail");
+    /* Best Frame has no search box — it is the same detections read backwards in time. */
+    case "bestframe": return false;
+  }
 }
 
 /**
@@ -2373,11 +2389,16 @@ export const APP_SCREENS: AppScreen[] = ["live", "bestframe", "redmap", "reid", 
  * across every camera in scope to reconstruct one person's movement, which is a different weight
  * from watching a camera.
  *
- *   liveView      what is on the cameras now
- *   history       frames and records from before now
- *   personSearch  find a person across the recorded set
- *   trail         reconstruct one person's route across cameras
- *   export        take evidence out of the building
+ *   liveView              the dashboard's events panel — registered people, as they pass
+ *   systemStatus          the dashboard's system panel — cameras and servers, nobody's data
+ *   history               frames and records from before now
+ *   liveMonitoring        everybody who walks past, strangers included
+ *   liveMonitoringSearch    └ and may search there
+ *   reid                  what the server joins up live out of those detections
+ *   reidSearch              └ and may search there
+ *   redface               face search. THE SCREEN IS THE SEARCH, so there is no second step
+ *   trail                 one person's route on the map. Also search-only
+ *   export                  └ and may take what Redmap found out as a file
  *
  * SCREENS ARE DERIVED, never stored: see screensForActions. A screen is a place, and a place with
  * nothing you may do in it is not a grant worth keeping.
@@ -2395,21 +2416,51 @@ export type AppAction =
    * Same privacy line `systemStatus` is drawn on, and the heavier side of it.
    */
   | "liveMonitoring"
+  /**
+   * SEARCHING ON 모니터링, AS A SECOND STEP ON THE SAME SCREEN (2026-09-23, owner: 검색할 수 있게
+   * 할 건가 그 권한을 표시해 주는 건데 검색에 대한 권한이 있는지 표시가 없다고 느껴져).
+   *
+   * There used to be one `personSearch` grant doing two unrelated jobs: it OPENED RedFace, and it
+   * switched on the search box of three other screens. So a reader looking at the 모니터링 row
+   * could not tell whether that account may search there — the row had no place to say it, and the
+   * description punted to another row by name. Worse, the coupling made a real case ungrantable:
+   * "may search on 모니터링 but not on Re-ID" could not be expressed at all.
+   *
+   * Now each screen that has BOTH depths carries its own second step, and the two screens that
+   * have only one depth carry none (see `redface` and `trail`).
+   */
+  | "liveMonitoringSearch"
   | "history"
-  | "personSearch"
   /**
    * 데이터 → Re-ID 분석. Split from `trail` (2026-09-23, owner: 레드맵이랑 Re-ID 분석은 별개
    * 메뉴야 · 둘로 쪼개줘). One grant used to open both: a table of where one person appeared, and
    * a map drawing their route. They are separate menus in the app and separate jobs — an
    * investigator who should read sightings out of a table does not automatically need the map.
    * `trail` keeps the map, which is what its name always described.
-   *
-   * Both still need `personSearch` alongside them, or the two screens open onto a refusal — see
-   * the note in HANDOFF-SERVER §4.
    */
   | "reid"
+  /** Searching on Re-ID 분석. Its own step for the same reason as `liveMonitoringSearch`. */
+  | "reidSearch"
+  /**
+   * 데이터 → RedFace. THE SCREEN IS THE SEARCH, so it has no second step.
+   *
+   * RedFace only ever shows the result of a face search — there is no unsearched state to open
+   * into (the tab's own gate says so: "a screen that only exists to show search results has
+   * nothing to show without the permission"). A separate 「검색」 step under it would be a step
+   * that can never be off while the screen is on, which is a control that lies about having two
+   * states. Same for `trail`.
+   */
+  | "redface"
   | "trail"
-  | "export";
+  | "export"
+  /**
+   * RETIRED 2026-09-23. Nothing writes it and it is not in `APP_ACTIONS`, so no row renders it and
+   * no preset carries it. It stays in the union for exactly one reason: one reader in
+   * PortalUsersPage still tests for it, and that file is held by another session this evening.
+   * DELETE THIS MEMBER once that reader is gone — a leftover action in the type is how a dead
+   * grant comes back to life in a seed.
+   */
+  | "personSearch";
 
 /**
  * ORDERED BY HOW MUCH THEY REVEAL ABOUT A PERSON, not by where they sit in the app.
@@ -2419,12 +2470,20 @@ export type AppAction =
  * So the list runs from the one view that contains no personal data at all to the two that
  * identify somebody and take their picture out of the building:
  *
- *   systemStatus  cameras and servers, up or down. NOBODY'S DATA IS IN IT.
- *   liveView      detections happening now — a person, a place, a time
- *   history       the same, from before now
- *   personSearch  turns "someone was here" into "this person was here"
- *   trail         joins those into one person's route across the site
- *   export        takes any of it out of the console as a file
+ *   systemStatus            cameras and servers, up or down. NOBODY'S DATA IS IN IT.
+ *   liveView                detections of REGISTERED people, happening now
+ *   history                 the same, from before now
+ *   liveMonitoring          everybody, registered or not — the heavier side of the same line
+ *   liveMonitoringSearch    turns "someone was here" into "this person was here", on that screen
+ *   reid / reidSearch       the same pair, on Re-ID 분석
+ *   redface                 face search, which is the whole of that screen
+ *   trail                   joins those into one person's route across the site
+ *   export                  takes what the route found out of the console as a file
+ *
+ * A SECOND STEP IS NOT A WEAKER COPY OF ITS SCREEN. Watching and identifying are different
+ * weights: an operator may legitimately need to see that somebody walked past without being able
+ * to ask who it was. That distinction is what the split makes grantable (owner, 2026-09-23: 아 근데
+ * 모니터링은 되는데 검색은 권한이 없는 사람이 생길 수 있겠다).
  *
  * `systemStatus` exists because the dashboard has two panels and only one of them is about
  * people: an IT operator who keeps 62 cameras online needs the SYSTEM panel and has no business
@@ -2450,8 +2509,37 @@ export type AppAction =
  * rather than a place. A reader can now check this list against the app's menu bar top to bottom.
  */
 export const APP_ACTIONS: AppAction[] = [
-  "liveView", "systemStatus", "history", "liveMonitoring", "reid", "personSearch", "trail", "export",
+  "liveView", "systemStatus", "history",
+  "liveMonitoring", "liveMonitoringSearch",
+  "reid", "reidSearch",
+  "redface",
+  "trail", "export",
 ];
+
+/**
+ * WHICH GRANT IS A SECOND STEP ON ANOTHER ONE'S SCREEN, and which one it belongs to.
+ *
+ * A child cannot be held without its parent — not as a UI convenience but because it would name a
+ * capability on a screen the account cannot open. `withAppActionDeps` is what enforces it, and it
+ * is the one place that knows; a caller that builds an action set by hand passes it through.
+ */
+export const APP_ACTION_PARENT: Partial<Record<AppAction, AppAction>> = {
+  liveMonitoringSearch: "liveMonitoring",
+  reidSearch: "reid",
+  /* 증거 내보내기 is one button on Redmap and nowhere else — counted: zero export controls on
+     Best Frame, on Data's three tabs and on the dashboard. So it is a step on 레드맵, not a
+     screen of its own. */
+  export: "trail",
+};
+
+/** Drops any child grant whose parent is not held. Always run it before storing an action set. */
+export function withAppActionDeps(actions: AppAction[]): AppAction[] {
+  const held = new Set(actions);
+  for (const [child, parent] of Object.entries(APP_ACTION_PARENT) as [AppAction, AppAction][]) {
+    if (held.has(child) && !held.has(parent)) held.delete(child);
+  }
+  return APP_ACTIONS.filter(a => held.has(a));
+}
 
 /**
  * Which screens these actions open.
@@ -2531,7 +2619,7 @@ export function screensForActions(actions: AppAction[]): AppScreen[] {
     switch (screen) {
       case "live": return has("liveMonitoring");
       case "bestframe": return has("history");
-      case "redface": return has("personSearch");
+      case "redface": return has("redface");
       case "reid": return has("reid");
       case "redmap": return has("trail");
     }
@@ -3003,8 +3091,8 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "history", "personSearch", "reid", "trail", "export"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "history", "personSearch", "reid", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "liveMonitoringSearch", "history", "reid", "reidSearch", "redface", "trail", "export"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "liveMonitoringSearch", "history", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
   { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "history"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
   { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "invited" },
@@ -4257,12 +4345,12 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     {
       id: "preset-investigator", teamId: "team-univs", builtinKey: "investigator", label: "조사자",
       description: "운영자가 하는 일에 인물 검색과 동선 추적을 더합니다",
-      actions: ["systemStatus", "liveView", "liveMonitoring", "history", "personSearch", "reid", "trail"],
+      actions: ["systemStatus", "liveView", "liveMonitoring", "liveMonitoringSearch", "history", "reid", "reidSearch", "redface", "trail"],
     },
     {
       id: "preset-supervisor", teamId: "team-univs", builtinKey: "supervisor", label: "감독자",
       description: "조사자가 하는 일에 증거 내보내기를 더합니다",
-      actions: ["systemStatus", "liveView", "liveMonitoring", "history", "personSearch", "reid", "trail", "export"],
+      actions: ["systemStatus", "liveView", "liveMonitoring", "liveMonitoringSearch", "history", "reid", "reidSearch", "redface", "trail", "export"],
     },
   ],
   searchPurpose: null,
@@ -5633,10 +5721,21 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const detach = detachedFromPreset(user);
       const next = { ...user, ...detach.patch };
       const held = new Set(user.appActions ?? []);
-      if (allowed) held.add(action); else held.delete(action);
-      // Written in APP_ACTIONS order, so two accounts holding the same set store it identically
-      // and a diff between them is about access rather than about insertion order.
-      next.appActions = APP_ACTIONS.filter(a => held.has(a));
+      if (allowed) {
+        held.add(action);
+        /* Granting a child grants its screen. Ticking 「모니터링에서 검색」 on an account that
+           cannot open 모니터링 would store a capability on a screen it never reaches — the panel
+           should not offer that, but the store is what has to be true either way. */
+        const parent = APP_ACTION_PARENT[action];
+        if (parent) held.add(parent);
+      } else {
+        held.delete(action);
+      }
+      /* Written in APP_ACTIONS order, so two accounts holding the same set store it identically
+         and a diff between them is about access rather than about insertion order. Through
+         withAppActionDeps, so revoking a screen takes its steps with it rather than leaving a
+         search grant on a screen that no longer opens. */
+      next.appActions = withAppActionDeps([...held]);
       const auditEntry: AuditEvent = clientAudit({
         projectId: user.projectIds[0],
         message: `${allowed ? "Granted" : "Revoked"} app ${action} for ${user.name}`,
@@ -5657,16 +5756,23 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         message: `${allowed ? "Person search granted" : "Person search revoked"}: ${user.name}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
-      /* Writes the `personSearch` action, which is where person search lives since the grant
-         became five actions. Kept as its own store call rather than folded into setAppGrant: the
-         row menu's 인물 검색 차단 is the one grant an administrator flips without opening the
-         grants dialog, and its audit line says so in words rather than as "revoked app
-         personSearch". */
+      /* THE QUICK BLOCK REACHES EVERY SEARCH, AND THAT IS FOUR GRANTS NOW (2026-09-23).
+         Kept as its own store call rather than folded into setAppGrant: the row menu's 인물 검색
+         차단 is the one grant an administrator flips without opening the grants panel, and its
+         audit line says so in words rather than as "revoked app liveMonitoringSearch".
+
+         Blocking takes all four — the two search steps AND the two screens that are nothing but a
+         search — because a block that left RedFace open would be a menu item that does not do what
+         it says. Granting is DELIBERATELY NARROWER: it gives back the two steps only, and never
+         opens RedFace or 레드맵, because those are screens and this menu item is not a door to
+         screens. The asymmetry is the honest one; the panel is where screens get opened. */
       const held = new Set(user.appActions ?? []);
-      if (allowed) held.add("personSearch"); else held.delete("personSearch");
+      const steps: AppAction[] = ["liveMonitoringSearch", "reidSearch"];
+      if (allowed) for (const a of steps) held.add(a);
+      else for (const a of [...steps, "redface" as AppAction, "trail" as AppAction]) held.delete(a);
       return {
         portalUsers: state.portalUsers.map(u => (
-          u.id === userId ? { ...u, appActions: APP_ACTIONS.filter(a => held.has(a)), ...detach.patch } : u
+          u.id === userId ? { ...u, appActions: withAppActionDeps([...held]), ...detach.patch } : u
         )),
         auditLog: [auditEntry, ...detach.audit, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };

@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MatchItem, ReIDStatus } from "@/types/reid";
 import {
-  CAMERA_CODES, canSearchInApp, judgementFor, screensFor, type DetectionVerdict,
+  CAMERA_CODES, canSearchIn, judgementFor, screensFor, type DetectionVerdict,
   useActiveProjectId, useProjectCameras, useVcaStore, getActiveProjectId, personsInProject,
   type AppScreen, type Camera, type Person,
 } from "@/lib/vcaStore";
@@ -1284,7 +1284,7 @@ function LiveSearchSidebar({
   state, tab, onTabChange,
   hatFilter, onHatChange, sleeveFilter, onSleeveChange, bottomsFilter, onBottomsChange, backpackFilter, onBackpackChange,
   emotion, onEmotionChange, ethnicGroup, onEthnicGroupChange,
-  onSearch, onCollapse,
+  onSearch, onCollapse, searchScreen,
 }: {
   state: SearchFilterState;
   tab: LiveSearchTab; onTabChange: (t: LiveSearchTab) => void;
@@ -1297,11 +1297,16 @@ function LiveSearchSidebar({
   // Seeds the Photo tab's preview from a camera card's own photo (via the "Search" hover
   // button) — optional since the other tab that reuses this sidebar has no such card to seed from.
   onSearch: () => void; onCollapse: () => void;
+  /* WHICH SCREEN THIS SIDEBAR IS STANDING ON (2026-09-23). It is rendered twice — once inside
+     모니터링 and once inside Re-ID 분석 — and searching is now granted per screen, so the same
+     sidebar is allowed in one place and refused in the other. Reading a single app-wide flag out
+     of the store, which is what it did, could not tell the two apart. */
+  searchScreen: AppScreen;
 }) {
-  // Read from the store rather than threaded through props: this is the only place in Data that
-  // starts a search, so the check belongs next to the button, not in every caller.
+  // Read from the store rather than threaded through props: the check belongs next to the button,
+  // not in every caller. The SCREEN comes from the caller, because only the caller knows it.
   const portalUsers = useVcaStore(state => state.portalUsers);
-  const searchAllowed = canSearchInApp(portalUsers);
+  const searchAllowed = canSearchIn(portalUsers, searchScreen);
   const [lang] = useLanguage();
   const t = T[lang];
   const {
@@ -1801,6 +1806,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
         onExpand={() => setSearchExpanded(true)}
         sidebar={
           <LiveSearchSidebar
+            searchScreen="live"
             state={searchState}
             tab={searchTab} onTabChange={setSearchTab}
             hatFilter={hatFilter} onHatChange={setHatFilter}
@@ -3354,7 +3360,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   // walks straight in — setting hasSearched during render, so the twenty matches were on screen
   // without the Search button ever being pressed. One door was locked and the other stood open.
   const portalUsers = useVcaStore(state => state.portalUsers);
-  const searchAllowed = canSearchInApp(portalUsers);
+  const searchAllowed = canSearchIn(portalUsers, "reid");
   const recordSearchAccess = useVcaStore(state => state.recordSearchAccess);
   const siteProjectId = useActiveProjectId();
   const siteCameras = useSiteCameraCodes();
@@ -3642,6 +3648,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
         onExpand={() => setExpanded(true)}
         sidebar={
           <LiveSearchSidebar
+            searchScreen="reid"
             state={state}
             tab={searchTab} onTabChange={setSearchTab}
             hatFilter={hatFilter} onHatChange={setHatFilter}
@@ -5701,7 +5708,9 @@ function RedFaceContent({ seedCard, seedLabel, onSeedConsumed, onGoAnalyzeFrame 
   // Same reading as Redmap: a screen that only exists to show search results has nothing to show
   // without the permission.
   const portalUsers = useVcaStore(state => state.portalUsers);
-  const searchAllowed = canSearchInApp(portalUsers);
+  /* The screen grant and the search are the same thing here — there is no unsearched RedFace to
+     open into — so this reads `redface` rather than a step of its own. See canSearchIn. */
+  const searchAllowed = canSearchIn(portalUsers, "redface");
   const [primaryTarget, setPrimaryTarget] = useState<{ name:string; face:string } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(true);
   // "UNSET" (not seedCard's own initial value) so the block below still fires on this

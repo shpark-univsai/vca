@@ -7,7 +7,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
-import { camerasInProject, canExportEvidence, hasPosition, canSearchInApp, judgementFor, SIGNED_IN_USER, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
+import { camerasInProject, canExportEvidence, hasPosition, canSearchIn, judgementFor, SIGNED_IN_USER, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { buildEvidenceManifest, evidenceFilename, saveManifest } from "@/lib/evidence";
 import { siteTimeZone } from "@/lib/time";
@@ -861,7 +861,9 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
   // Redmap is search and nothing else — with no search there is no map to look at, so the whole
   // screen is gated rather than its button. See PortalUser.appSearch.
   const portalUsers = useVcaStore(state => state.portalUsers);
-  const searchAllowed = canSearchInApp(portalUsers);
+  /* 레드맵 draws nothing until somebody is found, so the screen grant and the search are one —
+     this reads `trail` through canSearchIn rather than a step of its own. */
+  const searchAllowed = canSearchIn(portalUsers, "redmap");
   /**
    * Whether this account may take a sighting out as a file.
    *

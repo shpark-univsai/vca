@@ -2998,9 +2998,21 @@ function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string
  * says: no screen is granted, so the day the account becomes usable it arrives at nothing. That
  * is a grant to repair now, not an incident, and the wording stays on the grant.
  */
-/** Whether this account holds the person-search action. See APP_ACTIONS. */
+/**
+ * Whether this account may search ANYWHERE in the app.
+ *
+ * ONE ACTION BECAME FOUR (2026-09-23). Searching used to be a single app-wide grant; it is now a
+ * step on each screen that has one, plus the two screens that are nothing but a search. So the
+ * row's 인물 검색 차단 menu item — a quick block that does not open the grants panel — asks
+ * whether ANY of the four is held, and `setAppSearch(false)` clears all four.
+ *
+ * Reading only the old `personSearch` here was a silent lie for as long as it lasted: nothing
+ * writes that action any more, so the menu would have reported every account as already blocked.
+ */
 function holdsSearch(u: PortalUser): boolean {
-  return (u.appActions ?? []).includes("personSearch");
+  const held = u.appActions ?? [];
+  return (["liveMonitoringSearch", "reidSearch", "redface", "trail"] as AppAction[])
+    .some(a => held.includes(a));
 }
 
 function lacksAppScreens(u: PortalUser): boolean {

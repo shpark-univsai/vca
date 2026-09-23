@@ -33,6 +33,10 @@
 | vca-84/N | — 놓았습니다 | **완료 `806dcbc`.** 화면이 121이라 적는 자리에 목업이 12를 들고 있던 것을 지웠습니다(읽는 곳 0개, 동적 접근까지 확인). `tracking`은 **그대로 뒀습니다** — 그 주석이 이미 "세 번째 타일을 둘지는 사용자 결정"이라고 적어놨고 그 값은 실제 이벤트에서 파생돼 화면과 모순되지 않습니다 |
 | vca-84/O | — 놓았습니다 | **완료 `df9ca71`.** 제 가설이 틀렸습니다 — 딥링크는 첫 페인트부터 정상이고(측정), 게이트는 무관하며 `heldScreens`는 **비동기 출처가 없어** 대기 구간 자체가 없습니다. 실제 결함은 **탭 클릭이 주소를 덮어쓰는 것**: `setActivePage`가 쿼리 전체를 다시 쓰고 DataPage의 미러 effect가 자기 렌더 시점 스냅샷으로 다시 써서, 마지막에 쓴 쪽이 상대 것을 지웁니다. `setActivePage` 쪽은 고쳤고 **나머지 절반은 `DataPage.tsx`(M 보유)** — 그 effect가 렌더 스냅샷이 아니라 살아 있는 params 위에 병합해야 합니다. `setRefusedScreen`은 **거짓 발화 없음**(모든 표본 `refusal: null`) |
 | vca-84 (본인) | `Navbar.tsx` | 작은 화면에서 헤더가 겹침 — 탭 행이 `position:absolute`로 중앙에 떠 있어 자리가 없으면 양옆을 덮고 클릭까지 먹습니다. 왼쪽의 `calc(50% - 236px)`는 탭 폭을 손으로 추정한 값이고 탭 개수는 권한에 따라 변합니다 |
+| vca-85/A | `PortalUsersPage.tsx` | **배정 2026-09-23 저녁**: 초대 패널에서 권한 세부·카메라 범위를 빼고, 같은 세부 창을 두 문(초대창 「세부 설정」 · 계정 행 「권한」)으로. `PortalShared.tsx`·`appGrants.ts`·`vcaStore.ts`는 손대지 않음 |
+| vca-85/B | `appGrants.ts` · `PortalShared.tsx` · `AccessPresetsTab.tsx` · `app/mypage/page.tsx` | **배정 2026-09-23 저녁**: 권한 목록을 그룹+카운터(Shopify) · 행 위의 단계(Zoho) · 자식 들여쓰기로. `PortalUsersPage.tsx`는 A가 잡고 있어 금지 |
+| vca-85 (본인) | `lib/vcaStore.ts` · `DataPage.tsx` · `RedmapPage.tsx` | 권한 계약: `personSearch` 하나를 화면별로 쪼갬(`liveMonitoringSearch`·`reidSearch`·`redface`) + 의존 정리 `withAppActionDeps`. **A·B가 이 계약 위에서 그림** |
+| vca-85/W | `ViewerWatermark.tsx` · `BestFramePage.tsx` · `BestFrameDetailPage.tsx` · `CameraStreamModal.tsx` · `PortalSettingsPage.tsx` | **배정 2026-09-23 저녁**: 열람자 워터마크(이름·시각)를 프레임/스트림 위에 얹고, 포털 프로젝트 설정에 끄는 스위치. `DataPage.tsx`·`PortalUsersPage.tsx`·`appGrants.ts`·`vcaStore.ts`는 **본인(vca-85)이 잡고 있어 손대지 않습니다** — 앱 모니터링 라이브 피드에 붙일 자리는 편집하지 말고 보고만 |
 | vca-cf | — (비었습니다) | **세션 종료.** 인수인계 때 "에이전트 미커밋 변경 있음"으로 넘겼는데, 그 뒤 에이전트가 끝나 제가 검증하고 `0f75742`로 올렸습니다. **남은 미커밋 없습니다.** 붙일 곳 하나 남김: `bodyScrolls`를 `PortalSettingsPage.tsx:741`(프로젝트 삭제)에 전달 — `AccessChangeModal`에는 절대 주지 말 것(주석에 이유 있음) |
 | vca-hv | — 종료 | `mypage`·`Navbar`·`RedmapPage` 커밋 완료. 섞였던 두 auth 파일은 `4d51589`로 정리됨 |
 
