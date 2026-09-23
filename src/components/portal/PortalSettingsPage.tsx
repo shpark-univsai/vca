@@ -6,7 +6,7 @@ import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, SectionNav, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, Drawer, PanelCancel, PanelPrimary, usePortalEditAccess, useTypeLabel } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, SectionNav, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, Drawer, PanelCancel, PanelPrimary, Switch, usePortalEditAccess, useTypeLabel } from "./PortalShared";
 import { VipCategoryModal } from "./VipCategories";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useToast } from "@/components/Toast";
@@ -87,6 +87,11 @@ const T = {
     vipRetention: "VIP listing period",
     vipRetentionNote: "How long a new VIP listing lasts here. It fills the end date on registration, and an expired listing stops raising detections. Listings already on the list keep the date they were given.",
     vipRetentionInherited: (n: number) => `${n} days — deployment default`,
+    watermark: "Viewer watermark",
+    watermarkOn: "Stamped with name and time",
+    watermarkOff: "Not stamped",
+    watermarkNote: "The frame carries the account looking at it and the minute it was on screen, so a still that leaves here says which session it came from. It cannot stop a capture — nothing in a browser can. A wall display watched by a whole shift is the case for turning it off: the name on it would be the wrong person's.",
+    watermarkOffNote: "Captures taken at this site name no viewer. The access log still records who looked, but a still on its own cannot be traced to a session.",
     purposeTitle: "Search purposes",
     purposeEmpty: "No purposes defined.",
     purposeRequirementOn: "Searches are supposed to record a purpose, and there is nothing to choose. Until one exists, operators search without giving a reason.",
@@ -213,6 +218,11 @@ const T = {
     vipRetention: "VIP 등록 유효기간",
     vipRetentionNote: "이 현장에서 새 VIP 등록이 얼마나 유지되는지입니다. 등록할 때 만료일을 채우고, 만료된 등록은 검출 알림을 올리지 않습니다. 이미 명단에 있는 사람의 날짜는 그대로 둡니다.",
     vipRetentionInherited: (n: number) => `${n}일 · 배포 기본값`,
+    watermark: "열람자 워터마크",
+    watermarkOn: "이름과 시각을 찍음",
+    watermarkOff: "찍지 않음",
+    watermarkNote: "영상 위에 지금 보고 있는 계정과 그때의 시각이 함께 찍혀, 밖으로 나간 화면이 어느 세션에서 나왔는지 드러납니다. 캡처 자체를 막지는 못합니다 — 브라우저에는 그럴 방법이 없습니다. 교대로 함께 보는 관제 벽처럼 화면 앞에 있는 사람과 계정이 다른 경우에 끕니다.",
+    watermarkOffNote: "이 현장에서 캡처한 화면에는 열람자가 남지 않습니다. 조회 기록은 그대로 남지만, 화면 한 장만으로는 어느 세션에서 나왔는지 알 수 없습니다.",
     purposeTitle: "조회 목적",
     purposeEmpty: "정의된 사유가 없습니다.",
     purposeRequirementOn: "조회할 때 목적을 기록하도록 되어 있는데 고를 것이 없습니다. 하나라도 만들기 전까지는 사유 없이 조회가 실행됩니다.",
@@ -358,6 +368,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const setProjectTimeZone = useVcaStore(s => s.setProjectTimeZone);
   const setProjectRetention = useVcaStore(s => s.setProjectRetention);
   const setProjectVipRetention = useVcaStore(s => s.setProjectVipRetention);
+  const setEvidenceWatermark = useVcaStore(s => s.setEvidenceWatermark);
   /* What the row shows for a site that has not set its own — the deployment's number, not a blank.
      See the note on the VIP period row. */
   const vipFallbackDays = getComplianceConfig().vipDefaultValidDays;
@@ -702,6 +713,44 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 />
               ) : (
                 project.vipRetentionDays === undefined ? inheritedVipRetentionLabel : t.retentionDaysLabel(project.vipRetentionDays)
+              )}
+            </PairItem>
+            {/* WHETHER FRAMES CARRY THE NAME OF WHOEVER IS LOOKING. In this grid because it is the
+                same kind of value as the three above it: the site's rather than the viewer's, and
+                audited when it changes — turning it off is somebody removing a traceability
+                control, and setEvidenceWatermark writes that line either way.
+
+                Owner only, the same gate as the two retention rows: this is a policy, not a
+                preference, and a switch that flips and then refuses is worse than a value that
+                never looked editable.
+
+                THE NOTE SAYS WHAT IS LOST, NOT WHAT IS PREVENTED. A watermark stops no
+                screenshot — no browser can, and a phone pointed at the monitor beats every native
+                trick — so nothing here may read as protection. What it buys is attribution, which
+                is why the off state carries the consequence in the open rather than in the tip:
+                from then on a still on its own cannot be tied back to a session. The access log is
+                named in the same breath because it is NOT affected, and an administrator reading
+                "no viewer recorded" would otherwise reasonably fear it was. */}
+            <PairItem label={t.watermark} hint={t.watermarkNote}>
+              {maySetPolicy ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    {/* Absent means on — see Project.evidenceWatermark. */}
+                    <Switch
+                      checked={project.evidenceWatermark !== false}
+                      onChange={on => setEvidenceWatermark(project.id, on)}
+                      label={t.watermark}
+                    />
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
+                      {project.evidenceWatermark !== false ? t.watermarkOn : t.watermarkOff}
+                    </span>
+                  </div>
+                  {project.evidenceWatermark === false && (
+                    <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.watermarkOffNote}</p>
+                  )}
+                </div>
+              ) : (
+                project.evidenceWatermark !== false ? t.watermarkOn : t.watermarkOff
               )}
             </PairItem>
           </PairGrid>

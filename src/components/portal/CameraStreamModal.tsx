@@ -7,6 +7,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER } from "./PortalShared";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
+import ViewerWatermark from "@/components/ViewerWatermark";
 
 const T = {
   en: {
@@ -184,6 +185,15 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
             {/* The overlay boxes that used to be drawn over this still are gone with the
                 per-camera engine list they were keyed on (2026-09-09): labelled rectangles at fixed
                 percentages of the frame, which is a picture of an analysis nobody ran. */}
+            {/* WHO OPENED THIS CAMERA, ON THE FRAME. Only when there is a frame: an unprovisioned
+                camera draws an empty dark box here, and a stamp on nothing attributes nothing.
+                The box above is already position:relative, so it is what the stamp measures from;
+                bottom-left is the free corner (the LIVE/LAST FRAME badge has top-left, the play
+                button and the connecting panel are centred).
+                It follows the project Portal has open — ViewerWatermark reads activeProjectId,
+                which PortalShell keeps pointed at whatever project you are inside, and this modal
+                only opens from that project's own camera list. */}
+            {camera.thumbnail && <ViewerWatermark />}
           </div>
 
           {/*

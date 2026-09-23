@@ -10,6 +10,7 @@ import type { DetType, MonitorState, Camera, Detection, CamData, HUDState } from
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { MOCK_STAMP_GRANULARITY_MIN, parseSgtStamp, recentSgtStamp } from "@/lib/time";
 import SidebarToggleIcon from "./SidebarToggleIcon";
+import ViewerWatermark from "./ViewerWatermark";
 
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
@@ -644,6 +645,25 @@ function CameraCard({
             {data.camLabel} • {data.location}
           </span>
         </div>
+
+        {/* WHO IS WATCHING, ON THE PICTURE — one per feed, and nowhere else on this screen.
+            The tile IS the frame here: it is the largest drawing of this camera anybody gets
+            without opening the analysis, and a still cropped out of one tile has to keep saying
+            whose session it came from, so the stamp belongs to the feed rather than to the screen.
+            Per tile and not once per grid for the same reason: a grid holds four to sixteen
+            different cameras, and one stamp in the corner of the page would leave fifteen
+            pictures unattributed.
+            NOT on the small pictures: the detection rows beside this feed, the reel crops and the
+            timeline strip on the analysis screen. Each of those is one subject listed among
+            dozens, a 10px plate would sit across the face in a 78px-tall crop, and the same
+            sentence repeated forty times on one screen stops being read.
+            BOTTOM-RIGHT, not the component's default: measured in the browser, the sidebar's
+            floating collapse handle sits at the grid's left edge halfway down the window, which in
+            any multi-row layout is exactly where the leftmost tile's bottom-LEFT corner falls — it
+            ate the first letter of the stamp in the default four-camera view. Top-left is the
+            camera plate, the centre is the hover 「프레임 분석」 button, and the detection list is a
+            sibling column rather than an overlay, so this corner is the clear one. */}
+        <ViewerWatermark corner="bottom-right" />
       </div>
 
       {/* ── Detection list — a fixed column normally; past 6 cameras it collapses to a compact

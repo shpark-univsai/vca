@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import type { DetType, Detection, CamData } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { sgtDateKey } from "@/lib/time";
+import ViewerWatermark from "./ViewerWatermark";
 
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
@@ -1120,6 +1121,18 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 )}
               </button>
             )}
+
+            {/* WHO IS WATCHING, ON THE PICTURE. This frame is the one thing on the screen somebody
+                photographs or snips: it is the biggest drawing of a face the product has (about
+                1020x480 at a 1440 window, and it grows to the full pane once Inspection Detail
+                narrows it to one person), and it is the frame the operator was sent here to read.
+                So the stamp goes on it and on nothing else here — not on the reel crops in the
+                right rail and not on the 128px thumbnails in the timeline strip below. Those are
+                a subject listed among dozens; a 10px plate would cover the crop it sits on, and
+                the same sentence forty times down one screen stops being read.
+                Bottom-left because the frame's own date-time plate has the top-right, the
+                detection labels sit above their boxes, and the play control is bottom-centre. */}
+            <ViewerWatermark />
           </div>
         </div>
       </div>
