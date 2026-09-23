@@ -3309,7 +3309,10 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    */
   const GRID = showAccountColumns
     ? "minmax(160px, 1.2fr) 0.6fr 0.75fr 0.6fr 1.12fr 0.6fr 0.8fr 36px"
-    : "minmax(180px, 1.4fr) 1fr 1.2fr 0.7fr 36px";
+    /* The roster's own widths, 2026-09-23: the name column takes what 「가입 시 권한」 was spending
+       on one word, because the name now carries the employee number beside it instead of under it.
+       Measured before: name 268px over two lines, 권한 191px holding 「앱 사용자」, 코드 229px. */
+    : "minmax(240px, 1.9fr) 0.62fr 1.3fr 0.7fr 36px";
 
   const bulkIssueCodes = () => {
     if (notIssuedIds.length === 0) return;
@@ -4178,25 +4181,33 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
               borderBottom: isLast ? "none" : BORDER,
               borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
             }}>
-              {/* The second line is the employee number, not an address: a roster row often has no
-                  address at all (that is the reason this path exists), and the number is what the
-                  code is handed over against. */}
-              <div style={{ minWidth: 0 }}>
-                <p title={entry.name} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.name}</p>
-                <p title={entry.email || entry.employeeId} style={{ fontSize: "12px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.email || entry.employeeId}</p>
-                {/* 「방금 발급」 SITS WITH THE NAME, not with the code. The reader is looking for a
-                    person's row; the mark is how they find which one the dialog just acted on, and
-                    the code cell beside it is already showing the difference by being unmasked. */}
-                {justIssuedFor === entry.employeeId && (
-                  <span style={{ display: "inline-block", marginTop: "3px", fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", backgroundColor: "var(--primary-50)", padding: "2px 6px", borderRadius: "999px" }}>
-                    {rt.justIssued}
-                  </span>
-                )}
+              {/*
+                ONE LINE, NOT TWO (owner, 2026-09-23: 기본 사용자가 두 줄인데 한 줄로 넣으면 안
+                되는 거지? 가입 시 권한 가로폭을 좀 좁히면 괜찮을 것 같은데).
+
+                The number sat under the name, so EVERY row was two lines tall — 59px each, with
+                the 「가입 시 권한」 column beside it spending 191px on the single word 「앱 사용자」.
+                Side by side they fit, and the width comes from that column (see GRID).
+
+                The number is still not an address: a roster row often has no address at all, which
+                is the reason this path exists, and the number is what the code is handed over
+                against. It keeps its own colour so the pair reads as a name and a receipt rather
+                than as one long string.
+              */}
+              <div style={{ minWidth: 0, display: "flex", alignItems: "baseline", gap: "8px" }}>
+                <p title={entry.name} style={{ flexShrink: 0, maxWidth: "58%", fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.name}</p>
+                <p title={entry.email || entry.employeeId} style={{ minWidth: 0, fontSize: "12px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.email || entry.employeeId}</p>
               </div>
                   <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>
                     {entry.permission === "admin" ? rt.admin : rt.operator}
                   </span>
                   <div style={{ minWidth: 0 }}>
+                    {/* 「방금 발급」 MOVED HERE FROM THE NAME (owner: 이름 아래 방금 발급이
+                        추가되니까 얘만 높이가 너무 두꺼워져서 어색해 보여 · 방금 발급 태그를
+                        등록 코드 옆에 놔도 될 것 같고). Under the name it made that one row a third
+                        line — 83px against everybody else's 59 — and the row you had just acted on
+                        was the one that looked broken. Beside the code it is on the line it is
+                        about: the code this mark says is new. */}
                     <RosterCodeCell entry={entry} t={rt}
                       justIssued={justIssuedFor === entry.employeeId}
                       onIssue={mayEdit ? () => setIssuingEntry(entry) : undefined}

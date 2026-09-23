@@ -2346,9 +2346,32 @@ export function SectionNav({ sections, active, onSelect }: {
         return (
           <React.Fragment key={`g-${sec.id}`}>
           {caption && (
+            /*
+              THE CAPTION IS GLUED TO ITS OWN ROWS (owner, 2026-09-23: 이렇게 한 묶음이라는 느낌이
+              나게 UI를 구분해 주고 싶은 건데).
+
+              Eight settings rails were checked for a grouping device — Canny, Vapi, Skiff, Plain,
+              Todoist, Fireflies, Graphite, QuickBooks — and **not one draws a box, a fill or a rule
+              around a group.** All eight use a caption plus whitespace, which is what this rail
+              already had. What they do differently is the SHARE of that whitespace: their caption
+              sits almost on top of its first row and all the air goes above it.
+
+              Ours was 14 above / 6 below, and the numbers that matter are the INK gaps, not the
+              padding: caption→first row was 15px while row→row was 19px. A caption no closer to
+              its own first row than the rows are to each other belongs to neither group, which is
+              exactly what the owner was seeing. Measured after: **12 · 19 · 44** — caption to its
+              first row, row to row, and last row to the next caption. The caption is now the
+              tightest gap in the rail, so the eye binds it downward, and the group break is more
+              than double the row rhythm.
+
+              A surface was considered and rejected on two measurements of our own: hover is
+              `gray-50`, so a gray-50 group band would erase it, and the active row is marked by a
+              3px bar at the LEADING edge — a group's left rule would sit on the same axis and read
+              as a broken version of that bar.
+            */
             <span style={{
               fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
-              color: "var(--gray-400)", padding: i === 0 ? "2px 10px 6px 16px" : "14px 10px 6px 16px",
+              color: "var(--gray-400)", padding: i === 0 ? "2px 10px 0 16px" : "30px 10px 0 16px",
             }}>
               {caption}
             </span>

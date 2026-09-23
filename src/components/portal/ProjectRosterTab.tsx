@@ -297,9 +297,24 @@ function RosterCodeCell({ entry, onReveal, onIssue, t, justIssued }: {
   /* BESIDE THE CODE, NOT UNDER IT (owner: 두줄로 안하고 한줄로 나란히 둬도 옆에 공간많아). Both
      are one fact about one code and the column has the room, so stacking them spent a second row
      of the table on 10.5px of text and pushed every row taller. */
+  /* 24px WHATEVER IS IN IT (2026-09-23). The cell holds either 18px of text or a 「코드 발급」
+     button, and the button was the taller of the two — so the rows carrying one stood 48px against
+     the text rows' 45. A table whose rows differ by three pixels reads as a table that is slightly
+     broken, and the difference says nothing: both cells answer the same question. */
   const cellRow: React.CSSProperties = {
     display: "flex", flexDirection: "row", alignItems: "center", gap: "8px", minWidth: 0,
+    minHeight: "24px",
   };
+  /* 「방금 발급」 BELONGS TO THE CODE, NOT TO THE NAME (owner, 2026-09-23: 이름 아래 방금 발급이
+     추가되니까 얘만 높이가 너무 두꺼워져서 어색해 보여 · 등록 코드 옆에 놔도 될 것 같고).
+     Under the name it was a third line in that one cell, so the row somebody had just acted on
+     stood 83px against every other row's 59 — the row that had just succeeded looked like the
+     broken one. Here it sits on the line it is about, next to the code it says is new. */
+  const justIssuedChip = justIssued ? (
+    <span style={{ flexShrink: 0, fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", backgroundColor: "var(--primary-50)", padding: "2px 6px", borderRadius: "999px", whiteSpace: "nowrap" }}>
+      {t.justIssued}
+    </span>
+  ) : null;
 
   /*
    * THE EMPTY CELL IS WHERE THE ACTION BELONGS (owner, 2026-09-22).
@@ -315,10 +330,10 @@ function RosterCodeCell({ entry, onReveal, onIssue, t, justIssued }: {
    * still minted deliberately rather than by a stray click.
    */
   if (entry.status === "not-issued") {
-    if (!onIssue) return <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>;
+    if (!onIssue) return <span style={{ ...cellRow, fontSize: "12px", color: "var(--gray-300)" }}>—</span>;
     return (
       <button type="button" onClick={onIssue}
-        style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "4px 9px", borderRadius: "7px", border: "1px solid var(--gray-200)", backgroundColor: "white", cursor: "pointer", fontFamily: "inherit", fontSize: "11.5px", fontWeight: 700, color: "var(--gray-600)" }}>
+        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "5px", height: "24px", padding: "0 9px", borderRadius: "7px", border: "1px solid var(--gray-200)", backgroundColor: "white", cursor: "pointer", fontFamily: "inherit", fontSize: "11.5px", fontWeight: 700, color: "var(--gray-600)" }}>
         <KeyRound size={12} strokeWidth={2.4} aria-hidden="true" />
         {t.issueConfirm}
       </button>
@@ -329,6 +344,7 @@ function RosterCodeCell({ entry, onReveal, onIssue, t, justIssued }: {
       <span style={cellRow}>
         <span style={{ fontSize: "12px", fontFamily: "monospace", color: "var(--gray-300)" }}>••••-••••</span>
         {expiryLine}
+        {justIssuedChip}
       </span>
     );
   }
@@ -360,6 +376,7 @@ function RosterCodeCell({ entry, onReveal, onIssue, t, justIssued }: {
     </button>
       {/* Same line as the masked branch above — see the note where it is computed. */}
       {expiryLine}
+      {justIssuedChip}
     </span>
   );
 }
