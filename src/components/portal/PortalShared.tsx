@@ -2186,31 +2186,238 @@ const SUPPORT_T = {
 
 
 /**
- * The seven things an app account can be given, drawn once.
+ * The things an app account can be given, drawn once — and drawn as the shape they have.
  *
- * ONE COPY OF THE WORDS, because two screens now ask this question — the invite form and the
- * per-account editor in Users, and the preset editor in Settings. Two lists would drift, and what
- * they would drift about is what "Redmap" lets somebody do. A person granting access reads the
- * description, not the screen name.
+ * ONE COPY OF THE WORDS, because three screens ask this question — the invite form, the
+ * per-account editor in Users, and the preset editor in Settings. Three lists would drift, and
+ * what they would drift about is what "Redmap" lets somebody do.
  *
- * Locked renders the rows greyed rather than hidden: a preset is a name until you can see what it
- * switches on, and hiding the list answers "what does this preset do?" with silence.
+ * A FLAT LIST OF TEN CHECKBOXES WAS THE WRONG SHAPE (owner, 2026-09-23: 검색할 수 있게 할 건가
+ * 그 권한을 표시해 주는 건데 검색에 대한 권한이 있는지 표시가 없다고 느껴져). When 「인물 검색」
+ * was split into per-screen steps the list grew from eight rows to ten, and the two new ones —
+ * 「모니터링에서 검색」, 「Re-ID 분석에서 검색」 — landed as SIBLINGS of the screens they are a
+ * step on, in identical checkbox rows. So the list said the search grants were ten more places,
+ * and the 모니터링 row still had nothing on it saying whether that account may search there. It
+ * also measured 568.8px, which put the panel 7px into a scrollbar at 1440×900.
+ *
+ * Three devices, each used once, where it fits:
+ *  · A SECOND STEP ON THE ROW (Zoho) for 모니터링 and Re-ID 분석 — "how far into this screen".
+ *    Two cells, not a dropdown: a closed 「보기 ⌄」 hides the cell nobody holds, and showing the
+ *    one they do NOT hold is the whole point of this change.
+ *  · AN INDENTED CHILD (Shopify) for 증거 내보내기 under 레드맵 — it is not a screen, it is one
+ *    button on that screen (counted: one `canExportEvidence` caller, RedmapPage.tsx).
+ *  · A CAPTION over the rows that share a place in the app's menu — 대시보드 · 데이터. No
+ *    checkbox on it: neither is a grant (`tabAllowed` never gates the dashboard; 데이터 is
+ *    derived from its three tabs), and no counter either — nothing is collapsed here, so a
+ *    figure would restate the ticks that are all already on screen. The condition for adding
+ *    one back: a list long enough that groups have to fold.
+ *
+ * LOCKED IS THE SAME TREE WITH THE DESCRIPTIONS OFF, not a row of pills.
+ *
+ * It used to be ten pills, and the reason is on file: with a preset picked the old CENTRED SHEET
+ * stood at 792px on a 900px viewport and its inner scroller hid 89px, so 증거 내보내기 — the one
+ * row that separates 감독자 from 조사자 — sat below the fold. That sheet is a right-hand Drawer
+ * now, as tall as the window with its own scroller, and the tree without descriptions measures
+ * ~407px inside a 767px body: no scroll. Meanwhile the pills had become the same failure as the
+ * flat list — ten flat marks for a set in which three are steps and children, wrapping onto
+ * three lines so that 「모니터링에서 검색」 started line two beside an unrelated sibling.
+ *
+ * So: same rows, same order, same steps, ticks read-only, and the description lines gone (they
+ * are for choosing; locked is for checking what was chosen). Rows nobody holds stay, outlined —
+ * a summary that dropped them would answer "what does this preset NOT give" with silence.
  */
 const GRANT_T = APP_GRANT_LABELS;
 
-function GrantRow({ label, desc, on, locked, onToggle }: {
-  label: string; desc: string; on: boolean; locked: boolean; onToggle: () => void;
+/**
+ * WHERE EACH GRANT SITS: a group, a row, a step on a row, or a row under a row.
+ *
+ * Declared once, here, and every device below reads it — so "is this a row or a step" is one
+ * answer rather than three conditionals spread over a render. The PARENT relationships are not
+ * invented here: `APP_ACTION_PARENT` in vcaStore already states them and `withAppActionDeps`
+ * enforces them in the store. What this adds is the only part the store has no opinion about:
+ * whether a child is drawn as a STEP on its parent's row or as a ROW under it.
+ *
+ * It belongs in vcaStore beside APP_ACTION_PARENT and is here instead for one reason: that file
+ * was held by another session while this was written. Moving it there is a safe follow-up as long
+ * as the fallback below moves with it.
+ */
+type GrantRowDef = {
+  /** The screen — or, for 증거 내보내기, the button — this row's checkbox switches on. */
+  action: AppAction;
+  /** A second depth on the SAME screen: two cells at the row's right edge, 보기 / 보기 · 검색. */
+  search?: AppAction;
+  /** The screen IS the search, so there is no second action and no choice — one cell that says so. */
+  searchIsAll?: boolean;
+  /** A grant that is not a screen: an indented row under this one. */
+  child?: AppAction;
+};
+type GrantGroupDef = { caption?: "dashboard" | "data"; rows: GrantRowDef[] };
+
+const GRANT_TREE: GrantGroupDef[] = [
+  { caption: "dashboard", rows: [{ action: "liveView" }, { action: "systemStatus" }] },
+  { rows: [{ action: "history" }] },
+  {
+    caption: "data",
+    rows: [
+      { action: "liveMonitoring", search: "liveMonitoringSearch" },
+      { action: "reid", search: "reidSearch" },
+      { action: "redface", searchIsAll: true },
+    ],
+  },
+  { rows: [{ action: "trail", searchIsAll: true, child: "export" }] },
+];
+
+/**
+ * A NEW ACTION CANNOT GO MISSING (it is how a grant silently stops being grantable).
+ *
+ * The tree is written by hand, `APP_ACTIONS` is the population, and the two drifting apart would
+ * not throw — the list would simply stop drawing the action, and an administrator would read a
+ * complete-looking panel. So anything not placed above is drawn as a plain row at the end.
+ * Empty today, and it should stay empty: placing a new action in GRANT_TREE is the real fix.
+ */
+const PLACED_ACTIONS = new Set<AppAction>(
+  GRANT_TREE.flatMap(group => group.rows.flatMap(row =>
+    [row.action, ...(row.search ? [row.search] : []), ...(row.child ? [row.child] : [])])),
+);
+const UNPLACED_ACTIONS = APP_ACTIONS.filter(a => !PLACED_ACTIONS.has(a));
+
+/**
+ * HOW FAR INTO ONE SCREEN, AS TWO CELLS.
+ *
+ * The 「고른 칩」 vocabulary, not the 「지금 여기 있음」 one: PICKED_LINE/PICKED_FILL are documented
+ * for "a chip, a preset, a project, a segmented option, an applied filter", while the gray-100
+ * ground with a 3px gray-900 edge is SectionNav's you-are-here mark. A step is a chosen value,
+ * not a location — and a 3px left edge inside a 22px control would collide with the row's own
+ * checkbox axis two columns to its left.
+ *
+ * One cell (RedFace · 레드맵) is not a control at all. There is no second state to move to, so a
+ * radio would be a widget with one option, and clicking it does nothing on purpose. The cue that
+ * it is not part of the row's hit area is the CURSOR: the row shows `pointer` and this shows
+ * `default`, which is readable before the click rather than after it. Deliberately no
+ * `aria-disabled` — the span carries no role, so "disabled" would describe nothing; screen
+ * readers get it as what it is, the sentence 「검색」 after the row's title.
+ */
+function GrantStage({ rowLabel, held, twoCell, parentOn, locked, onPick, stage }: {
+  rowLabel: string;
+  /** For two cells: whether the second depth is held. Ignored for one cell (always held). */
+  held: boolean;
+  twoCell: boolean;
+  parentOn: boolean;
+  locked: boolean;
+  onPick: (next: boolean) => void;
+  /** Just the three words, not the whole label table: `en` and `ko` are `as const` and so have
+   *  different literal types, and a parameter typed as one of them will not take the other. */
+  stage: { view: string; viewSearch: string; searchOnly: string };
 }) {
+  /* Parent off: the control stays, greyed, and does nothing (Shopify). Hiding it would answer
+     "may they search there" with silence, and letting a click through it would switch the screen
+     on as a hidden side effect of touching a step. */
+  const live = parentOn && !locked;
+  const frame = {
+    display: "inline-flex", alignItems: "center", height: "22px", boxSizing: "border-box" as const,
+    borderRadius: "6px", border: "1px solid var(--gray-200)", overflow: "hidden",
+    flexShrink: 0, marginLeft: "8px", opacity: parentOn ? 1 : 0.4,
+  };
+  const cell = (picked: boolean, first: boolean) => {
+    /* Parent off means no purple at all: an unreachable step is not a held one. */
+    const lit = picked && parentOn;
+    const edge = lit ? "1px solid var(--primary-300)" : "1px solid transparent";
+    return {
+      display: "flex", alignItems: "center", height: "100%", boxSizing: "border-box" as const,
+      padding: "0 10px", fontSize: "11px", fontWeight: 600, fontFamily: "inherit",
+      whiteSpace: "nowrap" as const, letterSpacing: "-0.1px",
+      backgroundColor: lit ? PICKED_FILL : "transparent",
+      color: lit ? "var(--gray-900)" : "var(--gray-500)",
+      borderTop: edge, borderBottom: edge,
+      /* The divider between the cells is the SECOND cell's left border and nothing else — drawing
+         a right border on the first one too puts two 1px lines side by side. */
+      borderLeft: first ? edge : (lit ? "1px solid var(--primary-300)" : "1px solid var(--gray-200)"),
+      borderRight: "1px solid transparent",
+      cursor: live ? "pointer" : "default",
+    };
+  };
+  if (!twoCell) {
+    return (
+      /* `default`, ALWAYS — measured: with the shared `cell()` cursor this read `pointer` while the
+         screen was on, which promises a control that does nothing. The row around it stays
+         `pointer`, so the cursor changing at this pill's edge is the cue, before the click. */
+      <span style={frame} onClick={e => e.stopPropagation()}>
+        <span style={{ ...cell(true, true), cursor: "default" }}>{stage.searchOnly}</span>
+      </span>
+    );
+  }
+  const pick = (next: boolean) => (e: React.MouseEvent) => {
+    /* The row around this is the checkbox, so a click that reaches it toggles the SCREEN. */
+    e.stopPropagation();
+    if (!live || next === held) return;
+    onPick(next);
+  };
   return (
-    /* type="button": a grant row renders inside the invite <form>, and a button with no type
-       submits it — a tick on "인물 검색" would have mailed the invite. */
-    <button type="button" onClick={locked ? undefined : onToggle} disabled={locked} aria-pressed={on}
+    <span role="radiogroup" aria-label={rowLabel} style={frame} onClick={e => e.stopPropagation()}>
+      {[false, true].map(depth => (
+        <span key={String(depth)} role="radio" aria-checked={held === depth}
+          aria-disabled={live ? undefined : true}
+          tabIndex={live && held === depth ? 0 : -1}
+          onClick={pick(depth)}
+          onKeyDown={e => {
+            if (!live) return;
+            if (e.key === " " || e.key === "Enter" || e.key === "ArrowRight" || e.key === "ArrowLeft") {
+              e.preventDefault();
+              e.stopPropagation();
+              onPick(e.key === "ArrowRight" || e.key === "ArrowLeft" ? !held : depth);
+            }
+          }}
+          style={cell(held === depth, !depth)}>
+          {depth ? stage.viewSearch : stage.view}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * One grant. A `div role="checkbox"`, NOT a `<button>`, since 2026-09-23.
+ *
+ * The step control has to sit inside the row's hit area and a `<button>` inside a `<button>` is
+ * not allowed markup; absolutely positioning it over the row instead overlaps the title the
+ * moment the panel narrows. A div with the checkbox role keeps one hit area, lets the step be a
+ * real control inside it, and retires the old `type="button"` hazard this row carried — it renders
+ * inside the invite `<form>`, where a button with no type submits, and a tick on a grant once
+ * mailed the invite. A div cannot submit anything.
+ */
+function GrantRow({ label, desc, on, locked, disabled, indent, fill, onToggle, right }: {
+  label: string;
+  /** Omitted in locked mode: a description is for choosing, and locked is for checking. */
+  desc?: string;
+  on: boolean;
+  locked: boolean;
+  /** Parent off — the row stays, greyed and inert, so "this preset does not give it" is visible. */
+  disabled?: boolean;
+  indent?: boolean;
+  fill: string;
+  onToggle: () => void;
+  right?: React.ReactNode;
+}) {
+  const inert = locked || disabled;
+  const toggle = () => { if (!inert) onToggle(); };
+  return (
+    <div role="checkbox" aria-checked={on} aria-disabled={inert ? true : undefined}
+      tabIndex={inert ? -1 : 0}
+      onClick={toggle}
+      onKeyDown={e => {
+        if (inert) return;
+        if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); }
+      }}
       style={{
         width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
-        padding: "9px 10px", borderRadius: "8px", border: "none", fontFamily: "inherit",
-        backgroundColor: on && !locked ? "var(--gray-50)" : "transparent",
-        cursor: locked ? "default" : "pointer",
-        opacity: locked && !on ? 0.5 : 1,
+        /* 36px on the child: its checkbox lands on its parent's TITLE axis (10 padding + 16 box
+           + 10 gap). No connector glyph — Shopify uses indent alone, and a 「└」 in the string
+           would leak into /mypage's chips and the preset summary sentence, which have no tree. */
+        padding: indent ? "9px 10px 9px 36px" : "9px 10px",
+        borderRadius: "8px", border: "none", fontFamily: "inherit",
+        backgroundColor: on && !locked ? fill : "transparent",
+        cursor: inert ? "default" : "pointer",
+        opacity: disabled ? 0.45 : locked && !on ? 0.5 : 1,
       }}>
       <span style={{
         width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, marginTop: "1px",
@@ -2224,83 +2431,115 @@ function GrantRow({ label, desc, on, locked, onToggle }: {
           </svg>
         )}
       </span>
-      <span style={{ minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: "12.5px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</span>
-        <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "1px" }}>{desc}</span>
+      <span style={{ minWidth: 0, flex: 1 }}>
+        {/* The step sits on the TITLE line, at its right end — the title says which screen and
+            the step says how far into it, which is one sentence and belongs on one line. */}
+        <span style={{ display: "flex", alignItems: "center", minHeight: right ? "22px" : undefined }}>
+          <span style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--gray-900)", minWidth: 0, flex: 1 }}>{label}</span>
+          {right}
+        </span>
+        {desc !== undefined && (
+          <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45, marginTop: "1px" }}>{desc}</span>
+        )}
       </span>
-    </button>
+    </div>
   );
 }
 
-/** The five screens over the two actions, with one source for both sets of words. */
-export function AppGrantList({ actions, locked, onToggle }: {
+/** Every grant, in the app's own order, as the tree it is. */
+export function AppGrantList({ actions, locked, onToggle, rowFill }: {
   actions: AppAction[];
   locked: boolean;
   onToggle: (action: AppAction) => void;
+  /** The ground a ticked row stands on. `--gray-50` everywhere except inside a `--gray-50` card
+   *  (the preset editor), where it would be invisible. Optional so the callers that want the
+   *  default say nothing. */
+  rowFill?: string;
 }) {
   const [lang] = usePortalLanguage();
   const g = GRANT_T[lang];
+  const fill = rowFill ?? "var(--gray-50)";
+  const has = (a: AppAction) => actions.includes(a);
+  const nameOf = (a: AppAction) => g.rowName[a] ?? g.actionName[a];
+
   /**
-   * LOCKED IS A SUMMARY, NOT FIVE DEAD ROWS.
+   * TURNING A SCREEN OFF TAKES ITS STEP AND ITS CHILD WITH IT, IN THE SAME CLICK.
    *
-   * Measured before changing it (owner: ui를 저렇게 보여주는게 좋을까?): with a preset selected
-   * the sheet stood at 792px on a 900px viewport and the inner scroller hid 89px, so 증거
-   * 내보내기 — the one row that separates 감독자 from 조사자 — was below the fold. Five rows of
-   * 70px each, none of them clickable, to say what a one-line name already implies.
+   * Not at save time: a step left ticked under an unticked screen is a row that states a
+   * capability on a screen the account cannot open, and this panel's whole job is to stop the
+   * list saying things that are not true. `withAppActionDeps` runs in the store as the backstop.
    *
-   * So a preset shows its grants as five marks: filled for held, outlined for not. Complete (a
-   * summary that dropped the ungranted ones would answer "what does this NOT give" with silence)
-   * and about a fifth of the height. The full rows, with what each action does and which screens
-   * it opens, are for the mode where somebody is actually choosing — custom.
+   * Expressed as several `onToggle` calls rather than a new prop, because every caller's handler
+   * is a flip of one action in local state and one of the three files is held by another session.
+   * The store's own `setAppGrant` does the mirror of this on the way in (granting a child grants
+   * its parent), so the invariant holds from both directions.
+   *
+   * Turning it back on does NOT restore them (the step starts at 보기). A grant nobody re-ticked
+   * coming back to life is exactly the plausible-looking value this console keeps being bitten by.
    */
-  if (locked) {
+  const toggleRow = (row: GrantRowDef) => {
+    if (has(row.action)) {
+      if (row.search && has(row.search)) onToggle(row.search);
+      if (row.child && has(row.child)) onToggle(row.child);
+    }
+    onToggle(row.action);
+  };
+
+  const renderRow = (row: GrantRowDef) => {
+    const on = has(row.action);
+    const stage = (row.search || row.searchIsAll) ? (
+      <GrantStage rowLabel={nameOf(row.action)} twoCell={!!row.search}
+        held={row.search ? has(row.search) : true}
+        parentOn={on} locked={locked} stage={g.stage}
+        onPick={next => { if (row.search && next !== has(row.search)) onToggle(row.search); }} />
+    ) : undefined;
     return (
-      <>
-        {/* NO SIDE INSET (owner, 2026-09-22: 정렬이 이상해). The row carried 10px of left
-            padding from the days when it sat inside a bordered fold whose own content was inset
-            by that much. In a plain column the pills started 10px right of the preset buttons and
-            the line of prose above them — three left edges, three different places. */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", paddingTop: "2px" }}>
-          {APP_ACTIONS.map(action => {
-            const on = actions.includes(action);
-            return (
-              <span key={action} style={{
-                display: "inline-flex", alignItems: "center", gap: "5px",
-                height: "24px", padding: "0 9px", borderRadius: "999px",
-                fontSize: "11px", fontWeight: 700, whiteSpace: "nowrap",
-                backgroundColor: on ? "var(--gray-900)" : "transparent",
-                color: on ? "white" : "var(--gray-400)",
-                border: on ? "1px solid var(--gray-900)" : "1px dashed var(--gray-300)",
-              }}>
-                {on && (
-                  <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                    <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-                {g.actionName[action]}
-              </span>
-            );
-          })}
-        </div>
-      </>
+      <React.Fragment key={row.action}>
+        <GrantRow label={nameOf(row.action)}
+          desc={locked ? undefined : g.actionDesc[row.action]}
+          on={on} locked={locked} fill={fill} right={stage}
+          onToggle={() => toggleRow(row)} />
+        {row.child && (
+          <GrantRow label={nameOf(row.child)}
+            desc={locked ? undefined : g.actionDesc[row.child]}
+            on={has(row.child)} locked={locked} disabled={!on} indent fill={fill}
+            onToggle={() => onToggle(row.child!)} />
+        )}
+      </React.Fragment>
     );
-  }
+  };
+
   return (
-    <>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        {APP_ACTIONS.map(action => (
-          /* THE TITLE IS THE PLACE AND THE LINE UNDER IT IS THE CAPABILITY (owner, 2026-09-22:
-             전에는 앱 화면 메뉴명으로 선택하고 구분했었거든, 그것보다 불명확한 거 아닌가).
-             There used to be a third part — 「위치: 대시보드 → SYSTEM」 appended to the
-             description — because the title said only what somebody may DO and the place had to be
-             spelled out somewhere. Now the title IS the place, in the app's own words, so the
-             appended line was the same answer twice on one row. See APP_GRANT_LABELS. */
-          <GrantRow key={action} label={g.actionName[action]}
-            desc={g.actionDesc[action]}
-            on={actions.includes(action)} locked={locked} onToggle={() => onToggle(action)} />
-        ))}
-      </div>
-    </>
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {GRANT_TREE.map((group, i) => (
+        <div key={group.caption ?? `group-${i}`} style={{
+          /* 22px above every group, captioned or not: without it 베스트 프레임 reads as the last
+             row of 대시보드. The first group only clears 2px — there is nothing above it to
+             separate from. The caption then sits 3px off its own first row, which makes it the
+             TIGHTEST gap in the list (3 vs 18 between rows) and is what binds it downward. */
+          paddingTop: i === 0 ? (group.caption ? "2px" : 0) : "22px",
+        }}>
+          {group.caption && (
+            /* SectionNav's caption, to the value: this product's left rail draws 작업 공간 and
+               관리 exactly like this, so a reader already knows the line is a heading and not a
+               row. No box, no band, no rule around the group — eight settings rails were checked
+               and not one draws them, and a ticked row's own --gray-50 ground would fight a band. */
+            <span style={{
+              display: "block", paddingBottom: "3px", paddingLeft: "10px",
+              fontSize: "10.5px", fontWeight: 700, lineHeight: "16px",
+              letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)",
+            }}>{g.groupCaption[group.caption]}</span>
+          )}
+          {group.rows.map(renderRow)}
+        </div>
+      ))}
+      {/* Nothing today — see UNPLACED_ACTIONS. */}
+      {UNPLACED_ACTIONS.length > 0 && (
+        <div style={{ paddingTop: "22px" }}>
+          {UNPLACED_ACTIONS.map(action => renderRow({ action }))}
+        </div>
+      )}
+    </div>
   );
 }
 

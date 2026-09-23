@@ -1,7 +1,7 @@
 import type { AppAction, AppScreen } from "./vcaStore";
 
 /**
- * What the seven actions are called, where each one applies, and what it reveals.
+ * What each app action is called, where it applies, and what it reveals.
  *
  * THE NAME IS THE PLACE IN THE APP; THE LINE UNDER IT IS WHAT THEY MAY DO THERE (owner,
  * 2026-09-22: 이 프리셋 권한 기능들 전에는 앱 화면 메뉴명으로 선택하고 구분했었거든, 그것보다
@@ -15,11 +15,14 @@ import type { AppAction, AppScreen } from "./vcaStore";
  * different counts. Now both sides render these six rows, and the row's title is the words the
  * app puts on the tab.
  *
- * THE SEARCH BOX BELONGS TO ONE ROW, AND IT SAYS SO (2026-09-23). It appears on three screens —
- * 모니터링, Re-ID 분석, 레드맵 — and `personSearch` is the single grant that opens all three. Naming
- * 「· 검색창」 on each of those screens' own rows was considered and rejected: those rows do not open
- * it, so a title saying otherwise would be the screen claiming something the gate does not do. The
- * places are listed in this row's description instead.
+ * THE SEARCH BOX BELONGS TO THE SCREEN IT IS ON (2026-09-23, replacing the note that said it
+ * belonged to one row of its own). `personSearch` used to be a single grant that opened RedFace
+ * AND switched on the search box of three other screens, so the 모니터링 row had no place to say
+ * whether that account may search there. It is split now — `liveMonitoringSearch`, `reidSearch` —
+ * and the list draws each one as a SECOND STEP on its screen's own row rather than as a row (see
+ * `stage` below and GRANT_TREE in PortalShared). Two screens have only one depth: RedFace and
+ * 레드맵 are nothing but their search results, so their rows carry a one-cell 「검색」 that states
+ * the fact instead of offering a choice that can never be off.
  *
  * THE SEVENTH ROW IS A PRIVACY SPLIT TOO (2026-09-23, owner: 이걸 같이 보면 안 되는 게, 데이터의
  * 모니터링에서는 모르는 사람도 모두 감지하고 촬영하고 있어서). 「VIP 감지」(대시보드) and
@@ -75,16 +78,47 @@ export const APP_GRANT_LABELS = {
       /* Retired — see AppAction. Present so this map stays complete for the type. */
       personSearch: "Person search",
     } satisfies Record<AppAction, string>,
+    /**
+     * THE SAME ROW, NAMED SHORTER, BECAUSE THE LIST NOW HAS CAPTIONS OVER IT (2026-09-23).
+     *
+     * `actionName` has to say the place ON ITS OWN, because three readers print it with no caption
+     * anywhere near: /mypage's chips, a preset's one-line summary in AccessPresetsTab, and the
+     * custom-vs-preset difference sentence (「감독자 − 증거 내보내기」). Inside the grant tree the
+     * caption already says 데이터, so 「데이터 > 모니터링」 under it is the same word twice. Hence two
+     * names, and `actionName` is NOT touched — renaming it would change those three readers.
+     *
+     * Kept here beside `actionName` rather than in PortalShared: the two are one wording table and
+     * a reader deciding which to use has to see both at once. /mypage imports this module and does
+     * not read `rowName`, the same cost `screenName` already carries in this file.
+     *
+     * The five rows whose names differ are the five that sit under a caption or repeat their
+     * group; the other three are already short. Rows fall back to `actionName` when absent, so a
+     * new action cannot render an empty title.
+     */
+    rowName: {
+      liveView: "Events",
+      systemStatus: "System",
+      history: "Best Frame",
+      liveMonitoring: "Live Monitoring",
+      reid: "Re-ID Analysis",
+      redface: "RedFace",
+      trail: "Redmap",
+      export: "Evidence export",
+    } as Partial<Record<AppAction, string>>,
+    /** The two depths of one screen, and the one depth of a screen that is nothing but search. */
+    stage: { view: "View", viewSearch: "View \u00b7 Search", searchOnly: "Search" },
+    /** Over the rows, in the app's own capitals (Navbar.tsx TABS). Not switches — see AppGrantList. */
+    groupCaption: { dashboard: "DASHBOARD", data: "DATA" },
     actionDesc: {
       systemStatus: "Whether the cameras and servers are up. No personal data",
-      liveView: "The landing screen's events panel: a registered person walking past. Strangers do not appear. The trail rows in the same panel need the Redmap grant",
+      liveView: "A registered person, as they walk past. Strangers do not appear",
       liveMonitoring: "EVERYBODY who walks past, including faces nobody registered",
       liveMonitoringSearch: "Turns \u201csomebody was here\u201d into \u201cthis person was here\u201d, on that screen",
       history: "The same detections, from before now",
-      reid: "What the server joins up live from the people Live Monitoring detects",
+      reid: "What the server joins up live out of those detections",
       reidSearch: "Looking a particular person up in that result",
-      redface: "Face search. The screen is nothing but its results, so opening it and searching are one",
-      trail: "One person's route on the map. Search-only too, and it switches on the trail rows in the dashboard's events panel",
+      redface: "Face search",
+      trail: "One person's route on the map. It also switches on the dashboard's trail rows",
       export: "Takes what Redmap found out of the console as a file",
       personSearch: "Retired",
     } satisfies Record<AppAction, string>,
@@ -105,16 +139,29 @@ export const APP_GRANT_LABELS = {
       export: "증거 내보내기",
       personSearch: "인물 검색",
     } satisfies Record<AppAction, string>,
+    /** 영어 쪽 주석 참조 — 캡션 아래에서 쓰는 짧은 이름. `actionName`은 목록 밖에서도 쓰므로 그대로 둔다. */
+    rowName: {
+      liveView: "이벤트",
+      systemStatus: "시스템",
+      history: "베스트 프레임",
+      liveMonitoring: "모니터링",
+      reid: "Re-ID 분석",
+      redface: "RedFace",
+      trail: "레드맵",
+      export: "증거 내보내기",
+    } as Partial<Record<AppAction, string>>,
+    stage: { view: "보기", viewSearch: "보기 \u00b7 검색", searchOnly: "검색" },
+    groupCaption: { dashboard: "대시보드", data: "데이터" },
     actionDesc: {
       systemStatus: "카메라와 서버가 살아 있는지 봅니다. 개인정보는 없습니다",
-      liveView: "첫 화면의 이벤트 패널입니다. 등록된 사람이 지나갈 때 올라오고, 모르는 사람은 나오지 않습니다. 같은 패널의 동선 줄은 레드맵 권한이 있어야 보입니다",
+      liveView: "등록된 사람이 지나갈 때만 올라옵니다",
       liveMonitoring: "등록되지 않은 사람까지 지나가는 모두를 봅니다",
       liveMonitoringSearch: "\u201c누군가 지나갔다\u201d를 \u201c이 사람이 지나갔다\u201d로 바꿉니다",
       history: "같은 감지를 지난 시점에서 봅니다",
       reid: "모니터링에서 잡힌 사람들을 서버가 실시간으로 이어 붙인 결과를 봅니다",
       reidSearch: "그 결과에서 특정 인물을 직접 찾습니다",
-      redface: "얼굴로 찾습니다. 검색 결과 말고는 아무것도 없는 화면이라 여는 것과 검색하는 것이 하나입니다",
-      trail: "지도 위에 한 사람의 경로를 그립니다. 이 화면도 검색으로만 결과가 나옵니다. 대시보드 이벤트의 동선 줄도 이 권한이 켭니다",
+      redface: "얼굴로 찾습니다",
+      trail: "지도 위에 한 사람의 경로를 그립니다. 대시보드 이벤트의 동선 줄도 켭니다",
       export: "레드맵에서 찾은 것을 파일로 콘솔 밖으로 냅니다",
       personSearch: "쓰지 않습니다",
     } satisfies Record<AppAction, string>,

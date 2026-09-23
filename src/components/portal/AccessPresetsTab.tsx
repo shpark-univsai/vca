@@ -288,7 +288,10 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
       </div>
       <div>
         <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.presetGrantsField}</label>
-        <AppGrantList actions={actions} locked={false} onToggle={toggleAction} />
+        {/* White ground for a ticked row, not the default --gray-50: this editor is itself a
+            --gray-50 card, and a ticked row on it would be the same colour as the card it sits in
+            — the tick would be the only thing saying the row is on. */}
+        <AppGrantList actions={actions} locked={false} onToggle={toggleAction} rowFill="white" />
       </div>
       {/* Named again here, with the verb attached. The row above says who follows this; this says
           what pressing Save does to them. */}
