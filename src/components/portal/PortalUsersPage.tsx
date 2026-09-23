@@ -2882,8 +2882,8 @@ export type PeopleTab = "accounts" | "roster" | "groups" | "presets";
 export const PEOPLE_TABS: { id: PeopleTab; label: { en: string; ko: string } }[] = [
   { id: "accounts", label: { en: "Accounts", ko: "계정" } },
   { id: "roster", label: { en: "Awaiting sign-up", ko: "등록 대기" } },
-  { id: "groups", label: { en: "Camera groups", ko: "카메라 그룹" } },
   { id: "presets", label: { en: "App permission presets", ko: "앱 권한 프리셋" } },
+  { id: "groups", label: { en: "Camera groups", ko: "카메라 그룹" } },
 ];
 
 /**
@@ -3386,10 +3386,14 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
     const sub = new URL(window.location.href).searchParams.get("sub");
     return PEOPLE_TABS.some(x => x.id === sub) ? (sub as PeopleTab) : "accounts";
   });
+  /* ALL FOUR, INCLUDING THE DEFAULT (owner, 2026-09-23: 헤더에 계정, 대기, 그룹, 프리셋 추가로
+     옆에 보이게 해주는 건 왜 안 했어?). 계정 was left out of the URL as "the default", which is
+     why the header named the other three and went quiet on that one — the bar can only see what
+     the URL says. One of these four is always open, so the trail should always end on its name.
+     A longer URL for the default view is the price, and it buys a link that says where it goes. */
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (peopleTab === "accounts") url.searchParams.delete("sub");
-    else url.searchParams.set("sub", peopleTab);
+    url.searchParams.set("sub", peopleTab);
     if (url.toString() !== window.location.href) window.history.replaceState(null, "", url.toString());
   }, [peopleTab]);
   useEffect(() => {
@@ -3763,11 +3767,16 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
              read in the rail one level up. No new vocabulary. */
           { id: "accounts", group: t.railPeople, label: t.peopleTabAccounts, count: projectUsers.length, icon: <UsersIcon size={15} strokeWidth={2} /> },
           { id: "roster", group: t.railPeople, label: t.peopleTabRoster, count: rosterWaiting.length, icon: <ClipboardList size={15} strokeWidth={2} /> },
-          /* A group answers "which cameras", a preset answers "which screens", and the invite form
-             asks both — so they sit together, in the order the form asks them. Each keeps the icon
-             its own screen already used for itself. */
-          { id: "groups", group: t.railGrants, label: t.peopleTabGroups, count: cameraGroupsInProject(cameraGroups, projectId).length, icon: <Boxes size={15} strokeWidth={2} /> },
+          /* PRESET FIRST, GROUP SECOND — the order the invite form asks them in (owner,
+             2026-09-23: 앱 권한 프리셋을 먼저 보여주고 그 아래 카메라 그룹 순으로). A preset
+             answers "what may they do", a group answers "which cameras", and the form asks the
+             first before the second because the first decides whether the second is even asked
+             (a Portal-only account has no cameras to scope). The rail had them the other way
+             round: the reason written here was already "in the order the form asks them", and the
+             form's order changed today while this list did not. Each keeps the icon its own screen
+             uses for itself. */
           { id: "presets", group: t.railGrants, label: t.peopleTabPresets, count: pagePresets.length, icon: <KeySquare size={15} strokeWidth={2.2} /> },
+          { id: "groups", group: t.railGrants, label: t.peopleTabGroups, count: cameraGroupsInProject(cameraGroups, projectId).length, icon: <Boxes size={15} strokeWidth={2} /> },
         ]}
         active={peopleTab}
         onSelect={id => setPeopleTab(id as "accounts" | "roster" | "groups" | "presets")}

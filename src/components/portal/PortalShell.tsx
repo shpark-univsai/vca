@@ -360,8 +360,10 @@ export default function PortalShell() {
   const [lang] = usePortalLanguage();
   /* The words for the sub-list, taken from the page that owns them rather than copied here. Only
      drawn when the open tab actually has sub-lists and the URL names one of them. */
-  const subCrumb = tab === "users" && subParam
-    ? PEOPLE_TABS.find(x => x.id === subParam)?.label[lang] ?? null
+  const subCrumb = tab === "users"
+    /* No `sub` means an older link or a first load, and that lands on 계정 — so the trail says
+       계정 rather than stopping a level short. */
+    ? (PEOPLE_TABS.find(x => x.id === (subParam ?? "accounts"))?.label[lang] ?? null)
     : null;
   const t = T[lang];
 
