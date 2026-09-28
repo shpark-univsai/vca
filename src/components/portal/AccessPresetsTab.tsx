@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Minus, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import {
-  APP_ACTION_CONTENT, accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
+  APP_ACTION_CONTENT, accountsFollowingPreset, presetsForTeam, presetLabel, presetDescription, useVcaStore,
   withAppActionDeps, type AccessPreset, type AppAction,
 } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -71,6 +71,8 @@ const T = {
       ? "It stops being offered on the invite form. Nothing else changes."
       : `It stops being offered, and the ${n} account${n === 1 ? "" : "s"} following it become individual \u2014 holding exactly what they hold now. Nobody gains or loses access.`,
     presetRetireConfirm: "Retire",
+    presetNamePh: "Name",
+    presetDescPh: "What it is for",
     presetColHead: "What it opens",
     presetEditing: "Editing presets",
     presetAllow: "Yes",
@@ -109,6 +111,8 @@ const T = {
       ? "초대 폼에서 더 이상 제시되지 않습니다. 그 밖에 바뀌는 것은 없습니다."
       : `초대 폼에서 더 이상 제시되지 않고, 이것을 따르던 계정 ${n}개는 지금 가진 것을 그대로 들고 개별 지정으로 바뀝니다. 권한을 얻거나 잃는 사람은 없습니다.`,
     presetRetireConfirm: "폐기",
+    presetNamePh: "이름",
+    presetDescPh: "어떤 사람에게 주는지",
     presetColHead: "앱에서 열리는 것",
     presetEditing: "프리셋 편집 중",
     presetAllow: "허용",
@@ -157,6 +161,16 @@ export default function AccessPresetsTab({ teamId, canEdit, actionsSlot }: {
  * gesture too, so the consequence sentence is read while the rest of the edit is still on screen
  * and nothing is destroyed until 저장.
  */
+/** The draft key of the column being added. Never a stored id — `save` turns it into one. */
+const NEW_ID = "__new";
+
+/** The column being added, shaped as a preset so the matrix needs no second code path. */
+const NEW_PRESET: AccessPreset = { id: NEW_ID, teamId: "", label: "", description: "", actions: [] };
+
+/** The width the matrix needs for n preset columns. One definition, used by the scroll container
+ *  and by the decision of whether a new column can be typed into. */
+const tableMinWidth = (n: number) => 160 + n * 188 + 40;
+
 function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
   t: (typeof T)["en"] | (typeof T)["ko"];
   teamId: string;
@@ -181,34 +195,78 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
-  /** The whole table's unsaved state: a name and a grant set per preset, plus the ones struck out. */
-  const [draft, setDraft] = useState<Record<string, { label: string; actions: AppAction[] }>>({});
+  /**
+   * The whole table's unsaved state: a name, a one-line description and a grant set per preset,
+   * plus the ones struck out.
+   *
+   * THE DESCRIPTION IS HERE NOW, and it had nowhere else to be: the draft carried only a label, so
+   * a preset's description could be written once at creation and never changed again. It is not
+   * decoration — it is the line under each preset's name in the grant picker on the invite form
+   * and the account card, which is what an administrator reads to choose between them.
+   */
+  const [draft, setDraft] = useState<Record<string, { label: string; description: string; actions: AppAction[] }>>({});
   const [removed, setRemoved] = useState<string[]>([]);
+  /**
+   * The preset being added inside the table, as a column beside the ones it is being compared to
+   * (owner, 2026-09-28: 많아질때는 패널 열리는 방식으로 가고 그전까진 표안에서 편집하게하면
+   * 어때?). `null` while nothing is being added; `NEW_ID` is a draft key, never a stored id.
+   */
+  const [adding, setAdding] = useState(false);
+  /*
+   * Does one more column fit without the table scrolling sideways?
+   *
+   * Measured, not assumed: the width a card gets depends on the window and on the rail, so a fixed
+   * count ("up to five") would be right on one screen and a lie on the next. The arithmetic is
+   * PresetMatrix's own minWidth formula, read from the element that actually scrolls, so the
+   * answer cannot drift from the thing it is predicting.
+   */
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [cardWidth, setCardWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(entries => setCardWidth(entries[0].contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const columnFits = cardWidth === null ? true : tableMinWidth(presets.length + 1) <= cardWidth;
 
-  const startEditing = () => {
-    const d: Record<string, { label: string; actions: AppAction[] }> = {};
-    presets.forEach(pr => { d[pr.id] = { label: presetLabel(pr, lang), actions: [...pr.actions] }; });
+  const startEditing = (withNew = false) => {
+    const d: Record<string, { label: string; description: string; actions: AppAction[] }> = {};
+    presets.forEach(pr => { d[pr.id] = { label: presetLabel(pr, lang), description: presetDescription(pr, lang), actions: [...pr.actions] }; });
+    if (withNew) d[NEW_ID] = { label: "", description: "", actions: [] };
     setDraft(d);
     setRemoved([]);
+    setAdding(withNew);
     setEditing(true);
   };
-  const stopEditing = () => { setEditing(false); setDraft({}); setRemoved([]); };
+  const stopEditing = () => { setEditing(false); setDraft({}); setRemoved([]); setAdding(false); };
 
   const setName = (id: string, label: string) =>
     setDraft(d => ({ ...d, [id]: { ...d[id], label } }));
+  const setDescription = (id: string, description: string) =>
+    setDraft(d => ({ ...d, [id]: { ...d[id], description } }));
   const setActions = (id: string, actions: AppAction[]) =>
     setDraft(d => ({ ...d, [id]: { ...d[id], actions: withAppActionDeps(actions) } }));
 
   /** Everything that would be written, so the save button can be dead when nothing changed. */
-  const dirty = editing && (removed.length > 0 || presets.some(pr => {
+  const newDraft = adding ? draft[NEW_ID] : undefined;
+  const dirty = editing && (removed.length > 0 || !!newDraft?.label.trim() || !!newDraft?.actions.length || presets.some(pr => {
     const d = draft[pr.id];
     if (!d) return false;
     return d.label !== presetLabel(pr, lang)
+      || d.description !== presetDescription(pr, lang)
       || d.actions.length !== pr.actions.length
       || d.actions.some(a => !pr.actions.includes(a));
   }));
   /** A preset with nothing ticked cannot be followed — the invite form refuses to send it. */
-  const emptyDraft = editing && presets.some(pr => !removed.includes(pr.id) && (draft[pr.id]?.actions.length ?? 0) === 0);
+  const emptyDraft = editing && (
+    presets.some(pr => !removed.includes(pr.id) && (draft[pr.id]?.actions.length ?? 0) === 0)
+    /* The new column counts only once somebody has started it. An untouched empty column is not
+       an unfinished preset, it is an offer — 저장 must not be dead because of it. */
+    || (!!newDraft && (!!newDraft.label.trim() || newDraft.actions.length > 0)
+        && (!newDraft.label.trim() || newDraft.actions.length === 0))
+  );
 
   const save = () => {
     presets.forEach(pr => {
@@ -216,10 +274,20 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
       const d = draft[pr.id];
       if (!d) return;
       const sameLabel = d.label === presetLabel(pr, lang);
+      const sameDesc = d.description === presetDescription(pr, lang);
       const sameActions = d.actions.length === pr.actions.length && d.actions.every(a => pr.actions.includes(a));
-      if (sameLabel && sameActions) return;
-      updateAccessPreset(pr.id, { ...(sameLabel ? {} : { label: d.label }), ...(sameActions ? {} : { actions: d.actions }) });
+      if (sameLabel && sameDesc && sameActions) return;
+      updateAccessPreset(pr.id, {
+        ...(sameLabel ? {} : { label: d.label }),
+        ...(sameDesc ? {} : { description: d.description }),
+        ...(sameActions ? {} : { actions: d.actions }),
+      });
     });
+    /* The new column, last, so it lands at the end of the list the way it sat at the end of the
+       table. Only when it was actually started — see emptyDraft. */
+    if (newDraft && newDraft.label.trim() && newDraft.actions.length > 0) {
+      addAccessPreset({ teamId, label: newDraft.label.trim(), description: newDraft.description.trim(), actions: newDraft.actions });
+    }
     showToast({ variant: removed.length ? "warning" : "success", title: t.presetSavedToast });
     stopEditing();
   };
@@ -258,7 +326,7 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
              underneath rather than a panel opening over it. */
           <>
             {presets.length > 0 && (
-              <button className="portal-btn-outline" onClick={startEditing}
+              <button className="portal-btn-outline" onClick={() => startEditing()}
                 style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 <Pencil size={13} strokeWidth={2.4} aria-hidden="true" />
                 {t.presetEdit}
@@ -268,7 +336,22 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
                 버튼 두개 아이콘 크기를 맞춰줘). The character rendered at the label's 12px with
                 the font's own weight, so the two buttons carried marks of different sizes and
                 different stroke weights sitting side by side. */}
-            <button className="portal-btn-outline" onClick={() => setCreating(true)}
+            {/*
+              IN THE TABLE WHILE A COLUMN STILL FITS, IN A PANEL ONCE IT DOES NOT (owner,
+              2026-09-28: 많아질때는 패널 열리는 방식으로 가고 그전까진 표안에서 편집하게하면
+              어때?).
+
+              Making a preset is mostly deciding how it differs from the ones that exist, so the
+              column beside them is the right place to do it — and the table is already an editor:
+              names are fields, cells are controls, one 저장 writes the lot.
+
+              The switch is not a taste: it is the same arithmetic the scroll container uses for
+              its own minWidth, so the two cannot disagree. While one more column fits in the
+              width on screen, the button adds that column; once it would start off-screen — six
+              at a 1440px window, fewer on a narrower one, MEASURED — a column you cannot see is
+              not a place to type, and the panel takes over.
+            */}
+            <button className="portal-btn-outline" onClick={() => (columnFits ? startEditing(true) : setCreating(true))}
               style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               <Plus size={13} strokeWidth={2.4} aria-hidden="true" />
               {t.presetNew}
@@ -292,12 +375,14 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
         same GRANT_TREE in the same order as the table's rows, which only helps if the table is
         there to read it against — the new preset is chosen by comparing it to the ones that exist.
       */}
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "16px" }}>
-        {presets.length === 0 ? (
+      <div ref={cardRef} style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "16px" }}>
+        {presets.length === 0 && !adding ? (
           <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.presetEmpty}</p>
         ) : (
           <PresetMatrix
-            presets={presets}
+            /* The column being added rides with the stored ones so every row draws it in place —
+               it is a preset in the table's eyes and only `save` knows the difference. */
+            presets={adding ? [...presets, NEW_PRESET] : presets}
             lang={lang}
             t={t}
             editing={editing}
@@ -311,12 +396,16 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
                    Every cell in the column above it is already a bordered chip, so one more
                    outline at the foot read as a fourth value rather than an action on the three. */
                 <button className="portal-btn-quiet"
-                  onClick={() => setRemoved(r => gone ? r.filter(x => x !== pr.id) : [...r, pr.id])}
+                  onClick={() => (pr.id === NEW_ID
+                    ? (setAdding(false), setDraft(d => { const { [NEW_ID]: _drop, ...rest } = d; return rest; }))
+                    : setRemoved(r => gone ? r.filter(x => x !== pr.id) : [...r, pr.id]))}
                   style={{ display: "inline-flex", alignItems: "center", gap: "5px", height: "26px", padding: "0 2px", border: "none", background: "none", color: gone ? "var(--gray-600)" : "var(--danger-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   {gone
                     ? <Undo2 size={13} strokeWidth={2.4} aria-hidden="true" />
                     : <Trash2 size={13} strokeWidth={2.2} aria-hidden="true" />}
-                  {gone ? t.presetUndoRemove : t.presetRetire}
+                  {/* 취소, not 삭제, on the column being added: nothing has been saved yet, so
+                      there is nothing to delete — this drops a draft. */}
+                  {pr.id === NEW_ID ? t.presetCancel : gone ? t.presetUndoRemove : t.presetRetire}
                 </button>
               );
             }}
@@ -332,6 +421,8 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
                     <input
                       value={draft[pr.id]?.label ?? ""}
                       onChange={e => setName(pr.id, e.target.value)}
+                      placeholder={pr.id === NEW_ID ? t.presetNamePh : undefined}
+                      autoFocus={pr.id === NEW_ID}
                       /* 128px, not the column's full width (owner, 2026-09-28: 조사자랑 감독자
                          적혀있는 인풋박스가 너무 넓어 좀 좁혀줘). A column runs to 1fr so it can
                          hold 보기 · 검색 in its cells, but the name in it is three letters —
@@ -339,8 +430,20 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
                          the screen. 128px still takes a name twice as long as any of the three. */
                       style={{ width: "100%", maxWidth: "104px", boxSizing: "border-box", height: "28px", padding: "0 8px", borderRadius: "7px", border: BORDER, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", backgroundColor: "white" }}
                     />
-                    <UseChip n={names.length} t={t} />
+                    {pr.id !== NEW_ID && <UseChip n={names.length} t={t} />}
                     </div>
+                  ) : null}
+                  {editing && !gone ? (
+                    /* THE LINE AN ADMINISTRATOR READS WHEN CHOOSING. It is printed under each
+                       preset's name in the grant picker on the invite form and the account card —
+                       and until now it could be written once and never changed, because the draft
+                       carried only a label. */
+                    <input
+                      value={draft[pr.id]?.description ?? ""}
+                      onChange={e => setDescription(pr.id, e.target.value)}
+                      placeholder={t.presetDescPh}
+                      style={{ width: "100%", maxWidth: "170px", boxSizing: "border-box", height: "24px", padding: "0 8px", borderRadius: "6px", border: BORDER, fontSize: "11px", color: "var(--gray-600)", fontFamily: "inherit", backgroundColor: "white" }}
+                    />
                   ) : (
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
                       <span title={presetLabel(pr, lang)} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: gone ? "line-through" : undefined }}>
@@ -718,7 +821,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
     /* Scrolls sideways rather than squeezing: a customer can make more presets than fit, and a
        column narrower than its own name is worse than a scrollbar. */
     <div style={{ overflowX: "auto" }}>
-      <div style={{ minWidth: `${160 + presets.length * 188 + 40}px` }}>
+      <div style={{ minWidth: `${tableMinWidth(presets.length)}px` }}>
         {/*
           A HEADER ROW, NOT THREE FLOATING NAMES (owner, 2026-09-28: 프리셋 디자인이 약간
           가격표같다).
