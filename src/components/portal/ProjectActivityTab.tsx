@@ -45,7 +45,7 @@ const RANGES: { value: string; days: number | null }[] = [
 
 const T = {
   en: {
-    intro: "Every change made to this project from the console, newest first. Policy changes made for the whole institution appear here too.",
+    intro: "Every change made to this project from Portal, newest first. Policy changes made for the whole institution appear here too, and so does an account created by redeeming a registration code.",
     empty: "No activity recorded yet.",
     noMatch: "No activity matches these filters.",
     colAt: "When", colActor: "Who", colMessage: "What changed",
@@ -70,7 +70,7 @@ const T = {
     csvRecordedBy: "Recorded by", csvServer: "server", csvClient: "browser",
   },
   ko: {
-    intro: "콘솔에서 이 프로젝트에 가해진 모든 변경입니다. 기관 전체에 적용되는 정책 변경도 함께 나옵니다.",
+    intro: "포털에서 이 프로젝트에 가해진 모든 변경입니다. 기관 전체에 적용되는 정책 변경과, 등록 코드로 가입해 계정이 만들어진 일도 함께 나옵니다.",
     empty: "기록된 변경이 없습니다.",
     noMatch: "조건에 맞는 기록이 없습니다.",
     colAt: "시각", colActor: "담당자", colMessage: "변경 내용",

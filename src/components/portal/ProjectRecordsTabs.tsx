@@ -9,6 +9,19 @@ import type { RecordsTab } from "./ProjectSidebar";
 import ProjectActivityTab from "./ProjectActivityTab";
 import ProjectSearchLogTab from "./ProjectSearchLogTab";
 
+/*
+ * THE TABS KEEP THEIR SHORT NAMES (owner, 2026-09-28: 그냥두자).
+ *
+ * 「포털 변경 기록 / 앱 조회 기록」 was tried and measured — 98px and 80px in a 1,144px strip, so
+ * length was never the objection. It was put back because the prefix is only true of one of them:
+ * every row in 조회 기록 comes from the app, but 변경 기록 also carries an account created on the
+ * sign-up page, which nobody did in Portal. A label that is right about one tab and nearly right
+ * about the other is worse than two short names with the answer written underneath.
+ *
+ * Where each list comes from is said in the sentence under its table, in the reader's own words —
+ * 「포털에서 …」, not 「콘솔에서 …」 (owner: 콘솔이라는 단어가 갑자기 쓰이면 뭘 말하는지 모를 것
+ * 같아— measured: 콘솔 appears 19 times in this product against 806 for Portal/포털).
+ */
 const T = {
   en: { activity: "Activity log", searchlog: "Search log" },
   ko: { activity: "변경 기록", searchlog: "조회 기록" },
