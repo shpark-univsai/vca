@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpRight, ChevronRight, FileText, LogOut, Plus, Settings, Shield, UserPlus, Users, Video, X, Zap } from "lucide-react";
 import { hasPosition, canEnterApp, canEnterPortal, canManageAccess, currentPortalUser, isAwaitingFirstContact, registeredDayIn, registryHealth, resolveMailConfig, SIGNED_IN_USER, useVcaStore, projectChannelLimit, UNLIMITED_EXPIRY, dailyDetections, unstableCameras } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed, zoneHour } from "@/lib/time";
-import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, Drawer, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, FacePhoto, usePortalEditAccess } from "./PortalShared";
+import { BORDER, CARD_BORDER, PANEL_SHADOW, CARD_GAP, Drawer, OVERVIEW_PANEL_MAX_HEIGHT, TABLE_HEADER_COLOR, MetricCard, FacePhoto, TONE_STYLE, usePortalEditAccess } from "./PortalShared";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
@@ -1725,8 +1725,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                             offline — and takes the wording from Input Sources so the two screens
                             cannot drift.
                           */}
+                          {/* Colours from the shared tone table, so this screen and Input Sources
+                              paint the same camera the same way — see StatusBadge in
+                              PortalShared. Offline and refusing are both faults; the words tell
+                              them apart. */}
                           <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0, fontSize: "12px", fontWeight: 600, color: online ? "var(--gray-500)" : "var(--gray-900)" }}>
-                            <span style={{ width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0, backgroundColor: online ? "var(--gray-300)" : "var(--danger-400)" }} />
+                            <span style={{ width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0, backgroundColor: online ? "var(--gray-300)" : TONE_STYLE.fault.fg }} />
                             <span style={{ flexShrink: 0 }}>{online ? t.online : c.status === "error" ? t.refusing : t.offline}</span>
                             {!online && (dropsByCamera.get(c.id) ?? 0) > 0 && (
                               <span

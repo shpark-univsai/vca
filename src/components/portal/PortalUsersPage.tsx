@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, StatusBadge, type StatusTone, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -2236,25 +2236,20 @@ function accessLabel(t: AccessCopy, mode: AccessMode): string {
 type CredentialKind = "mail" | "password" | "code";
 
 
-const STATUS_COLORS: Record<PortalUserStatus, { bg: string; color: string }> = {
-  active: { bg: "var(--gray-100)", color: "var(--success-400)" },
-  invited: { bg: "var(--warning-200)", color: "var(--warning-500)" },
-  suspended: { bg: "var(--danger-100)", color: "var(--danger-500)" },
-};
-
-function StatusBadge({ status }: { status: PortalUserStatus }) {
+/*
+ * 「초대됨」 IS NOT A FAULT — see StatusBadge in PortalShared for the four tones.
+ *
+ * It was amber, the same colour Input Sources uses for a camera that has stopped answering, so
+ * one colour meant 「something is broken」 on one screen and 「somebody was invited and has not
+ * answered yet」 on the next. Waiting on a person is its own kind of news and now has its own
+ * tone. 정지 keeps red, because a person did that.
+ */
+function AccountStatusBadge({ status }: { status: PortalUserStatus }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
-  const { bg, color } = STATUS_COLORS[status];
+  const tone = status === "active" ? "normal" : status === "invited" ? "waiting" : "stopped";
   const label = status === "active" ? t.statusActive : status === "invited" ? t.statusInvited : t.statusSuspended;
-  return (
-    <span style={{
-      fontSize: "12px", fontWeight: 600, padding: "4px 8px", borderRadius: "999px", textTransform: "capitalize",
-      backgroundColor: bg, color,
-    }}>
-      {label}
-    </span>
-  );
+  return <StatusBadge tone={tone} label={label} />;
 }
 
 /**
@@ -3395,19 +3390,17 @@ function AddPersonMenu({ t, mayInvite, inviteReason, mayAddCode, codeReason, onM
  * one row and a receipt on the next, and the table looked like it was asking to be pressed twice.
  * 적어둠 · 발급됨 · 만료됨: each one is something that has happened.
  */
+/* Tones rather than its own three colours — see StatusBadge in PortalShared. 「명부에 있음」 is
+   the quiet case, 「코드 발급됨」 is waiting on a person, and an expired code is time passing. */
 function StageBadge({ stage, t }: { stage: Stage; t: { stageRosterListed: string; stageCodeIssued: string; stageCodeExpired: string } }) {
-  const meta: Record<"rosterListed" | "codeIssued" | "codeExpired", { label: string; bg: string; color: string }> = {
-    rosterListed: { label: t.stageRosterListed, bg: "var(--gray-100)", color: "var(--gray-500)" },
-    codeIssued: { label: t.stageCodeIssued, bg: "var(--info-100)", color: "var(--info-500)" },
-    codeExpired: { label: t.stageCodeExpired, bg: "var(--warning-200)", color: "var(--warning-500)" },
+  const meta: Record<"rosterListed" | "codeIssued" | "codeExpired", { label: string; tone: StatusTone }> = {
+    rosterListed: { label: t.stageRosterListed, tone: "normal" },
+    codeIssued: { label: t.stageCodeIssued, tone: "waiting" },
+    codeExpired: { label: t.stageCodeExpired, tone: "fault" },
   };
   const m = meta[stage as "rosterListed" | "codeIssued" | "codeExpired"];
   if (!m) return null;
-  return (
-    <span style={{ fontSize: "10px", fontWeight: 700, padding: "4px 8px", borderRadius: "999px", backgroundColor: m.bg, color: m.color, whiteSpace: "nowrap" }}>
-      {m.label}
-    </span>
-  );
+  return <StatusBadge tone={m.tone} label={m.label} />;
 }
 
 /**
@@ -4662,7 +4655,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
               actions menu, and it is no longer at that edge.
             */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px" }}>
-              <StatusBadge status={u.status} />
+              <AccountStatusBadge status={u.status} />
               {u.tempPasswordIssuedAt && <TempPasswordBadge issuedAt={u.tempPasswordIssuedAt} />}
               {u.setupCode && <SetupCodeBadge issuedAt={u.setupCodeIssuedAt} />}
             </div>
@@ -4796,7 +4789,11 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     {(u.grantMode === "preset" && u.presetId && presetLabelById.get(u.presetId)) || t.grantCustom}
                   </span>
                   {holdsSearch(u) && (
-                    <span title={t.colAppSearch} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", padding: "1px 6px", borderRadius: "999px", backgroundColor: "var(--info-100)", color: "var(--info-500)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
+                    /* Neutral, not blue. Blue means 「waiting on a person」 in this console since
+                       the tones were unified, and this chip is not a state at all — it is a
+                       capability the account holds. It was also the only info-blue on the page,
+                       which made a secondary fact the loudest thing in the table. */
+                    <span title={t.colAppSearch} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", padding: "1px 6px", borderRadius: "999px", backgroundColor: "var(--gray-100)", color: "var(--gray-600)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
                       {t.colAppSearch}
                     </span>
                   )}
@@ -5245,7 +5242,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                       under it, which is what "important things don't come forward" was. */}
                   <span style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
                     <span title={mu.name} style={{ minWidth: 0, fontSize: "17px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.name}</span>
-                    <span style={{ flexShrink: 0, display: "flex" }}><StatusBadge status={mu.status} /></span>
+                    <span style={{ flexShrink: 0, display: "flex" }}><AccountStatusBadge status={mu.status} /></span>
                   </span>
                   <span title={mu.email} style={{ fontSize: "12px", fontWeight: 400, color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mu.email}</span>
                 </span>

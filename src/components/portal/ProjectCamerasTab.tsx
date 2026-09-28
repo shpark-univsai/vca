@@ -12,7 +12,7 @@ import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -2419,15 +2419,21 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               : cam.status === "error" ? t.statusError
               : awaiting ? t.statusAwaiting
               : t.offline;
-            // Four states, and only two of them coloured — the reasoning is on the cell below.
-            const statusText = cam.status === "error" ? "var(--danger-400)"
-              : cam.status === "offline" && !awaiting ? "var(--warning-500)"
-              : "var(--gray-500)";
-            const statusWeight = statusText === "var(--gray-500)" ? 600 : 700;
-            const statusDot = cam.status === "online" ? "var(--success-400)"
-              : cam.status === "error" ? "var(--danger-400)"
-              : awaiting ? "var(--gray-300)"
-              : "var(--warning-400)";
+            /*
+             * The colours come from the shared tone table now — see StatusBadge in PortalShared.
+             *
+             * A camera that is offline and one that is refusing the connection are both faults:
+             * nothing stopped working because somebody decided it should. They shared amber and
+             * red before, which read as a ranking this screen cannot actually justify — the words
+             * 「오프라인」 and 「연결 거부」 are what separate them, and they say it exactly.
+             * Awaiting first contact is waiting on an installer, not a fault.
+             */
+            const statusTone: StatusTone = cam.status === "online" ? "normal"
+              : awaiting ? "waiting"
+              : "fault";
+            const statusText = statusTone === "normal" ? "var(--gray-500)" : TONE_STYLE[statusTone].fg;
+            const statusWeight = statusTone === "normal" ? 600 : 700;
+            const statusDot = statusTone === "normal" ? "var(--gray-300)" : TONE_STYLE[statusTone].fg;
             return (
               <div key={row.id} {...rowInteraction}>
                 {checkbox}

@@ -5,7 +5,7 @@ import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { REGISTRATION_CODE_TTL_DAYS, codeExpiresAt, formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import { sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { BORDER, ConfirmModal } from "./PortalShared";
+import { BORDER, ConfirmModal, type StatusTone } from "./PortalShared";
 
 const T = {
   en: {
@@ -220,22 +220,21 @@ type Translations = (typeof T)["en"] | (typeof T)["ko"];
 // reason — four states, only the two that want attention coloured, "Online" left in plain grey.
 // gray-600 rather than "not-issued"'s gray-500 keeps the two quiet states apart in a scan and
 // matches what the requests tab gives its own terminal state, `closed`.
-function getStatusMeta(t: Translations): Record<RosterCodeStatus, { label: string; bg: string; color: string }> {
+/*
+ * TONES, NOT COLOURS — see StatusBadge in PortalShared.
+ *
+ * 「발급됨」 was amber, the colour Input Sources gives a camera that stopped answering: a code
+ * waiting to be used is not a fault, it is waiting on a person. 「만료」 was red, the colour this
+ * console now reserves for what somebody DID — a code ageing out is time passing, so it is a
+ * fault. 「미발급」 and 「사용됨」 are both the quiet case: nothing is wrong and nothing is pending.
+ */
+function getStatusMeta(t: Translations): Record<RosterCodeStatus, { label: string; tone: StatusTone }> {
   return {
-    "not-issued": { label: t.statusNotIssued, bg: "var(--gray-100)", color: "var(--gray-500)" },
-    unused: { label: t.statusIssued, bg: "var(--warning-100)", color: "var(--warning-500)" },
-    used: { label: t.statusUsed, bg: "var(--gray-100)", color: "var(--gray-600)" },
-    expired: { label: t.statusExpired, bg: "var(--danger-100)", color: "var(--danger-500)" },
+    "not-issued": { label: t.statusNotIssued, tone: "normal" },
+    unused: { label: t.statusIssued, tone: "waiting" },
+    used: { label: t.statusUsed, tone: "normal" },
+    expired: { label: t.statusExpired, tone: "fault" },
   };
-}
-
-function StatusBadge({ status, meta }: { status: RosterCodeStatus; meta: Record<RosterCodeStatus, { label: string; bg: string; color: string }> }) {
-  const m = meta[status];
-  return (
-    <span style={{ fontSize: "12px", fontWeight: 600, padding: "4px 8px", borderRadius: "999px", backgroundColor: m.bg, color: m.color }}>
-      {m.label}
-    </span>
-  );
 }
 
 function csvEscape(value: string): string {
@@ -546,7 +545,6 @@ export function exportRosterCsv(entries: RosterEntry[], projectName: string, t: 
 export {
   T as ROSTER_T,
   getStatusMeta as getRosterStatusMeta,
-  StatusBadge as RosterStatusBadge,
   RosterCodeCell,
   IssueConfirmModal,
   RemoveConfirmModal,

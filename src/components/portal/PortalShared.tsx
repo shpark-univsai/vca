@@ -2772,7 +2772,9 @@ export type StatusTone = "normal" | "waiting" | "fault" | "stopped";
 
 const HALF = (token: string) => `color-mix(in srgb, var(${token}) 50%, white)`;
 
-const TONE_STYLE: Record<StatusTone, { bg: string; fg: string }> = {
+/** Exported for the screens that draw a state as a dot and a word rather than a pill — the camera
+ *  lists. One table, two shapes; the shape is a matter of density, the colour is the meaning. */
+export const TONE_STYLE: Record<StatusTone, { bg: string; fg: string }> = {
   normal: { bg: "var(--gray-100)", fg: "var(--gray-600)" },
   waiting: { bg: HALF("--info-100"), fg: "var(--info-500)" },
   fault: { bg: HALF("--warning-100"), fg: "var(--warning-500)" },
