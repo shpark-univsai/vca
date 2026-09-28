@@ -102,6 +102,12 @@ export default function AccessPresetsTab({ teamId, canEdit }: {
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
+  /* THE MAKE BUTTON LIVES UP HERE NOW (owner, 2026-09-28: 이 문구 옆으로 맨 끝에 두면 어떨까,
+     액션 버튼이잖아). It was a dashed full-width row at the BOTTOM of the list — the shape of a
+     slot waiting to be filled rather than of a thing you press, and it sat below however many
+     presets the team has, so on a long list the one action on the screen was off the fold. The
+     state has to live here for the button to, because the list draws the form it opens. */
+  const [creating, setCreating] = useState(false);
   return (
     <div>
       {/* NO TITLE. The lit pill on the second tab row reads 앱 권한 프리셋 and this line read it
@@ -110,12 +116,18 @@ export default function AccessPresetsTab({ teamId, canEdit }: {
           nothing else on this screen carries, and it needs a home before the line can go. */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "14px" }}>
         <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}><KeySquare size={16} strokeWidth={2.2} /></span>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.presetIntro}</p>
         </div>
+        {canEdit && !creating && (
+          <button className="portal-btn-outline" onClick={() => setCreating(true)}
+            style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            + {t.presetNew}
+          </button>
+        )}
       </div>
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "16px" }}>
-        <AccessPresetList t={t} teamId={teamId} canEdit={canEdit} />
+        <AccessPresetList t={t} teamId={teamId} canEdit={canEdit} creating={creating} onCloseCreate={() => setCreating(false)} />
       </div>
     </div>
   );
@@ -133,10 +145,13 @@ export default function AccessPresetsTab({ teamId, canEdit }: {
  * names the accounts rather than only counting them — "12 accounts" is a number, "Marcus, Wei and
  * ten others" is a room.
  */
-function AccessPresetList({ t, teamId, canEdit }: {
+function AccessPresetList({ t, teamId, canEdit, creating, onCloseCreate }: {
   t: (typeof T)["en"] | (typeof T)["ko"];
   teamId: string;
   canEdit: boolean;
+  /** Held by the tab, because the button that sets it sits beside the intro up there. */
+  creating: boolean;
+  onCloseCreate: () => void;
 }) {
   /* The three we ship are printed as product strings, a customer's own preset as they typed it.
      See AccessPreset.builtinKey — the English console was showing 운영자 / 조사자 / 감독자. */
@@ -159,10 +174,9 @@ function AccessPresetList({ t, teamId, canEdit }: {
   /** Which row is open, and for what. One at a time: two open editors of a living preset is two
    *  people's worth of consequence on one screen with no way to tell them apart. */
   const [editing, setEditing] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
   const [retiring, setRetiring] = useState<string | null>(null);
 
-  const closeAll = () => { setEditing(null); setCreating(false); setRetiring(null); };
+  const closeAll = () => { setEditing(null); onCloseCreate(); setRetiring(null); };
   const editingPreset = presets.find(pr => pr.id === editing) ?? null;
   const retiringPreset = presets.find(pr => pr.id === retiring) ?? null;
 
@@ -257,12 +271,7 @@ function AccessPresetList({ t, teamId, canEdit }: {
             showToast({ variant: "success", title: t.presetCreatedToast, desc: patch.label });
             closeAll();
           }} />
-      ) : (
-        <button className="portal-btn-outline" onClick={() => { closeAll(); setCreating(true); }}
-          style={{ height: CONTROL_HEIGHT, borderRadius: "10px", border: "1px dashed var(--gray-300)", backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-          + {t.presetNew}
-        </button>
-      )}
+      ) : null}
     </div>
   );
 }
