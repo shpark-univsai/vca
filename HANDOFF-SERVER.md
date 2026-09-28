@@ -509,42 +509,65 @@ PortalUser  { cameraIds?: string[], cameraGroupIds?: string[] }   // 둘 다 없
 
 ## 12. 2026-09-28에 바뀐 것 — **§4·§9-17을 이걸로 덮어 읽으세요**
 
-### 12-1. 앱 권한이 **열 개**가 됐고, `personSearch`가 없어졌습니다
+### 12-1. 앱 권한이 **열일곱 개**가 됐고, `personSearch`가 없어졌습니다
+
+앱의 메뉴 네 개가 그대로 뼈대입니다. 들여쓴 것은 그 위 줄 없이는 설 수 없습니다.
 
 ```
 appActions: (
-  | "liveView"              // 대시보드 > 이벤트
-  | "systemStatus"          // 대시보드 > 시스템
-  | "history"               // 베스트 프레임
-  | "liveMonitoring"        // 데이터 > 모니터링
-  | "liveMonitoringSearch"  //   └ 모니터링에서 검색
-  | "reid"                  // 데이터 > Re-ID 분석
-  | "reidSearch"            //   └ Re-ID 분석에서 검색
-  | "redface"               // 데이터 > RedFace
-  | "trail"                 // 레드맵
-  | "export"                //   └ 증거 내보내기
+  // 대시보드
+  | "liveView"              //   이벤트 · VIP 감지
+  | "dashboardTrail"        //     └ 이벤트 · 동선 추적
+  | "systemStatus"          //   시스템
+  // 베스트 프레임
+  | "liveWall"              //   실시간 카메라
+  | "history"               //   지난 기록
+  | "bestframeVip"          //   볼 수 있는 대상 · VIP
+  | "bestframeVehicle"      //   볼 수 있는 대상 · 차량
+  | "bestframeUnknown"      //   볼 수 있는 대상 · 모르는 사람
+  // 데이터
+  | "liveMonitoring"        //   모니터링
+  | "monitoringVip"         //     └ VIP
+  | "monitoringUnknown"     //     └ 모르는 사람
+  | "liveMonitoringSearch"  //     └ 검색
+  | "reid"                  //   Re-ID 분석
+  | "reidSearch"            //     └ 검색
+  | "redface"               //   RedFace (화면이 곧 검색)
+  // 레드맵
+  | "trail"                 //   동선 지도 (화면이 곧 검색)
+  | "export"                //   증거 내보내기
 )[]
 ```
 
 **`personSearch`는 저장하지 마세요. 받지도 마세요.** 한 값이 두 일을 하고 있었습니다 —
 RedFace 화면을 열고, 동시에 모니터링·Re-ID·레드맵의 검색창을 켰습니다. 그래서
-「모니터링에서는 검색을 주고 Re-ID에서는 막는다」가 **표현 불가능**했고, 관리자 화면의
-모니터링 줄에는 검색 상태를 적을 자리가 없었습니다.
+「모니터링에서는 검색을 주고 Re-ID에서는 막는다」가 **표현 불가능**했습니다.
 
-**부모-자식 관계가 계약입니다.** 아래 셋은 부모 없이 들 수 없습니다. 저장 전에 떨어뜨려
+**부모-자식 관계가 계약입니다.** 아래는 부모 없이 들 수 없습니다. 저장 전에 떨어뜨려
 주세요(프론트도 같은 규칙을 `withAppActionDeps` 한 곳에서 겁니다):
 
 | 자식 | 부모 |
 |---|---|
-| `liveMonitoringSearch` | `liveMonitoring` |
+| `dashboardTrail` | `liveView` |
+| `monitoringVip` · `monitoringUnknown` · `liveMonitoringSearch` | `liveMonitoring` |
 | `reidSearch` | `reid` |
 | `export` | `trail` |
+
+**`bestframeVip` · `bestframeVehicle` · `bestframeUnknown`에는 부모가 없습니다.** 베스트
+프레임 탭은 `liveWall`이나 `history` 중 **어느 하나로도 열려서** 매달 곳이 하나가 아닙니다.
+둘 다 없이 대상만 든 계정은 탭이 안 열리므로 아무것도 보지 못합니다 — 틀린 상태가 아니라
+무의미한 상태입니다.
 
 **`redface`와 `trail`에는 검색 자식이 없습니다** — 두 화면은 검색 결과 말고는 아무것도
 없어서, 화면을 여는 것이 곧 검색하는 것입니다. 자식을 두면 화면이 켜진 동안 절대 꺼질 수
 없는 값이 되고, 그건 두 상태가 있는 척하는 거짓입니다.
 
-화면 파생도 바뀝니다: `모니터링 ← liveMonitoring` · `베스트 프레임 ← history` ·
+**「볼 수 있는 대상」은 화면마다 따로입니다.** 앱 전체에 한 번 거는 안은 기각했습니다 —
+기록에서는 모르는 사람을 읽되 실시간 감시대에서는 못 보게 하는 배치가 실제로 있습니다.
+`monitoringUnknown`과 `bestframeUnknown`이 가장 무거운 둘입니다: 아무도 등록하지 않은
+얼굴을 찍어서 보관한 것이고, 화면은 목록에서도 **영상 위에 그리는 상자에서도** 지웁니다.
+
+화면 파생: `모니터링 ← liveMonitoring` · `베스트 프레임 ← liveWall 또는 history` ·
 `Re-ID 분석 ← reid` · `RedFace ← redface` · `레드맵 ← trail`.
 
 **§9-17의 답이 나왔습니다.** 「`personSearch` 없이 `trail`만 든 계정」은 **이제 존재할 수
