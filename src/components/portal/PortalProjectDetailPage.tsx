@@ -50,7 +50,11 @@ const T = {
     todayBadge: (n: number) => `${n} today`,
     yesterdayCompare: (n: number) => `${n} yesterday`,
     portalAccounts: "Portal accounts",
-    accountsSuffix: "active admins",
+    /* The figure above it is `projectUsers.length` — everybody on the project, including the
+       invited and the suspended, and whatever their console role. Calling that "active admins"
+       made the card contradict itself: 5 active admins over 「1 invited · 1 suspended」 and a chip
+       reading 「2 portal · 4 app」. The Korean 「명」 was right all along. */
+    accountsSuffix: "people",
     recordsSuffix: "records",
     cardVipBreakdown: (groups: number, high: number) => `${groups} groups · ${high} high priority`,
     cardAccountsBreakdown: (invited: number, suspended: number) =>
@@ -787,7 +791,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
        The consequence is severe, and severity is not the same as urgency on this screen. The
        shell banner that also carried this was removed with this change; the fact now lives in one
        place, which is what makes it readable. */
-    ...(teamOwners <= 1 ? [{ key: "soleowner", text: t.attnSoleOwner, color: "var(--gray-400)", tab: "users" as DetailTab }] : []),
+    /* Exactly one, not "at most one": a team with ZERO owners was being told 「최고관리자가 한
+       명뿐입니다」 on a screen whose own card read 0 accounts. A new team has none yet, and that
+       is a different sentence from the one this warning exists to say. */
+    ...(teamOwners === 1 ? [{ key: "soleowner", text: t.attnSoleOwner, color: "var(--gray-400)", tab: "users" as DetailTab }] : []),
     // Above the setup notes, below the licence: a door opened from outside the product's rules is
     // not a "nothing here yet" note. Shows only while the recovered account is the only owner —
     // once a normally-granted one exists, the recovery served its purpose.

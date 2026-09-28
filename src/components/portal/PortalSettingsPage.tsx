@@ -416,7 +416,22 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   // release because the server's cascade is undecided — see complianceConfig.projectDelete.
   const mayDeleteProject = getComplianceConfig().projectDelete && (me ? canManageAccess(me.permission) : true);
   const isLastProjectInTeam = project ? projects.filter(p => p.teamId === project.teamId).length === 1 : false;
-  const myTeam = me ? teams.find(tm => tm.id === me.teamId) : undefined;
+  /*
+   * THE TEAM ON SCREEN, NOT THE TEAM I BELONG TO.
+   *
+   * This read `me.teamId`, so after switching teams in the header the page went on showing — and
+   * SAVING — the signed-in administrator's own team. Reproduced: switch to Northgate, open
+   * Settings, the header says Northgate while the card says 「Team mail · City of Singapore」, type
+   * a relay host, press 저장 — the toast says saved, Northgate is unchanged, and City of
+   * Singapore's mail settings have quietly been rewritten from a screen that never named them.
+   * Northgate's relay could not be set here at all.
+   *
+   * An installation holds several teams (project_vca_multi_team_per_install), so "my team" was
+   * never the same question as "the team I am looking at". The project on screen answers the
+   * second one; `me.teamId` stays as the fallback for the case with no project.
+   */
+  const viewedTeam = projectTeam ?? (me ? teams.find(tm => tm.id === me.teamId) : undefined);
+  const myTeam = viewedTeam;
   /*
    * The team's mail settings, held as a draft so the form does not write on every keystroke.
    * Keyed to the team for the same reason the rename draft is keyed to the project — this
@@ -462,7 +477,10 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   };
   // The team whose policy this screen edits. Falls back to the open project's team, because the
   // stand-in identity belongs to no account list and would otherwise see no list at all.
-  const myTeamId = me?.teamId ?? project?.teamId;
+  /* Same correction as viewedTeam: the search purposes and VIP categories listed here belong to
+     the team being looked at. Reading `me.teamId` first showed one team's policy while the header
+     named another. */
+  const myTeamId = viewedTeam?.id ?? project?.teamId;
   const teamPurposes = searchPurposes.filter(sp => sp.teamId === myTeamId);
   const teamCategories = vipCategories.filter(c => c.teamId === myTeamId);
   const activePurposes = teamPurposes.filter(sp => !sp.archived);
