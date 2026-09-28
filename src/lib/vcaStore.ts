@@ -2613,11 +2613,42 @@ export const APP_ACTION_PARENT: Partial<Record<AppAction, AppAction>> = {
   export: "trail",
 };
 
-/** Drops any child grant whose parent is not held. Always run it before storing an action set. */
+/**
+ * A SCREEN WHOSE CONTENT IS ENTIRELY TYPED NEEDS AT LEAST ONE OF THE TYPES (owner, 2026-09-28:
+ * 모니터링에 보기만 켜진 상태면 vip인식한거랑 모르는 사람 얼굴 찍힌걸 볼수없는거지? 그럼 그냥
+ * 빈화면일텐데?).
+ *
+ * Yes — measured: DataPage filters `camDetailItems` by these two and nothing else, so 모니터링
+ * with neither of them open the screen onto an empty list. The grant said "may open 모니터링" and
+ * the screen said nothing at all.
+ *
+ * So the two are not optional extras under the screen; together they ARE the screen. Holding the
+ * parent with neither is not a narrower permission, it is a broken one, and this is the table that
+ * makes it unreachable.
+ *
+ * 베스트 프레임's three types (VIP · 차량 · 모르는 사람) have the same hole and are deliberately
+ * NOT here: there the types sit beside two screens rather than under one, so which screen they
+ * would take down with them is a decision, not a deduction.
+ */
+export const APP_ACTION_CONTENT: Partial<Record<AppAction, AppAction[]>> = {
+  liveMonitoring: ["monitoringVip", "monitoringUnknown"],
+};
+
+/** Drops any child grant whose parent is not held, and any parent left with no content. Always run
+ *  it before storing an action set. */
 export function withAppActionDeps(actions: AppAction[]): AppAction[] {
   const held = new Set(actions);
   for (const [child, parent] of Object.entries(APP_ACTION_PARENT) as [AppAction, AppAction][]) {
     if (held.has(child) && !held.has(parent)) held.delete(child);
+  }
+  for (const [parent, content] of Object.entries(APP_ACTION_CONTENT) as [AppAction, AppAction[]][]) {
+    if (held.has(parent) && !content.some(c => held.has(c))) {
+      held.delete(parent);
+      /* And with the screen goes its step — `liveMonitoringSearch` is a capability ON 모니터링. */
+      for (const [child, p] of Object.entries(APP_ACTION_PARENT) as [AppAction, AppAction][]) {
+        if (p === parent) held.delete(child);
+      }
+    }
   }
   return APP_ACTIONS.filter(a => held.has(a));
 }

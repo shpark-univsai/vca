@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Check, ChevronLeft, EyeOff } from "lucide-react";
-import { APP_ACTIONS, SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, useVcaStore, type AppAction, type AppScreen, type ProjectType } from "@/lib/vcaStore";
+import { APP_ACTION_CONTENT, APP_ACTIONS, SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, useVcaStore, type AppAction, type AppScreen, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { APP_GRANT_LABELS } from "@/lib/appGrants";
@@ -2398,7 +2398,19 @@ function GrantStage({ rowLabel, held, twoCell, parentOn, locked, onPick, stage }
     borderRadius: "6px", border: "1px solid var(--gray-200)", overflow: "hidden",
     flexShrink: 0, marginLeft: "8px", opacity: parentOn ? 1 : 0.4,
   };
-  const cell = (picked: boolean, first: boolean) => {
+  /**
+   * `siblingLit` is what closes the purple box (owner, 2026-09-28: 보기, 보기/검색 버튼에 라인이
+   * 잘려).
+   *
+   * The held cell used to draw its right border transparent, on the rule that the divider belongs
+   * to the second cell alone so the two never stack into a 2px line. But on the LEFT cell that
+   * left the purple outline open on its right side, with the neighbour's grey divider standing in
+   * the gap — a box with one side missing and the wrong colour where it should have closed.
+   *
+   * So the held cell now draws all four of its own sides, and the cell beside a held one drops its
+   * divider instead. Still exactly one line between them; it is just the held cell's line.
+   */
+  const cell = (picked: boolean, first: boolean, siblingLit = false) => {
     /* Parent off means no purple at all: an unreachable step is not a held one. */
     const lit = picked && parentOn;
     const edge = lit ? "1px solid var(--primary-300)" : "1px solid transparent";
@@ -2408,11 +2420,8 @@ function GrantStage({ rowLabel, held, twoCell, parentOn, locked, onPick, stage }
       whiteSpace: "nowrap" as const, letterSpacing: "-0.1px",
       backgroundColor: lit ? PICKED_FILL : "transparent",
       color: lit ? "var(--gray-900)" : "var(--gray-500)",
-      borderTop: edge, borderBottom: edge,
-      /* The divider between the cells is the SECOND cell's left border and nothing else — drawing
-         a right border on the first one too puts two 1px lines side by side. */
-      borderLeft: first ? edge : (lit ? "1px solid var(--primary-300)" : "1px solid var(--gray-200)"),
-      borderRight: "1px solid transparent",
+      borderTop: edge, borderBottom: edge, borderRight: edge,
+      borderLeft: first || lit || siblingLit ? edge : "1px solid var(--gray-200)",
       cursor: live ? "pointer" : "default",
     };
   };
@@ -2447,7 +2456,7 @@ function GrantStage({ rowLabel, held, twoCell, parentOn, locked, onPick, stage }
               onPick(e.key === "ArrowRight" || e.key === "ArrowLeft" ? !held : depth);
             }
           }}
-          style={cell(held === depth, !depth)}>
+          style={cell(held === depth, !depth, held !== depth && parentOn)}>
           {depth ? stage.viewSearch : stage.view}
         </span>
       ))}
@@ -2561,8 +2570,32 @@ export function AppGrantList({ actions, locked, onToggle, rowFill }: {
     if (has(row.action)) {
       if (row.search && has(row.search)) onToggle(row.search);
       (row.children ?? []).forEach(c => { if (has(c)) onToggle(c); });
+    } else {
+      /* Switching the screen ON brings its content with it — see APP_ACTION_CONTENT. A screen
+         ticked with neither of its two types is a blank list, so it is never a state a click
+         here can land in. */
+      (APP_ACTION_CONTENT[row.action] ?? []).forEach(c => { if (!has(c)) onToggle(c); });
     }
     onToggle(row.action);
+  };
+
+  /**
+   * Unticking the LAST type takes the screen with it, in the same click.
+   *
+   * Not at save time: the store's `withAppActionDeps` drops the emptied parent anyway, so leaving
+   * the row ticked here would show a screen this account is about to not have — the list stating
+   * something that stops being true on save.
+   */
+  const toggleChild = (parent: AppAction, child: AppAction) => {
+    const content = APP_ACTION_CONTENT[parent];
+    if (content && has(child) && !content.some(c => c !== child && has(c))) {
+      onToggle(child);
+      const row = GRANT_TREE.flatMap(g => g.rows).find(r => r.action === parent);
+      if (row?.search && has(row.search)) onToggle(row.search);
+      onToggle(parent);
+      return;
+    }
+    onToggle(child);
   };
 
   const renderRow = (row: GrantRowDef) => {
@@ -2583,7 +2616,7 @@ export function AppGrantList({ actions, locked, onToggle, rowFill }: {
           <GrantRow key={c} label={nameOf(c)}
             desc={locked ? undefined : g.actionDesc[c]}
             on={has(c)} locked={locked} disabled={!on} indent fill={fill}
-            onToggle={() => onToggle(c)} />
+            onToggle={() => toggleChild(row.action, c)} />
         ))}
       </React.Fragment>
     );

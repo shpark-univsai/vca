@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Check, Minus, Trash2, Undo2 } from "lucide-react";
 import {
   accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
   withAppActionDeps, type AccessPreset, type AppAction,
@@ -9,7 +10,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, AppGrantList,
-  TextField, GRANT_TREE, GrantGroupIcon, PICKED_LINE, PICKED_FILL, type GrantRowDef, type GrantGroupDef,
+  TextField, Drawer, GRANT_TREE, GrantGroupIcon, type GrantRowDef, type GrantGroupDef,
 } from "./PortalShared";
 import { APP_GRANT_LABELS } from "@/lib/appGrants";
 
@@ -50,9 +51,9 @@ const T = {
     presetNew: "New preset",
     presetLabelField: "Name",
     presetLabelPlaceholder: "Operator \u00b7 Investigator \u00b7 Supervisor",
-    presetDescField: "What it is for",
-    presetDescPlaceholder: "One line. Somebody chooses between these by reading it.",
-    presetGrantsField: "What it grants",
+    presetDescField: "Description",
+    presetDescPlaceholder: "One line \u2014 when this one is the right pick",
+    presetGrantsField: "Permissions",
     presetNoScreens: "Tick at least one screen \u2014 an account following a preset with none cannot open the app",
     presetFollowers: (n: number) => `${n} account${n === 1 ? "" : "s"} follow this`,
     presetFollowersNone: "No accounts follow this yet",
@@ -69,6 +70,9 @@ const T = {
       ? "It stops being offered on the invite form. Nothing else changes."
       : `It stops being offered, and the ${n} account${n === 1 ? "" : "s"} following it become individual \u2014 holding exactly what they hold now. Nobody gains or loses access.`,
     presetRetireConfirm: "Retire",
+    presetEditing: "Editing presets",
+    presetAllow: "Yes",
+    presetDeny: "No",
     presetSave: "Save",
     presetCancel: "Cancel",
     presetCreate: "Create",
@@ -84,9 +88,9 @@ const T = {
     presetNew: "프리셋 만들기",
     presetLabelField: "이름",
     presetLabelPlaceholder: "운영자 · 조사자 · 감독자",
-    presetDescField: "무엇을 위한 것인가",
-    presetDescPlaceholder: "한 줄. 사람은 이걸 읽고 고릅니다.",
-    presetGrantsField: "무엇을 켜는가",
+    presetDescField: "설명",
+    presetDescPlaceholder: "한 줄 — 어떤 사람에게 주는 묶음인지",
+    presetGrantsField: "권한",
     presetNoScreens: "화면을 하나 이상 골라주세요 — 화면이 없는 프리셋을 따르는 계정은 앱을 열 수 없습니다",
     presetFollowers: (n: number) => `이 프리셋을 따르는 계정 ${n}개`,
     presetFollowersNone: "이 프리셋을 따르는 계정이 아직 없습니다",
@@ -103,6 +107,9 @@ const T = {
       ? "초대 폼에서 더 이상 제시되지 않습니다. 그 밖에 바뀌는 것은 없습니다."
       : `초대 폼에서 더 이상 제시되지 않고, 이것을 따르던 계정 ${n}개는 지금 가진 것을 그대로 들고 개별 지정으로 바뀝니다. 권한을 얻거나 잃는 사람은 없습니다.`,
     presetRetireConfirm: "폐기",
+    presetEditing: "프리셋 편집 중",
+    presetAllow: "허용",
+    presetDeny: "불가",
     presetSave: "저장",
     presetCancel: "취소",
     presetCreate: "만들기",
@@ -225,23 +232,25 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
           // Said, not hidden — the same rule the purpose list follows.
           <p style={{ flex: 1, fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.presetOwnerOnly}</p>
         ) : editing ? (
-          <>
-            {removed.length > 0 && (
-              <p style={{ flex: 1, fontSize: "11px", color: "var(--danger-500)", fontWeight: 700, lineHeight: 1.45 }}>
-                {t.presetRetireBody(removed.reduce((n, id) => n + (followersOf.get(id) ?? []).length, 0))}
-              </p>
-            )}
-            <button className="portal-btn-outline" onClick={stopEditing}
-              style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-              {t.presetCancel}
-            </button>
-            <button className="portal-btn-primary" onClick={save} disabled={!dirty || emptyDraft}
-              title={emptyDraft ? t.presetNoActions : undefined}
-              style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: dirty && !emptyDraft ? "var(--primary-400)" : "var(--gray-200)", color: dirty && !emptyDraft ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: dirty && !emptyDraft ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-              {t.presetSave}
-            </button>
-          </>
-        ) : !creating && (
+          /*
+            NO BUTTONS UP HERE WHILE EDITING (owner, 2026-09-28: 중복이라 별로인가..).
+            
+            They were here AND in the floating bar, which asks a reader to work out which of two
+            identical 저장 buttons is the real one. Shopify's save bar — the pattern the bar below
+            is taken from — takes the header's actions away and carries them itself, for exactly
+            that reason. What stays here is the one thing the bar has no room for: how many
+            accounts a pending 삭제 would reach.
+          */
+          removed.length > 0 ? (
+            <p style={{ flex: 1, fontSize: "11px", color: "var(--danger-500)", fontWeight: 700, lineHeight: 1.45 }}>
+              {t.presetRetireBody(removed.reduce((n, id) => n + (followersOf.get(id) ?? []).length, 0))}
+            </p>
+          ) : null
+        ) : (
+          /* Still drawn while the create panel is open. The panel is fixed to the right edge with
+             a scrim over these, so they are not reachable — but blanking the row moved the table
+             up by a row-height the moment the panel opened, which read as the page changing
+             underneath rather than a panel opening over it. */
           <>
             {presets.length > 0 && (
               <button className="portal-btn-outline" onClick={startEditing}
@@ -257,21 +266,18 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
         )}
       </div>
 
+      {/*
+        THE TABLE STAYS UP WHILE THE PANEL IS OPEN (owner, 2026-09-28: 만들기 누르니까 배경이
+        바뀌네 · 프리셋을 추가하는만큼, 기존 표에서 보던 순서로 있어야 쉽게 인지하고 선택
+        바르게할수있을것같아).
+        
+        The form used to take the card's place, so opening it emptied the card to a grey block and
+        took away the three presets you are adding a fourth one beside. The panel's list is the
+        same GRANT_TREE in the same order as the table's rows, which only helps if the table is
+        there to read it against — the new preset is chosen by comparing it to the ones that exist.
+      */}
       <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "16px" }}>
-        {creating ? (
-          <PresetEditor t={t} preset={null} followers={[]}
-            onCancel={() => setCreating(false)}
-            onSave={patch => {
-              addAccessPreset({
-                teamId,
-                label: patch.label ?? "",
-                description: patch.description ?? "",
-                actions: patch.actions ?? [],
-              });
-              showToast({ variant: "success", title: t.presetCreatedToast, desc: patch.label });
-              setCreating(false);
-            }} />
-        ) : presets.length === 0 ? (
+        {presets.length === 0 ? (
           <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.presetEmpty}</p>
         ) : (
           <PresetMatrix
@@ -282,21 +288,45 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
             draft={draft}
             removed={removed}
             onSetActions={setActions}
+            footer={!editing ? undefined : pr => {
+              const gone = removed.includes(pr.id);
+              return (
+                <button className="portal-btn-quiet"
+                  onClick={() => setRemoved(r => gone ? r.filter(x => x !== pr.id) : [...r, pr.id])}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "5px", height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: gone ? "var(--gray-600)" : "var(--danger-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  {gone
+                    ? <Undo2 size={13} strokeWidth={2.4} aria-hidden="true" />
+                    : <Trash2 size={13} strokeWidth={2.2} aria-hidden="true" />}
+                  {gone ? t.presetUndoRemove : t.presetRetire}
+                </button>
+              );
+            }}
             header={pr => {
               const names = followersOf.get(pr.id) ?? [];
               const gone = removed.includes(pr.id);
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, opacity: gone ? 0.4 : 1 }}>
+                  {/* 삭제 is at the FOOT of the column — see the footer row at the end of
+                      PresetMatrix. */}
                   {editing && !gone ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
                     <input
                       value={draft[pr.id]?.label ?? ""}
                       onChange={e => setName(pr.id, e.target.value)}
-                      style={{ width: "100%", height: "28px", padding: "0 8px", borderRadius: "7px", border: BORDER, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", backgroundColor: "white" }}
+                      /* 128px, not the column's full width (owner, 2026-09-28: 조사자랑 감독자
+                         적혀있는 인풋박스가 너무 넓어 좀 좁혀줘). A column runs to 1fr so it can
+                         hold 보기 · 검색 in its cells, but the name in it is three letters —
+                         stretching the box to the column made an empty field the widest thing on
+                         the screen. 128px still takes a name twice as long as any of the three. */
+                      style={{ width: "100%", maxWidth: "128px", boxSizing: "border-box", height: "28px", padding: "0 8px", borderRadius: "7px", border: BORDER, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", backgroundColor: "white" }}
                     />
+                    </div>
                   ) : (
-                    <span title={presetLabel(pr, lang)} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: gone ? "line-through" : undefined }}>
-                      {draft[pr.id]?.label || presetLabel(pr, lang)}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
+                      <span title={presetLabel(pr, lang)} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: gone ? "line-through" : undefined }}>
+                        {draft[pr.id]?.label || presetLabel(pr, lang)}
+                      </span>
+                    </div>
                   )}
                   {/* The count, not the names: a column is 104px at its narrowest and a list of
                       names would set the width of the whole table. It stays visible while editing,
@@ -304,15 +334,6 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
                   <span style={{ fontSize: "11px", color: names.length === 0 ? "var(--gray-400)" : "var(--gray-500)" }}>
                     {names.length === 0 ? t.presetFollowersNone : t.presetFollowers(names.length)}
                   </span>
-                  {editing && (
-                    <button className="portal-btn-quiet" onClick={() => setRemoved(r => gone ? r.filter(x => x !== pr.id) : [...r, pr.id])}
-                      /* alignSelf, because the header is a flex COLUMN and a child with no
-                         opinion stretches to the column's width — a 260px 삭제 button over a
-                         table (owner, 2026-09-28: 편집 상태일 때 삭제 버튼이 가로로 너무 길어). */
-                      style={{ alignSelf: "flex-start", marginTop: "2px", height: "24px", padding: "0 8px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: gone ? "var(--gray-600)" : "var(--danger-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                      {gone ? t.presetUndoRemove : t.presetRetire}
-                    </button>
-                  )}
                 </div>
               );
             }}
@@ -327,6 +348,61 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
       <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "12px" }}>
         {editing && reach > 0 ? t.presetEditReach(reach) : t.presetIntro}
       </p>
+
+      {/*
+        THE SAME TWO BUTTONS, WITHIN REACH (owner, 2026-09-28: 저장, 취소를 중앙 아래 플로팅
+        버튼으로도 만들어주면 어떨까?).
+        
+        The pair at the top right is where 편집 was clicked, so it stays — but the grant rows run
+        past the fold, and somebody who ticks a cell near 레드맵 has scrolled both of them off the
+        screen. A bar pinned to the bottom is what every screen with a long editable body does
+        (Shopify's save bar, Figma, Google Docs): the way out of edit mode is never more than a
+        glance away from the row being edited.
+        
+        And it is the console's existing dark pill, not a new one (owner, 2026-09-28: 기존에 까만
+        플로팅박스 쓰이고있는 컴포넌트 있을텐데?) — the camera list's selection bar and the VIP
+        list's, to the token: --gray-900 at radius 12, 10/12/10/18 padding, the same drop shadow,
+        centred by a full-width pointerEvents:none wrapper so it never runs under the rail. Saving
+        a preset and acting on ticked cameras are the same kind of moment, so they look the same.
+      */}
+      {editing && (
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: "24px", zIndex: 40, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+          <div style={{
+            pointerEvents: "auto", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
+            backgroundColor: "var(--gray-900)", borderRadius: "12px", padding: "10px 12px 10px 18px",
+            boxShadow: "0 12px 32px rgba(24,17,39,0.28)", maxWidth: "calc(100% - 48px)",
+          }}>
+            {/* The bar says what mode you are in, the way the camera list's bar says what the
+                selection is — without it a dark pill holding two buttons has no subject. */}
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>{t.presetEditing}</span>
+            <span style={{ width: "1px", alignSelf: "stretch", backgroundColor: "var(--gray-700)" }} />
+            <button onClick={save} disabled={!dirty || emptyDraft}
+              title={emptyDraft ? t.presetNoActions : undefined}
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: dirty && !emptyDraft ? "white" : "var(--gray-700)", color: dirty && !emptyDraft ? "var(--gray-900)" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: dirty && !emptyDraft ? "pointer" : "not-allowed", flexShrink: 0, fontFamily: "inherit" }}>
+              {t.presetSave}
+            </button>
+            <button onClick={stopEditing}
+              style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}>
+              {t.presetCancel}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {creating && (
+        <PresetEditor t={t} preset={null} followers={[]}
+          onCancel={() => setCreating(false)}
+          onSave={patch => {
+            addAccessPreset({
+              teamId,
+              label: patch.label ?? "",
+              description: patch.description ?? "",
+              actions: patch.actions ?? [],
+            });
+            showToast({ variant: "success", title: t.presetCreatedToast, desc: patch.label });
+            setCreating(false);
+          }} />
+      )}
     </div>
   );
 }
@@ -354,12 +430,14 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
  * Same GRANT_TREE the permission panel draws, so the order, the grouping and the wording cannot
  * drift between the screen that hands a preset out and the screen that defines it.
  */
-function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetActions, t }: {
+function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, onSetActions, t }: {
   presets: AccessPreset[];
   lang: "en" | "ko";
   t: (typeof T)["en"] | (typeof T)["ko"];
-  /** What sits over each column — the name, its follower line, its remove button. */
+  /** What sits over each column — the name and its follower line. */
   header: (preset: AccessPreset) => React.ReactNode;
+  /** What closes each column. Only while editing: it is 삭제. */
+  footer?: (preset: AccessPreset) => React.ReactNode;
   editing: boolean;
   draft: Record<string, { label: string; actions: AppAction[] }>;
   removed: string[];
@@ -374,11 +452,25 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
   };
 
   /** The states one row can hold, in the order clicking walks them. */
-  const statesFor = (row: GrantRowDef): { text: string; on: boolean; has: AppAction[] }[] => {
-    const none = { text: "—", on: false, has: [] as AppAction[] };
+  /*
+   * WHILE EDITING, THE CELL SAYS THE WORD (owner, 2026-09-28: 편집중일땐, 체크 표시옆에 허용이나
+   * 가능/불가능, 불가 이런 단어들도 붙여줘서 이해를 도우면 어떨까).
+   *
+   * Reading a saved table, ✓ and — carry it: the shape of the column is the information and a
+   * word in every cell would be seventeen rows of repeated text. But in edit mode each cell is a
+   * button that CYCLES, and then a ✓ leaves the other end of the cycle unnamed — you find out
+   * what "off" is called by clicking. The word says both states in the same vocabulary the rows
+   * above it use.
+   */
+  /* `mark` is the ✓ / — the cell keeps: the word goes BESIDE it, not instead of it (owner,
+     2026-09-28: 편집중일땐 체크 옆에 한글을 추가해달라니까). Off-state words only while editing —
+     a saved column of seventeen 불가 would bury the few 허용 it exists to show. */
+  type CellState = { text: string; on: boolean; has: AppAction[]; mark?: boolean };
+  const statesFor = (row: GrantRowDef): CellState[] => {
+    const none: CellState = { text: editing ? t.presetDeny : "", on: false, has: [], mark: true };
     if (row.search) return [none, { text: g.stage.view, on: true, has: [row.action] }, { text: g.stage.viewSearch, on: true, has: [row.action, row.search] }];
     if (row.searchIsAll) return [none, { text: g.stage.searchOnly, on: true, has: [row.action] }];
-    return [none, { text: "✓", on: true, has: [row.action] }];
+    return [none, { text: editing ? t.presetAllow : "", on: true, has: [row.action], mark: true }];
   };
 
   /** Every grant the tab holds, in one list — what the band's own cell switches. */
@@ -393,15 +485,15 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
     const state = on === 0 ? "none" : on === owned.length ? "all" : "some";
     /* The band's own cell wears the same pill — see the note on the row cell. 「일부」 is filled
        too but in the lighter ground, so a tab that is half given does not read as a whole one. */
-    const boxed = !editing || gone;
+    /* Same rule as the row cell: the word carries it, the box would say "press me". 일부 stays a
+       step lighter so a half-given tab never reads as a whole one. */
     const body = (
       <span style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        minWidth: boxed && state !== "none" ? "26px" : undefined,
-        height: "22px", padding: boxed && state !== "none" ? "0 8px" : "0 2px", borderRadius: "6px",
-        backgroundColor: !boxed ? "transparent" : state === "all" ? "var(--gray-200)" : state === "some" ? "var(--gray-100)" : "transparent",
+        height: "22px", padding: "0 2px",
         fontSize: "11.5px", fontWeight: state === "none" ? 500 : 700,
-        color: state === "none" ? "var(--gray-300)" : "var(--gray-900)", whiteSpace: "nowrap",
+        color: state === "none" ? "var(--gray-300)" : state === "some" ? "var(--gray-500)" : "var(--gray-900)",
+        whiteSpace: "nowrap",
       }}>{state === "none" ? "\u2014" : state === "all" ? t.presetGroupAll : t.presetGroupSome}</span>
     );
     if (!editing || gone) return body;
@@ -411,9 +503,8 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
         style={{
           display: "inline-flex", alignItems: "center", justifyContent: "center",
           height: "24px", padding: "0 8px", borderRadius: "7px",
-          border: state === "none" ? "1px dashed var(--gray-300)" : PICKED_LINE,
-          backgroundColor: state === "none" ? "white" : PICKED_FILL,
-          cursor: "pointer", fontFamily: "inherit",
+          border: state === "none" ? "1px dashed var(--gray-300)" : BORDER,
+          backgroundColor: "white", cursor: "pointer", fontFamily: "inherit",
         }}>
         {body}
       </button>
@@ -424,7 +515,8 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
     const held = actionsOf(pr);
     const gone = removed.includes(pr.id);
     const states = child
-      ? [{ text: "—", on: false, has: [] as AppAction[] }, { text: "✓", on: true, has: [child] }]
+      ? [{ text: editing ? t.presetDeny : "", on: false, has: [] as AppAction[], mark: true },
+         { text: editing ? t.presetAllow : "", on: true, has: [child], mark: true }]
       : statesFor(row);
     const owned = child ? [child] : [row.action, ...(row.search ? [row.search] : [])];
     const idx = Math.max(0, states.map((st, i) => ({ st, i })).filter(({ st }) => st.has.every(a => held.includes(a))).pop()?.i ?? 0);
@@ -451,16 +543,42 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
        so the grey pill inside it was a second box saying the same thing. Editing gets bare text
        in the chip; reading gets the pill. */
     const boxed = !editing || gone;
-    const body = (
-      <span style={{
+    /*
+     * NOT A PILL WHEN NOBODY CAN CLICK IT (owner, 2026-09-28: 아니 편집아닐때, 체크에 배경색을
+     * 넣으니까 이 상태에도 버튼같아보이네..).
+     *
+     * Right — a filled rounded rectangle at control height IS the shape of a button on every
+     * other row of this console, so the saved table offered seventeen rows of them and none did
+     * anything. The area it was there for now comes from a filled DISC, which is what the
+     * comparison tables that read at a glance actually use (Synthesia, Krea) and which no reader
+     * mistakes for something to press. The worded cells keep their word and lose the box: a
+     * 「보기 · 검색」 in gray-900 against a hairline 「—」 is already the widest contrast in the row.
+     */
+    const mark = !cur.mark ? null : cur.on ? (
+      /* Reading: a filled disc. Editing: the bare ✓, because the chip around it already has a
+         ground and a disc inside a filled chip is two backgrounds for one fact. */
+      <span aria-hidden="true" style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        minWidth: boxed && cur.on ? "26px" : undefined,
-        height: "22px", padding: boxed && cur.on ? "0 8px" : "0 2px", borderRadius: "6px",
-        backgroundColor: boxed && cur.on ? "var(--gray-100)" : "transparent",
-        fontSize: "11.5px", fontWeight: cur.on ? 700 : 500,
-        color: cur.on ? "var(--gray-900)" : "var(--gray-300)",
-        whiteSpace: "nowrap",
-      }}>{cur.text}</span>
+        width: boxed ? "18px" : "14px", height: boxed ? "18px" : "14px", borderRadius: "50%",
+        backgroundColor: boxed ? "var(--gray-900)" : "transparent",
+        color: boxed ? "white" : "var(--gray-900)", flexShrink: 0,
+      }}><Check size={boxed ? 11 : 12} strokeWidth={3.2} /></span>
+    ) : (
+      <Minus size={12} strokeWidth={2.6} aria-hidden="true"
+        style={{ color: "var(--gray-300)", flexShrink: 0 }} />
+    );
+    const body = (
+      <span aria-label={cur.mark ? (cur.on ? t.presetAllow : t.presetDeny) : undefined}
+        style={{
+          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "5px",
+          height: "22px", padding: "0 2px",
+          fontSize: "11.5px", fontWeight: cur.on ? 700 : 500,
+          color: cur.on ? "var(--gray-900)" : "var(--gray-400)",
+          whiteSpace: "nowrap",
+        }}>
+        {mark}
+        {cur.text}
+      </span>
     );
     if (!editing || gone) return body;
     /* Ticking a child ticks the screen it sits on — the store enforces it either way
@@ -472,18 +590,25 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
       const added = child && next.on ? [...next.has, row.action] : next.has;
       onSetActions(pr.id, [...kept, ...added]);
     };
-    /* A CHIP WHILE EDITING, NOT BARE TEXT (owner, 2026-09-28: 아래 체크랑 보기/검색 이런 것도
-       변경할 수 있게 해줘). It was already clickable and cycled correctly — what it did not do was
-       LOOK clickable, so the reader had no reason to try. In edit mode the value wears a box: a
-       picked one takes the console's picked colours, an empty one a dashed outline, which is the
-       same pair the camera picker and the invite form use for chosen / not chosen. */
+    /*
+     * A CHIP WHILE EDITING, BUT NOT A PURPLE ONE (owner, 2026-09-28: 아래 체크랑 보기/검색 이런
+     * 것도 변경할 수 있게 해줘 → 편집상태일때 너무 다 보라색박스라서 보기 불편해).
+     *
+     * The box is what makes the value look clickable, and it stays. The FILL does not: seventeen
+     * rows by three columns is fifty-one cells, so tinting every held one put the accent colour
+     * over most of the table — measured on this console's own rule of keeping purple to well
+     * under a tenth of a screen, and the wall of it drowned exactly what it was meant to pick out.
+     *
+     * So held and missing differ the way they do in the saved table, by the mark and the word,
+     * and the border alone says "this cell is a control": solid for a value, dashed for none.
+     */
     return (
       <button type="button" onClick={apply} title={t.presetCycleHint}
         style={{
           display: "inline-flex", alignItems: "center", justifyContent: "center",
           height: "24px", padding: "0 8px", borderRadius: "7px",
-          border: cur.on ? PICKED_LINE : "1px dashed var(--gray-300)",
-          backgroundColor: cur.on ? PICKED_FILL : "white",
+          border: cur.on ? BORDER : "1px dashed var(--gray-300)",
+          backgroundColor: "white",
           cursor: "pointer", fontFamily: "inherit",
         }}>
         {body}
@@ -563,6 +688,22 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
             ))}
           </div>
         ))}
+        {/*
+          삭제 AT THE FOOT OF ITS OWN COLUMN (owner, 2026-09-28: 삭제버튼..그냥 맨 아래
+          넣어줄까..?).
+          
+          Three places were tried above the table and each one lied about its subject: under the
+          follower line it read as an action on that line, and right-aligned in the header it sat
+          against the NEXT preset's name. At the foot of the column there is nothing else it could
+          belong to — it closes the seventeen cells above it, which is exactly what it removes. It
+          is where a pricing table puts the button that acts on a plan.
+        */}
+        {footer && (
+          <div style={{ ...line, borderTop: BORDER, alignItems: "start", padding: "12px" }}>
+            <span />
+            {presets.map(pr => <div key={pr.id} style={{ minWidth: 0 }}>{footer(pr)}</div>)}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -587,8 +728,38 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
      turns each of them away. */
   const canSave = label.trim().length > 0 && description.trim().length > 0 && actions.length > 0;
 
+  /*
+   * A PANEL OFF THE RIGHT EDGE (owner, 2026-09-28: 새로 화면이 바뀌는데 이거를 오른쪽에서
+   * 나오는 패널로 바꾸면 어때).
+   *
+   * It used to replace the table, which took the thing you are adding to off the screen and left
+   * 취소 at the bottom of a seventeen-row list as the only way out. Every other editor in this
+   * console is a right-hand panel over the list it belongs to, and this one is now the same: the
+   * table stays behind, closing needs no scrolling, and there is nothing to go "back" to because
+   * nothing was replaced.
+   *
+   * `dirty` so a stray click on the scrim does not throw away a half-typed preset — the shared
+   * Drawer asks first.
+   */
+  const started = label.trim().length > 0 || description.trim().length > 0 || actions.length > 0;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+    <Drawer title={preset ? presetLabel(preset, "ko") : t.presetNew} onClose={onCancel} width="520px" dirty={started}
+      footer={
+        <>
+          {!canSave && actions.length === 0 && label.trim() && description.trim() && (
+            <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.presetNoScreens}</span>
+          )}
+          <button className="portal-btn-outline" onClick={onCancel}
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {t.presetCancel}
+          </button>
+          <button className="portal-btn-primary" onClick={() => canSave && onSave({ label: label.trim(), description: description.trim(), actions })} disabled={!canSave}
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+            {preset ? t.presetSave : t.presetCreate}
+          </button>
+        </>
+      }>
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "20px" }}>
       <div>
         <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.presetLabelField}</label>
         <TextField value={label} onChange={setLabel} placeholder={t.presetLabelPlaceholder} autoFocus />
@@ -602,7 +773,7 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
         {/* White ground for a ticked row, not the default --gray-50: this editor is itself a
             --gray-50 card, and a ticked row on it would be the same colour as the card it sits in
             — the tick would be the only thing saying the row is on. */}
-        <AppGrantList actions={actions} locked={false} onToggle={toggleAction} rowFill="white" />
+        <AppGrantList actions={actions} locked={false} onToggle={toggleAction} />
       </div>
       {/* Named again here, with the verb attached. The row above says who follows this; this says
           what pressing Save does to them. */}
@@ -611,19 +782,7 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
           {t.presetEditReach(followers.length)}
         </p>
       )}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
-        {!canSave && actions.length === 0 && label.trim() && description.trim() && (
-          <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.presetNoScreens}</span>
-        )}
-        <button className="portal-btn-outline" onClick={onCancel}
-          style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-          {t.presetCancel}
-        </button>
-        <button className="portal-btn-primary" onClick={() => canSave && onSave({ label: label.trim(), description: description.trim(), actions })} disabled={!canSave}
-          style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-          {preset ? t.presetSave : t.presetCreate}
-        </button>
-      </div>
     </div>
+    </Drawer>
   );
 }
