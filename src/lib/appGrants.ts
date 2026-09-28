@@ -107,6 +107,11 @@ export const APP_GRANT_LABELS = {
     stage: { view: "View", viewSearch: "View \u00b7 Search", searchOnly: "Search" },
     /** Over the rows, in the app's own capitals (Navbar.tsx TABS). Not switches — see AppGrantList. */
     groupCaption: { dashboard: "DASHBOARD", data: "DATA" },
+    /* The same two, as a NAME rather than a caption. The permission panel draws them as an
+       uppercase band over the rows they hold; the preset table draws them as a row that sits
+       beside 베스트 프레임 and 레드맵, where an uppercase word would read as a different kind of
+       thing from its own peers. Korean has one form, which is why only English differs. */
+    groupName: { dashboard: "Dashboard", data: "Data" },
     actionDesc: {
       systemStatus: "Whether the cameras and servers are up. No personal data",
       liveView: "A registered person, as they walk past. Strangers do not appear",
@@ -148,6 +153,7 @@ export const APP_GRANT_LABELS = {
     } as Partial<Record<AppAction, string>>,
     stage: { view: "보기", viewSearch: "보기 \u00b7 검색", searchOnly: "검색" },
     groupCaption: { dashboard: "대시보드", data: "데이터" },
+    groupName: { dashboard: "대시보드", data: "데이터" },
     actionDesc: {
       systemStatus: "카메라와 서버가 살아 있는지 봅니다. 개인정보는 없습니다",
       liveView: "등록된 사람이 지나갈 때만 올라옵니다",
