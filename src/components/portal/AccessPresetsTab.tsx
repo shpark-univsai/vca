@@ -9,7 +9,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, AppGrantList,
-  TextField, GRANT_TREE, PICKED_LINE, PICKED_FILL, type GrantRowDef, type GrantGroupDef,
+  TextField, GRANT_TREE, GrantGroupIcon, PICKED_LINE, PICKED_FILL, type GrantRowDef, type GrantGroupDef,
 } from "./PortalShared";
 import { APP_GRANT_LABELS } from "@/lib/appGrants";
 
@@ -488,8 +488,11 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
                 line. It runs to the card's inner edge — it is the head of a section, not a row —
                 while its text keeps the rows' 12px so the column still lines up. */}
             <div style={{ ...line, margin: "0 -4px", padding: "8px 16px", borderTop: gi === 0 ? "none" : BORDER, backgroundColor: "var(--gray-50)" }}>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>
-                {g.groupName[group.caption]}
+              <span style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0 }}>
+                <GrantGroupIcon caption={group.caption} color="var(--gray-500)" />
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>
+                  {g.groupName[group.caption]}
+                </span>
               </span>
               {/* THE WHOLE TAB IN ONE CELL (owner, 2026-09-28: 회색 배경에도 체크 가능하게 해서
                   그 화면에 모든 기능 허용하게 할 건지 체크하는 걸로 만들어 줘). It reads as a

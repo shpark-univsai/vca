@@ -2287,6 +2287,31 @@ export type GrantGroupDef = { caption: "dashboard" | "bestframe" | "data" | "red
  * its sibling: under 레드맵 the two are peers, which is what the owner's reading says. The
  * dependency between them is unchanged and still lives in `APP_ACTION_PARENT`.
  */
+/**
+ * The app's own tab icon for each band — the same four files the app's menu bar draws
+ * (Navbar.tsx TABS), so the mark beside 「데이터」 here is the mark the reader clicked to get
+ * there. Drawn as a CSS mask like the app does, which is what lets the colour be the caller's;
+ * an <img> would arrive in the file's own black.
+ */
+export const GRANT_GROUP_ICON: Record<GrantGroupDef["caption"], string> = {
+  dashboard: "/icons/nav-dashboard.svg",
+  bestframe: "/icons/nav-bestframe.svg",
+  data: "/icons/nav-data.svg",
+  redmap: "/icons/nav-redmap.svg",
+};
+
+/** 16px, the size the rest of this console's row marks use. */
+export function GrantGroupIcon({ caption, color = "var(--gray-400)" }: { caption: GrantGroupDef["caption"]; color?: string }) {
+  const url = `url(${GRANT_GROUP_ICON[caption]})`;
+  return (
+    <span aria-hidden="true" style={{
+      flexShrink: 0, width: "16px", height: "16px", backgroundColor: color,
+      maskImage: url, maskSize: "contain", maskRepeat: "no-repeat", maskPosition: "center",
+      WebkitMaskImage: url, WebkitMaskSize: "contain", WebkitMaskRepeat: "no-repeat", WebkitMaskPosition: "center",
+    }} />
+  );
+}
+
 export const GRANT_TREE: GrantGroupDef[] = [
   {
     caption: "dashboard",
@@ -2577,10 +2602,16 @@ export function AppGrantList({ actions, locked, onToggle, rowFill }: {
                row. No box, no band, no rule around the group — eight settings rails were checked
                and not one draws them, and a ticked row's own --gray-50 ground would fight a band. */
             <span style={{
-              display: "block", paddingBottom: "3px", paddingLeft: "10px",
+              display: "flex", alignItems: "center", gap: "6px",
+              paddingBottom: "3px", paddingLeft: "10px",
               fontSize: "10.5px", fontWeight: 700, lineHeight: "16px",
               letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)",
-            }}>{g.groupCaption[group.caption]}</span>
+            }}>
+              {/* The app's own tab mark, same as the preset table's bands — a reader meets the
+                  same four glyphs in the menu bar, in the table and here. */}
+              <GrantGroupIcon caption={group.caption} />
+              {g.groupCaption[group.caption]}
+            </span>
           )}
           {group.rows.map(renderRow)}
         </div>
