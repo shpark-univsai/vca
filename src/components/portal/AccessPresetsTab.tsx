@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, ChevronDown, ChevronRight, Minus, Pencil, Trash2, Undo2 } from "lucide-react";
+import { Check, Minus, Pencil, Trash2, Undo2 } from "lucide-react";
 import {
   accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
   withAppActionDeps, type AccessPreset, type AppAction,
@@ -444,7 +444,6 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
   onSetActions: (id: string, actions: AppAction[]) => void;
 }) {
   const g = APP_GRANT_LABELS[lang];
-  const [shut, setShut] = useState<Set<string>>(new Set());
   const actionsOf = (pr: AccessPreset) => (editing ? draft[pr.id]?.actions ?? pr.actions : pr.actions);
   /*
    * VALUE COLUMNS ARE 150px, AND THE SLACK GOES TO THE RIGHT MARGIN (owner, 2026-09-28: 왼쪽에
@@ -690,22 +689,21 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
                 line. It runs to the card's inner edge — it is the head of a section, not a row —
                 while its text keeps the rows' 12px so the column still lines up. */}
             <div style={{ ...line, margin: "0 -4px", padding: "7px 16px", borderTop: gi === 0 ? "none" : BORDER, backgroundColor: "var(--gray-50)" }}>
-              {/* THE TAB FOLDS (Vanta, StackAI and Cofounder all do). Seventeen rows is more than
-                  a screen, and somebody checking what 데이터 gives away should not have to scroll
-                  past 베스트 프레임's five to reach it. Its own button, not the whole band — the
-                  band's cells are controls of their own while editing. */}
-              <span style={{ display: "flex", alignItems: "center", gap: "5px", minWidth: 0 }}>
-                <button type="button" onClick={() => setShut(c => { const n = new Set(c); if (n.has(group.caption)) n.delete(group.caption); else n.add(group.caption); return n; })}
-                  aria-expanded={!shut.has(group.caption)} aria-label={g.groupName[group.caption]}
-                  style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0, padding: "2px 4px 2px 0", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", color: "var(--gray-500)" }}>
-                  {shut.has(group.caption)
-                    ? <ChevronRight size={13} strokeWidth={2.6} aria-hidden="true" />
-                    : <ChevronDown size={13} strokeWidth={2.6} aria-hidden="true" />}
-                  <GrantGroupIcon caption={group.caption} color="var(--gray-500)" />
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>
-                    {g.groupName[group.caption]}
-                  </span>
-                </button>
+              {/*
+                NO FOLD (owner, 2026-09-28: 접기가 왜 필요해?).
+                
+                There was a chevron here for a while, put in because Vanta and StackAI have one.
+                They have thirty-odd rows; this table has seventeen in four groups and its largest
+                group is five. Folding 베스트 프레임 saved 185px — less than one scroll — and the
+                whole job of this screen is comparing three presets across ALL the rows, so a
+                control whose only effect is to hide rows works against it. The state was not
+                stored either, so every visit started expanded regardless.
+              */}
+              <span style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0 }}>
+                <GrantGroupIcon caption={group.caption} color="var(--gray-500)" />
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>
+                  {g.groupName[group.caption]}
+                </span>
               </span>
               {/* THE WHOLE TAB IN ONE CELL (owner, 2026-09-28: 회색 배경에도 체크 가능하게 해서
                   그 화면에 모든 기능 허용하게 할 건지 체크하는 걸로 만들어 줘). It reads as a
@@ -714,7 +712,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
                   set: it is what the rows below say, so the press from there goes to 전체. */}
               {presets.map(pr => <span key={pr.id} style={{ opacity: removed.includes(pr.id) ? 0.4 : 1 }}>{groupCell(pr, group)}</span>)}
             </div>
-            {!shut.has(group.caption) && group.rows.map(row => (
+            {group.rows.map(row => (
               <div key={row.action}>
                 {/* A heading inside the tab, with no cells of its own — 이벤트 is a panel, not a
                     grant. See GrantRowDef.subhead. */}
