@@ -5,7 +5,10 @@ import { Crown } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 
-export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "grants" | "activity" | "searchlog" | "requests";
+export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "grants" | "records" | "requests";
+
+/** The two lists inside 기록. Kept as their own names because the URL and the deep links use them. */
+export type RecordsTab = "activity" | "searchlog";
 
 interface IconProps {
   color: string;
@@ -84,17 +87,6 @@ function ServerIcon({ color }: IconProps) {
 }
 
 /** A magnifier over a ruled page — a look-up that left a line behind. */
-function SearchLogIcon({ color }: IconProps) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M3 2.6C3 2.32 3.22 2.1 3.5 2.1H10L13 5.1V13.4C13 13.68 12.78 13.9 12.5 13.9H3.5C3.22 13.9 3 13.68 3 13.4V2.6Z" stroke={color} strokeWidth="1.2" strokeLinejoin="round"/>
-      <circle cx="7.4" cy="8.4" r="2.1" stroke={color} strokeWidth="1.2"/>
-      <path d="M8.95 9.95 10.6 11.6" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-/** A tray with something leaving it — the register of what was asked of this project. */
 function RequestsIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -238,8 +230,21 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
   // arrives asking "what is open", not "is anything open under each of two tabs".
   //
   // The last two are off in the first release; see complianceConfig.
-  { id: "activity", group: "manage", label: { en: "Activity log", ko: "변경 기록" }, icon: ActivityIcon },
-  { id: "searchlog", group: "manage", label: { en: "Search log", ko: "조회 기록" }, icon: SearchLogIcon },
+  /*
+   * ONE ROW, TWO TABS INSIDE (owner, 2026-09-28: 사이드바에 메뉴를 합쳐서 그 화면 안에서는
+   * 탭으로 분리하자는 거야).
+   *
+   * They are two records of two different things — 변경 기록 answers "what changed", 조회 기록
+   * answers "who looked somebody up" — and their rows do not share a shape (a search carries the
+   * target, the screen and the stated purpose; a change carries a sentence). Nor their volume:
+   * searches run to dozens a day against a handful of setting changes a quarter, so one merged
+   * table would bury the changes. The DATA stays apart.
+   *
+   * What was worth merging is the MENU. Two rail rows both named 「… 기록」 made the reader choose
+   * before they knew which one held the answer. Same shape as 사용자 and 권한 설정 above: the rail
+   * names the place, the strip over the table names the list.
+   */
+  { id: "records", group: "manage", label: { en: "Records", ko: "기록" }, icon: ActivityIcon },
   { id: "requests", group: "manage", label: { en: "Requests", ko: "외부 요청" }, icon: RequestsIcon },
 ];
 
@@ -275,7 +280,6 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
   const [lang] = usePortalLanguage();
   /* The search log only exists where the purpose requirement does — it is the read half of the
      same feature, and a log that can never fill is a rail entry leading to an empty room. */
-  const searchLogEnabled = getComplianceConfig().searchAccessLog;
   const requestsEnabled = getComplianceConfig().externalRequests;
   return (
     <div
@@ -421,7 +425,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                   color: "var(--gray-500)", padding: "0 14px", marginBottom: "2px",
                 }}>{group.label[lang]}</p>
               )}
-            {PROJECT_TABS.filter(t => t.group === group.id).filter(t => t.id !== "searchlog" || searchLogEnabled).filter(t => t.id !== "requests" || requestsEnabled).map(t => {
+            {PROJECT_TABS.filter(t => t.group === group.id).filter(t => t.id !== "requests" || requestsEnabled).map(t => {
               const Icon = t.icon;
               const active = tab === t.id && !settingsOpen;
               return (

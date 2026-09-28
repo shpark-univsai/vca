@@ -15,8 +15,7 @@ import ProjectVipTab, { type VipHealthFilter } from "./ProjectVipTab";
 import ProjectLicenseTab from "./ProjectLicenseTab";
 import ProjectServerTab from "./ProjectServerTab";
 import PortalUsersPage from "./PortalUsersPage";
-import ProjectActivityTab from "./ProjectActivityTab";
-import ProjectSearchLogTab from "./ProjectSearchLogTab";
+import ProjectRecordsTabs from "./ProjectRecordsTabs";
 import ProjectRequestsTab from "./ProjectRequestsTab";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 
@@ -1815,7 +1814,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                     /* Opens the Activity log screen, not a modal. The modal listed everything
                        with no date range, no actor filter, no search and no export — which is
                        the whole of what the auditor role opens Portal for. */
-                    action={{ icon: <ArrowUpRight size={15} strokeWidth={2.4} />, label: t.seeAllActivity(projectActivity.length), onClick: () => onTabChange("activity") }}
+                    action={{ icon: <ArrowUpRight size={15} strokeWidth={2.4} />, label: t.seeAllActivity(projectActivity.length), onClick: () => onTabChange("records") }}
                   />
                 </div>
                 {recentActivity.length === 0 ? (
@@ -1877,11 +1876,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
       {tab === "users" && <PortalUsersPage projectId={projectId} onGoToCameras={() => onTabChange("cameras")} half="users" />}
       {/* The same page under the other rail row — see the note on PortalUsersPageProps.half. */}
       {tab === "grants" && <PortalUsersPage projectId={projectId} onGoToCameras={() => onTabChange("cameras")} half="grants" />}
-      {tab === "activity" && <ProjectActivityTab projectId={projectId} />}
-      {/* Gated as well as hidden from the rail: the tab lives in the URL, and a link to
-          ?tab=searchlog saved before the requirement was switched off should land somewhere
-          honest rather than on a screen the release does not have. */}
-      {tab === "searchlog" && getComplianceConfig().searchAccessLog && <ProjectSearchLogTab projectId={projectId} />}
+      {/* One rail row, two lists — see the note on PROJECT_TABS. The strip is drawn here rather
+          than inside either tab so neither list has to know about the other. 조회 기록 is still
+          gated by complianceConfig: with it off there is one tab and the strip does not appear,
+          which is the same screen this release had before the merge. */}
+      {tab === "records" && <ProjectRecordsTabs projectId={projectId} />}
       {/* Gated as well as hidden from the rail, for the same reason as searchlog above: the tab
           lives in the URL, and a bookmarked ?tab=requests should land somewhere honest rather
           than on a screen this release does not have. */}

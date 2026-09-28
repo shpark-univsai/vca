@@ -314,9 +314,13 @@ export default function PortalShell() {
     // the purpose gate deliberately left off: the rail then offered Search log, clicking it
     // worked, and only a LINK to the same screen bounced to the overview.
     () => {
+      /* OLD LINKS STILL LAND (2026-09-28). 변경 기록 and 조회 기록 became two tabs inside 기록,
+         so ?tab=activity and ?tab=searchlog no longer name a rail row — but they are in people's
+         bookmarks and in this repo's own deep links. They resolve to 기록 with the right tab
+         opened, rather than bouncing to the overview. */
+      if (tabParam === "activity" || tabParam === "searchlog") return "records";
       const named = PROJECT_TABS.find(t => t.id === tabParam)?.id;
       if (!named) return "overview";
-      if (named === "searchlog" && !getComplianceConfig().searchAccessLog) return "overview";
       // Every flagged tab needs a line here, not just the first one that got written. `requests`
       // was left out, so ?tab=requests passed straight through while ProjectSidebar hid the rail
       // entry and PortalProjectDetailPage drew nothing: the breadcrumb said "외부 요청" over an
