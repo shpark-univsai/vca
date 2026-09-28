@@ -303,7 +303,10 @@ function PresetMatrix({ presets, lang, header }: {
   const COLS = `minmax(180px, 1.6fr) repeat(${presets.length}, minmax(104px, 1fr))`;
   const line: React.CSSProperties = {
     display: "grid", gridTemplateColumns: COLS, columnGap: "12px",
-    alignItems: "center", padding: "8px 0", borderTop: BORDER,
+    /* 12px of its own inside the card's 16px (owner, 2026-09-28: 글자가 너무 끝에 붙었어).
+       Dropping the inner border took the padding with it, and the labels ended up sitting on the
+       card's own edge — the column had no air on the side the eye starts from. */
+    alignItems: "center", padding: "8px 12px", borderTop: BORDER,
   };
   return (
     /* Scrolls sideways rather than squeezing: a customer can make more presets than fit, and a
@@ -314,14 +317,16 @@ function PresetMatrix({ presets, lang, header }: {
        hairlines are what separates them, which is all a table needs. */
     <div style={{ overflowX: "auto" }}>
       <div style={{ minWidth: `${180 + presets.length * 104 + 40}px` }}>
-        <div style={{ display: "grid", gridTemplateColumns: COLS, columnGap: "12px", alignItems: "end", padding: "2px 0 12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: COLS, columnGap: "12px", alignItems: "end", padding: "2px 12px 12px" }}>
           <span />
           {presets.map(pr => <div key={pr.id} style={{ minWidth: 0 }}>{header(pr)}</div>)}
         </div>
         {GRANT_TREE.map((group, gi) => (
           <div key={gi}>
+            {/* The caption band runs to the card's inner edge — it is the head of a section, not
+                a row — while its text keeps the rows' 12px so the two line up. */}
             {group.caption && (
-              <div style={{ ...line, padding: "8px 10px", margin: "0 -10px", backgroundColor: "var(--gray-50)" }}>
+              <div style={{ ...line, margin: "0 -4px", padding: "8px 16px", backgroundColor: "var(--gray-50)" }}>
                 <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", color: "var(--gray-400)" }}>
                   {g.groupCaption[group.caption]}
                 </span>
