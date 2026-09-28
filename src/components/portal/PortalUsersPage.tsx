@@ -1798,7 +1798,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
  * is no route back to step one, because a second look at the same password does not exist — a
  * lost password is reissued, not recovered.
  */
-function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user: PortalUser; mailAvailable: boolean; initialCode?: string; onClose: () => void }) {
+function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }: { user: PortalUser; mailAvailable: boolean; initialCode?: string; onClose: () => void; onBack?: () => void }) {
   useEscapeKey(onClose);
   const issueTemporaryPassword = useVcaStore(s => s.issueTemporaryPassword);
   const issueSetupCode = useVcaStore(s => s.issueSetupCode);
@@ -1940,7 +1940,20 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose }: { user
       for. `dirty` is not set: nothing here is typed, and the result step must not trap the reader
       behind a confirmation when the code is already minted.
     */
-    <Drawer title={password ? c.resultTitle : c.modalTitle} onClose={onClose} width="440px"
+    /*
+     * ← WHILE THE ERRAND IS STILL UNDONE (owner, 2026-09-28: 비밀번호 재설정 버튼 누르면
+     * 나오는거에서 뒤로가기가 있어야할것같아).
+     *
+     * This opens from the account card, over it, the same way the projects / app-grant / camera
+     * editors do — and those three have carried a ← since the owner asked for one. It did not,
+     * because its opener closed the card first, so ✕ landed on the table and the card you were
+     * reading was gone.
+     *
+     * Only until the credential exists. Once it is minted there is nothing to go back to — the
+     * code is already issued and the old one already retired — so the footer keeps its single
+     * 완료 and the arrow goes away with the step it belonged to.
+     */
+    <Drawer title={password ? c.resultTitle : c.modalTitle} onClose={onClose} onBack={password === null ? onBack : undefined} width="440px"
       footer={password === null ? (
         <>
           <PanelCancel onClick={onClose} label={t.cancel} />
@@ -5440,12 +5453,14 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     {
                       key: "credential", label: t.resetPassword, icon: <KeyRound size={14} strokeWidth={2.2} />,
                       disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
-                      onClick: () => { close(); setCredentialFor(mu); },
+                      /* No close(): the card stays under this, which is what gives the panel a
+                         ← to come back to. Same as the three editors above. */
+                      onClick: () => setCredentialFor(mu),
                     },
                     ...(mu.setupCode ? [{
                       key: "code", label: t.viewSetupCode, icon: <Eye size={14} strokeWidth={2.2} />,
                       disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
-                      onClick: () => { close(); setViewingCodeFor(mu); },
+                      onClick: () => setViewingCodeFor(mu),
                     }] : []),
                   ].map(a => (
                     /* THE SAME BOX 정지 AND 제거 WEAR (owner, 2026-09-28: 비밀번호 재설정도 아래
@@ -5619,7 +5634,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
         <InviteLinkPanel title={invitePanel.title} links={invitePanel.links} onClose={() => setInvitePanel(null)} />
       )}
       {credentialFor && (
-        <TempPasswordModal user={credentialFor} mailAvailable={mailAvailable} onClose={() => setCredentialFor(null)} />
+        <TempPasswordModal user={credentialFor} mailAvailable={mailAvailable}
+          onClose={() => setCredentialFor(null)} onBack={() => setCredentialFor(null)} />
       )}
       {viewingCodeFor?.setupCode && (
         <TempPasswordModal
@@ -5627,6 +5643,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           mailAvailable={mailAvailable}
           initialCode={viewingCodeFor.setupCode}
           onClose={() => setViewingCodeFor(null)}
+          onBack={() => setViewingCodeFor(null)}
         />
       )}
     </div>
