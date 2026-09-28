@@ -2544,16 +2544,19 @@ const PANEL_GROUP: React.CSSProperties = {
  * teams is a different act with different consequences (their whole roster history, their role,
  * the mail domain their invite came from) and it does not belong behind a checkbox list.
  */
-function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
+function UserProjectsModal({ user, teamProjects, onClose, onBack, onSave }: {
   user: PortalUser;
   teamProjects: { id: string; name: string }[];
   onClose: () => void;
+  /** Opened over the account card: ← in the header and 취소 in the footer both return to it. */
+  onBack?: () => void;
   onSave: (projectIds: string[]) => void;
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [picked, setPicked] = useState<string[]>(user.projectIds);
-  useEscapeKey(onClose);
+  /* NO useEscapeKey HERE — the Drawer owns Escape. A second listener closed this panel AND the
+     card behind it with one keypress, which is the same bug the invite form's editor had. */
   const toggle = (id: string) =>
     setPicked(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   // Zero is refused rather than warned about. An account with no projects signs into an app with
@@ -2564,16 +2567,17 @@ function UserProjectsModal({ user, teamProjects, onClose, onSave }: {
   return (
     /* A panel, like the rest of this page's editors. Which sites a person may open is a decision
        taken against the row that shows what they hold now. */
-    <Drawer title={t.projectsModalTitle} onClose={onClose}
+    <Drawer title={t.projectsModalTitle} onClose={onClose} onBack={onBack} width={onBack ? "520px" : undefined}
       footer={
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
           {!canSave && (
             <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.projectsModalNoneWarning}</p>
           )}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-            <button className="portal-btn-outline" onClick={onClose}
+            {/* 취소 goes BACK when there is a card behind, not away. */}
+            <button className="portal-btn-outline" onClick={onBack ?? onClose}
               style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-              {t.cancel}
+              {onBack ? t.grantBack : t.cancel}
             </button>
             <button className="portal-btn-primary" onClick={() => { onSave(picked); onClose(); }} disabled={!canSave}
               style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
@@ -3075,7 +3079,7 @@ function RosterEntryModal({ entry, projectId, onClose, onCreated, t }: {
   );
 }
 
-function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => void }) {
+function AppGrantModal({ user, onClose, onBack }: { user: PortalUser; onClose: () => void; onBack?: () => void }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const { showToast } = useToast();
@@ -3154,6 +3158,9 @@ function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => voi
         return set && !sameActions(set, held) ? t.grantsOverwriteWarning : null;
       }}
       blockedReason={d => changed(d) ? null : t.grantsUnchanged}
+      /* Opened over the account card: `nested` puts ← in the header and turns the footer's first
+         button into 뒤로, which lands back on the card instead of closing everything. */
+      nested={!!onBack}
       onClose={onClose}
       onApply={save}
     />
@@ -5110,7 +5117,10 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
               : (mu.grantMode === "preset" && mu.presetId && presetLabelById.get(mu.presetId)) || t.grantCustom,
             disabled: !manageAccess || !mu.appAccess,
             reason: !manageAccess ? t.reasonNotOwner : !mu.appAccess ? t.reasonNoAppScreens : undefined,
-            onClick: () => { close(); setChangingGrantsFor(mu); },
+            /* No close() — the editor opens OVER the card so ← 뒤로 and 취소 have somewhere
+               to go back to (owner, 2026-09-28: 뒤로가기가 없고 엑스를 누르니까 패널이 아예
+               꺼지는데 · 아래 취소 누르면 패널 안에서 뒤로 가게 해 줘). */
+            onClick: () => setChangingGrantsFor(mu),
           },
           {
             key: "cameras", group: "what",
@@ -5122,7 +5132,10 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             reason: !manageAccess ? t.reasonNotOwner
               : !mu.appAccess ? t.reasonNoScopeWithoutApp
               : scopableCamerasFor(mu).length === 0 ? t.reasonNoCamerasToScope : undefined,
-            onClick: () => { close(); setScopingFor(mu); },
+            /* No close() — the editor opens OVER the card so ← 뒤로 and 취소 have somewhere
+               to go back to (owner, 2026-09-28: 뒤로가기가 없고 엑스를 누르니까 패널이 아예
+               꺼지는데 · 아래 취소 누르면 패널 안에서 뒤로 가게 해 줘). */
+            onClick: () => setScopingFor(mu),
           },
           {
             key: "projects", group: "where",
@@ -5139,7 +5152,10 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             })(),
             disabled: !manageAccess,
             reason: manageAccess ? undefined : t.reasonNotOwner,
-            onClick: () => { close(); setEditingProjectsFor(mu); },
+            /* No close() — the editor opens OVER the card so ← 뒤로 and 취소 have somewhere
+               to go back to (owner, 2026-09-28: 뒤로가기가 없고 엑스를 누르니까 패널이 아예
+               꺼지는데 · 아래 취소 누르면 패널 안에서 뒤로 가게 해 줘). */
+            onClick: () => setEditingProjectsFor(mu),
           },
         ];
         return (
@@ -5149,6 +5165,10 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
              go in the panel's title — the badge is there for the reason it moved beside the name
              in the table: a suspended account makes everything below it hypothetical. */
           <Drawer
+            /* While one of its editors is open, Escape belongs to THAT panel — the same
+               arrangement the invite form uses. Two listeners meant one keypress closed the editor
+               and the card under it. */
+            escapeEnabled={!editingProjectsFor && !scopingFor && !changingGrantsFor}
             title={
               <span style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 {/* THE PERSON GETS A FACE (owner, 2026-09-22: 중요한 정보들이 눈에 안들어오는
@@ -5536,6 +5556,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           user={editingProjectsFor}
           teamProjects={teamProjects}
           onClose={() => setEditingProjectsFor(null)}
+          onBack={() => setEditingProjectsFor(null)}
           onSave={ids => {
             updatePortalUserProjects(editingProjectsFor.id, ids);
             showToast({ variant: "success", title: t.projectsUpdatedTitle, desc: editingProjectsFor.name });
@@ -5543,13 +5564,14 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
         />
       )}
       {changingGrantsFor && (
-        <AppGrantModal user={changingGrantsFor} onClose={() => setChangingGrantsFor(null)} />
+        <AppGrantModal user={changingGrantsFor} onClose={() => setChangingGrantsFor(null)} onBack={() => setChangingGrantsFor(null)} />
       )}
       {scopingFor && (
         <CameraScopePicker
           user={scopingFor}
           cameras={scopableCamerasFor(scopingFor)}
           onClose={() => setScopingFor(null)}
+          onBack={() => setScopingFor(null)}
         />
       )}
       {invitePanel && (

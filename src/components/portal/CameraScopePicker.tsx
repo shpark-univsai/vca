@@ -32,11 +32,14 @@ import { BORDER, CONTROL_HEIGHT, Drawer, PICKED_FILL, PICKED_LINE, TextField } f
  * be a separate decision. See CameraGroup for why this is a real object rather than the zone
  * label, and for what Milestone does differently.
  */
-export default function CameraScopePicker({ user, cameras, onClose }: {
+export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
   user: PortalUser;
   /** The cameras of the projects this account holds — the only ones a scope can name. */
   cameras: Camera[];
   onClose: () => void;
+  /** Opened over the account card: ← in the header and 뒤로 in the footer return to it rather
+   *  than closing the lot (owner, 2026-09-28: 뒤로가기가 없고 엑스를 누르니까 패널이 아예 꺼지는데). */
+  onBack?: () => void;
 }) {
   /* Escape is the Drawer's now — one panel, one place that decides how it closes. */
   const [lang] = usePortalLanguage();
@@ -259,6 +262,7 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
         </span>
       }
       onClose={onClose}
+      onBack={onBack}
       width="520px"
       footer={
         /* A column inside the footer row: the sentence and the warning belong above the buttons,
@@ -284,9 +288,9 @@ export default function CameraScopePicker({ user, cameras, onClose }: {
             <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.refuseEmpty}</p>
           ) : null}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose}
+          <button className="portal-btn-outline" onClick={onBack ?? onClose}
             style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            {t.cancel}
+            {onBack ? t.back : t.cancel}
           </button>
           <button className="portal-btn-primary" onClick={save} disabled={!(canSave && dirty)}
             style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: canSave && dirty ? "var(--primary-400)" : "var(--gray-200)", color: canSave && dirty ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave && dirty ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
@@ -501,6 +505,7 @@ const T = {
     summaryFrozen: " Cameras installed later are not — this list is fixed.",
     refuseEmpty: "Pick at least one camera — an account with none opens a screen with nothing on it",
     cancel: "Cancel",
+    back: "Back",
     apply: "Change",
     savedTitle: "Cameras updated",
     savedAll: (name: string) => `${name} can watch every camera on their projects.`,
@@ -543,6 +548,7 @@ const T = {
     summaryFrozen: " 나중에 설치되는 카메라는 들어가지 않습니다.",
     refuseEmpty: "카메라를 하나 이상 골라주세요 — 하나도 없으면 화면을 열어도 아무것도 없습니다",
     cancel: "취소",
+    back: "뒤로",
     apply: "변경",
     savedTitle: "카메라 범위를 바꿨습니다",
     savedAll: (name: string) => `${name}이(가) 담당 프로젝트의 카메라를 전부 볼 수 있습니다.`,
