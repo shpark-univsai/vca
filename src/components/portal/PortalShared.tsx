@@ -2253,8 +2253,8 @@ export type GrantRowDef = {
   search?: AppAction;
   /** The screen IS the search, so there is no second action and no choice — one cell that says so. */
   searchIsAll?: boolean;
-  /** A grant that is not a screen: an indented row under this one. */
-  child?: AppAction;
+  /** Grants that are not screens: indented rows under this one. */
+  children?: AppAction[];
   /**
    * A HEADING INSIDE A TAB, for the one place a tab holds two kinds of thing (owner, 2026-09-28:
    * 아 이벤트 안에 VIP 감지랑 트레킹 이렇게 표시해 줘야겠구나).
@@ -2265,7 +2265,7 @@ export type GrantRowDef = {
    * 이벤트 the pair was invisible; printed as two rows without a heading they looked like two
    * panels. So the heading is drawn and the rows under it are indented.
    */
-  subhead?: "events";
+  subhead?: "events" | "subjects";
   /** Sits under the nearest `subhead` above it. Presentation only — the store's parent rule is
    *  APP_ACTION_PARENT and it is unchanged. */
   indent?: boolean;
@@ -2296,11 +2296,22 @@ export const GRANT_TREE: GrantGroupDef[] = [
       { action: "systemStatus" },
     ],
   },
-  { caption: "bestframe", rows: [{ action: "liveWall" }, { action: "history" }] },
+  {
+    caption: "bestframe",
+    rows: [
+      { action: "liveWall" },
+      { action: "history" },
+      /* The three subjects sit under a heading rather than under either row: the screen's own
+         filter covers both the tiles and the records, so neither one owns them. */
+      { action: "bestframeVip", subhead: "subjects", indent: true },
+      { action: "bestframeVehicle", indent: true },
+      { action: "bestframeUnknown", indent: true },
+    ],
+  },
   {
     caption: "data",
     rows: [
-      { action: "liveMonitoring", search: "liveMonitoringSearch" },
+      { action: "liveMonitoring", search: "liveMonitoringSearch", children: ["monitoringVip", "monitoringUnknown"] },
       { action: "reid", search: "reidSearch" },
       { action: "redface", searchIsAll: true },
     ],
@@ -2318,7 +2329,7 @@ export const GRANT_TREE: GrantGroupDef[] = [
  */
 const PLACED_ACTIONS = new Set<AppAction>(
   GRANT_TREE.flatMap(group => group.rows.flatMap(row =>
-    [row.action, ...(row.search ? [row.search] : []), ...(row.child ? [row.child] : [])])),
+    [row.action, ...(row.search ? [row.search] : []), ...(row.children ?? [])])),
 );
 const UNPLACED_ACTIONS = APP_ACTIONS.filter(a => !PLACED_ACTIONS.has(a));
 
@@ -2521,7 +2532,7 @@ export function AppGrantList({ actions, locked, onToggle, rowFill }: {
   const toggleRow = (row: GrantRowDef) => {
     if (has(row.action)) {
       if (row.search && has(row.search)) onToggle(row.search);
-      if (row.child && has(row.child)) onToggle(row.child);
+      (row.children ?? []).forEach(c => { if (has(c)) onToggle(c); });
     }
     onToggle(row.action);
   };
@@ -2540,12 +2551,12 @@ export function AppGrantList({ actions, locked, onToggle, rowFill }: {
           desc={locked ? undefined : g.actionDesc[row.action]}
           on={on} locked={locked} fill={fill} right={stage}
           onToggle={() => toggleRow(row)} />
-        {row.child && (
-          <GrantRow label={nameOf(row.child)}
-            desc={locked ? undefined : g.actionDesc[row.child]}
-            on={has(row.child)} locked={locked} disabled={!on} indent fill={fill}
-            onToggle={() => onToggle(row.child!)} />
-        )}
+        {(row.children ?? []).map(c => (
+          <GrantRow key={c} label={nameOf(c)}
+            desc={locked ? undefined : g.actionDesc[c]}
+            on={has(c)} locked={locked} disabled={!on} indent fill={fill}
+            onToggle={() => onToggle(c)} />
+        ))}
       </React.Fragment>
     );
   };

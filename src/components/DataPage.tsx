@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MatchItem, ReIDStatus } from "@/types/reid";
 import {
-  CAMERA_CODES, canSearchIn, judgementFor, screensFor, type DetectionVerdict,
+  CAMERA_CODES, canSearchIn, holdsAppAction, judgementFor, screensFor, type DetectionVerdict,
   useActiveProjectId, useProjectCameras, useVcaStore, getActiveProjectId, personsInProject,
   type AppScreen, type Camera, type Person,
 } from "@/lib/vcaStore";
@@ -1795,9 +1795,25 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   const onlineCameraCodes = useCameraStatus().running.map(c => c.code);
   // One card per capture. No folding — see the note below cardTimestamp for why the fold and its
   // "caught 3x" badge were removed together.
-  const camDetailItems = openCam === ALL_CAMERAS_ID
+  /*
+   * WHICH SUBJECTS THIS ACCOUNT MAY BE SHOWN HERE (2026-09-28, owner: 데이터 > 모니터링에서
+   * VIP랑 모르는 사람 두 종류를 볼 수 있는데 그것도 권한 부여해서).
+   *
+   * This screen's whole weight is that it shows people nobody registered — that is why it was
+   * split from the dashboard's events in the first place. Now the two halves are grantable on
+   * their own: an account can watch registered people walk past here without being shown a
+   * stranger's face.
+   *
+   * RedFace-flagged rows ride with 모르는 사람: the flag is a judgement about a face nobody
+   * enrolled, so it is the same subject seen a second way.
+   */
+  const monPortalUsers = useVcaStore(state => state.portalUsers);
+  const monMayVip = holdsAppAction(monPortalUsers, "monitoringVip");
+  const monMayUnknown = holdsAppAction(monPortalUsers, "monitoringUnknown");
+  const allowedHere = (p: { status: ReIDStatus }) => (p.status === "VIP" ? monMayVip : monMayUnknown);
+  const camDetailItems = (openCam === ALL_CAMERAS_ID
     ? onlineCameraCodes.flatMap(code => feed[code] ?? [])
-    : feed[openCam] ?? [];
+    : feed[openCam] ?? []).filter(allowedHere);
 
   return (
     <div style={{ flex:1, display:"flex", gap:"12px", overflow:"hidden", padding:"20px 24px 12px", backgroundColor:"var(--gray-100)", boxSizing:"border-box" }}>

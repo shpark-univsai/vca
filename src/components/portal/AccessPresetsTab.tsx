@@ -383,7 +383,7 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
 
   /** Every grant the tab holds, in one list — what the band's own cell switches. */
   const actionsIn = (group: GrantGroupDef): AppAction[] =>
-    group.rows.flatMap(r => [r.action, ...(r.search ? [r.search] : []), ...(r.child ? [r.child] : [])]);
+    group.rows.flatMap(r => [r.action, ...(r.search ? [r.search] : []), ...(r.children ?? [])]);
 
   const groupCell = (pr: AccessPreset, group: GrantGroupDef) => {
     const held = actionsOf(pr);
@@ -515,14 +515,14 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
                   </span>
                   {presets.map(pr => <span key={pr.id} style={{ opacity: removed.includes(pr.id) ? 0.4 : 1 }}>{cellFor(pr, row)}</span>)}
                 </div>
-                {row.child && (
-                  <div style={line}>
-                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", paddingLeft: "22px", minWidth: 0 }}>
-                      {g.rowName[row.child] ?? g.actionName[row.child]}
+                {(row.children ?? []).map(c => (
+                  <div key={c} style={line}>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", paddingLeft: row.indent ? "34px" : "22px", minWidth: 0 }}>
+                      {g.rowName[c] ?? g.actionName[c]}
                     </span>
-                    {presets.map(pr => <span key={pr.id} style={{ opacity: removed.includes(pr.id) ? 0.4 : 1 }}>{cellFor(pr, row, row.child)}</span>)}
+                    {presets.map(pr => <span key={pr.id} style={{ opacity: removed.includes(pr.id) ? 0.4 : 1 }}>{cellFor(pr, row, c)}</span>)}
                   </div>
-                )}
+                ))}
               </div>
             ))}
           </div>

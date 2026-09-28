@@ -573,9 +573,11 @@ function PinIcon({ active }: { active: boolean }) {
 
 /* ── Camera feed card ─────────────────────────────────────────── */
 function CameraCard({
-  cam, data, onDetClick, onHeaderArrowClick, filterType, style, sidePanelOnHover,
+  cam, data, onDetClick, onHeaderArrowClick, filterType, allowedTypes, style, sidePanelOnHover,
 }: {
   cam: Camera; data: CamData; filterType: DetType | "All";
+  /** Which kinds of subject this account may be shown here — see the grants that drive it. */
+  allowedTypes: DetType[];
   onDetClick: (det: Detection, data: CamData, camId: string, e: React.MouseEvent) => void;
   onHeaderArrowClick?: () => void;
   style?: React.CSSProperties;
@@ -585,7 +587,12 @@ function CameraCard({
   const t = T[lang];
   // Newest first — "time" is an "HH:MM:SS" string within the same day, so a plain descending
   // string sort already gives correct chronological order without needing to parse it.
-  const dets = (filterType === "All" ? data.detections : data.detections.filter(d => d.type === filterType))
+  /* THE GRANT FIRST, THE READER'S FILTER SECOND (2026-09-28). A type this account may not be
+     shown is gone from the list AND from the boxes drawn on the tile — the same detections feed
+     both, which is why one filter here covers the whole card. */
+  const dets = data.detections
+    .filter(d => allowedTypes.includes(d.type))
+    .filter(d => filterType === "All" || d.type === filterType)
     .slice().sort((a, b) => b.time.localeCompare(a.time));
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -1075,6 +1082,13 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
   /* The wall of live tiles is its own grant — see the note where the grid is drawn. */
   const portalUsers = useVcaStore(st => st.portalUsers);
   const mayWatchLive = holdsAppAction(portalUsers, "liveWall");
+  /* Which subjects this account may be shown on this screen. Empty is possible and honest: a
+     grant with no subject shows an empty screen rather than pretending. */
+  const allowedTypes = useMemo<DetType[]>(() => ([
+    ...(holdsAppAction(portalUsers, "bestframeVip") ? ["VIP" as DetType] : []),
+    ...(holdsAppAction(portalUsers, "bestframeVehicle") ? ["Vehicle" as DetType] : []),
+    ...(holdsAppAction(portalUsers, "bestframeUnknown") ? ["Unknown" as DetType] : []),
+  ]), [portalUsers]);
   // The site's camera register, read live so a camera the Portal adds, renames or stops shows up
   // here. Memoised in the store hook, which is what lets the render-phase reconciliation below
   // compare it by reference.
@@ -1476,11 +1490,13 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
     );
   }
 
+  /* A chip for a type this account cannot be shown would filter a list to nothing and read as a
+     fault. Only what they may see is offered. */
   const FILTER_CFG: { id: DetType | "All"; label: string; color?: string }[] = [
     { id:"All",     label: t.filterAll },
-    { id:"VIP",     label: typeLabel("VIP", lang),     color: DET_COLOR.VIP },
-    { id:"Vehicle", label: typeLabel("Vehicle", lang), color: DET_COLOR.Vehicle },
-    { id:"Unknown", label: typeLabel("Unknown", lang), color: DET_COLOR.Unknown },
+    ...(allowedTypes.includes("VIP")     ? [{ id:"VIP" as const,     label: typeLabel("VIP", lang),     color: DET_COLOR.VIP }] : []),
+    ...(allowedTypes.includes("Vehicle") ? [{ id:"Vehicle" as const, label: typeLabel("Vehicle", lang), color: DET_COLOR.Vehicle }] : []),
+    ...(allowedTypes.includes("Unknown") ? [{ id:"Unknown" as const, label: typeLabel("Unknown", lang), color: DET_COLOR.Unknown }] : []),
   ];
 
   return (
@@ -1708,6 +1724,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
                     style={{ height:"100%", minHeight:0 }}
                   >
                     <CameraCard
+                      allowedTypes={allowedTypes}
                       cam={cam}
                       data={camData}
                       filterType={filterType}

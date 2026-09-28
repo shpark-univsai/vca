@@ -2462,6 +2462,8 @@ export type AppAction =
    */
   | "dashboardTrail"
   | "liveMonitoring"
+  | "monitoringVip"
+  | "monitoringUnknown"
   /**
    * SEARCHING ON 모니터링, AS A SECOND STEP ON THE SAME SCREEN (2026-09-23, owner: 검색할 수 있게
    * 할 건가 그 권한을 표시해 주는 건데 검색에 대한 권한이 있는지 표시가 없다고 느껴져).
@@ -2489,6 +2491,26 @@ export type AppAction =
    * screensForActions.
    */
   | "liveWall"
+  /**
+   * WHICH SUBJECTS A SCREEN MAY SHOW (2026-09-28, owner: 베스트 프레임 안에서 VIP랑 차량,
+   * unknown 이렇게 세 개 분류해서 확인할 수 있게 할 건지 · 데이터 > 모니터링에서 VIP랑 모르는
+   * 사람 두 종류를 볼 수 있는데 그것도 권한 부여해서).
+   *
+   * Per screen rather than once for the whole app, which was the other way and was rejected: an
+   * installation can reasonably let somebody read strangers out of the recorded set while keeping
+   * them off the live monitoring wall, and one global switch cannot say that.
+   *
+   * 「모르는 사람」 is the one that carries weight. It is a face nobody enrolled, filmed and kept,
+   * and an account that never needs to see one should not be shown one — the same line
+   * `liveMonitoring` was split from `liveView` on.
+   *
+   * The Best Frame three have NO parent: that tab opens on either of its two rows (see
+   * screensForActions), so there is no single action they hang from. Holding one with neither row
+   * is inert rather than wrong — the tab does not open, so nothing is shown.
+   */
+  | "bestframeVip"
+  | "bestframeVehicle"
+  | "bestframeUnknown"
   | "history"
   /**
    * 데이터 → Re-ID 분석. Split from `trail` (2026-09-23, owner: 레드맵이랑 Re-ID 분석은 별개
@@ -2564,8 +2586,9 @@ export type AppAction =
  * rather than a place. A reader can now check this list against the app's menu bar top to bottom.
  */
 export const APP_ACTIONS: AppAction[] = [
-  "liveView", "dashboardTrail", "systemStatus", "liveWall", "history",
-  "liveMonitoring", "liveMonitoringSearch",
+  "liveView", "dashboardTrail", "systemStatus",
+  "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown",
+  "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch",
   "reid", "reidSearch",
   "redface",
   "trail", "export",
@@ -2580,6 +2603,8 @@ export const APP_ACTIONS: AppAction[] = [
  */
 export const APP_ACTION_PARENT: Partial<Record<AppAction, AppAction>> = {
   dashboardTrail: "liveView",
+  monitoringVip: "liveMonitoring",
+  monitoringUnknown: "liveMonitoring",
   liveMonitoringSearch: "liveMonitoring",
   reidSearch: "reid",
   /* 증거 내보내기 is one button on Redmap and nowhere else — counted: zero export controls on
@@ -3148,10 +3173,10 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "liveMonitoringSearch", "liveWall", "history", "reid", "reidSearch", "redface", "trail", "export"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "liveMonitoringSearch", "liveWall", "history", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail", "export"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
-  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "liveWall", "history"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
+  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
   { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "invited" },
   { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "suspended", lastLoginAt: "2026-06-02 08:30" },
   // The customer's security officer: reads Portal for the audit trail, has no business in the
@@ -3192,20 +3217,20 @@ const ACCESS_REQUESTS: AccessRequest[] = [];
  * in red, before the code is handed over, which is the whole reason that state is drawn.
  */
 const STAFF_ROSTER: RosterEntry[] = [
-  { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "liveMonitoringSearch", "liveWall", "history", "reid", "reidSearch", "redface", "trail", "export"], code: "FQ4M7XB2", issuedAt: "2026-09-20T09:00:00+08:00" },
-  { employeeId: "EMP-3002", name: "Priya Nair", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "liveWall", "history"], code: "BPXW4762" },
-  { employeeId: "EMP-3003", name: "Daniel Cruz", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "liveWall", "history"], code: "HKLM9234" },
-  { employeeId: "EMP-3004", name: "Farah Ismail", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "liveMonitoringSearch", "liveWall", "history", "reid", "reidSearch", "redface", "trail"], code: "TN8R3KD5", issuedAt: "2026-09-20T09:00:00+08:00" },
-  { employeeId: "EMP-3005", name: "Tom Reyes", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "used", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "liveWall", "history"], code: "QRST5678" },
-  { employeeId: "EMP-3006", name: "Lena Brooks", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "liveWall", "history"], code: "YC6V9HJ4", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail", "export"], code: "FQ4M7XB2", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3002", name: "Priya Nair", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "BPXW4762" },
+  { employeeId: "EMP-3003", name: "Daniel Cruz", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "HKLM9234" },
+  { employeeId: "EMP-3004", name: "Farah Ismail", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "TN8R3KD5", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3005", name: "Tom Reyes", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "used", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "QRST5678" },
+  { employeeId: "EMP-3006", name: "Lena Brooks", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "YC6V9HJ4", issuedAt: "2026-09-20T09:00:00+08:00" },
   // Issued long enough ago that REGISTRATION_CODE_TTL_DAYS has passed: the row still says
   // "unused", and effectiveCodeStatus() is what turns it into "expired". Stored-as-expired is not
   // used in the seeds any more — it could never demonstrate that expiry actually works.
-  { employeeId: "EMP-3007", name: "Marcus Ho", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "liveMonitoringSearch", "liveWall", "history", "reid", "reidSearch", "redface", "trail"], code: "VXYZ2345", issuedAt: "2026-07-15T09:00:00+08:00" },
+  { employeeId: "EMP-3007", name: "Marcus Ho", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "VXYZ2345", issuedAt: "2026-07-15T09:00:00+08:00" },
   { employeeId: "EMP-3008", name: "Aisha Bakar", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "JKMN6789" },
-  { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "liveMonitoringSearch", "liveWall", "history", "reid", "reidSearch", "redface", "trail", "export"], code: "MZ2K5QP7", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail", "export"], code: "MZ2K5QP7", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3010", name: "Sana Idris", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "used", code: "CDFG3456" },
-  { employeeId: "EMP-3011", name: "Emily Foster", department: "Operations", projectId: "proj-riverside", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "liveMonitoringSearch", "liveWall", "history", "reid", "reidSearch", "redface", "trail"], code: "RB9T4LN6", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3011", name: "Emily Foster", department: "Operations", projectId: "proj-riverside", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "RB9T4LN6", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3012", name: "Kevin Ng", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "LMPQ8765" },
   { employeeId: "EMP-3013", name: "Hana Suzuki", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "unused", code: "DX7J2WF8", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3014", name: "Oliver Grant", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "used", code: "RSTU4325" },
@@ -4417,17 +4442,17 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     {
       id: "preset-operator", teamId: "team-univs", builtinKey: "operator", label: "운영자",
       description: "지금 일어나는 일을 본다",
-      actions: ["systemStatus", "liveView", "liveMonitoring", "liveWall", "history"],
+      actions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"],
     },
     {
       id: "preset-investigator", teamId: "team-univs", builtinKey: "investigator", label: "조사자",
       description: "운영자가 하는 일에 인물 검색과 동선 추적을 더합니다",
-      actions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "liveMonitoringSearch", "liveWall", "history", "reid", "reidSearch", "redface", "trail"],
+      actions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"],
     },
     {
       id: "preset-supervisor", teamId: "team-univs", builtinKey: "supervisor", label: "감독자",
       description: "조사자가 하는 일에 증거 내보내기를 더합니다",
-      actions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "liveMonitoringSearch", "liveWall", "history", "reid", "reidSearch", "redface", "trail", "export"],
+      actions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail", "export"],
     },
   ],
   searchPurpose: null,
