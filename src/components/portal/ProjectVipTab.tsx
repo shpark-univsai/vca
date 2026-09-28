@@ -672,7 +672,7 @@ interface RegisterValues {
  * and until now only the bulk CSV import could write it — a note could exist on a row that nobody
  * was able to type.
  */
-function RegisterVipModal({ t, person, photoUnreadable, groups, categories, projectId, onClose, onSubmit, onManageCategories, escapeSuspended }: {
+function RegisterVipModal({ t, person, photoUnreadable, groups, categories, projectId, onClose, onBack, onSubmit, onManageCategories, escapeSuspended }: {
   t: VipDict;
   /** Absent = registering. Present = editing that person. */
   person?: Person;
@@ -683,6 +683,8 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
   categories: VipCategory[];
   projectId: string;
   onClose: () => void;
+  /** Set when this opened over the person's detail panel — see Drawer.onBack. */
+  onBack?: () => void;
   onSubmit: (values: RegisterValues) => void;
   onManageCategories: () => void;
   /*
@@ -868,6 +870,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
     <Drawer
       title={editing ? t.editModalTitle(person.name) : t.modalTitle}
       onClose={closeUnlessManagingCategories}
+      onBack={onBack}
       width="520px"
       footer={
         <>
@@ -2796,11 +2799,6 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
       )}
 
       {showRegister && <RegisterVipModal t={t} groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} escapeSuspended={managingCategories} projectId={projectId} onClose={() => setShowRegister(false)} onSubmit={register} />}
-      {editingPerson && (
-        <RegisterVipModal t={t} person={editingPerson}
-          photoUnreadable={healthIds.embeddingFailed.has(editingPerson.id) || healthIds.reenrolling.has(editingPerson.id)}
-          groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} escapeSuspended={managingCategories} projectId={projectId} onClose={() => setEditingPerson(null)} onSubmit={saveEdit} />
-      )}
       {confirmingBulkDelete && (
         <ConfirmModal
           title={t.bulkConfirmDeleteTitle(visibleSelectedIds.length)}
@@ -2893,9 +2891,27 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           zone={projectZone}
           groups={personGroups.filter(g => g.projectId === projectId)}
           onClose={() => setDetailFor(null)}
-          onEdit={() => { setEditingPerson(detailFor); setDetailFor(null); }}
+          /* The detail panel stays under this (owner, 2026-09-28: 저렇게 열고 뒤로가기가 없는게
+             또 있으면 고쳐줘) — 편집 used to close it, so ✕ landed on the table and the record
+             you were reading was gone. Now ← comes back to it. */
+          onEdit={() => setEditingPerson(detailFor)}
           onRemove={() => { setConfirmingRemove(detailFor); setDetailFor(null); }}
         />
+      )}
+      {/*
+        AFTER the detail panel, not before it (owner, 2026-09-28: 저렇게 열고 뒤로가기가 없는게
+        또 있으면 고쳐줘).
+
+        Both are Drawers flush to the right edge, so the LATER one paints on top. This block used
+        to sit above PersonDetailModal in the tree, which put the editor UNDER the panel it opens
+        from — measured: the ← was at x=937 and elementFromPoint returned the detail panel's box,
+        so the arrow was there and unclickable. Stacking order is render order here.
+      */}
+      {editingPerson && (
+        <RegisterVipModal t={t} person={editingPerson}
+          photoUnreadable={healthIds.embeddingFailed.has(editingPerson.id) || healthIds.reenrolling.has(editingPerson.id)}
+          groups={projectGroupsAll} categories={activeCategories} onManageCategories={() => setManagingCategories(true)} escapeSuspended={managingCategories} projectId={projectId}
+          onClose={() => setEditingPerson(null)} onBack={detailFor ? () => setEditingPerson(null) : undefined} onSubmit={saveEdit} />
       )}
       {groupModalFor && (
         <GroupModal t={t} group={groupModalFor.group} projectId={projectId} onClose={() => setGroupModalFor(null)} />

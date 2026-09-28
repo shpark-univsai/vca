@@ -1090,10 +1090,12 @@ function InviteLinkRow({ name, email, url }: { name: string; email: string; url:
  * DO NOT PUT THIS BACK IN A TOAST. A toast is for something that happened; this is something the
  * administrator still has to carry somewhere.
  */
-function InviteLinkPanel({ title, links, onClose, children }: {
+function InviteLinkPanel({ title, links, onClose, onBack, children }: {
   title: string;
   links: InviteLink[];
   onClose: () => void;
+  /** Set when this opened over the account card — see Drawer.onBack. */
+  onBack?: () => void;
   /**
    * Anything the account still needs before the administrator walks away, under the link.
    *
@@ -1110,9 +1112,11 @@ function InviteLinkPanel({ title, links, onClose, children }: {
     /* A panel, so the account list this link belongs to stays behind it — and so the scope picker
        that opens over this one has something to come back to.
        The z-index note this box carried (310 rather than 300, because it holds the only copy of
-       the link) is the Drawer's 320 now: every panel is above every centred confirm, which is the
-       same ordering said once instead of per dialog. */
-    <Drawer title={title} onClose={onClose}
+       the link) is the Drawer's 320 now. The ordering flipped on 2026-09-28: a confirm is 400 and
+       sits ABOVE every panel, because a confirm opened from inside a panel was rendering under
+       that panel's own dim and reading as disabled. Panels stack among themselves; an
+       ask-before-you-act is above all of them. */
+    <Drawer title={title} onClose={onClose} onBack={onBack}
       footer={
         <button className="portal-btn-primary" onClick={onClose}
           style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
@@ -5372,7 +5376,10 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                          Verbatim from the menu, toast and all. */
                       onClick: () => {
                         const next = !holdsSearch(mu);
-                        close();
+                        /* The card stays: this account still exists either way, so 취소 has to
+                           land back where the reader was rather than on the table. The confirm
+                           sits above the card at z-400. 제거 is the one that still closes first —
+                           there is no card to come back to once the account is gone. */
                         setConfirming({
                           title: next ? t.confirmSearchGrantTitle(mu.name) : t.confirmSearchRevokeTitle(mu.name),
                           body: next ? t.confirmSearchGrantBody : t.confirmSearchRevokeBody,
@@ -5446,7 +5453,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                       onClick: () => {
                         const token = issueInviteToken(mu.id);
                         if (!token) return;
-                        close();
+                        /* No close(): same as 비밀번호 재설정 — the card stays under this so the
+                           panel has a ← to come back to. */
                         setInvitePanel({ title: t.inviteLinkRemadeTitle, links: [{ name: mu.name, email: mu.email, url: `/password-setup?token=${token}` }] });
                       },
                     }] : []),
@@ -5509,7 +5517,6 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     title={!manageAccess ? t.reasonNotOwner : (mu.status !== "suspended" && lastAdmin) ? t.lastAdminReason : undefined}
                     onClick={() => {
                       const suspended = mu.status === "suspended";
-                      close();
                       /* Verbatim from the menu, including what is NOT red: suspending is
                          reversible — 재활성화 takes this very button afterwards — and 제거 beside
                          it is not. Colouring both would make red mean "the bottom two" instead of
@@ -5631,7 +5638,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
         />
       )}
       {invitePanel && (
-        <InviteLinkPanel title={invitePanel.title} links={invitePanel.links} onClose={() => setInvitePanel(null)} />
+        <InviteLinkPanel title={invitePanel.title} links={invitePanel.links}
+          onClose={() => setInvitePanel(null)} onBack={managing ? () => setInvitePanel(null) : undefined} />
       )}
       {credentialFor && (
         <TempPasswordModal user={credentialFor} mailAvailable={mailAvailable}
