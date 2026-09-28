@@ -1874,7 +1874,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
       {tab === "server" && <ProjectServerTab projectId={projectId} />}
       {/* onGoToCameras: the camera-group tab's empty state has somewhere to send people, and
           Input Sources is where cameras are selected. Same shape as the overview's jumps. */}
-      {tab === "users" && <PortalUsersPage projectId={projectId} onGoToCameras={() => onTabChange("cameras")} />}
+      {tab === "users" && <PortalUsersPage projectId={projectId} onGoToCameras={() => onTabChange("cameras")} half="users" />}
+      {/* The same page under the other rail row — see the note on PortalUsersPageProps.half. */}
+      {tab === "grants" && <PortalUsersPage projectId={projectId} onGoToCameras={() => onTabChange("cameras")} half="grants" />}
       {tab === "activity" && <ProjectActivityTab projectId={projectId} />}
       {/* Gated as well as hidden from the rail: the tab lives in the URL, and a link to
           ?tab=searchlog saved before the requirement was switched off should land somewhere

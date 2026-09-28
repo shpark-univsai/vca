@@ -5,7 +5,7 @@ import { Crown } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 
-export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "activity" | "searchlog" | "requests";
+export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "grants" | "activity" | "searchlog" | "requests";
 
 interface IconProps {
   color: string;
@@ -115,6 +115,19 @@ function ActivityIcon({ color }: IconProps) {
   );
 }
 
+/* 권한 줄의 아이콘. 같은 16px 캔버스, 같은 1.2 선폭 — 이 레일의 다른 여덟 개와 한 벌입니다.
+   열쇠인 이유: 이 화면이 쥐고 있는 것이 「무엇을 열 수 있는가」이고, 사람 아이콘은 바로 위
+   「사용자」 줄이 이미 쓰고 있습니다. */
+function PermissionsIcon({ color }: IconProps) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="5.6" cy="5.6" r="2.6" stroke={color} strokeWidth="1.2"/>
+      <path d="M7.5 7.5L13.4 13.4" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M11.2 11.2l1.5-1.5" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 function UsersIcon({ color }: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -189,7 +202,32 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
 
   // MANAGE, most-touched to least: people are added and removed all year, and a licence is signed
   // once and opened when somebody asks about the bill or runs out of channels.
-  { id: "users", group: "manage", label: { en: "Users & Permissions", ko: "사용자 및 권한" }, icon: UsersIcon },
+  /*
+   * TWO ROWS, NOT ONE WITH A RAIL INSIDE IT (owner, 2026-09-28: 다른 화면들은 모두 화면 안에
+   * 메뉴 트리 UI가 상단에 나열된 형식인데 여기 권한 쪽만 갑자기 왼쪽 사이드바 형식인데 갑자기
+   * 마우스가 길을 잃을 것 같아).
+   *
+   * Measured: on 「사용자 및 권한」 there were TWO lit left columns — this rail lit the row, and
+   * 264px to its right a second rail lit 계정. Settings does not do that (entering it lights
+   * nothing out here), which is exactly the difference that was felt. The inner rail also took
+   * 204px of table width permanently, and below a 940px window the accounts table started to
+   * squeeze.
+   *
+   * Checked against 30 screens on Mobbin: not one product raises a second rail inside a rail.
+   * The ones that mix (Mixpanel, HubSpot, Klaviyo, Reddit, Teachable, beehiiv) all go one way —
+   * rail on the outside, tabs on the inside.
+   *
+   * So the two captions that grouped the four sub-lists become two ROWS here, and each row's
+   * screen carries the ordinary tab strip that 입력 소스 and VIP 등록 already use. The owner's
+   * earlier request (2026-09-22: 이렇게 한 묶음이라는 느낌이 나게 UI를 구분해 주고 싶은 건데) is
+   * kept and strengthened — the grouping is promoted from a caption to a real menu row, in the
+   * same two words they chose. Nothing new was invented to name them.
+   */
+  { id: "users", group: "manage", label: { en: "Users", ko: "사용자" }, icon: UsersIcon },
+  /* 「권한 설정」 rather than 「권한」 (owner, 2026-09-28). Bare 권한 was the same word the accounts
+     table uses for a column and the invite form uses for a field, so in the rail it read as a
+     filter on people rather than as a place. 설정 says it is where the thing is defined. */
+  { id: "grants", group: "manage", label: { en: "Permission settings", ko: "권한 설정" }, icon: PermissionsIcon },
   { id: "license", group: "manage", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
 
   // The records, after the things that change: you act, then you read what the acting left behind.

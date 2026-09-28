@@ -175,8 +175,8 @@ const T = {
     manageAccount: "Manage account",
     panelWhereSection: "Access",
     panelWhatSection: "Permissions",
-    panelAccountSection: "Passwords and codes",
-    panelStatusSection: "Account status",
+    panelAccountSection: "Password",
+    panelStatusSection: "Account",
     panelGrants: "App permissions",
     panelNoPortal: "No Portal",
     panelNoApp: "No app",
@@ -546,7 +546,7 @@ const T = {
     colUser: "사용자",
     colOtherProjects: "다른 프로젝트",
     alsoOn: (where: string) => `이곳에도 있음: ${where}`,
-    colProjects: "관리 프로젝트",
+    colProjects: "프로젝트",
     projectsCount: (n: number) => `${n}`,
     projectsOnlyThis: "이 프로젝트만",
     otherProjectsNone: "이 프로젝트만",
@@ -596,8 +596,8 @@ const T = {
        — which is also why 인물 검색 차단 left it (see the 권한 group below). */
     panelWhereSection: "접근",
     panelWhatSection: "권한",
-    panelAccountSection: "비밀번호와 코드",
-    panelStatusSection: "계정 상태",
+    panelAccountSection: "비밀번호",
+    panelStatusSection: "계정",
     panelGrants: "앱 권한",
     panelNoPortal: "Portal 없음",
     panelNoApp: "앱 없음",
@@ -3269,12 +3269,16 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
  * 「명부 대기」 the day it became 「등록 대기」.
  */
 export type PeopleTab = "accounts" | "roster" | "groups" | "presets";
-export const PEOPLE_TABS: { id: PeopleTab; label: { en: string; ko: string } }[] = [
-  { id: "accounts", label: { en: "Accounts", ko: "계정" } },
-  { id: "roster", label: { en: "Awaiting sign-up", ko: "등록 대기" } },
-  { id: "presets", label: { en: "App permission presets", ko: "앱 권한 프리셋" } },
-  { id: "groups", label: { en: "Camera groups", ko: "카메라 그룹" } },
+export const PEOPLE_TABS: { id: PeopleTab; half: PeopleHalf; label: { en: string; ko: string } }[] = [
+  { id: "accounts", half: "users", label: { en: "Accounts", ko: "계정" } },
+  { id: "roster", half: "users", label: { en: "Awaiting sign-up", ko: "등록 대기" } },
+  /* Preset before group, the order the invite form asks them in (owner, 2026-09-23). */
+  { id: "presets", half: "grants", label: { en: "App permission presets", ko: "앱 권한 프리셋" } },
+  { id: "groups", half: "grants", label: { en: "Camera groups", ko: "카메라 그룹" } },
 ];
+
+/** Which rail row this page is standing under. See the note on the tab strip. */
+export type PeopleHalf = "users" | "grants";
 
 /**
  * THE ONE DOOR FOR ADDING A PERSON, AND THE TWO WAYS IN.
@@ -3557,6 +3561,15 @@ interface PortalUsersPageProps {
   /** Sends the reader to Input Sources, where cameras are selected. Optional so this page still
    *  renders anywhere it is mounted without the detail page's tab switcher around it. */
   onGoToCameras?: () => void;
+  /**
+   * WHICH RAIL ROW THIS IS STANDING UNDER — 「사용자」 or 「권한」.
+   *
+   * One component serves both halves because the four lists share the page's data (the accounts
+   * table, the roster, the presets and the groups all read the same project and team). Only the
+   * strip and the default list differ, which is one prop rather than a second copy of a
+   * 4,000-line page.
+   */
+  half?: PeopleHalf;
 }
 
 /**
@@ -3652,7 +3665,7 @@ function isDormant(u: PortalUser, nowMs: number): boolean {
   return false;
 }
 
-export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUsersPageProps) {
+export default function PortalUsersPage({ projectId, onGoToCameras, half = "users" }: PortalUsersPageProps) {
   // Post-mount, like every other clock read in Portal — see TempPasswordBadge. Dormancy is a
   // judgement about elapsed time, so it cannot be decided during a server render.
   const [nowMs, setNowMs] = useState<number | null>(null);
@@ -3783,11 +3796,19 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
    * are, and pushing an entry per tab click would make Back walk the rail instead of leaving the
    * page. The `popstate` listener keeps the rail honest when the browser's own Back does move.
    */
-  const [peopleTab, setPeopleTab] = useState<PeopleTab>(() => {
-    if (typeof window === "undefined") return "accounts";
+  /* The half's first list is the default, and a `sub` naming a list from the OTHER half is
+     ignored — the two halves are separate screens now, and honouring it would open 카메라 그룹
+     under 「사용자」. See the note on the tab strip. */
+  const firstOfHalf = PEOPLE_TABS.find(x => x.half === half)!.id;
+  const [storedTab, setPeopleTab] = useState<PeopleTab>(() => {
+    if (typeof window === "undefined") return firstOfHalf;
     const sub = new URL(window.location.href).searchParams.get("sub");
-    return PEOPLE_TABS.some(x => x.id === sub) ? (sub as PeopleTab) : "accounts";
+    return PEOPLE_TABS.some(x => x.id === sub && x.half === half) ? (sub as PeopleTab) : firstOfHalf;
   });
+  /* DERIVED, NOT SYNCED. Switching rail rows re-mounts nothing, so a stored tab from the other
+     half has to stop counting the moment the half changes — as a computed value rather than an
+     effect that writes state back, which would render the wrong list once before correcting. */
+  const peopleTab: PeopleTab = PEOPLE_TABS.find(x => x.id === storedTab)?.half === half ? storedTab : firstOfHalf;
   /* ALL FOUR, INCLUDING THE DEFAULT (owner, 2026-09-23: 헤더에 계정, 대기, 그룹, 프리셋 추가로
      옆에 보이게 해주는 건 왜 안 했어?). 계정 was left out of the URL as "the default", which is
      why the header named the other three and went quiet on that one — the bar can only see what
@@ -3801,7 +3822,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
   useEffect(() => {
     const back = () => {
       const sub = new URL(window.location.href).searchParams.get("sub");
-      setPeopleTab(PEOPLE_TABS.some(x => x.id === sub) ? (sub as PeopleTab) : "accounts");
+      setPeopleTab(PEOPLE_TABS.some(x => x.id === sub && x.half === half) ? (sub as PeopleTab) : firstOfHalf);
     };
     window.addEventListener("popstate", back);
     return () => window.removeEventListener("popstate", back);
@@ -4153,36 +4174,49 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
         somebody opens this page to see; a rail row has room for a figure at its right edge, which
         is what the product's own left rail already does with VIP 등록 122 and 입력 소스 62.
       */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "24px" }}>
-      <SectionNav
-        sections={[
-          /* TWO CAPTIONS, WHICH IS WHERE THIS OBJECTION FINALLY LANDS (owner, 2026-09-22: 계정과
-             명부대기를 묶어서 그위에 작은글씨로 구분명을 추가해줘). Four rows that are two kinds
-             was the whole complaint, and every earlier answer tried to say it with geometry — a
-             rule, a second row, a qualifier on one label. A caption says it in a word, and in a
-             rail it costs nothing: the product's own left rail already captions 작업 공간 and
-             관리, so the line reads as a heading before it is read as text.
-             THE TWO WORDS ARE THIS PAGE'S OWN NAME, SPLIT (owner, 2026-09-22: 사람이랑 권한묶음
-             이라는 단어 조금 이상해). 「사람」 was bare and 「권한 묶음」 was a term invented for
-             the occasion — a reader meets it here and nowhere else. The page is called 사용자 및
-             권한, so its two halves are 사용자 and 권한, which is a name the reader has already
-             read in the rail one level up. No new vocabulary. */
-          { id: "accounts", group: t.railPeople, label: t.peopleTabAccounts, count: projectUsers.length, icon: <UsersIcon size={15} strokeWidth={2} /> },
-          { id: "roster", group: t.railPeople, label: t.peopleTabRoster, count: rosterWaiting.length, icon: <ClipboardList size={15} strokeWidth={2} /> },
-          /* PRESET FIRST, GROUP SECOND — the order the invite form asks them in (owner,
-             2026-09-23: 앱 권한 프리셋을 먼저 보여주고 그 아래 카메라 그룹 순으로). A preset
-             answers "what may they do", a group answers "which cameras", and the form asks the
-             first before the second because the first decides whether the second is even asked
-             (a Portal-only account has no cameras to scope). The rail had them the other way
-             round: the reason written here was already "in the order the form asks them", and the
-             form's order changed today while this list did not. Each keeps the icon its own screen
-             uses for itself. */
-          { id: "presets", group: t.railGrants, label: t.peopleTabPresets, count: pagePresets.length, icon: <KeySquare size={15} strokeWidth={2.2} /> },
-          { id: "groups", group: t.railGrants, label: t.peopleTabGroups, count: cameraGroupsInProject(cameraGroups, projectId).length, icon: <Boxes size={15} strokeWidth={2} /> },
-        ]}
-        active={peopleTab}
-        onSelect={id => setPeopleTab(id as "accounts" | "roster" | "groups" | "presets")}
-      />
+      {/*
+        A TAB STRIP, BECAUSE THE RAIL WAS THE SECOND LIT COLUMN (owner, 2026-09-28: 다른 화면들은
+        모두 화면 안에 메뉴 트리 UI가 상단에 나열된 형식인데 여기 권한 쪽만 갑자기 왼쪽 사이드바
+        형식인데 갑자기 마우스가 길을 잃을 것 같아).
+
+        What was actually happening, measured: the outer rail lit 「사용자 및 권한」 and 264px to its
+        right this rail lit 계정 — two lit columns, which the settings page never produces because
+        entering it lights nothing outside. The inner rail also held 204px of table width at all
+        times, and below a 940px window the accounts table began to squeeze.
+
+        30 screens on Mobbin: no product raises a rail inside a rail; the ones that mix put the rail
+        outside and tabs inside, every time.
+
+        So the four rows became two rail rows one level up (사용자 · 권한 — see ProjectSidebar) and
+        each half shows its two lists in the strip 입력 소스 and VIP 등록 already use. The grouping
+        the owner asked for on 2026-09-22 is not lost, it is PROMOTED: what was a caption over two
+        rows is now a row in the menu, in the same two words.
+
+        The counts come with the labels, where they were before the rail took them.
+      */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: "0" }}>
+      <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+        {PEOPLE_TABS.filter(x => x.half === half).map(x => {
+          const active = peopleTab === x.id;
+          const count = x.id === "accounts" ? projectUsers.length
+            : x.id === "roster" ? rosterWaiting.length
+            : x.id === "presets" ? pagePresets.length
+            : cameraGroupsInProject(cameraGroups, projectId).length;
+          return (
+            <button key={x.id} type="button" onClick={() => setPeopleTab(x.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: "6px",
+                background: "none", border: "none", cursor: "pointer",
+                padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
+                color: active ? "var(--gray-900)" : "var(--gray-500)",
+                borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
+              }}>
+              {x.label[lang]}
+              <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
       <div style={{ minWidth: 0, flex: 1 }}>
       {peopleTab === "presets" ? <AccessPresetsTab teamId={pageTeamId ?? ""} canEdit={manageAccess} />
         : peopleTab === "groups" ? <CameraGroupsTab projectId={projectId} onGoToCameras={onGoToCameras} /> : (<>
@@ -5061,7 +5095,16 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
           {
             key: "projects", group: "where",
             label: t.colProjects,
-            value: t.panelProjectCount(mu.projectIds.length),
+            /* THE COUNT AND THE NAMES (owner, 2026-09-28: 1곳 옆에 프로젝트 이름 표시해줘).
+               「1곳」 alone answers how many and not which, and on a single-project installation —
+               which is most of them — that is the one fact the row could have carried and did not.
+               The names fit now that the value has a line of its own (see the stacked row). */
+            value: (() => {
+              const named = mu.projectIds.map(pid => projects.find(pr => pr.id === pid)?.name).filter(Boolean);
+              return named.length
+                ? `${t.panelProjectCount(mu.projectIds.length)} \u00b7 ${named.join(", ")}`
+                : t.panelProjectCount(mu.projectIds.length);
+            })(),
             disabled: !manageAccess,
             reason: manageAccess ? undefined : t.reasonNotOwner,
             onClick: () => { close(); setEditingProjectsFor(mu); },
@@ -5314,7 +5357,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                     else, a hairline here would have been the only line in the card doing the job
                     the space already does. Supabase's user panel separates its own last two
                     actions the same way, with a heading and room. */}
-                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "2px", margin: "0 -10px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", margin: "0 -10px" }}>
                   <button type="button"
                     disabled={!manageAccess || (mu.status !== "suspended" && lastAdmin)}
                     title={!manageAccess ? t.reasonNotOwner : (mu.status !== "suspended" && lastAdmin) ? t.lastAdminReason : undefined}
@@ -5343,11 +5386,30 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                         },
                       });
                     }}
-                    className={(!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? undefined : "portal-btn-quiet"}
+                    className={(!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? undefined : "portal-btn-outline"}
+                    /*
+                     * A BOX, LIKE 제거 BESIDE IT (owner, 2026-09-28: 아래 정지는 현재 상태를
+                     * 말하는 것 같은 UI거든? 옆에 제거랑 정지 버튼으로 놔야 할 것 같아).
+                     *
+                     * It was bare tinting text under a caption that used to read 「계정 상태」, so
+                     * the pair said "status: suspended" rather than "you can suspend". The caption
+                     * is 「계정」 now and this is a control that looks like one.
+                     *
+                     * They sit together rather than at opposite edges. The old arrangement pushed
+                     * 제거 to the far side so two access-removing controls were not 2px apart —
+                     * but the thing that actually protects 제거 is its confirmation, which names
+                     * the person and is marked danger, and separating them cost the reader the
+                     * ability to see the two choices as one pair. 제거 keeps the red-on-pointing
+                     * treatment that tells them apart.
+                     */
                     style={{
-                      ...SECONDARY_BTN, height: CONTROL_HEIGHT, padding: "0 10px",
-                      color: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "var(--gray-300)" : "var(--gray-700)",
-                      fontWeight: 700, cursor: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "default" : "pointer",
+                      display: "inline-flex", alignItems: "center", gap: "6px",
+                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
+                      backgroundColor: "white",
+                      color: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "var(--gray-300)" : "var(--gray-600)",
+                      fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                      cursor: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "default" : "pointer",
+                      marginLeft: "10px",
                     }}>
                     {mu.status === "suspended" ? <UserCheck size={14} strokeWidth={2.2} aria-hidden="true" /> : <UserX size={14} strokeWidth={2.2} aria-hidden="true" />}
                     {mu.status === "suspended" ? t.reactivateUser : t.suspendUser}
@@ -5390,7 +5452,6 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                       height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
                       backgroundColor: "white", color: (!manageAccess || lastAdmin) ? "var(--gray-300)" : "var(--gray-600)",
                       fontSize: "12px", fontWeight: 700, cursor: (!manageAccess || lastAdmin) ? "default" : "pointer", fontFamily: "inherit",
-                      marginLeft: "auto", marginRight: "10px",
                     }}>
                     <Trash2 size={13} strokeWidth={2.2} aria-hidden="true" />
                     {t.removeUser}

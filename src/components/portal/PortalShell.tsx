@@ -13,7 +13,6 @@ import ProjectSidebar, { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import PortalSettingsPage from "./PortalSettingsPage";
 import PortalAccountMenu from "./PortalAccountMenu";
-import { PEOPLE_TABS } from "./PortalUsersPage";
 import { ToastProvider, useToast } from "../Toast";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { useVcaStore, canEnterApp, currentPortalUser, SIGNED_IN_USER, type ProjectType, type Team } from "@/lib/vcaStore";
@@ -128,9 +127,6 @@ export default function PortalShell() {
   // to Portal was a link to the same screen. Read once, as the initial value: after that the tab is
   // component state, so clicking around does not push a history entry per tab.
   const tabParam = searchParams.get("tab");
-  /* Which of 사용자 및 권한's four lists is open, so the trail can name it — see PEOPLE_TABS and
-     the note on the sub-tab state in PortalUsersPage. Only that tab has sub-lists today. */
-  const subParam = searchParams.get("sub");
 
   const [showWizard, setShowWizard] = useState(newProjectParam);
   /**
@@ -360,11 +356,19 @@ export default function PortalShell() {
   const [lang] = usePortalLanguage();
   /* The words for the sub-list, taken from the page that owns them rather than copied here. Only
      drawn when the open tab actually has sub-lists and the URL names one of them. */
-  const subCrumb = tab === "users"
-    /* No `sub` means an older link or a first load, and that lands on 계정 — so the trail says
-       계정 rather than stopping a level short. */
-    ? (PEOPLE_TABS.find(x => x.id === (subParam ?? "accounts"))?.label[lang] ?? null)
-    : null;
+  /*
+   * NO THIRD SEGMENT ANY MORE (2026-09-28).
+   *
+   * It existed because the four sub-lists lived behind a rail inside the page, and the trail was
+   * the only thing naming which one was open. They are tabs now, and a lit tab says it better than
+   * a crumb does — 13px, 700, black, with its own count — so the crumb would be the same word
+   * twice, 32px apart. Every other screen's trail stops at the screen's name; this one now does
+   * too.
+   *
+   * The 2026-09-23 request behind the old behaviour (헤더에 계정, 대기, 그룹, 프리셋 추가로 옆에
+   * 보이게) is still answered, by the strip.
+   */
+  const subCrumb = null;
   const t = T[lang];
 
   /**
