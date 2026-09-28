@@ -1827,17 +1827,28 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
    * carried a line reading "VIP registry exported to CSV" and taught the customer the button
    * was there.
    *
-   * What is on screen, not the whole registry: the toolbar's filters and search are how somebody
-   * says which part of the list they want, and exporting past them would hand back a file they
-   * did not ask for. Released rows carry their status and reason rather than being dropped — a
-   * removal is exactly what an audit asks about.
+   * WHAT THE FILTERS SAY, NOT WHAT THE PAGE SHOWS.
+   *
+   * The toolbar's filters and search are how somebody says which part of the list they want, and
+   * exporting past them would hand back a file they did not ask for. Released rows carry their
+   * status and reason rather than being dropped — a removal is exactly what an audit asks about.
+   *
+   * It used to map `projectPersons`, which is `sortedPersons` cut to ONE PAGE — and the page size
+   * is not a setting, it is `useFitRowsPerPage` measuring the window. So the window's height
+   * decided how many rows left the console: 122 people in the registry, 7 rows in the file, and
+   * the toast and the export audit row both reported 7 as if that were the answer. A file that
+   * silently holds a fraction of what was asked for is worse than no button, and this one is
+   * written down as an extraction in the audit log.
+   *
+   * `sortedPersons` is the filtered, searched, sorted list — the thing the sentence above always
+   * meant.
    */
   const exportCsv = () => {
     const header = [
       t.colName, t.colGroup, ...(categoriesEnabled ? [t.colCategory] : []), t.colPriority, t.basisLabel,
       t.colRegistered, t.csvRegisteredBy, t.colExpires, t.colLastDetected, t.csvStatus,
     ];
-    const rows = projectPersons.map(person => [
+    const rows = sortedPersons.map(person => [
       person.name,
       person.groupId ? groupById.get(person.groupId)?.name ?? "" : "",
       ...(categoriesEnabled ? [person.categoryId ? categoryById.get(person.categoryId)?.label ?? "" : t.csvUnclassified] : []),

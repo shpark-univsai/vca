@@ -1705,9 +1705,23 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
      not one. */
   const [view, setView] = useState<"table" | "map">("table");
 
+  /*
+   * THE FILTERED ROWS, like everything else on this screen.
+   *
+   * It exported `projectCameras` — every camera in the project, whatever the search box, the zone
+   * filter or the tab said. So the same button meant different things on two screens: VIP exported
+   * what the filters said, this one exported the register. This file already settled the rule for
+   * itself a few lines up — the map is "a view of the SAME filtered rows" — and an export is one
+   * more view of them.
+   */
   const exportCsv = () => {
     const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderKind, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus];
-    const rows = projectCameras.map(c => [
+    /* The camera rows among them: this file's columns are a camera's (code, zone, RTSP, status),
+       so a file source has nothing to put in them. On a tab that holds only files this now writes
+       a header and no rows — an open question the screen never answered, and better than the old
+       answer, which was to hand back every camera in the project whatever the tab and the search
+       box said. */
+    const rows = visibleRows.filter(r => r.kind === "camera").map(r => r.camera).map(c => [
       // Three states, not two. A camera refusing the connection is not "a worse offline" —
       // the store's own note says so — and exporting it as Offline hands an auditor a file
       // that disagrees with the screen it came from.
