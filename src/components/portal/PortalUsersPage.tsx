@@ -40,6 +40,8 @@ const T = {
     // Role/status summary strip
     axisConsoleRole: "Console",
     axisDoor: "Signs in to",
+    /* The name of the thing, over the button that flips it — see the 권한 group. */
+    axisSearch: "Person search",
     countOwners: "Owners",
     countAdmins: "Admins",
     countAuditors: "Read-only",
@@ -471,6 +473,7 @@ const T = {
        (the row menu, the confirm, the guide, permNone) and this was the only 포털. */
     axisConsoleRole: "Portal 역할",
     axisDoor: "로그인",
+    axisSearch: "인물 검색",
     countOwners: "최고관리자",
     countAdmins: "관리자",
     countAuditors: "읽기 전용",
@@ -3593,63 +3596,6 @@ interface PortalUsersPageProps {
  */
 const DORMANT_AFTER_DAYS = 90;
 
-/**
- * Changing a row's Portal role, or which doors that account opens, asked as a question.
- *
- * Both of these were a 36px FilterSelect ON EVERY ROW, and that is what the table looked like:
- * two columns of bordered white boxes with chevrons running down the middle of it, heavier than
- * the names beside them, most of them repeating the same word — while the actions somebody came
- * to this table for (suspend, remove) sat quietly behind the kebab. A list of accounts read as a
- * permissions form. ProjectVipTab made the same call on its group column and states the rule this
- * follows: every other table in Portal shows values and sends changes to a form.
- *
- * It also fixes something the selects hid. A viewer who could not change these saw plain text in
- * the same cells, so the table's density depended on who was reading it — the same screen was two
- * different screens, and neither was the one anybody had designed.
- *
- * CONFIRMED, NOT APPLIED ON PICK. A select commits the moment it changes and offers nothing to
- * cancel with, and neither of these is cheap to walk back: a demoted owner may no longer have the
- * power to restore themselves, and closing a door signs the person out of it. ConfirmModal already
- * carries every other access change on this page, and the picker is its one field — the same way
- * the VIP release dialog asks its one question rather than stacking a second box on top.
- */
-function AccessChangeModal({ title, body, options, current, onApply, onClose }: {
-  title: string;
-  body: string;
-  options: { value: string; label: string; description?: string }[];
-  /** The value the row already holds. Also the guard on the confirm button: a dialog that has
-   *  been opened and not answered should not be able to write the answer it started with. */
-  current: string;
-  onApply: (value: string) => void;
-  onClose: () => void;
-}) {
-  const [lang] = usePortalLanguage();
-  const t = T[lang];
-  const [value, setValue] = useState(current);
-  /* While the list below is open it owns Escape. Without this, one keypress closed the list AND
-     this dialog — reproduced in the browser before fixing. */
-  const [selectOpen, setSelectOpen] = useState(false);
-  return (
-    <ConfirmModal
-      title={title}
-      body={body}
-      confirmLabel={t.changeApply}
-      cancelLabel={t.cancel}
-      confirmDisabled={value === current}
-      onConfirm={() => { onApply(value); onClose(); }}
-      onClose={onClose}
-      escapeSuspended={selectOpen}
-    >
-      {/* ConfirmModal's body does not scroll unless a caller asks it to, and this one must never
-          ask: the list below hangs past the body's edge, and `bodyScrolls` would make the
-          clipping context that cuts it off — the same trap MODAL_BODY_WITH_SELECT exists for. */}
-      <div style={{ marginTop: "14px" }}>
-        <FilterSelect value={value} onChange={setValue} options={options} onOpenChange={setSelectOpen} />
-      </div>
-    </ConfirmModal>
-  );
-}
-
 function isDormant(u: PortalUser, nowMs: number): boolean {
   const cutoff = nowMs - DORMANT_AFTER_DAYS * 24 * 60 * 60 * 1000;
   if (u.status === "active") {
@@ -3709,8 +3655,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
   const [invitePanel, setInvitePanel] = useState<{ title: string; links: InviteLink[] } | null>(null);
   // The row whose Portal role, or whose doors, are being changed. Same reason as credentialFor:
   // the user, not an id.
-  const [changingRoleFor, setChangingRoleFor] = useState<PortalUser | null>(null);
-  const [changingAccessFor, setChangingAccessFor] = useState<PortalUser | null>(null);
+  /* 「Portal 역할」과 「로그인」의 다이얼로그는 사라졌습니다 — 두 줄이 카드 안에서 직접
+     답하고(select), 결과만 확인창이 묻습니다. See the `select` field on the card's row type. */
   const [changingGrantsFor, setChangingGrantsFor] = useState<PortalUser | null>(null);
   const [scopingFor, setScopingFor] = useState<PortalUser | null>(null);
   const allCameras = useVcaStore(s => s.cameras);
@@ -5078,7 +5024,22 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           key: string; group: "where" | "what"; label: string; value: string;
           /** The one value printed large. See the door row for why it is that one. */
           hero?: boolean;
-          disabled?: boolean; reason?: string; onClick: () => void;
+          disabled?: boolean; reason?: string; onClick?: () => void;
+          /**
+           * ANSWERED IN THE CARD, NOT IN A DIALOG ACROSS THE SCREEN (owner, 2026-09-28: 여기에
+           * 변경 가능한 버튼들 누르면 중앙에 팝업창이 열리는데 마우스 이동을 크게 해야 해서 너무
+           * 불편해, 이 안에서 수정할 수 있게 바꿔줘).
+           *
+           * For the two rows whose answer is one of three short options, the value IS the control:
+           * the row carries a select and changing it asks for confirmation on the spot. The
+           * confirmation stays — it is where the consequence sentence lives ("a higher role can
+           * hand out and take away other people's access"), and that sentence is the reason those
+           * dialogs existed. What is gone is the dialog you had to open just to see the options.
+           *
+           * Only where the options are few and named. 앱 권한 and 카메라 keep a panel of their own —
+           * eight rows with steps, and sixty-two cameras, do not belong inside a 520px card.
+           */
+          select?: { value: string; options: { value: string; label: string; description?: string }[]; onPick: (v: string) => void };
         }[] = [
           {
             key: "role", group: "what",
@@ -5091,7 +5052,16 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             reason: !manageAccess ? t.reasonNotOwner
               : lastAdmin ? t.lastAdminRoleFixed
               : !canEnterPortal(mu.permission) ? t.reasonNoPortal : undefined,
-            onClick: () => { close(); setChangingRoleFor(mu); },
+            select: {
+              value: mu.permission,
+              options: consoleRoleOptions(t),
+              onPick: v => setConfirming({
+                title: t.confirmRoleTitle(mu.name),
+                body: t.confirmRoleBody,
+                confirmLabel: t.changeApply,
+                onConfirm: () => updatePortalUserPermission(mu.id, v as PortalPermission),
+              }),
+            },
           },
           {
             key: "access", group: "where",
@@ -5112,7 +5082,25 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             value: accessLabel(t, accessModeOf(mu)),
             disabled: !manageAccess,
             reason: manageAccess ? undefined : t.reasonNotOwner,
-            onClick: () => { close(); setChangingAccessFor(mu); },
+            select: {
+              value: accessModeOf(mu),
+              /* App-only would strip Portal from the last owner, which the store refuses on the
+                 same guard — so it is not offered rather than offered and ignored. */
+              options: lastAdmin ? accessOptions(t).filter(o => o.value !== "appOnly") : accessOptions(t),
+              onPick: v => setConfirming({
+                title: t.confirmAccessTitle(mu.name),
+                body: t.confirmAccessBody,
+                confirmLabel: t.changeApply,
+                onConfirm: () => {
+                  const next = applyAccessMode(v as AccessMode, mu.permission);
+                  updatePortalUserAccess(mu.id, next.permission, next.appAccess);
+                  /* Say it when the change quietly hands out a Portal role nobody picked. */
+                  if (!canEnterPortal(mu.permission) && canEnterPortal(next.permission)) {
+                    showToast({ variant: "info", title: accessLabel(t, v as AccessMode), desc: t.accessGainsRoleNote(roleLabel(t, next.permission)) });
+                  }
+                },
+              }),
+            },
           },
           {
             key: "grants", group: "what",
@@ -5260,12 +5248,24 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                       </span>
                     );
                     if (row.disabled) return <div key={row.key} style={style}>{stacked}</div>;
+                    /* The answer IS the control — see `select` on the row type. No chevron and no
+                       row click: there is nothing behind this row to go to. */
+                    if (row.select) return (
+                      <div key={row.key} style={{ ...style, display: "block" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px", minWidth: 0, marginBottom: "5px" }}>{label}</span>
+                        <FilterSelect
+                          value={row.select.value}
+                          onChange={row.select.onPick}
+                          options={row.select.options}
+                        />
+                      </div>
+                    );
                     return (
                       /* portal-btn-quiet, because a row with no border and no fill of its own has
                          nothing but the chevron to say it opens something. The tint on pointing is
                          the rest of that sentence — see the class's own note: nothing at rest and
                          nothing on pointing is not a quiet control, it is text. */
-                      <button key={row.key} type="button" className="portal-btn-quiet" onClick={row.onClick} style={{ ...style, cursor: "pointer" }}>
+                      <button key={row.key} type="button" className="portal-btn-quiet" onClick={() => row.onClick?.()} style={{ ...style, cursor: "pointer" }}>
                         {stacked}
                         {/* No chevron on a row that cannot be opened — an arrow that leads nowhere
                             is the control this console keeps being asked to stop drawing. */}
@@ -5284,6 +5284,16 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     is a permission. It is a verb rather than a value, so it keeps the quiet-button
                     treatment the other actions use instead of becoming a fifth row with a chevron.
                   */}
+                  {/* A LABEL OVER IT, LIKE EVERY OTHER LINE IN THIS GROUP (owner, 2026-09-28:
+                      인물검색허용 버튼 위에도 서브 제목이 필요해). The three rows above are
+                      label-over-value, so a button arriving with no label of its own broke the
+                      column: the eye had nothing to read it against, and 「인물 검색 허용」 had to
+                      double as both the name of the thing and the verb. */}
+                  {group === "what" && (
+                    <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--gray-500)", marginTop: "9px", marginLeft: "12px" }}>
+                      {t.axisSearch}
+                    </span>
+                  )}
                   {group === "what" && (() => {
                     const a = { key: "search", label: holdsSearch(mu) ? t.appSearchRevoke : t.appSearchGrant, icon: <UserSearch size={14} strokeWidth={2.2} />,
                       disabled: !manageAccess || (!holdsSearch(mu) && !mu.appAccess),
@@ -5532,16 +5542,6 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           }}
         />
       )}
-      {changingRoleFor && (
-        <AccessChangeModal
-          title={t.confirmRoleTitle(changingRoleFor.name)}
-          body={t.confirmRoleBody}
-          options={consoleRoleOptions(t)}
-          current={changingRoleFor.permission}
-          onApply={v => updatePortalUserPermission(changingRoleFor.id, v as PortalPermission)}
-          onClose={() => setChangingRoleFor(null)}
-        />
-      )}
       {changingGrantsFor && (
         <AppGrantModal user={changingGrantsFor} onClose={() => setChangingGrantsFor(null)} />
       )}
@@ -5550,28 +5550,6 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           user={scopingFor}
           cameras={scopableCamerasFor(scopingFor)}
           onClose={() => setScopingFor(null)}
-        />
-      )}
-      {changingAccessFor && (
-        <AccessChangeModal
-          title={t.confirmAccessTitle(changingAccessFor.name)}
-          body={t.confirmAccessBody}
-          /* App-only would strip Portal from the last owner, which the store refuses on the same
-             guard — so it is not offered rather than offered and ignored. Portal-only stays:
-             taking the app away from an owner locks nobody out. */
-          options={isLastActiveAdmin(portalUsers, changingAccessFor.id)
-            ? accessOptions(t).filter(o => o.value !== "appOnly")
-            : accessOptions(t)}
-          current={accessModeOf(changingAccessFor)}
-          onApply={v => {
-            const next = applyAccessMode(v as AccessMode, changingAccessFor.permission);
-            updatePortalUserAccess(changingAccessFor.id, next.permission, next.appAccess);
-            // Say it when the change quietly hands out a Portal role nobody picked.
-            if (!canEnterPortal(changingAccessFor.permission) && canEnterPortal(next.permission)) {
-              showToast({ variant: "info", title: accessLabel(t, v as AccessMode), desc: t.accessGainsRoleNote(roleLabel(t, next.permission)) });
-            }
-          }}
-          onClose={() => setChangingAccessFor(null)}
         />
       )}
       {invitePanel && (
