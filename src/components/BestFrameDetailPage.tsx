@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { DetType, Detection, CamData } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { sgtDateKey } from "@/lib/time";
+import { sgtDateKey, siteTimeZone } from "@/lib/time";
+import { buildEvidenceManifest, evidenceFilename, saveManifest } from "@/lib/evidence";
+import { canExportEvidence, SIGNED_IN_USER, useActiveProjectId, useVcaStore } from "@/lib/vcaStore";
+import { useToast } from "./Toast";
+import { FileDown } from "lucide-react";
 import ViewerWatermark from "./ViewerWatermark";
 
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
@@ -22,6 +26,11 @@ const T = {
     reelTitle: "Best frame reel",
     reelSub: "Objects captured in current frame",
     inspectionDetail: "Inspection detail",
+    exportEvidence: "Export evidence",
+    exportNotAllowed: "Export not allowed",
+    exportDenied: "This account cannot export evidence. An administrator can grant it under Users and permissions in the Portal.",
+    exported: "Evidence manifest saved",
+    exportedDesc: "The frame is referenced, not enclosed. The file records where it lives.",
     close: "Close",
     liveCapture: "LIVE Capture",
     liveCaptureHint: "Frame the camera just captured",
@@ -58,6 +67,11 @@ const T = {
     reelTitle: "베스트 프레임 목록",
     reelSub: "현재 프레임에서 감지된 대상",
     inspectionDetail: "감지 상세",
+    exportEvidence: "증거 내보내기",
+    exportNotAllowed: "내보내기 권한 없음",
+    exportDenied: "이 계정에는 증거 내보내기 권한이 없습니다. Portal의 사용자 및 권한에서 관리자가 줄 수 있습니다.",
+    exported: "증거 매니페스트를 저장했습니다",
+    exportedDesc: "프레임은 파일에 담지 않고 어디 있는지만 적습니다.",
     close: "닫기",
     liveCapture: "실시간 감지",
     liveCaptureHint: "카메라가 방금 잡은 프레임입니다",
@@ -681,6 +695,60 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
   const t = T[lang];
   const c = DET_COLOR[det.type];
 
+  /*
+   * EVIDENCE EXPORT, HERE TOO (owner, 2026-09-28, four times: 증거내보내기는 레드맵에만 있는
+   * 기능인거야? · 내보내기 기능이 레드맵에만 있는게 어색한데).
+   *
+   * It was odd because it was a gap, not a policy — and the code already said so: both
+   * `EvidenceSubject.surface` and `EvidenceExportRecord.surface` are typed
+   * `"redmap" | "bestframe"`, so Best Frame was named as an export surface by the contract while
+   * the screen had no button. Nothing in src/lib/evidence.ts is Redmap-specific; the manifest
+   * takes a sighting and a project, and this panel is holding both.
+   *
+   * It sits on the sighting's own detail panel rather than on a tile, for the same reason Redmap
+   * puts it on the opened row: an export is about ONE sighting, and this is the only place that
+   * sighting's camera, site clock, score and the operator's verdict are all on screen — which is
+   * exactly what the manifest writes down.
+   */
+  const portalUsers = useVcaStore(state => state.portalUsers);
+  const recordEvidenceExport = useVcaStore(state => state.recordEvidenceExport);
+  const siteProjectId = useActiveProjectId();
+  const siteProjectName = useVcaStore(state => state.projects.find(pr => pr.id === state.activeProjectId)?.name ?? "");
+  const { showToast } = useToast();
+  const mayExport = canExportEvidence(portalUsers);
+
+  const exportEvidence = async () => {
+    /* No verdict fields: `DetectionJudgement.surface` is "redmap" | "redface" — Best Frame has
+       no verdict control, so there is nothing to carry. Left out rather than written empty; a
+       manifest saying a judgement was made by nobody is worse than one that is silent. */
+    const at = new Date();
+    const manifest = await buildEvidenceManifest(
+      {
+        surface: "bestframe",
+        subjectId: det.id,
+        cameraCode: data.camLabel,
+        location: data.location,
+        siteDate: det.date,
+        siteTime: det.time,
+        timeZone: siteTimeZone(),
+        similarity: `${det.confidence}%`,
+        targetLabel: det.name,
+        frameRef: data.bgUrl ?? "",
+      },
+      /* Same stand-in and the same handoff note as Redmap's: a browser naming its own operator is
+         not evidence of anything, the server has to stamp exported_by. */
+      { projectName: siteProjectName, operator: SIGNED_IN_USER.name, purpose: null },
+      at,
+    );
+    saveManifest(manifest, evidenceFilename(det.id, at));
+    recordEvidenceExport({
+      projectId: siteProjectId, subjectId: det.id, surface: "bestframe",
+      targetLabel: det.name,
+      manifestHash: manifest.integrity.manifest_sha256,
+    });
+    showToast({ variant: "success", title: t.exported, desc: t.exportedDesc });
+  };
+
   return (
     <div style={{ width:"380px", flexShrink:0, backgroundColor:"white", borderLeft:BORDER, display:"flex", flexDirection:"column", overflow:"hidden" }}>
       {/* Padding tuned so this header's own bottom border lands at the exact same y as the page
@@ -688,7 +756,21 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
           not two independently-sized bars that happen to sit side by side) */}
       <div style={{ padding:"12px 16px 10px", borderBottom:BORDER, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <p style={{ fontSize:"16px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.32px" }}>{t.inspectionDetail}</p>
-        <button onClick={onClose} aria-label={t.close} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--gray-400)", fontSize:"16px", lineHeight:1, padding:"0 2px" }}>✕</button>
+        <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+          {/* Said, not hidden, when the account lacks it — the same rule Redmap's button follows:
+              an operator who cannot export should learn that from the screen, not from the
+              absence of a button they were told about. */}
+          {mayExport ? (
+            <button onClick={exportEvidence}
+              style={{ display:"inline-flex", alignItems:"center", gap:"5px", height:"26px", padding:"0 9px", borderRadius:"7px", border:BORDER, backgroundColor:"white", color:"var(--gray-700)", fontSize:"11px", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+              <FileDown size={13} strokeWidth={2.2} aria-hidden="true" />
+              {t.exportEvidence}
+            </button>
+          ) : (
+            <span title={t.exportDenied} style={{ fontSize:"11px", color:"var(--gray-400)" }}>{t.exportNotAllowed}</span>
+          )}
+          <button onClick={onClose} aria-label={t.close} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--gray-400)", fontSize:"16px", lineHeight:1, padding:"0 2px" }}>✕</button>
+        </div>
       </div>
 
       <div style={{ flex:1, overflowY:"auto", padding:"14px" }}>

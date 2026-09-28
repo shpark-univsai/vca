@@ -153,7 +153,7 @@ export const APP_GRANT_LABELS = {
       reidSearch: "Looking a particular person up in that result",
       redface: "Face search",
       trail: "One person's route on the map",
-      export: "Takes what Redmap found out of the console as a file",
+      export: "Saves a sighting from Redmap or Best Frame as an evidence file",
     } satisfies Record<AppAction, string>,
   },
   ko: {
@@ -221,7 +221,7 @@ export const APP_GRANT_LABELS = {
       reidSearch: "그 결과에서 특정 인물을 직접 찾습니다",
       redface: "얼굴로 찾습니다",
       trail: "지도 위에 한 사람의 경로를 그립니다",
-      export: "레드맵에서 찾은 것을 파일로 콘솔 밖으로 냅니다",
+      export: "레드맵과 베스트 프레임에서 고른 감지를 증거 파일로 냅니다",
     } satisfies Record<AppAction, string>,
   },
 } as const;

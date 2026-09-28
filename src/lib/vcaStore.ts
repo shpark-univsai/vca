@@ -2607,10 +2607,20 @@ export const APP_ACTION_PARENT: Partial<Record<AppAction, AppAction>> = {
   monitoringUnknown: "liveMonitoring",
   liveMonitoringSearch: "liveMonitoring",
   reidSearch: "reid",
-  /* 증거 내보내기 is one button on Redmap and nowhere else — counted: zero export controls on
-     Best Frame, on Data's three tabs and on the dashboard. So it is a step on 레드맵, not a
-     screen of its own. */
-  export: "trail",
+  /*
+   * `export` HAS NO PARENT ANY MORE (owner, 2026-09-28: 내보내기 기능이 레드맵에만 있는게
+   * 어색한데).
+   *
+   * It was a step on 레드맵 because Redmap held the only export button in the app. That was a gap,
+   * not a policy — `EvidenceSubject.surface` and `EvidenceExportRecord.surface` are both typed
+   * "redmap" | "bestframe", so the contract named Best Frame as an export surface while the
+   * screen had none. Best Frame's detail panel has one now, and src/lib/evidence.ts needed no
+   * change to serve it.
+   *
+   * So the grant spans two screens, and parenting it to 레드맵 would revoke it from an account
+   * that holds Best Frame and not Redmap — the screen taking a permission away on a rule that
+   * stopped being true.
+   */
 };
 
 /**
