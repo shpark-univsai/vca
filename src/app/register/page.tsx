@@ -38,6 +38,7 @@ const T = {
     permission: "Permission",
     permAdmin: "Administrator — Portal + App",
     permOperator: "App only",
+    permPortalOnly: "Portal only — no app",
     yesContinue: "Yes, continue",
     notMe: "This isn't me — enter a different code",
     passwordTitle: "Set your password",
@@ -72,6 +73,7 @@ const T = {
     permission: "권한",
     permAdmin: "관리자 — Portal + 앱",
     permOperator: "앱만",
+    permPortalOnly: "Portal만 — 앱은 쓰지 않습니다",
     yesContinue: "네, 계속하기",
     notMe: "제가 아닙니다 — 다른 코드 입력하기",
     passwordTitle: "비밀번호를 설정해주세요",
@@ -104,6 +106,9 @@ interface Activation {
   department?: string;
   projectId?: string;
   permission: "admin" | "operator";
+  /** Where the row says they will sign in. Absent on rows that came from the Excel import, and on
+   *  the account pool — the two-value field above is the fallback. */
+  accessMode?: "both" | "appOnly" | "portalOnly";
   /** Which pool it came from — only needed for the handoff notes about what to burn. */
   source: "roster" | "account";
 }
@@ -241,7 +246,7 @@ function RegisterFlow() {
       setCodeError("");
       setEntry({
         name: r.name, employeeId: r.employeeId, department: r.department,
-        projectId: r.projectId, permission: r.permission, source: "roster",
+        projectId: r.projectId, permission: r.permission, accessMode: r.accessMode, source: "roster",
       });
       setStep("confirm");
       return;
@@ -455,7 +460,15 @@ function RegisterFlow() {
                   {entry.projectId
                     ? detailRow(t.project, projects.find(p => p.id === entry.projectId)?.name ?? entry.projectId)
                     : detailRow(t.scope, t.allTeams)}
-                  {detailRow(t.permission, entry.permission === "admin" ? t.permAdmin : t.permOperator)}
+                  {/* WHERE THEY WILL SIGN IN, READ OFF THE ROW'S OWN ANSWER (2026-09-28).
+                      This printed the two-value field, so a row written as Portal-only said
+                      「앱만」 — the opposite of the truth, to the one person who most needs to know
+                      they will not find the app. The roster row carries `accessMode` now; the
+                      two-value field is only the fallback for rows that came from the import. */}
+                  {detailRow(t.permission, (() => {
+                    const mode = entry.accessMode ?? (entry.permission === "admin" ? "both" : "appOnly");
+                    return mode === "portalOnly" ? t.permPortalOnly : mode === "both" ? t.permAdmin : t.permOperator;
+                  })())}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>

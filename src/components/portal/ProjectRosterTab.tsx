@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Eye, EyeOff, KeyRound } from "lucide-react";
-import { useVcaStore } from "@/lib/vcaStore";
 import { REGISTRATION_CODE_TTL_DAYS, codeExpiresAt, formatCode, type RosterEntry, type RosterCodeStatus } from "@/lib/staffRoster";
 import { sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { useToast } from "../Toast";
-import { TextField, FIELD_STYLE, BORDER, ConfirmModal, Drawer, PICKED_LINE, PICKED_FILL, RequiredMark } from "./PortalShared";
+import { BORDER, ConfirmModal } from "./PortalShared";
 
 const T = {
   en: {
@@ -52,7 +50,9 @@ const T = {
     fieldPermission: "Permission",
     duplicateId: "That employee number is already on a roster.",
     save: "Save",
-    addNote: "Adding someone here does not give them a way in — issue their code afterwards.",
+    /* The code is minted with the row now (see onCreated in PortalUsersPage), so the old
+       sentence — "issue their code afterwards" — described a step that no longer exists. */
+    addNote: "Saving writes the row and issues its code. Hand the code over for them to sign up with.",
     toastAddedTitle: "Added to roster",
     toastUpdatedTitle: "Roster entry updated",
     exportCsv: "Export CSV",
@@ -144,7 +144,7 @@ const T = {
     fieldPermission: "권한",
     duplicateId: "이미 등록 대기에 있는 사번입니다.",
     save: "저장",
-    addNote: "여기에 추가한다고 들어올 수 있게 되지는 않습니다 — 코드는 그다음에 발급합니다.",
+    addNote: "저장하면 명단에 적히고 등록 코드가 함께 발급됩니다. 그 코드를 건네주면 본인이 가입합니다.",
     // 토스트 제목은 한 어미로. 이 파일의 제목들이 "…했습니다" · "…완료" · "…됨" 세 갈래였고,
     // 그중 셋(코드 발급·재발급·명부 삭제)은 사용자 화면의 같은 행 메뉴에서 잇달아 뜹니다. 제품이
     // 쓰는 짧은 "됨"에 맞춥니다 — 카메라 탭 "카메라 추가됨", 서버 탭 "서버 추가됨"과 같은 형태.
@@ -507,11 +507,18 @@ function PrintSheet({ entries, projectName, onClose, t }: { entries: RosterEntry
  * moved, the file it writes did not. Takes the entries rather than reading the store so the caller
  * decides the scope (the whole project's roster, used rows included, not just who is still waiting).
  */
-export function exportRosterCsv(entries: RosterEntry[], projectName: string, t: Translations): number {
+/**
+ * @param grantOf What the screen prints in 「가입 시 권한」 for this row, passed in because the
+ *   answer needs the team's presets and this file does not have them. It is the SAME string the
+ *   table shows — before this, the file wrote the two-value field (「앱 사용자」/「Portal 관리자」)
+ *   while the screen had already stopped saying that, so a row the console marked red as
+ *   「권한 없음」 left the building looking like an ordinary app user.
+ */
+export function exportRosterCsv(entries: RosterEntry[], projectName: string, t: Translations, grantOf: (r: RosterEntry) => string): number {
   const statusMeta = getStatusMeta(t);
   const header = [t.csvHeaderName, t.csvHeaderEmployeeId, t.csvHeaderDepartment, t.csvHeaderEmail, t.csvHeaderPermission, t.csvHeaderStatus, t.csvHeaderCode];
   const rows = entries.map(r => [
-    r.name, r.employeeId, r.department ?? "", r.email ?? "", r.permission === "admin" ? t.admin : t.operator,
+    r.name, r.employeeId, r.department ?? "", r.email ?? "", grantOf(r),
     statusMeta[r.status].label,
     // Only a still-usable code is worth exporting — a used/expired one can't get anyone signed up.
     r.status === "unused" && r.code ? formatCode(r.code) : "",

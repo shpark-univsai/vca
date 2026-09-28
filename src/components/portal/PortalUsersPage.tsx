@@ -4068,6 +4068,36 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
   /* On the VISIBLE rows, not on the section. A search for one person with 「코드 3개 발급」 beside
      it would mint codes for two people who are not on screen — the exact shape of "acts on an
      invisible set" this button was already criticised for. Now the number and the rows agree. */
+  /**
+   * WHAT 「가입 시 권한」 SAYS FOR ONE ROW — computed once, printed twice.
+   *
+   * The table and the CSV export were writing different answers about the same row: the table had
+   * been taught to name the grant group, while the file still wrote the two-value field, so a row
+   * the console marked red as 「권한 없음」 left the building as an ordinary 「앱 사용자」. A file is
+   * the copy that gets forwarded, and it was the one telling the older lie.
+   *
+   * Two facts on one line: what they may do in the app, and whether Portal opens for them. Red
+   * only where the app door opens onto nothing — a Portal-only row has no app grants BY DESIGN and
+   * must not be marked as a mistake.
+   */
+  const rosterGrantCell = (entry: RosterEntry): { text: string; missing: boolean } => {
+    const mode = entry.accessMode ?? (entry.permission === "admin" ? "both" : "appOnly");
+    const pr = entry.presetId ? pagePresets.find(x => x.id === entry.presetId) ?? null : null;
+    const grants = mode === "portalOnly" ? null
+      : entry.grantMode === "custom" ? t.grantCustom
+      : pr ? presetLabel(pr, lang)
+      : null;
+    /* The role the row actually carries, not the word 「관리자」 every time — a row saved as
+       읽기 전용 관리자 used to say 「Portal 관리자」 while the account it creates comes out
+       읽기 전용 관리자. The fallback is what activateRosterEntry uses when portalRole is absent. */
+    const portalPart = mode === "appOnly" ? null
+      : roleLabel(t, entry.portalRole ?? (entry.permission === "admin" ? "admin" : "none"));
+    const text = [mode === "portalOnly" ? null : (grants ?? t.plannedNoGrants), portalPart]
+      .filter(Boolean).join(" \u00b7 ");
+    return { text, missing: mode !== "portalOnly" && !grants };
+  };
+  const rosterGrantText = (entry: RosterEntry) => rosterGrantCell(entry).text;
+
   const notIssuedIds = visibleRoster.filter(r => r.status === "not-issued").map(r => r.employeeId);
   const printableEntries = visibleRoster.filter(r => r.status === "unused" && r.code);
 
@@ -4437,7 +4467,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                  as a file or a sheet is reading it, not changing it, and it is most of what that
                  role is for. They grey out only when there is nothing to hand over. */
               { label: t.exportRoster, onClick: () => {
-                  const n = exportRosterCsv(projectRosterAll, currentProject?.name ?? projectId, rt);
+                  const n = exportRosterCsv(projectRosterAll, currentProject?.name ?? projectId, rt, rosterGrantText);
                   // Recorded here rather than inside exportRosterCsv: that one is a plain function
                   // shared with the print sheet and cannot hold a hook. Not a gate — see
                   // ListExportRecord; reading these is the auditor's job.
@@ -4868,21 +4898,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     this person will arrive at nothing.
                   */}
                   {(() => {
-                    /* The two facts the cell has to carry on ONE line: what they may do in the app,
-                       and whether Portal opens for them at all. Two lines was tried and undone —
-                       every row went to 59px for a single word (see the note on the name cell). */
-                    const mode = entry.accessMode ?? (entry.permission === "admin" ? "both" : "appOnly");
-                    const pr = entry.presetId ? pagePresets.find(x => x.id === entry.presetId) ?? null : null;
-                    const grants = mode === "portalOnly" ? null
-                      : entry.grantMode === "custom" ? t.grantCustom
-                      : pr ? presetLabel(pr, lang)
-                      : null;
-                    /* Red only where the app door opens onto nothing. A Portal-only row has no app
-                       grants BY DESIGN and must not be marked as a mistake. */
-                    const missing = mode !== "portalOnly" && !grants;
-                    const portalPart = mode === "appOnly" ? null : rt.admin;
-                    const text = [mode === "portalOnly" ? null : (grants ?? t.plannedNoGrants), portalPart]
-                      .filter(Boolean).join(" \u00b7 ");
+                    const { text, missing } = rosterGrantCell(entry);
                     return (
                       <span title={text} style={{ fontSize: "12px", fontWeight: missing ? 700 : 400, color: missing ? "var(--danger-500)" : "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", minWidth: 0 }}>
                         {text}
