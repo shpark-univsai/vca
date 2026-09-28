@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { create } from "zustand";
 import { liveEvents, registrySeedEvents, getFacePhoto, DISTRICTS, districtIdAt, type EventType, type LiveEvent, type TrackingHop } from "@/lib/mockData";
+import type { AuditArea } from "@/lib/auditAreas";
+/* Value import, and safe: appGrants takes only TYPES from this module, so nothing of it
+   survives to the bundle and there is no cycle at run time. */
+import { APP_GRANT_LABELS } from "@/lib/appGrants";
 import {
   isTodaySgt, recentSgtStamp, parseSgtStamp,
   setSiteTimeZoneResolver, FALLBACK_TIME_ZONE,
@@ -1410,6 +1414,34 @@ export interface AuditEvent {
    * them would be a lie about where it applies.
    */
   teamId?: string;
+  /**
+   * THE THREE COLUMNS, SPLIT AT THE SOURCE (owner, 2026-09-28: 어느 화면에서 어떤 게 변경되었는지
+   * 한눈에 보이게 누가 무엇을 어떻게를 열로 구분 지어 줘).
+   *
+   * The screen the change was made on, the thing that changed, and what was done to it. The
+   * search log has carried its equivalents apart since it was built — operator, target, screen —
+   * and this log was the one that shipped with everything folded into one sentence.
+   *
+   * WHY NOT PARSE `message`. Every row here is written by one of the call sites below, in free
+   * prose, and there are more than eighty of them. A parser over that is a rule set that passes
+   * today and is quietly wrong the next time somebody adds a wording — and the failure is not an
+   * error, it is a row filed under the wrong screen in the log an audit reads. So the split is
+   * made where the sentence is written, by the code that already knows all three parts.
+   *
+   * OPTIONAL, AND STAYING OPTIONAL. `message` remains required and is still written in full, so
+   * a row that arrives without these — an older entry, or a server that has not been taught them
+   * yet — still renders as the one sentence it always was, across the three columns. A row is
+   * never shown half-split; see ProjectActivityTab.
+   */
+  area?: AuditArea;
+  /** WHAT — the thing's own name: a camera code, a person, an account, a preset, a file. */
+  target?: string;
+  /** HOW — what was done to it, in the past tense, starting with a capital. */
+  action?: string;
+  /**
+   * The whole change as one sentence. Still required, and still the only thing the CSV's old
+   * column and the search box read, because it is the one field every row is guaranteed to have.
+   */
   message: string;
   actor: string;
   at: string;
@@ -2222,7 +2254,7 @@ function detachedFromPreset(user: PortalUser): { patch: Partial<PortalUser>; aud
     patch: { grantMode: "custom" },
     audit: [clientAudit({
       projectId: user.projectIds[0],
-      message: `App grants for ${user.name} detached from preset and set individually`,
+      area: "accounts", target: user.name, action: "App grants detached from preset, set individually", message: `App grants for ${user.name} detached from preset and set individually`,
       actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
     })],
   };
@@ -3852,8 +3884,16 @@ let searchAccessSeq = 0;
  * acceptable reasons to look somebody up" is the question these entries exist to answer, and it is
  * asked of the institution rather than of one site.
  */
-function policyAudit(teamId: string | undefined, message: string): AuditEvent {
-  return clientAudit({ teamId, message, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
+function policyAudit(
+  teamId: string | undefined,
+  message: string,
+  /* WHAT and HOW, for the three columns the activity table now splits into. `area` is fixed:
+     categories and purposes are both edited on the settings sheet, which is also why they are
+     filed against the team rather than against one project. */
+  target: string,
+  action: string,
+): AuditEvent {
+  return clientAudit({ teamId, area: "settings", target, action, message, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
 }
 let eventSeq = SEED_EVENTS.length;
 let portalUserSeq = PORTAL_USERS.length;
@@ -4143,10 +4183,10 @@ export function unstableCameras(projectId: string, cameras: Camera[], limit = 4)
 // carries. That the mock assembles them client-side is a fact about the mock, not about the
 // action. This is the only place in this file "server" is written; see `clientAudit`.
 const AUDIT_LOG: AuditEvent[] = [
-  { id: "audit-1", projectId: "proj-sg", message: "Camera CAM-NOV-001 RTSP URL updated", actor: "Grace Tan", at: auditAt(20), recordedBy: "server" },
-  { id: "audit-2", projectId: "proj-sg", message: "VIP Wei Chen registered", actor: "Marcus Lee", at: auditAt(65), recordedBy: "server" },
-  { id: "audit-3", projectId: "proj-sg", message: "David Ong's account suspended", actor: "Grace Tan", at: auditAt(240), recordedBy: "server" },
-  { id: "audit-4", projectId: "proj-riverside", message: "Server campus-fr-1 connectivity checked", actor: "Nadia Rahman", at: auditAt(50), recordedBy: "server" },
+  { id: "audit-1", projectId: "proj-sg", area: "cameras", target: "CAM-NOV-001", action: "RTSP URL updated", message: "Camera CAM-NOV-001 RTSP URL updated", actor: "Grace Tan", at: auditAt(20), recordedBy: "server" },
+  { id: "audit-2", projectId: "proj-sg", area: "vip", target: "Wei Chen", action: "Registered", message: "VIP Wei Chen registered", actor: "Marcus Lee", at: auditAt(65), recordedBy: "server" },
+  { id: "audit-3", projectId: "proj-sg", area: "accounts", target: "David Ong", action: "Account suspended", message: "David Ong's account suspended", actor: "Grace Tan", at: auditAt(240), recordedBy: "server" },
+  { id: "audit-4", projectId: "proj-riverside", area: "server", target: "campus-fr-1", action: "Connectivity checked", message: "Server campus-fr-1 connectivity checked", actor: "Nadia Rahman", at: auditAt(50), recordedBy: "server" },
   // Enough history for the Overview's "all N entries" modal to be worth opening. Three lines on
   // the card and three lines behind it made the modal a longer way of reading the card; a real
   // console's log is weeks deep, and the point of the modal is that the card is a window onto
@@ -4162,21 +4202,21 @@ const AUDIT_LOG: AuditEvent[] = [
   // nothing). This is the same trap ACCESS_REQUESTS was emptied to avoid — a seeded row that
   // cannot occur teaches whoever reads the screen that the product does something it does not,
   // and the audit log is the one screen a customer reads to find out what happened.
-  { id: "audit-5", projectId: "proj-sg", message: "Camera CAM-BLK-019 added to zone August", actor: "Marcus Lee", at: auditAt(320), recordedBy: "server" },
-  { id: "audit-6", projectId: "proj-sg", message: "VIP group \"Executive Protection\" created", actor: "Grace Tan", at: auditAt(400), recordedBy: "server" },
-  { id: "audit-7", projectId: "proj-sg", message: "Aaron Sim invited as auditor", actor: "Grace Tan", at: auditAt(690), recordedBy: "server" },
-  { id: "audit-8", projectId: "proj-sg", message: "4 cameras in Bugis assigned to server FR 2", actor: "Marcus Lee", at: auditAt(1080), recordedBy: "server" },
-  { id: "audit-9", projectId: "proj-sg", message: "Server FR 2 updated", actor: "Wei Chen", at: auditAt(1500), recordedBy: "server" },
-  { id: "audit-10", projectId: "proj-sg", message: "VIP Sarah Lim's priority raised to High", actor: "Grace Tan", at: auditAt(2160), recordedBy: "server" },
-  { id: "audit-11", projectId: "proj-sg", message: "Camera CAM-BDK-001 stream credentials rotated", actor: "Marcus Lee", at: auditAt(2880), recordedBy: "server" },
-  { id: "audit-12", projectId: "proj-sg", message: "Registration codes issued to 6 staff", actor: "Grace Tan", at: auditAt(3600), recordedBy: "server" },
-  { id: "audit-13", projectId: "proj-sg", message: "Project timezone set to Asia/Singapore", actor: "Grace Tan", at: auditAt(4320), recordedBy: "server" },
-  { id: "audit-14", projectId: "proj-sg", message: "Camera CAM-QTN-001 renamed to Queenstown", actor: "Wei Chen", at: auditAt(5760), recordedBy: "server" },
-  { id: "audit-15", projectId: "proj-sg", message: "Marcus Lee granted app access", actor: "Grace Tan", at: auditAt(7200), recordedBy: "server" },
-  { id: "audit-16", projectId: "proj-sg", message: "VIP registry exported to CSV", actor: "Aaron Sim", at: auditAt(8640), recordedBy: "server" },
-  { id: "audit-17", projectId: "proj-sg", message: "Project mail settings updated", actor: "Wei Chen", at: auditAt(10080), recordedBy: "server" },
-  { id: "audit-18", projectId: "proj-sg", message: "Zone Angmokio created with 3 cameras", actor: "Marcus Lee", at: auditAt(11520), recordedBy: "server" },
-  { id: "audit-19", projectId: "proj-sg", message: "License renewed until 2029-03-31", actor: "Grace Tan", at: auditAt(12960), recordedBy: "server" },
+  { id: "audit-5", projectId: "proj-sg", area: "cameras", target: "CAM-BLK-019", action: "Added to zone August", message: "Camera CAM-BLK-019 added to zone August", actor: "Marcus Lee", at: auditAt(320), recordedBy: "server" },
+  { id: "audit-6", projectId: "proj-sg", area: "vip", target: "Executive Protection", action: "Group created", message: "VIP group \"Executive Protection\" created", actor: "Grace Tan", at: auditAt(400), recordedBy: "server" },
+  { id: "audit-7", projectId: "proj-sg", area: "accounts", target: "Aaron Sim", action: "Invited as auditor", message: "Aaron Sim invited as auditor", actor: "Grace Tan", at: auditAt(690), recordedBy: "server" },
+  { id: "audit-8", projectId: "proj-sg", area: "cameras", target: "4 cameras in Bugis", action: "Assigned to server FR 2", message: "4 cameras in Bugis assigned to server FR 2", actor: "Marcus Lee", at: auditAt(1080), recordedBy: "server" },
+  { id: "audit-9", projectId: "proj-sg", area: "server", target: "FR 2", action: "Updated", message: "Server FR 2 updated", actor: "Wei Chen", at: auditAt(1500), recordedBy: "server" },
+  { id: "audit-10", projectId: "proj-sg", area: "vip", target: "Sarah Lim", action: "Priority raised to High", message: "VIP Sarah Lim's priority raised to High", actor: "Grace Tan", at: auditAt(2160), recordedBy: "server" },
+  { id: "audit-11", projectId: "proj-sg", area: "cameras", target: "CAM-BDK-001", action: "Stream credentials rotated", message: "Camera CAM-BDK-001 stream credentials rotated", actor: "Marcus Lee", at: auditAt(2880), recordedBy: "server" },
+  { id: "audit-12", projectId: "proj-sg", area: "roster", target: "6 staff", action: "Registration codes issued", message: "Registration codes issued to 6 staff", actor: "Grace Tan", at: auditAt(3600), recordedBy: "server" },
+  { id: "audit-13", projectId: "proj-sg", area: "settings", target: "Time zone", action: "Set to Asia/Singapore", message: "Project timezone set to Asia/Singapore", actor: "Grace Tan", at: auditAt(4320), recordedBy: "server" },
+  { id: "audit-14", projectId: "proj-sg", area: "cameras", target: "CAM-QTN-001", action: "Renamed to Queenstown", message: "Camera CAM-QTN-001 renamed to Queenstown", actor: "Wei Chen", at: auditAt(5760), recordedBy: "server" },
+  { id: "audit-15", projectId: "proj-sg", area: "accounts", target: "Marcus Lee", action: "Granted app access", message: "Marcus Lee granted app access", actor: "Grace Tan", at: auditAt(7200), recordedBy: "server" },
+  { id: "audit-16", projectId: "proj-sg", area: "vip", target: "VIP registry", action: "Exported to CSV", message: "VIP registry exported to CSV", actor: "Aaron Sim", at: auditAt(8640), recordedBy: "server" },
+  { id: "audit-17", projectId: "proj-sg", area: "server", target: "Mail settings", action: "Updated", message: "Project mail settings updated", actor: "Wei Chen", at: auditAt(10080), recordedBy: "server" },
+  { id: "audit-18", projectId: "proj-sg", area: "cameras", target: "Zone Angmokio", action: "Created with 3 cameras", message: "Zone Angmokio created with 3 cameras", actor: "Marcus Lee", at: auditAt(11520), recordedBy: "server" },
+  { id: "audit-19", projectId: "proj-sg", area: "license", target: "Project licence", action: "Renewed until 2029-03-31", message: "License renewed until 2029-03-31", actor: "Grace Tan", at: auditAt(12960), recordedBy: "server" },
 ];
 let auditSeq = AUDIT_LOG.length;
 
@@ -4387,7 +4427,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   setCameraStatus: (cameraId, status) =>
     set(state => {
       const cam = state.cameras.find(c => c.id === cameraId);
-      const auditEntry: AuditEvent = clientAudit({ projectId: cam?.projectId, message: `Camera ${cam?.code ?? cameraId} marked ${status}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
+      const auditEntry: AuditEvent = clientAudit({ projectId: cam?.projectId, area: "cameras", target: `${cam?.code ?? cameraId}`, action: `Marked ${status}`, message: `Camera ${cam?.code ?? cameraId} marked ${status}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
       return {
         cameras: state.cameras.map(c => (c.id === cameraId ? { ...c, status } : c)),
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
@@ -4420,7 +4460,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         cameras: [...st.cameras, ...accepted],
         auditLog: [clientAudit({
           projectId,
-          message: `${accepted.length} camera${accepted.length === 1 ? "" : "s"} imported from ${source}`
+          area: "cameras", target: `${accepted.length} camera${accepted.length === 1 ? "" : "s"}`, action: `Imported from ${source}`, message: `${accepted.length} camera${accepted.length === 1 ? "" : "s"} imported from ${source}`
             + (refused.length > 0 ? ` (${refused.length} refused)` : ""),
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
@@ -4449,7 +4489,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         }),
         auditLog: [clientAudit({
           projectId,
-          message: `Coordinates filled for ${placed.size} camera${placed.size === 1 ? "" : "s"} from ${source}`
+          area: "cameras", target: `${placed.size} camera${placed.size === 1 ? "" : "s"}`, action: `Coordinates filled from ${source}`, message: `Coordinates filled for ${placed.size} camera${placed.size === 1 ? "" : "s"} from ${source}`
             + (refused.length > 0 ? ` (${refused.length} not found)` : ""),
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
@@ -4472,7 +4512,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     }
     set(st => ({
       cameras: [...st.cameras, { ...camera, id: `cam-${++cameraSeq}` }],
-      auditLog: [clientAudit({ projectId: camera.projectId, message: `Camera ${camera.name} added`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      auditLog: [clientAudit({ projectId: camera.projectId, area: "cameras", target: camera.name, action: "Added", message: `Camera ${camera.name} added`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return null;
   },
@@ -4489,6 +4529,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         cameras: state.cameras.map(c => (c.id === cameraId ? { ...c, ...updates } : c)),
         auditLog: [clientAudit({
           projectId: cam.projectId,
+          area: "cameras",
+          target: updates.name ?? cam.name,
+          action: streamChanged ? "Stream address changed" : "Updated",
           message: streamChanged
             ? `Camera ${updates.name ?? cam.name} stream address changed`
             : `Camera ${updates.name ?? cam.name} updated`,
@@ -4500,7 +4543,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(state => {
       const cam = state.cameras.find(c => c.id === cameraId);
       const scopes = pruneCameraScopes(state.portalUsers, new Set([cameraId]));
-      const auditEntry: AuditEvent = clientAudit({ projectId: cam?.projectId, message: `Camera ${cam?.name ?? cameraId} removed${scopeNote(scopes.touched)}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
+      const auditEntry: AuditEvent = clientAudit({ projectId: cam?.projectId, area: "cameras", target: `${cam?.name ?? cameraId}`, action: `Removed${scopeNote(scopes.touched)}`, message: `Camera ${cam?.name ?? cameraId} removed${scopeNote(scopes.touched)}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
       return {
         cameras: state.cameras.filter(c => c.id !== cameraId),
         cameraGroups: pruneCameraGroupMembers(state.cameraGroups, new Set([cameraId])),
@@ -4516,6 +4559,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const scopes = pruneCameraScopes(state.portalUsers, ids);
       const auditEntry: AuditEvent = clientAudit({
         projectId: removed[0].projectId,
+        area: "cameras",
+        target: removed.length === 1 ? removed[0].name : `${removed.length} cameras (${removed.map(c => c.code).join(", ")})`,
+        action: `Removed${scopeNote(scopes.touched)}`,
         message: (removed.length === 1
           ? `Camera ${removed[0].name} removed`
           : `${removed.length} cameras removed (${removed.map(c => c.code).join(", ")})`) + scopeNote(scopes.touched),
@@ -4535,7 +4581,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (moved.length === 0) return {};
       const auditEntry: AuditEvent = clientAudit({
         projectId: moved[0].projectId,
-        message: `${moved.length} camera${moved.length === 1 ? "" : "s"} moved to zone "${zone}"`,
+        area: "cameras", target: `${moved.length} camera${moved.length === 1 ? "" : "s"}`, action: `Moved to zone "${zone}"`, message: `${moved.length} camera${moved.length === 1 ? "" : "s"} moved to zone "${zone}"`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
@@ -4553,7 +4599,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     const entry: UploadedMedia = { ...upload, id, uploadedAt: new Date().toISOString(), status: "pending" };
     const auditEntry: AuditEvent = clientAudit({
       projectId: upload.projectId,
-      message: `${upload.kind === "image" ? "Image" : "Video"} uploaded — ${upload.fileName}`,
+      area: "cameras", target: upload.fileName, action: `${upload.kind === "image" ? "Image" : "Video"} uploaded`, message: `${upload.kind === "image" ? "Image" : "Video"} uploaded — ${upload.fileName}`,
       actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
     });
     set(state => ({
@@ -4568,7 +4614,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (!upload) return {};
       const auditEntry: AuditEvent = clientAudit({
         projectId: upload.projectId,
-        message: `Upload removed — ${upload.fileName}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        area: "cameras", target: upload.fileName, action: "Upload removed", message: `Upload removed — ${upload.fileName}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
         uploads: state.uploads.filter(u => u.id !== uploadId),
@@ -4578,7 +4624,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   addProject: (project) =>
     set(state => ({
       projects: [...state.projects, { ...project, id: `proj-${++projectSeq}` }],
-      auditLog: [clientAudit({ teamId: project.teamId, message: `Project created: ${project.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      auditLog: [clientAudit({ teamId: project.teamId, area: "settings", target: project.name, action: "Project created", message: `Project created: ${project.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   renameProject: (projectId, name) =>
     set(state => {
@@ -4590,7 +4636,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // one — "Project renamed to Bugis North" does not say which project that was.
         auditLog: [clientAudit({
           projectId,
-          message: `Project renamed: ${project.name} → ${name}`,
+          area: "settings", target: project.name, action: `Renamed to ${name}`, message: `Project renamed: ${project.name} → ${name}`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -4620,7 +4666,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         } : p)),
         auditLog: [clientAudit({
           projectId,
-          message: `Licence ${licence.licenseId} installed (${before} → ${licence.plan}, ${licence.channelLimit}ch, ${licence.expiresAt})`,
+          area: "license", target: licence.licenseId, action: `Installed — ${before} → ${licence.plan}, ${licence.channelLimit}ch, expires ${licence.expiresAt}`, message: `Licence ${licence.licenseId} installed (${before} → ${licence.plan}, ${licence.channelLimit}ch, ${licence.expiresAt})`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -4688,7 +4734,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // it is a cover-up, and the audit log is the one screen that has to survive this.
         auditLog: [clientAudit({
           teamId: project.teamId,
-          message: `Project deleted: ${project.name}`,
+          area: "settings", target: project.name, action: "Project deleted", message: `Project deleted: ${project.name}`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog.map(a => (
           a.projectId === projectId ? { ...a, projectId: undefined, teamId: project.teamId } : a
@@ -4705,6 +4751,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       auditLog: [
         clientAudit({
           projectId,
+          area: "settings",
+          target: "Viewer watermark",
+          action: on ? "Turned on" : "Turned OFF — leaked stills no longer name the session",
           message: on ? "Viewer watermark turned on" : "Viewer watermark turned OFF — leaked stills no longer name the session",
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }),
@@ -4721,7 +4770,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // ++auditSeq, not Date.now(): two changes inside one millisecond produced duplicate
         // React keys. And sliced like every other writer — this was the one that could grow the
         // log past the ceiling the Activity screen prints.
-        clientAudit({ projectId, message: `Project timezone set to ${timeZone}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }),
+        clientAudit({ projectId, area: "settings", target: "Time zone", action: `Set to ${timeZone}`, message: `Project timezone set to ${timeZone}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }),
         ...state.auditLog,
       ].slice(0, AUDIT_LOG_LIMIT),
     })),
@@ -4753,7 +4802,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       ],
       auditLog: [clientAudit({
         projectId: r.projectId,
-        message: `Erasure request received: ${r.subjectName}`,
+        area: "requests", target: r.subjectName, action: "Erasure request received", message: `Erasure request received: ${r.subjectName}`,
         actor: SIGNED_IN_USER.name, at,
       }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
@@ -4772,7 +4821,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           : r)),
         auditLog: [clientAudit({
           projectId: req.projectId,
-          message: `Erasure policy set for ${req.subjectName}: ${category} ${req.dispositions[category]} → ${disposition}`,
+          area: "requests", target: req.subjectName, action: `Erasure policy: ${category} ${req.dispositions[category]} → ${disposition}`, message: `Erasure policy set for ${req.subjectName}: ${category} ${req.dispositions[category]} → ${disposition}`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -4797,7 +4846,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         } : r)),
         auditLog: [clientAudit({
           projectId: req.projectId,
-          message: `Erasure request ${completed ? "completed" : "refused"}: ${req.subjectName}`,
+          area: "requests", target: req.subjectName, action: `Erasure request ${completed ? "completed" : "refused"}`, message: `Erasure request ${completed ? "completed" : "refused"}: ${req.subjectName}`,
           actor: SIGNED_IN_USER.name, at,
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -4812,7 +4861,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       ],
       auditLog: [clientAudit({
         projectId: r.projectId,
-        message: `Footage request received from ${r.requesterName} (${r.requesterOrg})`,
+        area: "requests", target: `${r.requesterName} (${r.requesterOrg})`, action: "Footage request received", message: `Footage request received from ${r.requesterName} (${r.requesterOrg})`,
         actor: SIGNED_IN_USER.name, at,
       }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
@@ -4839,7 +4888,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         } : r)),
         auditLog: [clientAudit({
           projectId: req.projectId,
-          message: `Footage request ${approved ? "approved" : "refused"}: ${req.requesterName} (${req.requesterOrg})`,
+          area: "requests", target: `${req.requesterName} (${req.requesterOrg})`, action: `Footage request ${approved ? "approved" : "refused"}`, message: `Footage request ${approved ? "approved" : "refused"}: ${req.requesterName} (${req.requesterOrg})`,
           actor: SIGNED_IN_USER.name, at,
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -4860,7 +4909,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // question anybody asks afterwards, which is whose faces were in the file.
         auditLog: [clientAudit({
           projectId: req.projectId,
-          message: `Footage released to ${release.releasedTo || req.requesterName}`
+          area: "requests", target: `${release.releasedTo || req.requesterName}`, action: "Footage released", message: `Footage released to ${release.releasedTo || req.requesterName}`
             + ` · ${release.redaction?.done ? `redacted (${release.redaction.method})` : "not redacted"}`,
           actor: SIGNED_IN_USER.name, at,
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
@@ -4872,6 +4921,13 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const LIST_NAME: Record<ListExportRecord["list"], string> = {
         vips: "VIP registry", searchLog: "search access log", activity: "activity log",
         roster: "staff roster", cameras: "camera list",
+      };
+      /* The screen the button was pressed on, so an export lands under the list it emptied rather
+         than all five landing under one name. Both records read the same `list` key, so they
+         cannot disagree about which screen that was. */
+      const LIST_AREA: Record<ListExportRecord["list"], AuditArea> = {
+        vips: "vip", searchLog: "records", activity: "records",
+        roster: "roster", cameras: "cameras",
       };
       return {
         // Append, never replace — the same rule as evidenceExports. Exporting the same list twice
@@ -4891,7 +4947,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // otherwise the one action worth auditing is the one nobody sees.
         auditLog: [clientAudit({
           projectId,
-          message: `${LIST_NAME[list]} exported as a file — ${rowCount} row(s)`,
+          area: LIST_AREA[list], target: LIST_NAME[list], action: `Exported as a file — ${rowCount} row(s)`, message: `${LIST_NAME[list]} exported as a file — ${rowCount} row(s)`,
           actor: SIGNED_IN_USER.name, at,
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -4921,7 +4977,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // only that a browser claimed to have made a file.
         auditLog: [clientAudit({
           projectId,
-          message: `Evidence exported: ${subjectId} (${targetLabel}) · manifest ${manifestHash.slice(0, 12)}`,
+          area: "redmap", target: targetLabel, action: `Evidence exported — ${subjectId}, manifest ${manifestHash.slice(0, 12)}`, message: `Evidence exported: ${subjectId} (${targetLabel}) · manifest ${manifestHash.slice(0, 12)}`,
           actor: SIGNED_IN_USER.name, at,
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -4944,6 +5000,11 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // we keeping in March", which is the question a complaint or a court asks.
         auditLog: [clientAudit({
           projectId,
+          area: "settings",
+          target: "Retention period",
+          action: days === null
+            ? `Cleared (was ${before ?? "unset"} days)`
+            : `Changed from ${before ?? "unset"} to ${days} days`,
           message: days === null
             ? `Retention period cleared (was ${before ?? "unset"} days)`
             : `Retention period changed from ${before ?? "unset"} to ${days} days`,
@@ -4973,6 +5034,11 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         projects: state.projects.map(p => (p.id === projectId ? { ...p, vipRetentionDays: days ?? undefined } : p)),
         auditLog: [clientAudit({
           projectId,
+          area: "settings",
+          target: "VIP listing period",
+          action: days === null
+            ? `Cleared (was ${before ?? "unset"} days)`
+            : `Changed from ${before ?? "unset"} to ${days} days`,
           message: days === null
             ? `VIP listing period cleared (was ${before ?? "unset"} days)`
             : `VIP listing period changed from ${before ?? "unset"} to ${days} days`,
@@ -4983,7 +5049,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   updateProjectMail: (projectId, updates) =>
     set(state => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, ...updates } : p)),
-      auditLog: [clientAudit({ projectId, message: `Project mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      auditLog: [clientAudit({ projectId, area: "server", target: "Mail settings", action: "Updated", message: `Project mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   // This flips which mailbox invites/resets go through, same audit-worthy weight as updateProjectMail.
   setNetworkIsolationOverride: (projectId, override) =>
@@ -4991,6 +5057,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, networkIsolatedOverride: override } : p)),
       auditLog: [clientAudit({
         projectId,
+        area: "settings",
+        target: "Network reachability",
+        action: override === null ? "Reset to auto-detection" : `Manually set to ${override ? "internet-isolated" : "internet-connected"}`,
         message: override === null ? "Network reachability reset to auto-detection" : `Network reachability manually set to ${override ? "internet-isolated" : "internet-connected"}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
@@ -5017,7 +5086,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(st => ({
       cameraGroups: [...st.cameraGroups, group],
       auditLog: [clientAudit({
-        projectId, message: `Camera group "${trimmed}" created with ${cameraIds.length} camera(s)`,
+        projectId, area: "cameraGroups", target: trimmed, action: `Created with ${cameraIds.length} camera(s)`, message: `Camera group "${trimmed}" created with ${cameraIds.length} camera(s)`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
@@ -5065,7 +5134,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         : g)),
       auditLog: [clientAudit({
         projectId: group.projectId,
-        message: `Camera group "${group.label}" ${parts.join("; ")}`,
+        area: "cameraGroups", target: group.label, action: `${parts.join("; ")}`, message: `Camera group "${group.label}" ${parts.join("; ")}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
@@ -5090,7 +5159,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         portalUsers: touched === 0 ? state.portalUsers : users,
         auditLog: [clientAudit({
           projectId: group.projectId,
-          message: `Camera group "${group.label}" deleted${touched === 0 ? "" : ` · removed from ${touched} account(s)`}`,
+          area: "cameraGroups", target: group.label, action: `Deleted${touched === 0 ? "" : ` · removed from ${touched} account(s)`}`, message: `Camera group "${group.label}" deleted${touched === 0 ? "" : ` · removed from ${touched} account(s)`}`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -5127,7 +5196,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       auditLog: [clientAudit({
         projectId,
         // The prefix, never the secret. An audit log is read by more people than the dialog was.
-        message: `API key "${key.name}" issued (${key.prefix}…, ${draft.scope === "read" ? "read-only" : "read/write"}${draft.expiresAt ? `, expires ${draft.expiresAt}` : ", no expiry"})`,
+        area: "server", target: key.name, action: `API key issued — ${key.prefix}…, ${draft.scope === "read" ? "read-only" : "read/write"}${draft.expiresAt ? `, expires ${draft.expiresAt}` : ", no expiry"}`, message: `API key "${key.name}" issued (${key.prefix}…, ${draft.scope === "read" ? "read-only" : "read/write"}${draft.expiresAt ? `, expires ${draft.expiresAt}` : ", no expiry"})`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
@@ -5143,7 +5212,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         apiKeys: state.apiKeys.map(k => (k.id === keyId ? { ...k, revokedAt: new Date().toISOString() } : k)),
         auditLog: [clientAudit({
           projectId: key.projectId,
-          message: `API key "${key.name}" revoked (${key.prefix}…)`,
+          area: "server", target: key.name, action: `API key revoked — ${key.prefix}…`, message: `API key "${key.name}" revoked (${key.prefix}…)`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -5151,14 +5220,14 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   updateTeamMail: (teamId, updates) =>
     set(state => ({
       teams: state.teams.map(o => (o.id === teamId ? { ...o, ...updates } : o)),
-      auditLog: [clientAudit({ message: `Team mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      auditLog: [clientAudit({ area: "settings", target: "Team mail settings", action: "Updated", message: `Team mail settings updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   addPerson: (person) =>
     set(state => ({
       // The rule of the site this person is being registered at, not a global one: two projects on
       // one installation can hold people to different periods.
       persons: [...state.persons, { registeredBy: SIGNED_IN_USER.name, ...person, expiresAt: settledExpiry(person.expiresAt, vipRetentionDays(state.projects.find(pr => pr.id === person.projectId))), id: `person-${++personSeq}` }],
-      auditLog: [clientAudit({ projectId: person.projectId, message: `VIP ${person.name} registered`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      auditLog: [clientAudit({ projectId: person.projectId, area: "vip", target: person.name, action: "Registered", message: `VIP ${person.name} registered`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   addPersons: (persons, source) => {
     if (persons.length === 0) return 0;
@@ -5166,7 +5235,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       persons: [...state.persons, ...persons.map(pp => ({ registeredBy: SIGNED_IN_USER.name, ...pp, expiresAt: settledExpiry(pp.expiresAt, vipRetentionDays(state.projects.find(pr => pr.id === pp.projectId))), id: `person-${++personSeq}` }))],
       auditLog: [clientAudit({
         projectId: persons[0].projectId,
-        message: `${persons.length} ${persons.length === 1 ? "person" : "people"} imported from ${source}`,
+        area: "vip", target: `${persons.length} ${persons.length === 1 ? "person" : "people"}`, action: `Imported from ${source}`, message: `${persons.length} ${persons.length === 1 ? "person" : "people"} imported from ${source}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
@@ -5180,6 +5249,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // what happened, a list of ids says nothing anybody can read.
       const auditEntry: AuditEvent = clientAudit({
         projectId: state.persons.find(p => ids.has(p.id))?.projectId,
+        area: "vip",
+        target: `${ids.size} VIP listing(s)`,
+        action: expiresAt === null ? "Set to no end date" : `Set to expire ${expiresAt}`,
         message: expiresAt === null
           ? `${ids.size} VIP listing(s) set to no end date`
           : `${ids.size} VIP listing(s) set to expire ${expiresAt}`,
@@ -5201,7 +5273,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         projectId: person?.projectId,
         // The name is snapshotted into the message because the row it names is about to stop
         // existing — the same reason the group and camera removals word themselves this way.
-        message: `VIP ${person?.name ?? personId} deleted from the VIP registry`,
+        area: "vip", target: `${person?.name ?? personId}`, action: "Deleted from the registry", message: `VIP ${person?.name ?? personId} deleted from the VIP registry`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
@@ -5222,7 +5294,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           projectId: person.projectId,
           // Both lines stay in the log. An undo is not an erasure of the delete — an audit that
           // shows only the net effect cannot answer "was this person ever off the list".
-          message: `VIP ${person.name} restored to the VIP registry (deletion undone)`,
+          area: "vip", target: person.name, action: "Restored to the registry (deletion undone)", message: `VIP ${person.name} restored to the VIP registry (deletion undone)`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -5236,6 +5308,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         persons: state.persons.map(p => (ids.has(p.id) ? { ...p, groupId: groupId ?? undefined } : p)),
         auditLog: [clientAudit({
           projectId: state.persons.find(p => ids.has(p.id))?.projectId,
+          area: "vip",
+          target: `${ids.size} VIP listing(s)`,
+          action: groupName === null ? "Removed from their group" : `Moved to group ${groupName}`,
           message: groupName === null
             ? `${ids.size} VIP listing(s) removed from their group`
             : `${ids.size} VIP listing(s) moved to group ${groupName}`,
@@ -5251,7 +5326,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         persons: state.persons.map(p => (ids.has(p.id) ? { ...p, priorityLabel } : p)),
         auditLog: [clientAudit({
           projectId: state.persons.find(p => ids.has(p.id))?.projectId,
-          message: `${ids.size} VIP listing(s) set to priority ${priorityLabel}`,
+          area: "vip", target: `${ids.size} VIP listing(s)`, action: `Priority set to ${priorityLabel}`, message: `${ids.size} VIP listing(s) set to priority ${priorityLabel}`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -5264,7 +5339,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       persons: state.persons.filter(p => !ids.has(p.id)),
       auditLog: [clientAudit({
         projectId: removed[0].projectId,
-        message: `${removed.length} VIP listing(s) deleted from the VIP registry`,
+        area: "vip", target: `${removed.length} VIP listing(s)`, action: "Deleted from the registry", message: `${removed.length} VIP listing(s) deleted from the VIP registry`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
@@ -5281,7 +5356,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         persons: [...state.persons, ...back].sort((a, b) => a.id.localeCompare(b.id)),
         auditLog: [clientAudit({
           projectId: back[0].projectId,
-          message: `${back.length} VIP listing(s) restored to the VIP registry (deletion undone)`,
+          area: "vip", target: `${back.length} VIP listing(s)`, action: "Restored to the registry (deletion undone)", message: `${back.length} VIP listing(s) restored to the VIP registry (deletion undone)`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -5295,7 +5370,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         persons: state.persons.map(p => (p.id === personId ? { ...p, releasedAt: at, releaseReason: reason } : p)),
         auditLog: [clientAudit({
           projectId: person.projectId,
-          message: `VIP ${person.name} released — ${reason}`,
+          area: "vip", target: person.name, action: `Released — ${reason}`, message: `VIP ${person.name} released — ${reason}`,
           actor: SIGNED_IN_USER.name, at,
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -5315,7 +5390,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         )),
         auditLog: [clientAudit({
           projectId: person.projectId,
-          message: `VIP ${person.name} reinstated (released ${wasReleasedOn}) — ${reason}`,
+          area: "vip", target: person.name, action: `Reinstated (released ${wasReleasedOn}) — ${reason}`, message: `VIP ${person.name} reinstated (released ${wasReleasedOn}) — ${reason}`,
           actor: SIGNED_IN_USER.name, at,
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -5324,7 +5399,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     const id = `spurpose-${++searchPurposeSeq}`;
     set(state => ({
       searchPurposes: [...state.searchPurposes, { ...purpose, id, archived: false }],
-      auditLog: [policyAudit(purpose.teamId, `Search purpose "${purpose.label}" created`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      auditLog: [policyAudit(purpose.teamId, `Search purpose "${purpose.label}" created`, purpose.label, "Search purpose created"), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return id;
   },
@@ -5351,6 +5426,8 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       auditLog: [policyAudit(
         state.searchPurposes.find(p => p.id === purposeId)?.teamId,
         `Search purpose "${state.searchPurposes.find(p => p.id === purposeId)?.label ?? purposeId}" retired`,
+        state.searchPurposes.find(p => p.id === purposeId)?.label ?? purposeId,
+        "Search purpose retired",
       ), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   // Not called from anywhere in src/ yet — the app's purpose gate is deferred to v2, the same
@@ -5379,7 +5456,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     const id = `wcat-${++vipCategorySeq}`;
     set(state => ({
       vipCategories: [...state.vipCategories, { ...category, id, archived: false }],
-      auditLog: [policyAudit(category.teamId, `VIP category "${category.label}" created`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      auditLog: [policyAudit(category.teamId, `VIP category "${category.label}" created`, category.label, "VIP category created"), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return id;
   },
@@ -5389,7 +5466,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (!before) return {};
       return {
         vipCategories: state.vipCategories.map(c => (c.id === categoryId ? { ...c, ...updates } : c)),
-        auditLog: [policyAudit(before.teamId, `VIP category "${updates.label ?? before.label}" changed`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+        auditLog: [policyAudit(before.teamId, `VIP category "${updates.label ?? before.label}" changed`, updates.label ?? before.label, "VIP category changed"), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   archiveVipCategory: (categoryId) =>
@@ -5398,7 +5475,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (!before) return {};
       return {
         vipCategories: state.vipCategories.map(c => (c.id === categoryId ? { ...c, archived: true } : c)),
-        auditLog: [policyAudit(before.teamId, `VIP category "${before.label}" retired`), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+        auditLog: [policyAudit(before.teamId, `VIP category "${before.label}" retired`, before.label, "VIP category retired"), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   updatePerson: (personId, updates) =>
@@ -5414,6 +5491,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const photoReplaced = updates.photoUrl !== undefined && updates.photoUrl !== person.photoUrl;
       const auditEntry: AuditEvent = clientAudit({
         projectId: person.projectId,
+        area: "vip",
+        target: updates.name ?? person.name,
+        action: photoReplaced ? "Photo replaced for re-enrolment" : "Registry entry updated",
         message: photoReplaced
           ? `VIP photo replaced for re-enrolment: ${updates.name ?? person.name}`
           : `VIP updated: ${updates.name ?? person.name}`,
@@ -5430,7 +5510,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     const id = `pgroup-${++personGroupSeq}`;
     set(state => ({
       personGroups: [...state.personGroups, { ...group, id }],
-      auditLog: [clientAudit({ projectId: group.projectId, message: `VIP group created: ${group.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      auditLog: [clientAudit({ projectId: group.projectId, area: "vip", target: group.name, action: "Group created", message: `VIP group created: ${group.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return id;
   },
@@ -5440,7 +5520,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (!group) return {};
       return {
         personGroups: state.personGroups.map(g => (g.id === groupId ? { ...g, ...updates } : g)),
-        auditLog: [clientAudit({ projectId: group.projectId, message: `VIP group updated: ${updates.name ?? group.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+        auditLog: [clientAudit({ projectId: group.projectId, area: "vip", target: `${updates.name ?? group.name}`, action: "Group updated", message: `VIP group updated: ${updates.name ?? group.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   removePersonGroup: (groupId, options) =>
@@ -5459,7 +5539,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           : state.persons.map(p => (p.groupId === groupId ? { ...p, groupId: undefined } : p)),
         auditLog: [clientAudit({
           projectId: group?.projectId,
-          message: `VIP group removed: ${group?.name ?? groupId}`
+          area: "vip", target: `${group?.name ?? groupId}`, action: "Group removed", message: `VIP group removed: ${group?.name ?? groupId}`
             + (affected === 0 ? "" : deleteMembers ? ` — ${affected} member(s) deleted with it` : ` — ${affected} member(s) kept as individuals`),
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
@@ -5474,6 +5554,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // inspection asks about later, and the three group actions beside this one already log.
       const auditEntry: AuditEvent = clientAudit({
         projectId: person.projectId,
+        area: "vip",
+        target: person.name,
+        action: to ? `Added to VIP group: ${to}` : "Removed from their VIP group",
         message: to ? `${person.name} added to VIP group: ${to}` : `${person.name} removed from their VIP group`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
@@ -5553,7 +5636,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // Demoting the last owner locks the customer out just as surely as deleting them.
       if (!canManageAccess(permission) && isLastActiveAdmin(state.portalUsers, userId)) return state;
       const user = state.portalUsers.find(u => u.id === userId);
-      const auditEntry: AuditEvent = clientAudit({ projectId: user?.projectIds[0], message: `${user?.name ?? userId}'s permission changed to ${permission}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
+      const auditEntry: AuditEvent = clientAudit({ projectId: user?.projectIds[0], area: "accounts", target: `${user?.name ?? userId}`, action: `Portal role changed to ${permission}`, message: `${user?.name ?? userId}'s permission changed to ${permission}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
       return {
         portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, permission } : u)),
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
@@ -5597,7 +5680,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const at = new Date().toISOString();
       const entries: AuditEvent[] = [clientAudit({
         projectId: user?.projectIds[0],
-        message: `${user?.name ?? userId} may now use ${where} (role: ${permission})`,
+        area: "accounts", target: `${user?.name ?? userId}`, action: `May now use ${where} (role: ${permission})`, message: `${user?.name ?? userId} may now use ${where} (role: ${permission})`,
         actor: SIGNED_IN_USER.name, at,
       })];
       return {
@@ -5613,7 +5696,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(state => ({
       accessPresets: [...state.accessPresets, { ...preset, id }],
       auditLog: [clientAudit({
-        message: `Access preset "${preset.label}" created`,
+        area: "presets", target: preset.label, action: "Created", message: `Access preset "${preset.label}" created`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
@@ -5638,7 +5721,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           u.grantMode === "preset" && u.presetId === presetId ? { ...u, ...grantsOfPreset(next) } : u
         )),
         auditLog: [clientAudit({
-          message: `Access preset "${next.label}" (${presetId}) changed — ${followers.length} account(s) updated`,
+          area: "presets", target: next.label, action: `Changed — ${followers.length} account(s) updated`, message: `Access preset "${next.label}" (${presetId}) changed — ${followers.length} account(s) updated`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -5656,7 +5739,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           u.grantMode === "preset" && u.presetId === presetId ? { ...u, grantMode: "custom" as GrantMode } : u
         )),
         auditLog: [clientAudit({
-          message: `Access preset "${preset.label}" (${presetId}) retired — ${followers.length} account(s) moved to custom`,
+          area: "presets", target: preset.label, action: `Retired — ${followers.length} account(s) moved to custom`, message: `Access preset "${preset.label}" (${presetId}) retired — ${followers.length} account(s) moved to custom`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -5671,7 +5754,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // administrator chose is worse than no entry — the same rule SearchAccessRecord follows.
       const auditEntry: AuditEvent = clientAudit({
         projectId: user.projectIds[0],
-        message: `App grants for ${user.name} set from preset "${preset.label}" (${preset.id})`,
+        area: "accounts", target: user.name, action: `App grants set from preset "${preset.label}"`, message: `App grants for ${user.name} set from preset "${preset.label}" (${preset.id})`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
@@ -5687,7 +5770,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (!user) return state;
       const auditEntry: AuditEvent = clientAudit({
         projectId: user.projectIds[0],
-        message: `App grants for ${user.name} detached from preset and set individually`,
+        area: "accounts", target: user.name, action: "App grants detached from preset, set individually", message: `App grants for ${user.name} detached from preset and set individually`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
@@ -5707,6 +5790,14 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         .filter(Boolean).join(", ");
       // The groups by NAME, because "2 groups" in an audit log is not an answer to "what could
       // that account see in March" — the membership will have moved by the time anybody asks.
+      /* The same three cases twice: once as the sentence the old single column printed, once as
+         the predicate the 「어떻게」 column prints beside the account's name. Written side by side
+         so a fourth case cannot be added to one and forgotten in the other. */
+      const scopeAction = cameraIds === undefined && cameraGroupIds === undefined
+        ? "Camera scope cleared — every camera on their projects"
+        : (cameraIds?.length ?? 0) === 0 && groupCount === 0
+        ? "Camera scope set to none"
+        : `Camera scope set to ${groupCount > 0 ? `${groupCount} group(s) [${groupNames}]` : ""}${groupCount > 0 && (cameraIds?.length ?? 0) > 0 ? " + " : ""}${(cameraIds?.length ?? 0) > 0 ? `${cameraIds?.length} camera(s)` : ""}`;
       const message = cameraIds === undefined && cameraGroupIds === undefined
         ? `Camera scope for ${user.name} cleared — every camera on their projects`
         : (cameraIds?.length ?? 0) === 0 && groupCount === 0
@@ -5715,7 +5806,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       return {
         portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, cameraIds, cameraGroupIds } : u)),
         auditLog: [clientAudit({
-          projectId: user.projectIds[0], message, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+          projectId: user.projectIds[0],
+          area: "accounts", target: user.name, action: scopeAction, message,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
@@ -5746,6 +5839,12 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       next.appActions = withAppActionDeps([...held]);
       const auditEntry: AuditEvent = clientAudit({
         projectId: user.projectIds[0],
+        area: "accounts", target: user.name,
+        /* The app's own name for the screen — 「대시보드 > 이벤트」 — not the grant key. The key is
+           what `message` has always printed, and an administrator reading the log has no way to
+           turn `liveView` back into a tab they can point at. Same table the grant list and /mypage
+           read, so the row and the tick box say one thing. */
+        action: `${allowed ? "Granted" : "Revoked"} app access to ${APP_GRANT_LABELS.en.actionName[action]}`,
         message: `${allowed ? "Granted" : "Revoked"} app ${action} for ${user.name}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
@@ -5761,7 +5860,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const detach = detachedFromPreset(user);
       const auditEntry: AuditEvent = clientAudit({
         projectId: user.projectIds[0],
-        message: `${allowed ? "Person search granted" : "Person search revoked"}: ${user.name}`,
+        area: "accounts", target: user.name, action: `Person search ${allowed ? "granted" : "revoked"}`, message: `${allowed ? "Person search granted" : "Person search revoked"}: ${user.name}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       /* THE QUICK BLOCK REACHES EVERY SEARCH, AND THAT IS FOUR GRANTS NOW (2026-09-23).
@@ -5801,7 +5900,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       ].filter(Boolean).join(" ");
       const auditEntry: AuditEvent = clientAudit({
         projectId: user.projectIds[0],
-        message: `${user.name}'s projects changed: ${parts}`,
+        area: "accounts", target: user.name, action: `Projects changed: ${parts}`, message: `${user.name}'s projects changed: ${parts}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
@@ -5834,7 +5933,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       set(st => ({
         portalUsers: st.portalUsers.map(u => (changed.includes(u.id) ? { ...u, status: "suspended" as const } : u)),
         auditLog: [clientAudit({
-          message: `${changed.length} account${changed.length === 1 ? "" : "s"} suspended in one action`
+          area: "accounts", target: `${changed.length} account${changed.length === 1 ? "" : "s"}`, action: "Suspended in one action", message: `${changed.length} account${changed.length === 1 ? "" : "s"} suspended in one action`
             + (refused.length > 0 ? ` (${refused.length} left active)` : ""),
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
@@ -5852,7 +5951,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     // course never written here.
     const auditEntry: AuditEvent = clientAudit({
       projectId: user.projectIds[0],
-      message: `Temporary password issued for ${user.name} (${user.email}) — previous password invalidated`,
+      area: "accounts", target: `${user.name} (${user.email})`, action: "Temporary password issued — previous password invalidated", message: `Temporary password issued for ${user.name} (${user.email}) — previous password invalidated`,
       actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
     });
     // Status is deliberately left alone. An invited user who never got their mail can be handed a
@@ -5900,7 +5999,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     ]);
     const code = generateRegistrationCode(taken);
     const auditEntry = clientAudit({
-      message: `Setup code issued for ${user.email}`,
+      area: "accounts", target: user.email, action: "Setup code issued", message: `Setup code issued for ${user.email}`,
       actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
     });
     // mustChangePassword is not set: there is no password to change yet. The code is what stands
@@ -5929,7 +6028,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     set(state => {
       if (isLastActiveAdmin(state.portalUsers, userId)) return state;
       const user = state.portalUsers.find(u => u.id === userId);
-      const auditEntry: AuditEvent = clientAudit({ projectId: user?.projectIds[0], message: `User ${user?.name ?? userId} removed`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
+      const auditEntry: AuditEvent = clientAudit({ projectId: user?.projectIds[0], area: "accounts", target: `${user?.name ?? userId}`, action: "Removed", message: `User ${user?.name ?? userId} removed`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
       return {
         portalUsers: state.portalUsers.filter(u => u.id !== userId),
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
@@ -6007,7 +6106,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     }));
     const auditEntries: AuditEvent[] = toApprove.map(r => clientAudit({
       projectId: r.projectId,
-      message: `Access request approved for ${r.name} — invited`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      area: "accounts", target: r.name, action: "Access request approved — invited", message: `Access request approved for ${r.name} — invited`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
     }));
     set(s => ({
       portalUsers: [...s.portalUsers, ...newUsers],
@@ -6022,7 +6121,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     const id = `team-${++orgSeq}`;
     set(state => ({
       teams: [...state.teams, { ...team, id }],
-      auditLog: [clientAudit({ teamId: id, message: `Team created: ${team.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      auditLog: [clientAudit({ teamId: id, area: "settings", target: team.name, action: "Team created", message: `Team created: ${team.name}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return id;
   },
@@ -6034,7 +6133,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         teams: state.teams.map(o => (o.id === teamId ? { ...o, name } : o)),
         auditLog: [clientAudit({
           teamId,
-          message: `Team renamed: ${team.name} → ${name}`,
+          area: "settings", target: team.name, action: `Renamed to ${name}`, message: `Team renamed: ${team.name} → ${name}`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -6065,7 +6164,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         vipCategories: state.vipCategories.filter(c => c.teamId !== teamId),
         searchPurposes: state.searchPurposes.filter(sp => sp.teamId !== teamId),
         auditLog: [clientAudit({
-          message: `Team deleted: ${team.name}`,
+          area: "settings", target: team.name, action: "Team deleted", message: `Team deleted: ${team.name}`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -6079,7 +6178,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   addServer: (server) =>
     set(state => ({
       servers: [...state.servers, { ...server, id: `srv-${++serverSeq}` }],
-      auditLog: [clientAudit({ projectId: server.projectId, message: `Server ${server.name} added`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      auditLog: [clientAudit({ projectId: server.projectId, area: "server", target: server.name, action: "Added", message: `Server ${server.name} added`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     })),
   updateServer: (serverId, updates) =>
     set(state => {
@@ -6087,7 +6186,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (!server) return state;
       return {
         servers: state.servers.map(s => (s.id === serverId ? { ...s, ...updates } : s)),
-        auditLog: [clientAudit({ projectId: server.projectId, message: `Server ${updates.name ?? server.name} updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+        auditLog: [clientAudit({ projectId: server.projectId, area: "server", target: `${updates.name ?? server.name}`, action: "Updated", message: `Server ${updates.name ?? server.name} updated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   removeServer: (serverId) =>
@@ -6103,6 +6202,11 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         cameras: state.cameras.map(c => (c.serverId === serverId ? { ...c, serverId: undefined } : c)),
         auditLog: [clientAudit({
           projectId: server.projectId,
+          area: "server",
+          target: server.name,
+          action: orphaned > 0
+            ? `Removed — ${orphaned} camera${orphaned === 1 ? "" : "s"} left unassigned`
+            : "Removed",
           message: orphaned > 0
             ? `Server ${server.name} removed — ${orphaned} camera${orphaned === 1 ? "" : "s"} left unassigned`
             : `Server ${server.name} removed`,
@@ -6122,7 +6226,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         existingCodes.add(code);
         auditEntries.push(clientAudit({
           projectId: r.projectId,
-          message: `Registration code issued for ${r.name} (${r.employeeId})`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+          area: "roster", target: `${r.name} (${r.employeeId})`, action: "Registration code issued", message: `Registration code issued for ${r.name} (${r.employeeId})`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }));
         return { ...r, code, issuedAt: new Date().toISOString(), status: "unused" as const };
       });
@@ -6138,7 +6242,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const code = generateRegistrationCode(existingCodes);
       const auditEntry: AuditEvent = clientAudit({
         projectId: entry.projectId,
-        message: `Registration code reissued for ${entry.name} (${entry.employeeId}) — previous code invalidated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        area: "roster", target: `${entry.name} (${entry.employeeId})`, action: "Registration code reissued — previous code invalidated", message: `Registration code reissued for ${entry.name} (${entry.employeeId}) — previous code invalidated`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
         // A fresh issuedAt restarts the clock: the point of a reissue is that the person still has
@@ -6244,7 +6348,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     };
     const auditEntry: AuditEvent = clientAudit({
       projectId: entry.projectId,
-      message: `Account activated with a registration code: ${entry.name} (${entry.employeeId}) — code used`,
+      area: "signup", target: `${entry.name} (${entry.employeeId})`, action: "Account activated with a registration code", message: `Account activated with a registration code: ${entry.name} (${entry.employeeId}) — code used`,
       actor: entry.name, at: new Date().toISOString(),
     });
     set(s2 => ({
@@ -6262,7 +6366,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     if (exists) return false;
     const auditEntry: AuditEvent = clientAudit({
       projectId: entry.projectId,
-      message: `Roster entry added: ${entry.name} (${entry.employeeId})`,
+      area: "roster", target: `${entry.name} (${entry.employeeId})`, action: "Entry added", message: `Roster entry added: ${entry.name} (${entry.employeeId})`,
       actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
     });
     // status "not-issued": on the roster, no code yet. Issuing is a separate, deliberate action —
@@ -6290,7 +6394,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         staffRoster: [...state.staffRoster, ...accepted],
         auditLog: [clientAudit({
           projectId: accepted[0].projectId,
-          message: `${accepted.length} roster ${accepted.length === 1 ? "entry" : "entries"} imported from ${source}`,
+          area: "roster", target: `${accepted.length} roster ${accepted.length === 1 ? "entry" : "entries"}`, action: `Imported from ${source}`, message: `${accepted.length} roster ${accepted.length === 1 ? "entry" : "entries"} imported from ${source}`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       }));
@@ -6303,7 +6407,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (!entry) return {};
       const auditEntry: AuditEvent = clientAudit({
         projectId: entry.projectId,
-        message: `Roster entry updated: ${updates.name ?? entry.name} (${employeeId})`,
+        area: "roster", target: `${updates.name ?? entry.name} (${employeeId})`, action: "Entry updated", message: `Roster entry updated: ${updates.name ?? entry.name} (${employeeId})`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
@@ -6316,7 +6420,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const entry = state.staffRoster.find(r => r.employeeId === employeeId);
       const auditEntry: AuditEvent = clientAudit({
         projectId: entry?.projectId,
-        message: `Roster entry removed: ${entry?.name ?? employeeId} (${employeeId})${entry?.code ? " — unused code invalidated" : ""}`,
+        area: "roster", target: `${entry?.name ?? employeeId} (${employeeId})`, action: `Entry removed${entry?.code ? " — unused code invalidated" : ""}`, message: `Roster entry removed: ${entry?.name ?? employeeId} (${employeeId})${entry?.code ? " — unused code invalidated" : ""}`,
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
@@ -6332,7 +6436,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       if (!entry) return {};
       const auditEntry: AuditEvent = clientAudit({
         projectId: entry.projectId,
-        message: `Registration code viewed for ${entry.name} (${entry.employeeId})`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        area: "roster", target: `${entry.name} (${entry.employeeId})`, action: "Registration code viewed", message: `Registration code viewed for ${entry.name} (${entry.employeeId})`, actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return { auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT) };
     }),

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useVcaStore, type AuditEvent } from "@/lib/vcaStore";
+import { AUDIT_AREA_LABEL, AUDIT_AREAS, type AuditArea } from "@/lib/auditAreas";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
@@ -31,9 +32,21 @@ import { FileOutput, History, UserCog, CalendarClock } from "lucide-react";
  * — newest first, `teamId` entries folded in the same way, one page at a time.
  */
 
-const GRID = "150px 160px 1fr";
+/**
+ * FIVE COLUMNS, NOT THREE (owner, 2026-09-28: 조회 기록 테이블엔 상세하게 화면도 알려주고 하는데,
+ * 변경 기록에는 변경 내용만 적혀 있어서 불친절해 보여).
+ *
+ * The rhythm is the search log's, measured rather than guessed: that table renders five columns
+ * at 1,302px in this same frame (150px for the stamp, the rest shared), and this one was rendering
+ * three with 936px of it spent on one sentence. So: the stamp and the person keep fixed widths,
+ * and the three that came out of that sentence share what is left, with the widest share going to
+ * the change itself because it is the only one that is a phrase rather than a name.
+ */
+const GRID = "150px 150px 1fr 1.1fr 1.4fr";
+/** Where a fallback row's sentence starts — see the row body. */
+const FALLBACK_SPAN = "span 3";
 
-type ActivitySortKey = "at" | "actor";
+type ActivitySortKey = "at" | "actor" | "area" | "target";
 
 /** The date-range choices, in days. null is everything the console is holding. */
 const RANGES: { value: string; days: number | null }[] = [
@@ -48,9 +61,13 @@ const T = {
     intro: "Every change made to this project from Portal, newest first. Policy changes made for the whole institution appear here too, and so does an account created by redeeming a registration code.",
     empty: "No activity recorded yet.",
     noMatch: "No activity matches these filters.",
-    colAt: "When", colActor: "Who", colMessage: "What changed",
+    /* "Screen" is the search log's own heading for this axis, not a second word for it. The last
+       one keeps the heading the single column always had, because it is still the same question —
+       the two before it were carved out of it. */
+    colAt: "When", colActor: "Who", colArea: "Screen", colTarget: "What", colMessage: "What changed",
     searchPlaceholder: "Search what changed",
     filterAllActors: "Everyone",
+    filterAllAreas: "Every screen",
     range7: "Last 7 days", range30: "Last 30 days", range90: "Last 90 days", rangeAll: "All held",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     clearFilters: "Clear",
@@ -62,7 +79,7 @@ const T = {
     statTotal: "changes", statTotalLabel: "in range",
     statActors: "people", statActorsLabel: "made them",
     statLatest: "latest", statLatestNone: "—",
-    csvAt: "When", csvActor: "Who", csvMessage: "What changed",
+    csvAt: "When", csvActor: "Who", csvArea: "Screen", csvTarget: "What", csvMessage: "What changed",
     // Said on the exception, not on the rule. Server rows are the ordinary case and badging all
     // of them would make the badge the background — which is how the offline camera ended up the
     // quietest thing on its own screen.
@@ -73,9 +90,10 @@ const T = {
     intro: "포털에서 이 프로젝트에 가해진 모든 변경입니다. 기관 전체에 적용되는 정책 변경과, 등록 코드로 가입해 계정이 만들어진 일도 함께 나옵니다.",
     empty: "기록된 변경이 없습니다.",
     noMatch: "조건에 맞는 기록이 없습니다.",
-    colAt: "시각", colActor: "담당자", colMessage: "변경 내용",
+    colAt: "시각", colActor: "담당자", colArea: "화면", colTarget: "대상", colMessage: "변경 내용",
     searchPlaceholder: "변경 내용 검색",
     filterAllActors: "전체",
+    filterAllAreas: "전체 화면",
     range7: "최근 7일", range30: "최근 30일", range90: "최근 90일", rangeAll: "보관분 전체",
     filtersActive: (n: number) => `필터 ${n}`,
     clearFilters: "해제",
@@ -85,7 +103,7 @@ const T = {
     statTotal: "건", statTotalLabel: "기간 내 변경",
     statActors: "명", statActorsLabel: "변경한 사람",
     statLatest: "마지막", statLatestNone: "—",
-    csvAt: "시각", csvActor: "담당자", csvMessage: "변경 내용",
+    csvAt: "시각", csvActor: "담당자", csvArea: "화면", csvTarget: "대상", csvMessage: "변경 내용",
     recordedClient: "브라우저 보고 · 서버 미관측",
     csvRecordedBy: "기록 주체", csvServer: "서버", csvClient: "브라우저",
   },
@@ -104,6 +122,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
   const projectZone = project?.timeZone ?? PROJECT_TIME_ZONE;
   const { sort, toggle: toggleSort } = useTableSort<ActivitySortKey>({ key: "at", direction: "desc" });
   const [actorFilter, setActorFilter] = useState("ALL");
+  const [areaFilter, setAreaFilter] = useState("ALL");
   /*
    * 30 days is the default, and a default is not a filter somebody set.
    *
@@ -134,6 +153,16 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
     [projectEntries],
   );
 
+  const areaLabel = (area: AuditArea) => AUDIT_AREA_LABEL[area][lang];
+
+  /* Only the screens this project's log actually has rows for, and in rail order rather than
+     alphabetically — the same rule as the actor list above. A filter offering thirteen screens
+     when eight of them return nothing is thirteen dead ends. */
+  const areaOptions = useMemo(() => {
+    const present = new Set(projectEntries.map(a => a.area).filter(Boolean));
+    return AUDIT_AREAS.filter(a => present.has(a)).map(a => ({ value: a, label: AUDIT_AREA_LABEL[a][lang] }));
+  }, [projectEntries, lang]);
+
   const rangeDays = RANGES.find(r => r.value === range)?.days ?? null;
   const q = search.trim().toLowerCase();
   const rows = projectEntries
@@ -142,14 +171,29 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
       return new Date(a.at).getTime() >= nowMs - rangeDays * 86_400_000;
     })
     .filter(a => actorFilter === "ALL" || a.actor === actorFilter)
-    .filter(a => !q || a.message.toLowerCase().includes(q));
+    .filter(a => areaFilter === "ALL" || a.area === areaFilter)
+    /* Over the sentence AND over the three columns — the screen's name is only in the row as a
+       key, so searching "라이선스" would find nothing in `message` on a row that says "Licence
+       … installed". The sentence stays in the haystack because a fallback row has nothing else. */
+    .filter(a => !q || [a.message, a.target, a.action, a.area ? areaLabel(a.area) : ""]
+      .some(v => v?.toLowerCase().includes(q)));
 
-  const visible = sortRows(rows, sort, (a, key) => (key === "at" ? a.at : a.actor.toLowerCase()));
+  const visible = sortRows(rows, sort, (a, key) => {
+    switch (key) {
+      case "at": return a.at;
+      case "actor": return a.actor.toLowerCase();
+      /* Sorted by the printed label, so the grouping a reader sees is the grouping they asked
+         for. Rows with no screen sort together at the end under either direction's empty string. */
+      case "area": return a.area ? areaLabel(a.area).toLowerCase() : "";
+      case "target": return (a.target ?? "").toLowerCase();
+    }
+  });
 
   // The date range is a filter like the other two, so it counts as one unless it is showing
   // everything — otherwise the chip would read "1 filter" on a screen nobody has narrowed.
-  const activeFilterCount = (range === DEFAULT_RANGE ? 0 : 1) + (actorFilter === "ALL" ? 0 : 1) + (q ? 1 : 0);
-  const clearFilters = () => { setRange(DEFAULT_RANGE); setActorFilter("ALL"); setSearch(""); };
+  const activeFilterCount = (range === DEFAULT_RANGE ? 0 : 1) + (actorFilter === "ALL" ? 0 : 1)
+    + (areaFilter === "ALL" ? 0 : 1) + (q ? 1 : 0);
+  const clearFilters = () => { setRange(DEFAULT_RANGE); setActorFilter("ALL"); setAreaFilter("ALL"); setSearch(""); };
 
   const stamp = (at: string) => {
     const d = new Date(at);
@@ -157,11 +201,18 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
   };
 
   const exportCsv = () => {
-    const header = [t.csvAt, t.csvActor, t.csvMessage, t.csvRecordedBy];
+    const header = [t.csvAt, t.csvActor, t.csvArea, t.csvTarget, t.csvMessage, t.csvRecordedBy];
     // The column goes out with the file. A row pulled into a spreadsheet loses the screen's
     // second line, and what gets quoted in a review is the spreadsheet.
+    //
+    // A FALLBACK ROW PUTS ITS WHOLE SENTENCE IN THE LAST COLUMN and leaves the two new ones
+    // empty. The table can span three cells with it; a spreadsheet cannot, and splitting one
+    // sentence across three cells by guessing is the parser this change exists to avoid. Empty
+    // beats a cell that says something the row never claimed.
     const body = visible.map((a: AuditEvent) => [
-      stamp(a.at), a.actor, a.message,
+      stamp(a.at), a.actor,
+      a.area ? areaLabel(a.area) : "", a.target ?? "",
+      a.area ? (a.action ?? a.message) : a.message,
       a.recordedBy === "client" ? t.csvClient : t.csvServer,
     ]);
     const csv = [header, ...body].map(row => row.map(csvEscape).join(",")).join("\n");
@@ -212,6 +263,12 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
         ]} />
         <FilterSelect value={actorFilter} onChange={setActorFilter}
           options={[{ value: "ALL", label: t.filterAllActors }, ...actorOptions]} />
+        {/* Only once more than one screen is in the log. On a project whose every entry came from
+            the same place, this control has one real choice and narrows nothing. */}
+        {areaOptions.length > 1 && (
+          <FilterSelect value={areaFilter} onChange={setAreaFilter}
+            options={[{ value: "ALL", label: t.filterAllAreas }, ...areaOptions]} />
+        )}
         <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
         <span style={{ flex: 1 }} />
         {/* WHY THE GREY BUTTON SAYS WHICH KIND OF NOTHING IT IS. The two reasons this control can
@@ -249,6 +306,11 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
           {([
             { label: t.colAt, key: "at" as ActivitySortKey },
             { label: t.colActor, key: "actor" as ActivitySortKey },
+            { label: t.colArea, key: "area" as ActivitySortKey },
+            { label: t.colTarget, key: "target" as ActivitySortKey },
+            /* Not sortable, and the only one of the five that is not. Sorting by the predicate
+               groups "Removed" beside "Renamed" — an alphabet, not a subject. The two columns
+               beside it are the ones a reader groups by, and they sort. */
             { label: t.colMessage },
           ] as { label: string; key?: ActivitySortKey }[]).map((h, i) => (
             <span key={i}><SortableHeader label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} /></span>
@@ -260,7 +322,25 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
              asked for" send the reader to different places, and one message for both sends half
              of them to the wrong one. */
           <TableEmpty text={projectEntries.length === 0 ? t.empty : t.noMatch} />
-        ) : visible.map((a: AuditEvent, i) => (
+        ) : visible.map((a: AuditEvent, i) => {
+          /* WHO SAW THIS HAPPEN, on the rows where the answer is "only the browser that did it".
+             An audit log's whole claim is that an independent party observed the event; a line the
+             client wrote is the client's own account of itself, and mixing the two with no mark
+             lets the second be quoted as the first.
+
+             Built once and hung under whichever cell ends the row, so the split and the unsplit
+             shape cannot drift into carrying different marks.
+
+             HANDOFF NOTE: these are the rows that have to move server-side. The store's
+             clientAudit() is the only way the front end writes one and it cannot say "server", so
+             this label is exhaustive by construction — every row carrying it is an entry the API
+             does not yet record. */
+          const clientMark = a.recordedBy === "client" ? (
+            <span style={{ display: "block", fontSize: "11px", color: "var(--gray-400)", marginTop: "2px" }}>
+              {t.recordedClient}
+            </span>
+          ) : null;
+          return (
           <div key={a.id} style={{
             display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP,
             padding: "10px 16px", alignItems: "baseline",
@@ -272,27 +352,51 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
             <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {a.actor}
             </span>
-            {/* The message wraps rather than truncating. It is the column the screen exists for,
-                and an entry cut off at the ellipsis is an entry nobody can act on. */}
-            <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>
-              {a.message}
-              {/* WHO SAW THIS HAPPEN, on the rows where the answer is "only the browser that did
-                  it". An audit log's whole claim is that an independent party observed the event;
-                  a line the client wrote is the client's own account of itself, and mixing the two
-                  with no mark lets the second be quoted as the first.
+            {/* A ROW IS SPLIT OR IT IS NOT — never half of each.
 
-                  HANDOFF NOTE: these are the rows that have to move server-side. The store's
-                  clientAudit() is the only way the front end writes one and it cannot say
-                  "server", so this label is exhaustive by construction — every row carrying it is
-                  an entry the API does not yet record. */}
-              {a.recordedBy === "client" && (
-                <span style={{ display: "block", fontSize: "11px", color: "var(--gray-400)", marginTop: "2px" }}>
-                  {t.recordedClient}
+                An entry that arrived with no `area` is an entry nobody has taught to say where it
+                happened: an older row, or a server writing the shape it wrote before this change.
+                Dropping its sentence into one of three narrow cells and dashing the other two
+                would read as "this change had no screen and no subject", which is a claim about
+                the change rather than about what was recorded. So the sentence keeps the width it
+                had, across all three, and the row is legible exactly as it was.
+
+                It also means the fallback cannot be mistaken for the ordinary case: a split row
+                and an unsplit one do not look alike. */}
+            {a.area === undefined ? (
+              <span style={{ gridColumn: FALLBACK_SPAN, fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>
+                {a.message}
+                {clientMark}
+              </span>
+            ) : (
+              <>
+                {/* The screen, one step quieter than the two beside it: on a list filtered to one
+                    screen it repeats down the column, and it is the column a reader scans rather
+                    than reads. */}
+                <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  title={areaLabel(a.area)}>
+                  {areaLabel(a.area)}
                 </span>
-              )}
-            </span>
+                {/* The thing that changed, in the weight a name gets everywhere else in Portal.
+                    Ellipsised, not wrapped: it is a name, and a name broken over two lines makes
+                    the row taller without making it clearer. */}
+                <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  title={a.target}>
+                  {a.target}
+                </span>
+                {/* What was done to it wraps rather than truncating. It is the column the screen
+                    exists for, and an entry cut off at the ellipsis is an entry nobody can act
+                    on. `?? a.message` is the half-shape guard: a row with an area but no action
+                    still says something rather than nothing. */}
+                <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>
+                  {a.action ?? a.message}
+                  {clientMark}
+                </span>
+              </>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Both notes at the foot, in one register.
