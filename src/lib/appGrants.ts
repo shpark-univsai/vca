@@ -70,6 +70,7 @@ export const APP_GRANT_LABELS = {
       dashboardTrail: "Dashboard > Events \u00b7 trails",
       liveMonitoring: "Data > Live Monitoring",
       liveMonitoringSearch: "Search on Live Monitoring",
+      liveWall: "Best Frame \u00b7 live cameras",
       history: "Best Frame",
       reid: "Data > Re-ID Analysis",
       reidSearch: "Search on Re-ID Analysis",
@@ -103,6 +104,8 @@ export const APP_GRANT_LABELS = {
          the tab. The words are the product's own: the operator preset describes itself as watching
          "live and after the fact", and this grant was called 지난 기록 열람 before it was renamed
          to the screen. */
+      /* The app's own heading over that grid. */
+      liveWall: "Live cameras",
       history: "Past records",
       liveMonitoring: "Live Monitoring",
       reid: "Re-ID Analysis",
@@ -129,6 +132,7 @@ export const APP_GRANT_LABELS = {
       dashboardTrail: "One person's movement joined across cameras, in that same panel. Redmap is a different grant \u2014 this is the landing screen only",
       liveMonitoring: "EVERYBODY who walks past, including faces nobody registered",
       liveMonitoringSearch: "Turns \u201csomebody was here\u201d into \u201cthis person was here\u201d, on that screen",
+      liveWall: "The wall of live tiles \u2014 what the cameras are looking at right now",
       history: "The same detections, from before now",
       reid: "What the server joins up live out of those detections",
       reidSearch: "Looking a particular person up in that result",
@@ -146,6 +150,7 @@ export const APP_GRANT_LABELS = {
       dashboardTrail: "대시보드 > 이벤트 \u00b7 동선",
       liveMonitoring: "데이터 > 모니터링",
       liveMonitoringSearch: "모니터링에서 검색",
+      liveWall: "베스트 프레임 \u00b7 실시간 카메라",
       history: "베스트 프레임",
       reid: "데이터 > Re-ID 분석",
       reidSearch: "Re-ID 분석에서 검색",
@@ -158,6 +163,7 @@ export const APP_GRANT_LABELS = {
       liveView: "VIP 감지",
       dashboardTrail: "동선 추적",
       systemStatus: "시스템",
+      liveWall: "실시간 카메라",
       history: "지난 기록",
       liveMonitoring: "모니터링",
       reid: "Re-ID 분석",
@@ -179,6 +185,7 @@ export const APP_GRANT_LABELS = {
       dashboardTrail: "같은 패널에서 한 사람의 이동을 카메라들 사이로 이어 붙인 줄입니다. 레드맵은 별개 권한이고, 이건 첫 화면에만 해당합니다",
       liveMonitoring: "등록되지 않은 사람까지 지나가는 모두를 봅니다",
       liveMonitoringSearch: "\u201c누군가 지나갔다\u201d를 \u201c이 사람이 지나갔다\u201d로 바꿉니다",
+      liveWall: "카메라가 지금 보고 있는 화면이 타일로 깔립니다",
       history: "같은 감지를 지난 시점에서 봅니다",
       reid: "모니터링에서 잡힌 사람들을 서버가 실시간으로 이어 붙인 결과를 봅니다",
       reidSearch: "그 결과에서 특정 인물을 직접 찾습니다",

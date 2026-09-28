@@ -2296,7 +2296,7 @@ export const GRANT_TREE: GrantGroupDef[] = [
       { action: "systemStatus" },
     ],
   },
-  { caption: "bestframe", rows: [{ action: "history" }] },
+  { caption: "bestframe", rows: [{ action: "liveWall" }, { action: "history" }] },
   {
     caption: "data",
     rows: [

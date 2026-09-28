@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { Search } from "lucide-react";
-import { useVcaStore, useActiveProjectId, useProjectCameras, type Camera as StoreCamera, type UploadedMedia } from "@/lib/vcaStore";
+import { useVcaStore, useActiveProjectId, useProjectCameras, holdsAppAction, type Camera as StoreCamera, type UploadedMedia } from "@/lib/vcaStore";
 import { runStateOf } from "@/lib/realtime/cameraStatus";
 import BestFrameDetailPage from "./BestFrameDetailPage";
 import { useToast } from "./Toast";
@@ -55,6 +55,7 @@ const T = {
     expandSidebar: "Expand sidebar",
     collapseSidebar: "Collapse sidebar",
     selectCamera: "Select a camera",
+    noLiveWall: "Live cameras are not part of this account's access. The records below are.",
     liveFeed: "Live Feed",
     awaitingCamera: "Awaiting camera",
     noMatchTitle: "No matching camera",
@@ -102,6 +103,7 @@ const T = {
     expandSidebar: "사이드바 펼치기",
     collapseSidebar: "사이드바 접기",
     selectCamera: "카메라를 선택해주세요",
+    noLiveWall: "이 계정에는 실시간 카메라 권한이 없습니다. 아래 기록은 볼 수 있습니다.",
     liveFeed: "실시간 영상",
     awaitingCamera: "카메라 대기 중",
     noMatchTitle: "일치하는 카메라가 없습니다",
@@ -1070,6 +1072,9 @@ function getGridLayout(n: number): { cols: number; rows: number; sidePanelOnHove
 export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedmapTrace, analyzeFrameLocation, analyzeFrameAt, onAnalyzeFrameConsumed }: { focusLocation?: string | null; onFocusConsumed?: () => void; onGoRedmapTrace?: (name: string) => void; analyzeFrameLocation?: string | null; analyzeFrameAt?: { date: string; time: string } | null; onAnalyzeFrameConsumed?: () => void } = {}) {
   const [lang] = useLanguage();
   const t = T[lang];
+  /* The wall of live tiles is its own grant — see the note where the grid is drawn. */
+  const portalUsers = useVcaStore(st => st.portalUsers);
+  const mayWatchLive = holdsAppAction(portalUsers, "liveWall");
   // The site's camera register, read live so a camera the Portal adds, renames or stops shows up
   // here. Memoised in the store hook, which is what lets the render-phase reconciliation below
   // compare it by reference.
@@ -1656,8 +1661,17 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
           </div>
         </div>
 
-        {/* Camera grid */}
-        {gridCams.length === 0 ? (
+        {/* THE WALL IS ITS OWN GRANT (2026-09-28, owner: 베스트 프레임에 실시간 CCTV를 볼 수
+            있는지도 추가해 줘). Watching what a camera sees right now and reading what it caught
+            yesterday are different weights, and this screen held both behind one grant. Said in
+            words rather than left blank: an empty pane looks broken, and the records beside it
+            still work. */}
+        {!mayWatchLive ? (
+          <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"8px", color:"var(--gray-400)", padding:"0 24px", textAlign:"center" }}>
+            <BulletCameraIcon />
+            <span style={{ fontSize:"13px", fontWeight:600, lineHeight:1.5, maxWidth:"320px" }}>{t.noLiveWall}</span>
+          </div>
+        ) : gridCams.length === 0 ? (
           <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"8px", color:"var(--gray-400)" }}>
             <BulletCameraIcon />
             <span style={{ fontSize:"14px", fontWeight:600 }}>{t.selectCamera}</span>
