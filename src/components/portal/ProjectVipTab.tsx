@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
 import { AlertTriangle, ArrowDownWideNarrow, CalendarX, Eye, FileDown, FileInput, FileOutput, RefreshCw, Users } from "lucide-react";
 import { canSetPolicy, currentPortalUser, isExpired, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
@@ -8,7 +9,7 @@ import { getComplianceConfig } from "@/lib/complianceConfig";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
+import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, TableSkeleton, TableLoadFailed, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 import VipImportModal from "./VipImportModal";
 
@@ -84,6 +85,8 @@ interface VipDict {
   filtersActive: (n: number) => string;
   noSearchResults: string;
   noVips: string;
+  loadFailed: string;
+  retry: string;
   registered: (date: string) => string;
   viewGrid: string;
   viewTable: string;
@@ -275,6 +278,8 @@ const T: Record<"en" | "ko", VipDict> = {
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     noSearchResults: "No VIPs match these conditions.",
     noVips: "No VIPs registered for this project yet.",
+    loadFailed: "Could not load the VIP registry.",
+    retry: "Try again",
     registered: (date: string) => `Registered ${date}`,
     viewGrid: "Grid",
     viewTable: "Table",
@@ -479,6 +484,8 @@ const T: Record<"en" | "ko", VipDict> = {
     filtersActive: (n: number) => `필터 ${n}개`,
     noSearchResults: "조건에 맞는 VIP가 없습니다.",
     noVips: "이 프로젝트에 등록된 VIP가 아직 없습니다.",
+    loadFailed: "VIP 명부를 불러오지 못했습니다.",
+    retry: "다시 시도",
     registered: (date: string) => `등록일 ${date}`,
     viewGrid: "그리드",
     viewTable: "테이블",
@@ -1451,11 +1458,39 @@ function PersonDetailModal({ t, person, zone, groups, onClose, onEdit, onRemove 
  */
 export type VipHealthFilter = "expired" | "expiryUnanswered" | "missingPhoto" | "embeddingFailed" | "reenrolling" | "duplicates" | "detected" | "importErrors";
 
+/**
+ * LIST STATE — THE SEAM THE FETCH WRITES TO.
+ *
+ * A list has four states (see PortalShared: rows · empty · loading · failed) and this tab can
+ * only ever be in two of them today, because it reads the in-memory store synchronously: there
+ * is no second where the rows are in the air, and no request that can come back 500.
+ *
+ * WHAT REPLACES THIS: the GET for this list. `listState` becomes that request's own state —
+ * "loading" while it is out, "failed" when it is rejected, "ready" once the rows are in — and
+ * `retryList` becomes the refetch the failed state's button calls. Nothing below it changes:
+ * the table already branches on these three words.
+ *
+ * The ?listState= override is the only reason this reads the URL at all. It is here so the two
+ * states that are unreachable today can still be opened, seen and reviewed, and it is ONE line
+ * to delete when the fetch lands. It is not a setting: nothing in Portal writes this parameter,
+ * so nobody arrives at it by accident.
+ */
+type ListState = "ready" | "loading" | "failed";
+
+function useListState(): [ListState, () => void] {
+  const override = useSearchParams().get("listState");
+  const [state, setState] = useState<ListState>(override === "loading" || override === "failed" ? override : "ready");
+  // Until there is a request there is nothing to ask for again, so retrying can only drop the
+  // override and show what the store holds. This call becomes the refetch.
+  return [state, () => setState("ready")];
+}
+
 export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFilterOpened }: {
   projectId: string;
   openHealthFilter?: VipHealthFilter | null;
   onHealthFilterOpened?: () => void;
 }) {
+  const [listState, retryList] = useListState();
   const persons = useVcaStore(s => s.persons);
   const personGroups = useVcaStore(s => s.personGroups);
   const projects = useVcaStore(s => s.projects);
@@ -1587,6 +1622,12 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   const [managingCategories, setManagingCategories] = useState(false);
   const releaseEnabled = getComplianceConfig().personRelease;
   const categoriesEnabled = getComplianceConfig().vipCategories;
+  /* The people table's columns, in one place. The expression was written out twice already (the
+     heading row and the data row) and the skeleton would have made it three — a grid copied per
+     user is a grid that eventually disagrees with itself. */
+  const personGrid = categoriesEnabled
+    ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID)
+    : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT);
   const [releasing, setReleasing] = useState<Person | null>(null);
   const [reinstating, setReinstating] = useState<Person | null>(null);
   const [reinstateReason, setReinstateReason] = useState("");
@@ -2445,7 +2486,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               shell's scroller, at top:0 — no measuring, no fixed positioning, and it works because
               nothing between here and that scroller clips its overflow. zIndex 2 so rows pass
               beneath rather than over, and the gray-50 fill is what makes "beneath" invisible. */}
-          <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: categoriesEnabled ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID) : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT), columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: personGrid, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
             {/* No minHeight on the HEADER's box. The row version sets one because a row is tall
                 enough to spare it; here it made the heading strip 49px for a 15px checkbox, which
                 reads as a heavier band than the rows under it (owner's note: "테이블 헤더 높이가
@@ -2497,7 +2538,16 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               </span>
             ))}
           </div>
-          {projectPersons.length === 0 ? <TableEmpty text={emptyText} /> : projectPersons.map((person, i) => {
+          {/* Only the rows are replaced: the column headings above and the toolbar above them
+              stay, because they are still true while the registry is on its way.
+
+              Loading is answered before empty, and that order is the whole guard. "No VIPs
+              registered for this project yet" over a list still in the air is the false answer
+              this console keeps being bitten by — and on a VIP registry it is the one that gets
+              acted on, by registering somebody who is already there. */}
+          {listState === "loading" ? <TableSkeleton grid={personGrid} />
+            : listState === "failed" ? <TableLoadFailed text={t.loadFailed} retryLabel={t.retry} onRetry={retryList} />
+            : projectPersons.length === 0 ? <TableEmpty text={emptyText} /> : projectPersons.map((person, i) => {
             const isLast = i === projectPersons.length - 1;
             return (
               /*
@@ -2517,7 +2567,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 onClick={() => setDetailFor(person)}
                 onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailFor(person); } }}
                 style={{
-                display: "grid", gridTemplateColumns: categoriesEnabled ? (showGroupColumn ? VIP_GRID_WITH_GROUP : VIP_GRID) : (showGroupColumn ? VIP_GRID_WITH_GROUP_NO_CAT : VIP_GRID_NO_CAT), columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
+                display: "grid", gridTemplateColumns: personGrid, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
                 borderBottom: isLast ? "none" : BORDER,
                 borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
                 cursor: "pointer",
@@ -2676,6 +2726,15 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
             );
           })}
         </div>
+      ) : listState !== "ready" ? (
+        /* The card view's own copy of the two states. Its skeleton borrows the table's grid on
+           purpose — a card grid has no columns to lay bars on, and what is being said here is
+           "rows are coming", which is the same sentence either way. */
+        <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS }}>
+          {listState === "loading"
+            ? <TableSkeleton grid={personGrid} rows={4} />
+            : <TableLoadFailed text={t.loadFailed} retryLabel={t.retry} onRetry={retryList} />}
+        </div>
       ) : projectPersons.length === 0 ? (
         /* The grid's empty state is a card of its own, where the table's sits inside one: a grid
            of faces has no column headings to keep standing. */
@@ -2800,7 +2859,8 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
          comparable console keeps it (Navattic, Vapi, Xero, Employment Hero, Gusto), and it is
          where the eye already is when it reaches the end of a page.
          Never inside the toolbar: that row then held nine controls on one line. */}
-      {vipTab !== "groups" && (
+      {/* No pager over rows that have not arrived. */}
+      {vipTab !== "groups" && listState === "ready" && (
         <TablePagination
           total={sortedPersons.length}
           page={currentPage}

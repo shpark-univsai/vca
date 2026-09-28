@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import CameraImportModal from "./CameraImportModal";
 import CameraMapView from "./CameraMapView";
 import UploadPreviewModal from "./UploadPreviewModal";
@@ -12,7 +13,7 @@ import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -139,6 +140,8 @@ const T = {
     removeUploadAction: "Remove upload",
     toastUploadRemovedTitle: "Upload removed",
     emptyNoSources: "Nothing registered for this project yet.",
+    loadFailed: "Could not load the input sources.",
+    retry: "Try again",
     fieldIp: "IP address",
     fieldIpPlaceholder: "10.20.4.11",
     fieldModel: "Model",
@@ -337,6 +340,8 @@ const T = {
     removeUploadAction: "업로드 삭제",
     toastUploadRemovedTitle: "업로드가 삭제됨",
     emptyNoSources: "이 프로젝트에 등록된 소스가 없습니다.",
+    loadFailed: "입력 소스를 불러오지 못했습니다.",
+    retry: "다시 시도",
     fieldIp: "IP 주소",
     fieldIpPlaceholder: "10.20.4.11",
     fieldModel: "모델",
@@ -1065,6 +1070,33 @@ function csvEscape(value: string): string {
  *   Overview's camera panel, whose rows now open the camera rather than dumping the reader at the
  *   top of this list. Cleared through onCameraOpened so a later visit to the tab opens plain.
  */
+/**
+ * LIST STATE — THE SEAM THE FETCH WRITES TO.
+ *
+ * A list has four states (see PortalShared: rows · empty · loading · failed) and this tab can
+ * only ever be in two of them today, because it reads the in-memory store synchronously: there
+ * is no second where the rows are in the air, and no request that can come back 500.
+ *
+ * WHAT REPLACES THIS: the GET for this list. `listState` becomes that request's own state —
+ * "loading" while it is out, "failed" when it is rejected, "ready" once the rows are in — and
+ * `retryList` becomes the refetch the failed state's button calls. Nothing below it changes:
+ * the table already branches on these three words.
+ *
+ * The ?listState= override is the only reason this reads the URL at all. It is here so the two
+ * states that are unreachable today can still be opened, seen and reviewed, and it is ONE line
+ * to delete when the fetch lands. It is not a setting: nothing in Portal writes this parameter,
+ * so nobody arrives at it by accident.
+ */
+type ListState = "ready" | "loading" | "failed";
+
+function useListState(): [ListState, () => void] {
+  const override = useSearchParams().get("listState");
+  const [state, setState] = useState<ListState>(override === "loading" || override === "failed" ? override : "ready");
+  // Until there is a request there is nothing to ask for again, so retrying can only drop the
+  // override and show what the store holds. This call becomes the refetch.
+  return [state, () => setState("ready")];
+}
+
 export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpened, openGapFilter, onGapFilterOpened }: {
   projectId: string;
   openCameraId?: string | null;
@@ -1079,6 +1111,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   openGapFilter?: boolean;
   onGapFilterOpened?: () => void;
 }) {
+  const [listState, retryList] = useListState();
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   const cameras = useVcaStore(s => s.cameras);
   const uploads = useVcaStore(s => s.uploads);
@@ -2239,7 +2272,27 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       {/* THE MAP TAKES THE LIST'S PLACE, not the screen's. Same rows the table would draw, so
           every filter above still applies — which is the whole argument for a toggle here (see
           CameraMapView). */}
-      {view === "map" ? (
+      {/* THE STATE COMES BEFORE THE VIEW. A map is a list too — an empty one says "no camera on
+          this project has coordinates", which is the same false answer the empty table would give
+          and a louder one, because a blank map looks like a finished drawing. So loading and
+          failed are answered for both views, and only then does the view choose. */}
+      {listState !== "ready" ? (
+        <div style={{
+          backgroundColor: "white", boxShadow: PANEL_SHADOW,
+          /* In table view this is the bottom half of the card the column headings opened, so it
+             takes no top edge. In map view there are no headings above it and it is the whole
+             card. */
+          border: view === "map" ? BORDER : undefined,
+          borderLeft: BORDER, borderRight: BORDER, borderBottom: BORDER,
+          borderTopLeftRadius: view === "map" ? CARD_RADIUS : undefined,
+          borderTopRightRadius: view === "map" ? CARD_RADIUS : undefined,
+          borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS,
+        }}>
+          {listState === "loading"
+            ? <TableSkeleton grid={GRID} />
+            : <TableLoadFailed text={t.loadFailed} retryLabel={t.retry} onRetry={retryList} />}
+        </div>
+      ) : view === "map" ? (
         <CameraMapView
           cameras={visibleCameras}
           onInspect={setInspectingCameraId}
@@ -2252,6 +2305,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           onShowUnpositioned={() => { setKindTab("camera"); setGapFilter("noPosition"); setView("table"); }}
         />
       ) : visibleRows.length === 0 ? (
+        /* Reached only once the rows are in — see the listState branch above. "Nothing registered
+           for this project yet" read off a list still in the air is the answer that sends
+           somebody to register a camera that is already there. */
         <div style={{
           backgroundColor: "white", boxShadow: PANEL_SHADOW,
           // The bottom half of the card the column headings above opened, so it takes no top
@@ -2631,7 +2687,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
 
       {/* Under the list, like the VIP registry's — and outside the sticky block, which is only
           the tabs, the toolbar and the column headings. */}
-      {view === "table" && <TablePagination
+      {/* No pager over rows that have not arrived — "0 / 0" under a skeleton is a count of
+          nothing wearing a count's clothes. */}
+      {view === "table" && listState === "ready" && <TablePagination
         total={visibleRows.length}
         page={currentPage}
         rowsPerPage={rowsPerPage}

@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, StatusBadge, type StatusTone, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, StatusBadge, type StatusTone, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -152,6 +152,8 @@ const T = {
     colLastLogin: "Last Login",
     colStatus: "Status",
     emptyNoUsers: "No users have access to this project yet.",
+    loadFailed: "Could not load this list.",
+    retry: "Try again",
     emptyFiltered: "Nothing matches the current filter.",
 
     // Permission / status / MFA display labels
@@ -575,6 +577,8 @@ const T = {
     colLastLogin: "마지막 로그인",
     colStatus: "상태",
     emptyNoUsers: "이 프로젝트에 접근 권한이 있는 사용자가 아직 없습니다.",
+    loadFailed: "목록을 불러오지 못했습니다.",
+    retry: "다시 시도",
     emptyFiltered: "지금 조건에 맞는 항목이 없습니다.",
 
     // Permission / status / MFA display labels
@@ -3642,6 +3646,37 @@ function isDormant(u: PortalUser, nowMs: number): boolean {
   return false;
 }
 
+/**
+ * LIST STATE — THE SEAM THE FETCH WRITES TO.
+ *
+ * A list has four states (see PortalShared: rows · empty · loading · failed) and this tab can
+ * only ever be in two of them today, because it reads the in-memory store synchronously: there
+ * is no second where the rows are in the air, and no request that can come back 500.
+ *
+ * TWO TABLES, ONE SEAM, because 계정 and 가입 대기 are two tabs of one card and only one of
+ * them is on screen at a time. When the two GETs land they write the same value from whichever
+ * tab is showing; if the two ever have to be in different states at once, this splits per tab.
+ *
+ * WHAT REPLACES THIS: the GET for this list. `listState` becomes that request's own state —
+ * "loading" while it is out, "failed" when it is rejected, "ready" once the rows are in — and
+ * `retryList` becomes the refetch the failed state's button calls. Nothing below it changes:
+ * the table already branches on these three words.
+ *
+ * The ?listState= override is the only reason this reads the URL at all. It is here so the two
+ * states that are unreachable today can still be opened, seen and reviewed, and it is ONE line
+ * to delete when the fetch lands. It is not a setting: nothing in Portal writes this parameter,
+ * so nobody arrives at it by accident.
+ */
+type ListState = "ready" | "loading" | "failed";
+
+function useListState(): [ListState, () => void] {
+  const override = useSearchParams().get("listState");
+  const [state, setState] = useState<ListState>(override === "loading" || override === "failed" ? override : "ready");
+  // Until there is a request there is nothing to ask for again, so retrying can only drop the
+  // override and show what the store holds. This call becomes the refetch.
+  return [state, () => setState("ready")];
+}
+
 export default function PortalUsersPage({ projectId, onGoToCameras, half = "users" }: PortalUsersPageProps) {
   // Post-mount, like every other clock read in Portal — see TempPasswordBadge. Dormancy is a
   // judgement about elapsed time, so it cannot be decided during a server render.
@@ -3653,6 +3688,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
   const updatePortalUserAccess = useVcaStore(s => s.updatePortalUserAccess);
   const staffRoster = useVcaStore(s => s.staffRoster);
   const issueRegistrationCodes = useVcaStore(s => s.issueRegistrationCodes);
+  const [listState, retryList] = useListState();
   const reissueRegistrationCode = useVcaStore(s => s.reissueRegistrationCode);
   const removeRosterEntry = useVcaStore(s => s.removeRosterEntry);
   const logRosterCodeViewed = useVcaStore(s => s.logRosterCodeViewed);
@@ -4622,13 +4658,22 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} align={h.align} />
           ))}
         </div>
+        {/* Only the rows change: the column headings above, the two tabs and the toolbar above
+            them all stay, because they are still true while the answer is on its way. */}
+        {listState === "loading" && <TableSkeleton grid={GRID} />}
+        {listState === "failed" && <TableLoadFailed text={t.loadFailed} retryLabel={t.retry} onRetry={retryList} />}
         {/* Per tab: each half answers for itself, and neither can speak for the other's rows.
             "Nothing matches what you asked for" and "there is nothing here" send the reader to
-            two different places, and one message for both sends half of them wrong. */}
-        {(peopleTab === "accounts" ? scopedUsers.length : visibleRoster.length) === 0 && (
+            two different places, and one message for both sends half of them wrong.
+
+            AND NEITHER SPEAKS FOR A LIST THAT HAS NOT ARRIVED — which is why listState is asked
+            first. "No users have access to this project yet" is a statement about who may sign
+            in; read off a request that has not answered, it gets somebody invited who is already
+            here. */}
+        {listState === "ready" && (peopleTab === "accounts" ? scopedUsers.length : visibleRoster.length) === 0 && (
           <TableEmpty text={narrowed ? t.emptyFiltered : peopleTab === "accounts" ? t.emptyNoUsers : t.rosterEmpty} />
         )}
-        {(peopleTab === "accounts" ? scopedUsers : []).map((u, i) => {
+        {(listState === "ready" && peopleTab === "accounts" ? scopedUsers : []).map((u, i) => {
           const isLast = i === scopedUsers.length - 1;
           // Computed against the whole user list, not the filtered view: a project filter can hide
           // the other administrators, and "last one visible" is not "last one there is".
@@ -4902,7 +4947,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           );
         })}
 
-        {(peopleTab === "roster" ? visibleRoster : []).map((entry, i) => {
+        {(listState === "ready" && peopleTab === "roster" ? visibleRoster : []).map((entry, i) => {
           const isLast = i === visibleRoster.length - 1;
           const stage = stageOfRosterEntry(entry.status);
           return (
