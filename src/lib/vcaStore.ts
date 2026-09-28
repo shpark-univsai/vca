@@ -2155,24 +2155,18 @@ export function screensFor(users: PortalUser[]): AppScreen[] {
  * been a distinction the product cannot back up. The three accounts that followed it now follow
  * 조사자, which is the same sixteen grants they already held.
  */
-export const PRESET_BUILTIN_LABELS: Record<NonNullable<AccessPreset["builtinKey"]>, { label: { en: string; ko: string }; description: { en: string; ko: string } }> = {
+export const PRESET_BUILTIN_LABELS: Record<NonNullable<AccessPreset["builtinKey"]>, { label: { en: string; ko: string } }> = {
   operator: {
     label: { en: "Operator", ko: "운영자" },
-    description: { en: "Watches the cameras, live and after the fact", ko: "실시간 화면과 지난 기록을 봅니다" },
   },
   investigator: {
     label: { en: "Investigator", ko: "조사자" },
-    description: { en: "Operator, plus finding a person and following their route", ko: "운영자가 하는 일에 인물 검색과 동선 추적을 더합니다" },
   },
 };
 
 /** What to print for a preset's name: ours translated, the customer's as typed. */
 export function presetLabel(preset: AccessPreset, lang: "en" | "ko"): string {
   return preset.builtinKey ? PRESET_BUILTIN_LABELS[preset.builtinKey].label[lang] : preset.label;
-}
-
-export function presetDescription(preset: AccessPreset, lang: "en" | "ko"): string {
-  return preset.builtinKey ? PRESET_BUILTIN_LABELS[preset.builtinKey].description[lang] : preset.description;
 }
 
 export function grantsOfPreset(preset: AccessPreset): Pick<PortalUser, "appActions"> {
@@ -2767,9 +2761,18 @@ export interface AccessPreset {
    * translation would overwrite their word — see updateAccessPreset.
    */
   builtinKey?: "operator" | "investigator";
-  /** One line saying what this is for. Required: a list of names with no descriptions cannot be
-   *  chosen from, which is the whole failure mode of removing the pre-selected default. */
-  description: string;
+  /*
+   * NO `description` (removed 2026-09-28, owner: 이 설명은 왜 필요할까? → 파생으로 바꾼다).
+   *
+   * There was a required one-line sentence, on the argument that a list of bare names cannot be
+   * chosen from. True — but a hand-written sentence is a copy of the ticks kept somewhere the
+   * ticks cannot reach, and both shipped ones were already wrong: 운영자's said it watched live
+   * and past while the preset also opened 모니터링 (everybody who passes, strangers included),
+   * and 감독자's promised 증거 내보내기 after that button left the app. Neither was fixable — the
+   * table's draft carried only a label, so a description could be written once and never again.
+   *
+   * The choosing line is derived from `actions` now: see presetSummary in PortalShared.
+   */
   /** What this preset hands out. Screens follow from it — see APP_ACTIONS. */
   actions: AppAction[];
   /**
@@ -4457,12 +4460,10 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   accessPresets: [
     {
       id: "preset-operator", teamId: "team-univs", builtinKey: "operator", label: "운영자",
-      description: "지금 일어나는 일을 본다",
       actions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"],
     },
     {
       id: "preset-investigator", teamId: "team-univs", builtinKey: "investigator", label: "조사자",
-      description: "운영자가 하는 일에 인물 검색과 동선 추적을 더합니다",
       actions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"],
     },
   ],

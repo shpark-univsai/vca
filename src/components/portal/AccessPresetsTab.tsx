@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Minus, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import {
-  APP_ACTION_CONTENT, accountsFollowingPreset, presetsForTeam, presetLabel, presetDescription, useVcaStore,
+  APP_ACTION_CONTENT, accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
   withAppActionDeps, type AccessPreset, type AppAction,
 } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -52,8 +52,6 @@ const T = {
     presetNew: "New preset",
     presetLabelField: "Name",
     presetLabelPlaceholder: "Operator \u00b7 Investigator \u00b7 Supervisor",
-    presetDescField: "Description",
-    presetDescPlaceholder: "One line \u2014 when this one is the right pick",
     presetGrantsField: "Permissions",
     presetNoScreens: "Tick at least one screen \u2014 an account following a preset with none cannot open the app",
     presetFollowers: (n: number) => `In use · ${n}`,
@@ -72,7 +70,6 @@ const T = {
       : `It stops being offered, and the ${n} account${n === 1 ? "" : "s"} following it become individual \u2014 holding exactly what they hold now. Nobody gains or loses access.`,
     presetRetireConfirm: "Retire",
     presetNamePh: "Name",
-    presetDescPh: "What it is for",
     presetColHead: "What it opens",
     presetEditing: "Editing presets",
     presetAllow: "Yes",
@@ -92,8 +89,6 @@ const T = {
     presetNew: "프리셋 만들기",
     presetLabelField: "이름",
     presetLabelPlaceholder: "운영자 · 조사자 · 감독자",
-    presetDescField: "설명",
-    presetDescPlaceholder: "한 줄 — 어떤 사람에게 주는 묶음인지",
     presetGrantsField: "권한",
     presetNoScreens: "화면을 하나 이상 골라주세요 — 화면이 없는 프리셋을 따르는 계정은 앱을 열 수 없습니다",
     presetFollowers: (n: number) => `사용중 · ${n}`,
@@ -112,7 +107,6 @@ const T = {
       : `초대 폼에서 더 이상 제시되지 않고, 이것을 따르던 계정 ${n}개는 지금 가진 것을 그대로 들고 개별 지정으로 바뀝니다. 권한을 얻거나 잃는 사람은 없습니다.`,
     presetRetireConfirm: "폐기",
     presetNamePh: "이름",
-    presetDescPh: "어떤 사람에게 주는지",
     presetColHead: "앱에서 열리는 것",
     presetEditing: "프리셋 편집 중",
     presetAllow: "허용",
@@ -165,7 +159,7 @@ export default function AccessPresetsTab({ teamId, canEdit, actionsSlot }: {
 const NEW_ID = "__new";
 
 /** The column being added, shaped as a preset so the matrix needs no second code path. */
-const NEW_PRESET: AccessPreset = { id: NEW_ID, teamId: "", label: "", description: "", actions: [] };
+const NEW_PRESET: AccessPreset = { id: NEW_ID, teamId: "", label: "", actions: [] };
 
 /** The width the matrix needs for n preset columns. One definition, used by the scroll container
  *  and by the decision of whether a new column can be typed into. */
@@ -204,7 +198,7 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
    * decoration — it is the line under each preset's name in the grant picker on the invite form
    * and the account card, which is what an administrator reads to choose between them.
    */
-  const [draft, setDraft] = useState<Record<string, { label: string; description: string; actions: AppAction[] }>>({});
+  const [draft, setDraft] = useState<Record<string, { label: string; actions: AppAction[] }>>({});
   const [removed, setRemoved] = useState<string[]>([]);
   /**
    * The preset being added inside the table, as a column beside the ones it is being compared to
@@ -232,9 +226,9 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
   const columnFits = cardWidth === null ? true : tableMinWidth(presets.length + 1) <= cardWidth;
 
   const startEditing = (withNew = false) => {
-    const d: Record<string, { label: string; description: string; actions: AppAction[] }> = {};
-    presets.forEach(pr => { d[pr.id] = { label: presetLabel(pr, lang), description: presetDescription(pr, lang), actions: [...pr.actions] }; });
-    if (withNew) d[NEW_ID] = { label: "", description: "", actions: [] };
+    const d: Record<string, { label: string; actions: AppAction[] }> = {};
+    presets.forEach(pr => { d[pr.id] = { label: presetLabel(pr, lang), actions: [...pr.actions] }; });
+    if (withNew) d[NEW_ID] = { label: "", actions: [] };
     setDraft(d);
     setRemoved([]);
     setAdding(withNew);
@@ -244,8 +238,6 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
 
   const setName = (id: string, label: string) =>
     setDraft(d => ({ ...d, [id]: { ...d[id], label } }));
-  const setDescription = (id: string, description: string) =>
-    setDraft(d => ({ ...d, [id]: { ...d[id], description } }));
   const setActions = (id: string, actions: AppAction[]) =>
     setDraft(d => ({ ...d, [id]: { ...d[id], actions: withAppActionDeps(actions) } }));
 
@@ -255,7 +247,6 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
     const d = draft[pr.id];
     if (!d) return false;
     return d.label !== presetLabel(pr, lang)
-      || d.description !== presetDescription(pr, lang)
       || d.actions.length !== pr.actions.length
       || d.actions.some(a => !pr.actions.includes(a));
   }));
@@ -274,19 +265,17 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
       const d = draft[pr.id];
       if (!d) return;
       const sameLabel = d.label === presetLabel(pr, lang);
-      const sameDesc = d.description === presetDescription(pr, lang);
       const sameActions = d.actions.length === pr.actions.length && d.actions.every(a => pr.actions.includes(a));
-      if (sameLabel && sameDesc && sameActions) return;
+      if (sameLabel && sameActions) return;
       updateAccessPreset(pr.id, {
         ...(sameLabel ? {} : { label: d.label }),
-        ...(sameDesc ? {} : { description: d.description }),
         ...(sameActions ? {} : { actions: d.actions }),
       });
     });
     /* The new column, last, so it lands at the end of the list the way it sat at the end of the
        table. Only when it was actually started — see emptyDraft. */
     if (newDraft && newDraft.label.trim() && newDraft.actions.length > 0) {
-      addAccessPreset({ teamId, label: newDraft.label.trim(), description: newDraft.description.trim(), actions: newDraft.actions });
+      addAccessPreset({ teamId, label: newDraft.label.trim(), actions: newDraft.actions });
     }
     showToast({ variant: removed.length ? "warning" : "success", title: t.presetSavedToast });
     stopEditing();
@@ -399,12 +388,21 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
                   onClick={() => (pr.id === NEW_ID
                     ? (setAdding(false), setDraft(d => { const { [NEW_ID]: _drop, ...rest } = d; return rest; }))
                     : setRemoved(r => gone ? r.filter(x => x !== pr.id) : [...r, pr.id]))}
-                  style={{ display: "inline-flex", alignItems: "center", gap: "5px", height: "26px", padding: "0 2px", border: "none", background: "none", color: gone ? "var(--gray-600)" : "var(--danger-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                  {gone
+                  /*
+                   * RED AND A BIN ONLY WHERE SOMETHING IS ACTUALLY DESTROYED (owner, 2026-09-28:
+                   * 새로 추가하는 열 맨 아래 취소 아이콘이 쓰레기통인데 되돌리기 아이콘으로
+                   * 바꿔줘 그리고 빨간색일 필요있을까?).
+                   *
+                   * The column being added has never been saved, so this button throws away a
+                   * draft — the same act as 되돌리기 on a struck-out column, and the opposite of
+                   * 삭제. A bin said the wrong thing and the danger colour said the wrong weight:
+                   * in this console red marks what cannot be undone, and pressing this loses
+                   * nothing anybody else can see.
+                   */
+                  style={{ display: "inline-flex", alignItems: "center", gap: "5px", height: "26px", padding: "0 2px", border: "none", background: "none", color: gone || pr.id === NEW_ID ? "var(--gray-600)" : "var(--danger-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  {gone || pr.id === NEW_ID
                     ? <Undo2 size={13} strokeWidth={2.4} aria-hidden="true" />
                     : <Trash2 size={13} strokeWidth={2.2} aria-hidden="true" />}
-                  {/* 취소, not 삭제, on the column being added: nothing has been saved yet, so
-                      there is nothing to delete — this drops a draft. */}
                   {pr.id === NEW_ID ? t.presetCancel : gone ? t.presetUndoRemove : t.presetRetire}
                 </button>
               );
@@ -433,18 +431,7 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
                     {pr.id !== NEW_ID && <UseChip n={names.length} t={t} />}
                     </div>
                   ) : null}
-                  {editing && !gone ? (
-                    /* THE LINE AN ADMINISTRATOR READS WHEN CHOOSING. It is printed under each
-                       preset's name in the grant picker on the invite form and the account card —
-                       and until now it could be written once and never changed, because the draft
-                       carried only a label. */
-                    <input
-                      value={draft[pr.id]?.description ?? ""}
-                      onChange={e => setDescription(pr.id, e.target.value)}
-                      placeholder={t.presetDescPh}
-                      style={{ width: "100%", maxWidth: "170px", boxSizing: "border-box", height: "24px", padding: "0 8px", borderRadius: "6px", border: BORDER, fontSize: "11px", color: "var(--gray-600)", fontFamily: "inherit", backgroundColor: "white" }}
-                    />
-                  ) : (
+                  {editing && !gone ? null : (
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
                       <span title={presetLabel(pr, lang)} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: gone ? "line-through" : undefined }}>
                         {draft[pr.id]?.label || presetLabel(pr, lang)}
@@ -515,7 +502,6 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
             addAccessPreset({
               teamId,
               label: patch.label ?? "",
-              description: patch.description ?? "",
               actions: patch.actions ?? [],
             });
             showToast({ variant: "success", title: t.presetCreatedToast, desc: patch.label });
@@ -977,7 +963,6 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
   onCancel: () => void;
 }) {
   const [label, setLabel] = useState(preset?.label ?? "");
-  const [description, setDescription] = useState(preset?.description ?? "");
   const [actions, setActions] = useState<AppAction[]>(preset?.actions ?? []);
   const toggleAction = (a: AppAction) =>
     setActions(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
@@ -985,7 +970,7 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
   /* At least one action, for the reason the invite form gives: a preset that grants nothing hands
      the "app open, nothing in it" state to everybody who follows it at once, and the gate then
      turns each of them away. */
-  const canSave = label.trim().length > 0 && description.trim().length > 0 && actions.length > 0;
+  const canSave = label.trim().length > 0 && actions.length > 0;
 
   /*
    * A PANEL OFF THE RIGHT EDGE (owner, 2026-09-28: 새로 화면이 바뀌는데 이거를 오른쪽에서
@@ -1000,19 +985,19 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
    * `dirty` so a stray click on the scrim does not throw away a half-typed preset — the shared
    * Drawer asks first.
    */
-  const started = label.trim().length > 0 || description.trim().length > 0 || actions.length > 0;
+  const started = label.trim().length > 0 || actions.length > 0;
   return (
     <Drawer title={preset ? presetLabel(preset, "ko") : t.presetNew} onClose={onCancel} width="520px" dirty={started}
       footer={
         <>
-          {!canSave && actions.length === 0 && label.trim() && description.trim() && (
+          {!canSave && actions.length === 0 && label.trim() && (
             <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.presetNoScreens}</span>
           )}
           <button className="portal-btn-outline" onClick={onCancel}
             style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {t.presetCancel}
           </button>
-          <button className="portal-btn-primary" onClick={() => canSave && onSave({ label: label.trim(), description: description.trim(), actions })} disabled={!canSave}
+          <button className="portal-btn-primary" onClick={() => canSave && onSave({ label: label.trim(), actions })} disabled={!canSave}
             style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
             {preset ? t.presetSave : t.presetCreate}
           </button>
@@ -1022,10 +1007,6 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
       <div>
         <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.presetLabelField}</label>
         <TextField value={label} onChange={setLabel} placeholder={t.presetLabelPlaceholder} autoFocus />
-      </div>
-      <div>
-        <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.presetDescField}</label>
-        <TextField value={description} onChange={setDescription} placeholder={t.presetDescPlaceholder} />
       </div>
       <div>
         <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.presetGrantsField}</label>

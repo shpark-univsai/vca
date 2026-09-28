@@ -3,14 +3,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Asterisk, ChevronRight, CircleHelp, Eye, KeyRound, Link2, MailQuestion, MonitorOff, Trash2, UserCheck, UserMinus, UserSearch, UserX, Users2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, withAppActionDeps, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, scopedCameraIds, cameraGroupsInProject, withAppActionDeps, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -870,7 +870,8 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
   const [lang] = usePortalLanguage();
   const grantNames = useGrantNames();
   const grantOptions = [
-    ...presets.map(pr => ({ id: pr.id, label: presetLabel(pr, lang), desc: presetDescription(pr, lang) })),
+    /* The line is read off the preset's ticks, not typed — see presetSummary. */
+    ...presets.map(pr => ({ id: pr.id, label: presetLabel(pr, lang), desc: presetSummary(pr.actions, lang) })),
     { id: "custom", label: t.grantCustom, desc: t.grantCustomDesc },
   ];
   const chosenOption = grantOptions.find(o => o.id === choice);

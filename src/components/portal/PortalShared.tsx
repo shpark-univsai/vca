@@ -2718,6 +2718,32 @@ export function AppGrantList({ actions, locked, onToggle, rowFill }: {
   );
 }
 
+/**
+ * WHAT A PRESET OPENS, READ OFF ITS OWN TICKS (owner, 2026-09-28: 이 설명은 왜 필요할까? → 파생
+ * 으로 바꾼다).
+ *
+ * Presets used to carry a hand-written sentence, and it was a copy of the ticks kept in a second
+ * place — so it drifted, and it was already wrong in two ways when this was written: 운영자's said
+ * 「실시간 화면과 지난 기록을 봅니다」 while the preset also opened 모니터링, which is everybody
+ * who walks past, strangers included; 감독자's promised 증거 내보내기 for a week after the button
+ * left the app. Neither could even be corrected — the table's draft carried only a name.
+ *
+ * So the line is derived. The app's own tab names, in the app's own order, plus 검색 when any
+ * search step is held — that being the axis an administrator is actually choosing along. It
+ * cannot disagree with the column above it, because it is that column.
+ */
+export function presetSummary(actions: AppAction[], lang: "en" | "ko"): string {
+  const g = GRANT_T[lang];
+  const held = new Set(actions);
+  const tabs = GRANT_TREE
+    .filter(group => group.rows.some(row =>
+      held.has(row.action) || (row.search && held.has(row.search)) || (row.children ?? []).some(c => held.has(c))))
+    .map(group => g.groupName[group.caption]);
+  const searches = GRANT_TREE.flatMap(group => group.rows)
+    .some(row => (row.search && held.has(row.search)) || (row.searchIsAll && held.has(row.action)));
+  return [...tabs, ...(searches ? [g.stage.searchOnly] : [])].join(" · ");
+}
+
 /** The action names alone, for places that list a preset's grants without offering to change them. */
 export function useGrantNames(): { action: Record<AppAction, string>; screen: Record<AppScreen, string> } {
   const [lang] = usePortalLanguage();
