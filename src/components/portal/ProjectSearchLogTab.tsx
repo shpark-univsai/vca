@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useVcaStore, type SearchAccessRecord } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
-  ActiveFilterCount, FilterSelect, FIELD_STYLE, SortableHeader, SummaryStrip, TableEmpty, sortRows, useTableSort, MEASURE } from "./PortalShared";
+  ActiveFilterCount, FilterSelect, FIELD_STYLE, SortableHeader, SummaryStrip, TableEmpty, TableSkeleton, TableLoadFailed, sortRows, useTableSort, MEASURE } from "./PortalShared";
 import { Eye, FileOutput, ShieldAlert } from "lucide-react";
 
 /**
@@ -54,6 +55,8 @@ const T = {
     intro: "Every person look-up run from the monitoring app.",
     introWithPurpose: "Every person look-up run from the monitoring app, with the purpose the operator declared.",
     empty: "No look-ups recorded yet.",
+    loadFailed: "Could not load the look-up log.",
+    retry: "Try again",
     noMatch: "No look-ups match these filters.",
     // The app's own names for its screens. An unknown code is printed as-is rather than guessed
     // at — a wrong screen name in an audit row is worse than a code the reader can look up.
@@ -89,6 +92,8 @@ const T = {
     intro: "모니터링 앱에서 실행된 인물 조회입니다.",
     introWithPurpose: "모니터링 앱에서 실행된 인물 조회와, 그때 관제요원이 밝힌 목적입니다.",
     empty: "기록된 조회가 없습니다.",
+    loadFailed: "조회 기록을 불러오지 못했습니다.",
+    retry: "다시 시도",
     noMatch: "조건에 맞는 조회 기록이 없습니다.",
     surfaceName: { live: "모니터링", reid: "Re-ID", redmap: "레드맵", redface: "RedFace" } as Record<string, string>,
     colAt: "시각", colActor: "조회자", colPurpose: "목적", colReference: "참조번호",
@@ -116,9 +121,37 @@ function csvEscape(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
+/**
+ * LIST STATE — THE SEAM THE FETCH WRITES TO.
+ *
+ * A list has four states (see PortalShared: rows · empty · loading · failed) and this tab can
+ * only ever be in two of them today, because it reads the in-memory store synchronously: there
+ * is no second where the rows are in the air, and no request that can come back 500.
+ *
+ * WHAT REPLACES THIS: the GET for this list. `listState` becomes that request's own state —
+ * "loading" while it is out, "failed" when it is rejected, "ready" once the rows are in — and
+ * `retryList` becomes the refetch the failed state's button calls. Nothing below it changes:
+ * the table already branches on these three words.
+ *
+ * The ?listState= override is the only reason this reads the URL at all. It is here so the two
+ * states that are unreachable today can still be opened, seen and reviewed, and it is ONE line
+ * to delete when the fetch lands. It is not a setting: nothing in Portal writes this parameter,
+ * so nobody arrives at it by accident.
+ */
+type ListState = "ready" | "loading" | "failed";
+
+function useListState(): [ListState, () => void] {
+  const override = useSearchParams().get("listState");
+  const [state, setState] = useState<ListState>(override === "loading" || override === "failed" ? override : "ready");
+  // Until there is a request there is nothing to ask for again, so retrying can only drop the
+  // override and show what the store holds. This call becomes the refetch.
+  return [state, () => setState("ready")];
+}
+
 export default function ProjectSearchLogTab({ projectId }: { projectId: string }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
+  const [listState, retryList] = useListState();
   const searchAccessLog = useVcaStore(s => s.searchAccessLog);
   const recordListExport = useVcaStore(s => s.recordListExport);
   // The project's zone, not the reviewer's browser and not siteTimeZone() — see the note on the
@@ -344,7 +377,18 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           ))}
         </div>
 
-        {visible.length === 0 ? (
+        {/* The rows are the only part that changes: the column headings above and the filters
+            above them stay put, because they are still true while the answer is on its way.
+
+            Loading is checked BEFORE empty, and that order is the point of the whole branch. An
+            empty state over data that has not arrived is a sentence the screen cannot support —
+            "no look-ups recorded yet" read off a request still in the air is exactly the kind of
+            plausible false answer an audit log must never give. */}
+        {listState === "loading" ? (
+          <TableSkeleton grid={grid} />
+        ) : listState === "failed" ? (
+          <TableLoadFailed text={t.loadFailed} retryLabel={t.retry} onRetry={retryList} />
+        ) : visible.length === 0 ? (
           /* Two sentences, and on this tab the difference is the whole point. "Nobody has looked
              anybody up here" and "your date range and actor filter matched nothing" send an
              auditor to opposite conclusions, and the first one is an answer they might write down.

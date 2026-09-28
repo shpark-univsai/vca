@@ -1,13 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ServerCrash, Unplug, Video } from "lucide-react";
 import { useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import ProjectApiPanel from "./ProjectApiPanel";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { TablePagination, SummaryStrip, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError, StatusBadge, ActiveFilterCount, Drawer } from "./PortalShared";
+import { TablePagination, SummaryStrip, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError, StatusBadge, ActiveFilterCount, Drawer } from "./PortalShared";
+
+/* The table's columns, in one place. There were two copies of this string — the heading row and
+   the data row — and the skeleton would have made a third; a grid that is written out per user is
+   a grid that eventually disagrees with itself. */
+const SERVER_GRID = "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px";
 
 // Ordered as the deployed Add Server dialog orders them, so an operator who has used that one
 // finds each entry where their hand already goes. Its list opens with "All", which this one does
@@ -295,6 +301,8 @@ const MAIN_T = {
     searchPlaceholder: "Search by server name or IP address",
     allTypes: "All types", filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`, addServer: "Add server",
     emptyNoServers: "No servers configured for this project yet.",
+    loadFailed: "Could not load the server list.",
+    retry: "Try again",
     emptyNoMatch: "No servers match these filters.",
     /* THE PARENTHETICAL STAYS, on both languages, and it is the one column in Portal that earns
        one. The cameras, roster and users tables all head theirs "Status" / "상태" with nothing
@@ -354,6 +362,8 @@ const MAIN_T = {
     searchPlaceholder: "서버 이름 또는 IP 주소로 검색",
     allTypes: "전체 유형", filtersActive: (n: number) => `필터 ${n}개`, addServer: "서버 추가",
     emptyNoServers: "이 프로젝트에 아직 설정된 서버가 없습니다.",
+    loadFailed: "서버 목록을 불러오지 못했습니다.",
+    retry: "다시 시도",
     emptyNoMatch: "필터와 일치하는 서버가 없습니다.",
     colStatus: "상태", colName: "서버 이름", colIp: "서버 IP", colType: "서버 유형",
     colCameras: "배정된 카메라",
@@ -367,10 +377,38 @@ const MAIN_T = {
 
 type ServerSortKey = "status" | "name" | "ip" | "type";
 
+/**
+ * LIST STATE — THE SEAM THE FETCH WRITES TO.
+ *
+ * A list has four states (see PortalShared: rows · empty · loading · failed) and this tab can
+ * only ever be in two of them today, because it reads the in-memory store synchronously: there
+ * is no second where the rows are in the air, and no request that can come back 500.
+ *
+ * WHAT REPLACES THIS: the GET for this list. `listState` becomes that request's own state —
+ * "loading" while it is out, "failed" when it is rejected, "ready" once the rows are in — and
+ * `retryList` becomes the refetch the failed state's button calls. Nothing below it changes:
+ * the table already branches on these three words.
+ *
+ * The ?listState= override is the only reason this reads the URL at all. It is here so the two
+ * states that are unreachable today can still be opened, seen and reviewed, and it is ONE line
+ * to delete when the fetch lands. It is not a setting: nothing in Portal writes this parameter,
+ * so nobody arrives at it by accident.
+ */
+type ListState = "ready" | "loading" | "failed";
+
+function useListState(): [ListState, () => void] {
+  const override = useSearchParams().get("listState");
+  const [state, setState] = useState<ListState>(override === "loading" || override === "failed" ? override : "ready");
+  // Until there is a request there is nothing to ask for again, so retrying can only drop the
+  // override and show what the store holds. This call becomes the refetch.
+  return [state, () => setState("ready")];
+}
+
 export default function ProjectServerTab({ projectId }: { projectId: string }) {
   // Servers and mail are infrastructure. An auditor reads what is deployed and where mail comes
   // from; changing either is not what the role is for.
   const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
+  const [listState, retryList] = useListState();
   const servers = useVcaStore(s => s.servers);
   const cameras = useVcaStore(s => s.cameras);
   const addServer = useVcaStore(s => s.addServer);
@@ -624,7 +662,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               opens past the bottom edge (the last row's menu becomes invisible, not just cut
               off). Header/last-row corners are radiused directly instead. */}
           <div style={{ backgroundColor: "white", border: BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
-            <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
+            <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: SERVER_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
               {([
                 { label: t.colStatus, key: "status" },
                 { label: t.colName, key: "name" },
@@ -636,7 +674,17 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                 <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
               ))}
             </div>
-            {visibleServers.length === 0 ? (
+            {/* Only the rows change — the headings above and the Add Server button above them
+                stand while the answer is on its way.
+
+                Loading is answered before empty. "No servers configured for this project yet" is
+                a conclusion somebody acts on (they add one that already exists), and printing it
+                over a list still being fetched is exactly that mistake. */}
+            {listState === "loading" ? (
+              <TableSkeleton grid={SERVER_GRID} rows={4} />
+            ) : listState === "failed" ? (
+              <TableLoadFailed text={t.loadFailed} retryLabel={t.retry} onRetry={retryList} />
+            ) : visibleServers.length === 0 ? (
               <TableEmpty text={projectServers.length === 0 ? t.emptyNoServers : t.emptyNoMatch} />
             ) : pageServers.map((server, i) => {
               const statusState = server.status === "success" ? "success" as const
@@ -647,7 +695,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               const cameraCount = camerasPerServer.get(server.id) ?? 0;
               return (
                 <div key={server.id} style={{
-                  display: "grid", gridTemplateColumns: "0.8fr 1.4fr 1.1fr 1.1fr 1.2fr 70px", columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
+                  display: "grid", gridTemplateColumns: SERVER_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
                   borderBottom: isLast ? "none" : BORDER,
                   borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
                 }}>
@@ -686,13 +734,15 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
           {/* The shared pager (PortalShared.TablePagination). It was forty lines of inline JSX
               here, printing one button per page — fine for six servers, wrong for the VIP registry
               that now uses the same component, so it moved and learned to window. */}
-          <TablePagination
+          {/* No pager over rows that are not there: "0 / 0" under a skeleton is a count of
+              nothing dressed as a count. */}
+          {listState === "ready" && <TablePagination
             total={visibleServers.length}
             page={page}
             rowsPerPage={rowsPerPage}
             onPage={setPage}
             onRowsPerPage={setRowsPerPage}
-          />
+          />}
         </>
       )}
 

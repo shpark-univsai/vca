@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useVcaStore, type AuditEvent } from "@/lib/vcaStore";
 import { AUDIT_AREA_LABEL, AUDIT_AREAS, type AuditArea } from "@/lib/auditAreas";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
@@ -8,7 +9,7 @@ import { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
-  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, sortRows, useTableSort } from "./PortalShared";
+  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TableSkeleton, TableLoadFailed, sortRows, useTableSort } from "./PortalShared";
 import { FileOutput, History, UserCog, CalendarClock, Settings, KeyRound } from "lucide-react";
 
 /**
@@ -81,6 +82,8 @@ const T = {
   en: {
     intro: "Every change made to this project from Portal, newest first. Policy changes made for the whole institution appear here too, and so does an account created by redeeming a registration code.",
     empty: "No activity recorded yet.",
+    loadFailed: "Could not load the activity log.",
+    retry: "Try again",
     noMatch: "No activity matches these filters.",
     /* "Screen" is the search log's own heading for this axis, not a second word for it. The last
        one keeps the heading the single column always had, because it is still the same question —
@@ -113,6 +116,8 @@ const T = {
   ko: {
     intro: "포털에서 이 프로젝트에 가해진 모든 변경입니다. 기관 전체에 적용되는 정책 변경과, 등록 코드로 가입해 계정이 만들어진 일도 함께 나옵니다.",
     empty: "기록된 변경이 없습니다.",
+    loadFailed: "변경 기록을 불러오지 못했습니다.",
+    retry: "다시 시도",
     noMatch: "조건에 맞는 기록이 없습니다.",
     colAt: "시각", colActor: "담당자", colTarget: "대상", colArea: "화면", colMessage: "변경 내용",
     searchPlaceholder: "변경 내용 검색",
@@ -140,9 +145,37 @@ function csvEscape(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
+/**
+ * LIST STATE — THE SEAM THE FETCH WRITES TO.
+ *
+ * A list has four states (see PortalShared: rows · empty · loading · failed) and this tab can
+ * only ever be in two of them today, because it reads the in-memory store synchronously: there
+ * is no second where the rows are in the air, and no request that can come back 500.
+ *
+ * WHAT REPLACES THIS: the GET for this list. `listState` becomes that request's own state —
+ * "loading" while it is out, "failed" when it is rejected, "ready" once the rows are in — and
+ * `retryList` becomes the refetch the failed state's button calls. Nothing below it changes:
+ * the table already branches on these three words.
+ *
+ * The ?listState= override is the only reason this reads the URL at all. It is here so the two
+ * states that are unreachable today can still be opened, seen and reviewed, and it is ONE line
+ * to delete when the fetch lands. It is not a setting: nothing in Portal writes this parameter,
+ * so nobody arrives at it by accident.
+ */
+type ListState = "ready" | "loading" | "failed";
+
+function useListState(): [ListState, () => void] {
+  const override = useSearchParams().get("listState");
+  const [state, setState] = useState<ListState>(override === "loading" || override === "failed" ? override : "ready");
+  // Until there is a request there is nothing to ask for again, so retrying can only drop the
+  // override and show what the store holds. This call becomes the refetch.
+  return [state, () => setState("ready")];
+}
+
 export default function ProjectActivityTab({ projectId }: { projectId: string }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
+  const [listState, retryList] = useListState();
   const auditLog = useVcaStore(s => s.auditLog);
   const recordListExport = useVcaStore(s => s.recordListExport);
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
@@ -390,7 +423,17 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
           ))}
         </div>
 
-        {visible.length === 0 ? (
+        {/* Only the rows are replaced — the headings above and the filters above them are still
+            true while the answer is on its way.
+
+            Loading before empty, and the order is the whole point: "nothing has happened here"
+            printed over a request still in the air is a false answer that reads exactly like a
+            true one. */}
+        {listState === "loading" ? (
+          <TableSkeleton grid={GRID} />
+        ) : listState === "failed" ? (
+          <TableLoadFailed text={t.loadFailed} retryLabel={t.retry} onRetry={retryList} />
+        ) : visible.length === 0 ? (
           /* Two different empty states. "Nothing has happened here" and "nothing matches what you
              asked for" send the reader to different places, and one message for both sends half
              of them to the wrong one. */
