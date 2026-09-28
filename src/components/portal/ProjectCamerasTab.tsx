@@ -138,6 +138,8 @@ const T = {
     toastUploadedTitle: "Uploaded",
     previewUploadAction: "Play file",
     removeUploadAction: "Remove upload",
+    confirmRemoveUploadTitle: (name: string) => `Remove ${name}?`,
+    confirmRemoveUploadBody: "The file goes, and so does anything read from it. Uploading it again is a new source, not an undo.",
     toastUploadRemovedTitle: "Upload removed",
     emptyNoSources: "Nothing registered for this project yet.",
     loadFailed: "Could not load the input sources.",
@@ -338,6 +340,8 @@ const T = {
     toastUploadedTitle: "업로드됨",
     previewUploadAction: "파일 재생",
     removeUploadAction: "업로드 삭제",
+    confirmRemoveUploadTitle: (name: string) => `${name}을(를) 지울까요?`,
+    confirmRemoveUploadBody: "파일이 사라지고, 그 파일에서 읽어낸 것도 같이 사라집니다. 다시 올리는 것은 되돌리는 게 아니라 새 소스입니다.",
     toastUploadRemovedTitle: "업로드가 삭제됨",
     emptyNoSources: "이 프로젝트에 등록된 소스가 없습니다.",
     loadFailed: "입력 소스를 불러오지 못했습니다.",
@@ -1652,6 +1656,12 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   // be safer than another route to the same action — ticking a row and pressing Delete asked
   // you to confirm, and the row's own ⋯ → Remove did it on the first click.
   const [confirmingDeleteCam, setConfirmingDeleteCam] = useState<Camera | null>(null);
+  /* The one removal on this screen that used to happen on the click (owner, 2026-09-28: 확인창
+     붙이는게 좋을것같아). Every other 제거 in Portal asks first — a camera, a server, an account,
+     a group — and this one took a file away with only a toast to say so afterwards. The file is
+     the source: whatever was analysed from it goes with it, and re-uploading is not the same as
+     undoing. */
+  const [confirmingRemoveUpload, setConfirmingRemoveUpload] = useState<{ id: string; fileName: string } | null>(null);
   const handleDelete = (cam: Camera) => setConfirmingDeleteCam(cam);
   const confirmDeleteCam = () => {
     if (!confirmingDeleteCam) return;
@@ -2462,7 +2472,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                       // Named first, like the camera row's Preview: the thumbnail-sized tile is
                       // not a control anyone is told about, and a row that opens should say so.
                       { label: t.previewUploadAction, onClick: () => setInspectingUploadId(u.id) },
-                      { label: t.removeUploadAction, onClick: () => { forgetUploadFile(u.id); removeUpload(u.id); showToast({ variant: "warning", title: t.toastUploadRemovedTitle, desc: u.fileName }); }, danger: true, disabled: !mayEdit, reason: readOnlyReason },
+                      { label: t.removeUploadAction, onClick: () => setConfirmingRemoveUpload(u), danger: true, disabled: !mayEdit, reason: readOnlyReason },
                     ]} />
                   </span>
                 </div>
@@ -2742,6 +2752,24 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       {inspectingCameraId && cameras.find(c => c.id === inspectingCameraId) && (
         <CameraStreamModal camera={cameras.find(c => c.id === inspectingCameraId) as Camera} onClose={() => setInspectingCameraId(null)} />
       )}
+      {confirmingRemoveUpload && (
+        <ConfirmModal
+          title={t.confirmRemoveUploadTitle(confirmingRemoveUpload.fileName)}
+          body={t.confirmRemoveUploadBody}
+          confirmLabel={t.removeUploadAction}
+          cancelLabel={t.cancel}
+          danger
+          onConfirm={() => {
+            const { id, fileName } = confirmingRemoveUpload;
+            forgetUploadFile(id);
+            removeUpload(id);
+            setConfirmingRemoveUpload(null);
+            showToast({ variant: "warning", title: t.toastUploadRemovedTitle, desc: fileName });
+          }}
+          onClose={() => setConfirmingRemoveUpload(null)}
+        />
+      )}
+
       {confirmingDeleteCam && (
         <ConfirmModal
           title={t.confirmDeleteCamTitle(confirmingDeleteCam.name)}
