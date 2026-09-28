@@ -143,9 +143,12 @@ function dotHtml(fill: string, selected: boolean, line: string | null): string {
  * THE TRADE, ACCEPTED: while grouping you can no longer notice that a camera has never connected.
  * A group is about place, and the register that answers the other question is one click away.
  */
-function dotFace(cam: Camera, selected: boolean, picking: boolean): [string, string | null] {
-  if (!picking) return [statusColor(cam), null];
-  return selected ? [PICKED_FILL, PICKED_LINE] : ["var(--gray-400)", null];
+function dotFace(cam: Camera, selected: boolean, picking: boolean, tint?: string | null): [string, string | null] {
+  if (picking) return selected ? [PICKED_FILL, PICKED_LINE] : ["var(--gray-400)", null];
+  /* A caller can say what a dot MEANS here — the camera-group overview paints by group instead of
+     by status, because on that screen "which group is this in" is the only question being asked.
+     Falls through to status when the caller says nothing, which is every other use. */
+  return [tint ?? statusColor(cam), null];
 }
 
 /** How far the pointer has to travel before a drag is a lasso and not a click on a dot. Measured
@@ -194,7 +197,7 @@ function statusColor(cam: Camera): string {
 }
 
 export default function CameraMapView({
-  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect, alwaysPicking, fill, overlay,
+  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect, alwaysPicking, fill, overlay, tintOf,
 }: {
   /** The rows the table would be showing — filters applied. Split by position here. */
   cameras: Camera[];
@@ -245,6 +248,14 @@ export default function CameraMapView({
    * is the only place that box exists.
    */
   overlay?: React.ReactNode;
+  /**
+   * What colour this camera's dot should be, when the caller has something better to say than
+   * status. Returning null leaves the dot on status colour.
+   *
+   * Used by the camera-group overview: the dots ARE the answer there, so painting them by group
+   * is the screen. Ignored while picking — a picked dot has to read as picked.
+   */
+  tintOf?: (cameraId: string) => string | null;
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -261,6 +272,10 @@ export default function CameraMapView({
   useEffect(() => { pickingRef.current = picking; }, [picking]);
   const onToggleRef = useRef(onToggleSelect);
   useEffect(() => { onToggleRef.current = onToggleSelect; }, [onToggleSelect]);
+  /* A ref for the same reason as onToggleSelect's: the marker effects are keyed on positions and
+     the selection, and a new function identity every render must not rebuild sixty markers. */
+  const tintRef = useRef(tintOf);
+  useEffect(() => { tintRef.current = tintOf; }, [tintOf]);
   /* The current selection, for the same reason: a pill's handler is attached once, and adding a
      zone has to skip the cameras already picked or the toggle would take them back out. */
   const selectedIdsRef = useRef(selectedIds);
@@ -529,7 +544,7 @@ export default function CameraMapView({
            afterwards. Opening a group of three therefore drew three unmarked dots until the
            reader touched something. Harmless while the dots carried status colour; since they
            carry nothing but picked-or-not it would be a group that cannot be read at all. */
-        const [fill, line] = dotFace(cam, selectedIdsRef.current.has(cam.id), !!alwaysPicking);
+        const [fill, line] = dotFace(cam, selectedIdsRef.current.has(cam.id), !!alwaysPicking, tintRef.current?.(cam.id));
         const icon = L.divIcon({
           className: "",
           html: dotHtml(fill, selectedIdsRef.current.has(cam.id), line),
@@ -624,7 +639,7 @@ export default function CameraMapView({
            never overlap in practice (picking a zone clears nothing, but the modes are used one at
            a time) and a second ring style would make the map teach two marks for "this one". */
         const on = selectedIds.has(cam.id);
-        const [fill, line] = dotFace(cam, on, !!alwaysPicking);
+        const [fill, line] = dotFace(cam, on, !!alwaysPicking, tintRef.current?.(cam.id));
         marker.setIcon(L.divIcon({
           className: "",
           html: dotHtml(fill, on, line),
@@ -659,6 +674,11 @@ export default function CameraMapView({
       /* `fill` hands the decision to the parent — see the prop's note. */
       height: fill ? "100%" : height === null ? "560px" : `${height}px`,
       minHeight: fill ? 0 : undefined,
+      /* `fill` took the parent's height but not its width, so in a flex parent this card sized to
+         its own header and left the rest of the row empty (measured: 838px of 1176 on the camera
+         group overview). "Take your size from the box you are in" has to mean both axes. */
+      width: fill ? "100%" : undefined,
+      minWidth: fill ? 0 : undefined,
     }}>
       <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", borderBottom: BORDER, flexWrap: "wrap" }}>
         <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-600)" }}>{t.counted(placed.length, cameras.length)}</span>
@@ -671,7 +691,9 @@ export default function CameraMapView({
             counts the same selection. MEASURED before writing that sentence: the bar is
             position:fixed at the foot of the viewport (top 820 of 900), not above this card, and
             an arrow pointing the wrong way is worse than none. */}
-        {!alwaysPicking && (
+        {/* Nor the pick button when the caller owns the dots: switching into picking would repaint
+            them by picked-or-not and silently throw away the grouping the reader came to see. */}
+        {!alwaysPicking && !tintOf && (
         <button onClick={() => setPickingMode(v => !v)}
           style={{
             display: "inline-flex", alignItems: "center", gap: "6px", height: "26px", padding: "0 10px",
@@ -702,7 +724,7 @@ export default function CameraMapView({
             {t.lasso}
           </button>
         )}
-        {picking && !alwaysPicking && (
+        {picking && !alwaysPicking && !tintOf && (
           <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{t.pickHint(selectedIds.size)}</span>
         )}
         <span style={{ flex: 1 }} />
@@ -713,8 +735,11 @@ export default function CameraMapView({
             The legend is the four words the dots stand for. Four colours with no key is a puzzle,
             and the table one click away spells them out in a column. */}
         {/* NOT IN THE PICKER. See dotFace: while picking, a dot's colour says picked or not, so a
-            key for four statuses would decode a code that is not on the map. */}
-        {!alwaysPicking && (
+            key for four statuses would decode a code that is not on the map.
+            NOR WHEN THE CALLER PAINTS THE DOTS ITSELF (`tintOf`) — on the camera-group overview
+            green means 「Geylang 일대」, and a key reading 「연결됨」 beside it would be the screen
+            stating something false about every dot on it. That caller brings its own key. */}
+        {!alwaysPicking && !tintOf && (
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
           {([
             { color: "var(--success-400)", label: t.connected },

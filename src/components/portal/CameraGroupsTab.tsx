@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { CheckCheck, ChevronLeft, Plus, RotateCcw } from "lucide-react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import {
-  cameraGroupsInProject, camerasInProject, useVcaStore, type Camera, type CameraGroup,
+  cameraGroupsInProject, camerasInProject, hasPosition, useVcaStore, type Camera, type CameraGroup,
 } from "@/lib/vcaStore";
 import CameraMapView from "./CameraMapView";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -85,6 +85,9 @@ const T = {
     createNameExampleNoZone: "Front and back gate",
     descField: "Description",
     descOptional: "optional",
+    viewLabel: "How to view groups",
+    viewCards: "Cards",
+    legendUngrouped: "Not in a group",
     createButton: "New group",
     createdToast: "Camera group created",
     savedToast: "Camera group saved",
@@ -139,6 +142,9 @@ const T = {
     createNameExampleNoZone: "정문·후문",
     descField: "그룹 설명",
     descOptional: "선택",
+    viewLabel: "그룹 보는 방법",
+    viewCards: "카드",
+    legendUngrouped: "그룹 없음",
     createButton: "그룹 만들기",
     createdToast: "카메라 그룹을 만들었습니다",
     savedToast: "카메라 그룹을 저장했습니다",
@@ -166,7 +172,28 @@ type Dict = typeof T.en;
  * a third of it, so the cap rises with it: 18 is three rows of six at the width a full-width card
  * gives a name, measured rather than guessed.
  */
+/** One frozen empty set, so the map's selection effects do not see a new Set every render. */
+const EMPTY_SELECTION: Set<string> = new Set();
+
 const CARD_CHIP_CAP = 18;
+
+/*
+ * THE COLOURS A GROUP CAN WEAR ON THE MAP.
+ *
+ * Six, from the tokens this product already defines — no new shades are mixed here, per the design
+ * system's own rule. They are the strongest step of each hue so a 12px dot still reads at
+ * neighbourhood zoom, and they are walked in order, so a group keeps its colour as long as the
+ * list order holds. Past six they repeat, and the legend is what disambiguates — which is why the
+ * legend carries the name and the map does not.
+ */
+const GROUP_COLORS = [
+  "var(--primary-400)",
+  "var(--success-400)",
+  "var(--warning-500)",
+  "var(--info-500)",
+  "var(--danger-400)",
+  "var(--primary-300)",
+];
 
 /**
  * The picker's first section when a group is being CHANGED: the cameras it already holds. Not a
@@ -845,6 +872,11 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
   const [removing, setRemoving] = useState<CameraGroup | null>(null);
   const [editing, setEditing] = useState<CameraGroup | null>(null);
   const [creating, setCreating] = useState(false);
+  /* 카드 / 지도 (owner, 2026-09-28: 그룹을 보는 방법을 지도랑 카드랑 두가지로 볼수있게해서
+     지도에 현재 그룹이 어떻게 묶여져있는지 표시서 그룹명 표시해줘). Not persisted: which way you
+     were looking last is not a setting, and a tab that opens in a mode you did not choose is
+     worse than one that always opens the same way. */
+  const [view, setView] = useState<"cards" | "map">("cards");
   const drawerOpen = editing !== null || creating;
 
   /** How many accounts name this group in their scope — the answer this tab exists for. */
@@ -872,7 +904,32 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
       */}
       {groups.length > 0 && mayEdit && (() => {
         const bar = (
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: actionsSlot ? 0 : "14px", minHeight: CONTROL_HEIGHT }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "8px", marginBottom: actionsSlot ? 0 : "14px", minHeight: CONTROL_HEIGHT }}>
+            {/* Two cells, the same segmented shape the grant rows use for 보기 / 보기·검색 — one
+                control showing both states, rather than a button that names the mode you are not
+                in and leaves you to work out which that is. */}
+            <span role="radiogroup" aria-label={t.viewLabel} style={{ display: "inline-flex", alignItems: "center", height: CONTROL_HEIGHT, flexShrink: 0 }}>
+              {(["cards", "map"] as const).map((v, i) => {
+                const on = view === v;
+                return (
+                  <button key={v} type="button" role="radio" aria-checked={on} onClick={() => setView(v)}
+                    style={{
+                      display: "inline-flex", alignItems: "center", height: "100%", boxSizing: "border-box",
+                      padding: "0 12px", fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                      backgroundColor: on ? "var(--gray-50)" : "white",
+                      color: on ? "var(--gray-900)" : "var(--gray-500)",
+                      border: BORDER,
+                      borderTopLeftRadius: i === 0 ? "8px" : 0, borderBottomLeftRadius: i === 0 ? "8px" : 0,
+                      borderTopRightRadius: i === 1 ? "8px" : 0, borderBottomRightRadius: i === 1 ? "8px" : 0,
+                      marginLeft: i === 0 ? 0 : "-1px",
+                      position: "relative", zIndex: on ? 1 : 0,
+                      cursor: "pointer",
+                    }}>
+                    {v === "cards" ? t.viewCards : t.viewMap}
+                  </button>
+                );
+              })}
+            </span>
             <button type="button" onClick={() => setCreating(true)}
               style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               <Plus size={13} strokeWidth={2.4} aria-hidden="true" />
@@ -900,6 +957,66 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
               {t.goToCameras}
             </button>
           )}
+        </div>
+      ) : view === "map" ? (
+        /*
+         * THE SAME GROUPS, SEEN AS PLACES.
+         *
+         * A card says a group holds eleven cameras; only the map says whether they are the eleven
+         * along one road or eleven scattered across the site with nothing in common. That is what
+         * a reader is actually checking before handing a group out as a permission.
+         *
+         * THE NAMES ARE IN A LEGEND, NOT ON THE MAP, and this file has already paid for that
+         * lesson once: the zone pills that floated over CameraMapView were removed because 18
+         * labels inside one city collided 29 times, at two different heights — the scale, not the
+         * box. Group labels would collide the same way the moment two groups overlap, which is
+         * exactly when a reader most needs to tell them apart. The dots carry the grouping, the
+         * legend carries the names, and nothing overlaps anything.
+         */
+        <div style={{ height: "calc(100vh - 260px)", minHeight: "420px", display: "flex", alignItems: "stretch" }}>
+          <CameraMapView
+            fill
+            cameras={registered}
+            selectedIds={EMPTY_SELECTION}
+            onToggleSelect={() => {}}
+            tintOf={cameraId => {
+              const i = groups.findIndex(g => g.cameraIds.includes(cameraId));
+              return i === -1 ? "var(--gray-300)" : GROUP_COLORS[i % GROUP_COLORS.length];
+            }}
+            overlay={
+              /* THE LEGEND COUNTS DOTS, NOT MEMBERS. A group of eleven with one camera never
+                 surveyed draws ten dots, and a legend saying eleven would have the reader hunting
+                 for a dot that is not there. The cameras without coordinates are already named by
+                 the map's own 「지도에 없는 N대」 notice, which is where that fact belongs. */
+              <div style={{
+/* Bottom RIGHT: the map already puts its 「지도에 없는 N대」 notice at the bottom left,
+                   and the two boxes were sitting on top of each other (measured on screen). */
+                position: "absolute", right: "12px", bottom: "12px", zIndex: 500,
+                maxWidth: "min(46%, 280px)", maxHeight: "60%", overflowY: "auto",
+                display: "flex", flexDirection: "column", gap: "6px",
+                padding: "10px 12px", borderRadius: "10px", border: BORDER,
+                backgroundColor: "white", boxShadow: "var(--shadow-popover)",
+              }}>
+                {groups.map((g, i) => (
+                  <span key={g.id} style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: "11.5px", color: "var(--gray-700)" }}>
+                    <span aria-hidden="true" style={{ flexShrink: 0, width: "10px", height: "10px", borderRadius: "50%", backgroundColor: GROUP_COLORS[i % GROUP_COLORS.length] }} />
+                    <span style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.label}</span>
+                    <span style={{ flexShrink: 0, color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>{liveCameras(g).filter(hasPosition).length}</span>
+                  </span>
+                ))}
+                {/* Said only when there are any — a legend row for a colour no dot wears is noise. */}
+                {registered.some(c => hasPosition(c) && !groups.some(g => g.cameraIds.includes(c.id))) && (
+                  <span style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: "11.5px", color: "var(--gray-500)", paddingTop: "4px", borderTop: "1px solid var(--gray-100)" }}>
+                    <span aria-hidden="true" style={{ flexShrink: 0, width: "10px", height: "10px", borderRadius: "50%", backgroundColor: "var(--gray-300)" }} />
+                    {t.legendUngrouped}
+                    <span style={{ flexShrink: 0, color: "var(--gray-400)", fontVariantNumeric: "tabular-nums" }}>
+                      {registered.filter(c => hasPosition(c) && !groups.some(g => g.cameraIds.includes(c.id))).length}
+                    </span>
+                  </span>
+                )}
+              </div>
+            }
+          />
         </div>
       ) : (
         /*
