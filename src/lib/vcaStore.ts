@@ -645,37 +645,10 @@ export function judgementFor(
 }
 
 /**
- * One detection taken out of the console.
- *
- * The extraction is the audit-worthy act, not the viewing. Somebody reading a screen leaves the
- * data where it is; somebody exporting has made a copy that the console can no longer see, and
- * the only question anyone will ask afterwards — "where did this file come from" — is answerable
- * only if this row exists.
- *
- * HANDOFF NOTE: written by the browser here, which makes it a note to ourselves rather than a
- * record. The real export is a server call that logs before it returns the bytes; a client that
- * writes its own audit row can also skip writing it.
- */
-export interface EvidenceExportRecord {
-  id: string;
-  /** The site the sighting belongs to, so the extraction lands in that project's log. */
-  projectId: string;
-  /** The sighting exported — the same id a judgement is filed against. */
-  subjectId: string;
-  surface: "redmap" | "bestframe";
-  /** Who or what the search was about, so the row reads without opening the file. */
-  targetLabel: string;
-  /** Digest of the manifest as written, so a file in hand can be matched to this row. */
-  manifestHash: string;
-  actor: string;
-  at: string;
-}
-
-/**
  * A whole list taken out of Portal as a file.
  *
- * A DIFFERENT THING FROM EvidenceExportRecord, and the difference is the size of it: that one is
- * one sighting, this is everybody. The VIP registry CSV carries every listed person's name, group,
+ * A DIFFERENT THING FROM the app's old evidence export (removed 2026-09-28): that was one
+ * sighting, this is everybody. The VIP registry CSV carries every listed person's name, group,
  * basis, who registered them, expiry and last detection; the search-log CSV carries the audit
  * trail itself, IP addresses included.
  *
@@ -686,13 +659,11 @@ export interface EvidenceExportRecord {
  * records away from the person whose job is reading them inverts the role.
  *
  * Second, these five are a reformat of what is already on the screen. A blocked button leaves
- * screenshots and copy-paste, so the button is an inconvenience rather than a control. The app's
- * evidence export is the opposite case: the server has to hand over frame bytes for it to
- * complete, so a door there is real.
+ * screenshots and copy-paste, so the button is an inconvenience rather than a control.
  *
  * What was missing is not a door but a record — the console could not say a list had left it.
  *
- * HANDOFF NOTE: same as EvidenceExportRecord and for the same reason. The browser writing its own
+ * HANDOFF NOTE: the browser writing its own
  * audit row is a note to ourselves; a client that writes it can skip writing it. These exports
  * have to go through the server, which logs before it returns the file.
  */
@@ -934,8 +905,6 @@ interface VcaStoreState {
   searchAccessLog: SearchAccessRecord[];
   /** Operator calls on individual detections — see DetectionJudgement. */
   detectionJudgements: DetectionJudgement[];
-  /** Every detection taken out of the console — see EvidenceExportRecord. */
-  evidenceExports: EvidenceExportRecord[];
   /** Every list taken out of the console as a file — see ListExportRecord. */
   listExports: ListExportRecord[];
   /** Outside requests for recorded footage — see FootageRequest. Empty until one is filed. */
@@ -1066,7 +1035,6 @@ interface VcaStoreState {
   recordJudgement: (j: Pick<DetectionJudgement, "surface" | "subjectId" | "targetLabel" | "verdict">) => void;
   /** Back to "nobody has looked at this". Not the same as marking it a false positive. */
   clearJudgement: (surface: DetectionJudgement["surface"], subjectId: string) => void;
-  recordEvidenceExport: (e: Pick<EvidenceExportRecord, "projectId" | "subjectId" | "surface" | "targetLabel" | "manifestHash">) => void;
   /** Write down that a whole list left as a file. See ListExportRecord — a record, not a gate. */
   recordListExport: (e: Pick<ListExportRecord, "projectId" | "list" | "rowCount">) => void;
   /** File a new request. Returns its id. */
@@ -2163,11 +2131,6 @@ export function screensFor(users: PortalUser[]): AppScreen[] {
   return screensForActions(me.appActions ?? []);
 }
 
-/** Whether this account may take a sighting out as a file. See PortalUser.appExport. */
-export function canExportEvidence(users: PortalUser[]): boolean {
-  return holdsAppAction(users, "export");
-}
-
 /** The grants a preset hands out, as the fields they are stored in. */
 /**
  * The product strings for the three presets we ship, keyed by `builtinKey` — the same arrangement
@@ -2532,8 +2495,7 @@ export type AppAction =
    * states. Same for `trail`.
    */
   | "redface"
-  | "trail"
-  | "export";
+  | "trail";
 /* `personSearch` used to be here and was deleted 2026-09-23 once its last reader was gone. It was
    one grant doing two jobs — opening RedFace and switching on three screens' search boxes — and it
    is now `redface` plus the two per-screen steps. Kept as a note rather than a member: a retired
@@ -2582,8 +2544,8 @@ export type AppAction =
  * IN THE APP'S OWN MENU ORDER (2026-09-23, owner: 제일 위로 올려줘, 처음 랜딩 화면에서 볼 수
  * 있으니까). The app opens on 대시보드, so its two panels come first — 이벤트 before 시스템,
  * because the events panel is what the landing screen shows. Then 베스트 프레임, then the three
- * 데이터 sub-tabs in their own order, then 레드맵, and 증거 내보내기 last because it is a button
- * rather than a place. A reader can now check this list against the app's menu bar top to bottom.
+ * 데이터 sub-tabs in their own order, then 레드맵. A reader can check this list against the app's
+ * menu bar top to bottom.
  */
 export const APP_ACTIONS: AppAction[] = [
   "liveView", "dashboardTrail", "systemStatus",
@@ -2591,7 +2553,7 @@ export const APP_ACTIONS: AppAction[] = [
   "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch",
   "reid", "reidSearch",
   "redface",
-  "trail", "export",
+  "trail",
 ];
 
 /**
@@ -2608,18 +2570,18 @@ export const APP_ACTION_PARENT: Partial<Record<AppAction, AppAction>> = {
   liveMonitoringSearch: "liveMonitoring",
   reidSearch: "reid",
   /*
-   * `export` HAS NO PARENT ANY MORE (owner, 2026-09-28: 내보내기 기능이 레드맵에만 있는게
-   * 어색한데).
+   * `export` IS GONE (owner, 2026-09-28: 내보내기 기능이 꼭 필요한가야.. → ① 앱에서 빼고 외부
+   * 요청으로 일원화).
    *
-   * It was a step on 레드맵 because Redmap held the only export button in the app. That was a gap,
-   * not a policy — `EvidenceSubject.surface` and `EvidenceExportRecord.surface` are both typed
-   * "redmap" | "bestframe", so the contract named Best Frame as an export surface while the
-   * screen had none. Best Frame's detail panel has one now, and src/lib/evidence.ts needed no
-   * change to serve it.
+   * It was a step on 레드맵, then briefly a grant across two screens once Best Frame gained the
+   * same button. The question underneath was whether the app should have the door at all, and the
+   * answer was no: the file carried no frame (`frame_sha256` null by design), said in its own
+   * integrity notes that nothing in it proves which installation produced it, and went out with
+   * `purpose: null` because the app never asked. Portal's 외부 요청 already releases material with
+   * a legal basis, the requester's stated purpose, a decision note, the handover method, who
+   * received it and whether third-party faces were obscured.
    *
-   * So the grant spans two screens, and parenting it to 레드맵 would revoke it from an account
-   * that holds Best Frame and not Redmap — the screen taking a permission away on a rule that
-   * stopped being true.
+   * One audited door instead of two, and the ungoverned one was the one that left.
    */
 };
 
@@ -2987,7 +2949,8 @@ export interface PortalUser {
  * a statement by the person releasing the file — which is exactly what the register of a paper
  * process holds, and is honest about being a claim rather than a verified fact.
  *
- * NOT THE SAME RECORD AS EvidenceExportRecord, and it must not become one. That one is a single
+ * NOT THE SAME RECORD AS the app's old evidence export (removed 2026-09-28), and it must not
+ * become one. That one was a single
  * detection's metadata pulled out of Redmap by an operator; this is a window of recorded video
  * going to somebody outside. They answer different questions and neither is a subset of the
  * other — one request can involve several extractions, and most extractions answer no request at
@@ -3214,7 +3177,7 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail", "export"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
   { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
   { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
@@ -3258,7 +3221,7 @@ const ACCESS_REQUESTS: AccessRequest[] = [];
  * in red, before the code is handed over, which is the whole reason that state is drawn.
  */
 const STAFF_ROSTER: RosterEntry[] = [
-  { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail", "export"], code: "FQ4M7XB2", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "FQ4M7XB2", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3002", name: "Priya Nair", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "BPXW4762" },
   { employeeId: "EMP-3003", name: "Daniel Cruz", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "HKLM9234" },
   { employeeId: "EMP-3004", name: "Farah Ismail", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "TN8R3KD5", issuedAt: "2026-09-20T09:00:00+08:00" },
@@ -3269,7 +3232,7 @@ const STAFF_ROSTER: RosterEntry[] = [
   // used in the seeds any more — it could never demonstrate that expiry actually works.
   { employeeId: "EMP-3007", name: "Marcus Ho", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "VXYZ2345", issuedAt: "2026-07-15T09:00:00+08:00" },
   { employeeId: "EMP-3008", name: "Aisha Bakar", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "JKMN6789" },
-  { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail", "export"], code: "MZ2K5QP7", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "MZ2K5QP7", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3010", name: "Sana Idris", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "used", code: "CDFG3456" },
   { employeeId: "EMP-3011", name: "Emily Foster", department: "Operations", projectId: "proj-riverside", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "RB9T4LN6", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3012", name: "Kevin Ng", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "LMPQ8765" },
@@ -4493,14 +4456,13 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     {
       id: "preset-supervisor", teamId: "team-univs", builtinKey: "supervisor", label: "감독자",
       description: "조사자가 하는 일에 증거 내보내기를 더합니다",
-      actions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail", "export"],
+      actions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"],
     },
   ],
   searchPurpose: null,
   // No seed. These are events, and an installation that has run no searches has none.
   searchAccessLog: [],
   detectionJudgements: [],
-  evidenceExports: [],
   listExports: [],
   // Empty on purpose, like the access requests below it: a seeded release would teach whoever
   // reads this screen that the product has already handed footage to somebody.
@@ -5043,36 +5005,6 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         auditLog: [clientAudit({
           projectId,
           area: LIST_AREA[list], target: LIST_NAME[list], action: `Exported as a file — ${rowCount} row(s)`, message: `${LIST_NAME[list]} exported as a file — ${rowCount} row(s)`,
-          actor: SIGNED_IN_USER.name, at,
-        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
-      };
-    }),
-  recordEvidenceExport: ({ projectId, subjectId, surface, targetLabel, manifestHash }) =>
-    set(state => {
-      const at = new Date().toISOString();
-      return {
-        // Append, never replace. Exporting the same detection twice is two copies in the world.
-        evidenceExports: [
-          {
-            id: `export-${++exportSeq}`,
-            projectId, subjectId, surface, targetLabel, manifestHash,
-            actor: SIGNED_IN_USER.name, at,
-          },
-          ...state.evidenceExports,
-        ],
-        // And into the log an administrator actually reads. A record nothing displays is a
-        // record nobody checks — the same trap the search access log was in. The manifest digest
-        // goes in the line so a file in somebody's inbox can be matched back to this row.
-        //
-        // recordedBy "client" is PERMANENT here too, for the same reason as recordListExport: the
-        // bundle is built and downloaded in the browser, so the server never sees the export it
-        // would have to attest to. src/lib/evidence.ts:28 already wrote down what the fix is —
-        // the export has to be a server call that logs before it returns bytes, otherwise the one
-        // action worth auditing is the one nobody sees — and until that exists, this row says
-        // only that a browser claimed to have made a file.
-        auditLog: [clientAudit({
-          projectId,
-          area: "redmap", target: targetLabel, action: `Evidence exported — ${subjectId}, manifest ${manifestHash.slice(0, 12)}`, message: `Evidence exported: ${subjectId} (${targetLabel}) · manifest ${manifestHash.slice(0, 12)}`,
           actor: SIGNED_IN_USER.name, at,
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };

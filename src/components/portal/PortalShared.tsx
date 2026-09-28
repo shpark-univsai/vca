@@ -2209,11 +2209,8 @@ const SUPPORT_T = {
  *  · A SECOND STEP ON THE ROW (Zoho) for 모니터링 and Re-ID 분석 — "how far into this screen".
  *    Two cells, not a dropdown: a closed 「보기 ⌄」 hides the cell nobody holds, and showing the
  *    one they do NOT hold is the whole point of this change.
- *  · AN INDENTED CHILD (Shopify) for 증거 내보내기 under 레드맵 — it was not a screen, it was one
- *    button on that screen. No longer true: Best Frame's detail panel has the same button since
- *    2026-09-28, so `canExportEvidence` has two callers (RedmapPage, BestFrameDetailPage) and the
- *    grant spans two tabs. Its parent link is already gone; where the ROW belongs is still open,
- *    and so is whether the app keeps evidence export at all.
+ *  · (An indented child for 증거 내보내기 under 레드맵 used to be here. Evidence export left the
+ *    app on 2026-09-28 — see the note on GRANT_TREE.)
  *  · A CAPTION over the rows that share a place in the app's menu — 대시보드 · 데이터. No
  *    checkbox on it: neither is a grant (`tabAllowed` never gates the dashboard; 데이터 is
  *    derived from its three tabs), and no counter either — nothing is collapsed here, so a
@@ -2347,7 +2344,7 @@ export const GRANT_TREE: GrantGroupDef[] = [
       { action: "redface", searchIsAll: true },
     ],
   },
-  { caption: "redmap", rows: [{ action: "trail", searchIsAll: true }, { action: "export" }] },
+  { caption: "redmap", rows: [{ action: "trail", searchIsAll: true }] },
 ];
 
 /**

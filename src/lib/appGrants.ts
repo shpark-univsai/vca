@@ -81,7 +81,6 @@ export const APP_GRANT_LABELS = {
       reidSearch: "Search on Re-ID Analysis",
       redface: "Data > RedFace",
       trail: "Redmap",
-      export: "Evidence export",
     } satisfies Record<AppAction, string>,
     /**
      * THE SAME ROW, NAMED SHORTER, BECAUSE THE LIST NOW HAS CAPTIONS OVER IT (2026-09-23).
@@ -123,7 +122,6 @@ export const APP_GRANT_LABELS = {
       /* Not 「Movement trails」 — that is the dashboard row two groups up, and one name over two
          different grants is the thing this list exists to prevent. This one is the map. */
       trail: "Trail map",
-      export: "Evidence export",
     } as Partial<Record<AppAction, string>>,
     /** The two depths of one screen, and the one depth of a screen that is nothing but search. */
     stage: { view: "View", viewSearch: "View \u00b7 Search", searchOnly: "Search" },
@@ -153,7 +151,6 @@ export const APP_GRANT_LABELS = {
       reidSearch: "Looking a particular person up in that result",
       redface: "Face search",
       trail: "One person's route on the map",
-      export: "Saves a sighting from Redmap or Best Frame as an evidence file",
     } satisfies Record<AppAction, string>,
   },
   ko: {
@@ -176,7 +173,6 @@ export const APP_GRANT_LABELS = {
       reidSearch: "Re-ID 분석에서 검색",
       redface: "데이터 > RedFace",
       trail: "레드맵",
-      export: "증거 내보내기",
     } satisfies Record<AppAction, string>,
     /** 영어 쪽 주석 참조 — 캡션 아래에서 쓰는 짧은 이름. `actionName`은 목록 밖에서도 쓰므로 그대로 둔다. */
     rowName: {
@@ -198,7 +194,6 @@ export const APP_GRANT_LABELS = {
       /* 「동선 추적」은 두 묶음 위 대시보드 줄의 이름입니다. 한 이름이 서로 다른 권한 둘을
          가리키면 목록이 하는 일이 사라집니다. 이쪽은 지도입니다. */
       trail: "동선 지도",
-      export: "증거 내보내기",
     } as Partial<Record<AppAction, string>>,
     stage: { view: "보기", viewSearch: "보기 \u00b7 검색", searchOnly: "검색" },
     groupCaption: { dashboard: "대시보드", bestframe: "베스트 프레임", data: "데이터", redmap: "레드맵" },
@@ -221,7 +216,6 @@ export const APP_GRANT_LABELS = {
       reidSearch: "그 결과에서 특정 인물을 직접 찾습니다",
       redface: "얼굴로 찾습니다",
       trail: "지도 위에 한 사람의 경로를 그립니다",
-      export: "레드맵과 베스트 프레임에서 고른 감지를 증거 파일로 냅니다",
     } satisfies Record<AppAction, string>,
   },
 } as const;
