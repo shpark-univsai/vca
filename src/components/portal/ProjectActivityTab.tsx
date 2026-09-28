@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useVcaStore, type AuditEvent } from "@/lib/vcaStore";
 import { AUDIT_AREA_LABEL, AUDIT_AREAS, type AuditArea } from "@/lib/auditAreas";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
+import { PROJECT_TABS, type DetailTab } from "./ProjectSidebar";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
@@ -42,7 +43,24 @@ import { FileOutput, History, UserCog, CalendarClock } from "lucide-react";
  * and the three that came out of that sentence share what is left, with the widest share going to
  * the change itself because it is the only one that is a phrase rather than a name.
  */
-const GRID = "150px 150px 1fr 1.1fr 1.4fr";
+/* 대상 BEFORE 화면 (owner, 2026-09-28: 순서가 이게 맞아? · 순서는 꼭 그쪽이 정답은 아닐 수
+   있어서, 모빈이랑 보고 수정해 줘).
+
+   EIGHT AUDIT LOGS CHECKED (15Five, Fibery, Klaviyo, 1Password, Customer.io, Toggl Track, Aboard,
+   Docusign). Five of them do not split the subject out at all — one sentence carries it. Of the
+   THREE that do (Fibery: Entity → Event; Aboard: Full name → Action → Attribute; Customer.io:
+   Person/Object → Activity Type → Activity Name), all three put the SUBJECT BEFORE THE ACTION.
+   None of the eight has a screen column, so they cannot settle 화면 against 대상 — that column is
+   ours, and the 조회 기록 table's.
+
+   So the tie-break is the table one tab away: 조회 기록 reads 시각 · 조회자 · 조회 대상 · 화면 ·
+   결과. Matching it means the third column is "the thing" and the fourth is "where" in both, for a
+   reader who moves between the two tabs. Both orders satisfy the rule the three products agree on. It was not: the 조회 기록 table
+   beside this one — the one the owner held up as the model — reads 시각 · 조회자 · 조회 대상 ·
+   화면 · 결과, so it names WHO, then WHAT, then WHERE. This table had 화면 before 대상, which put
+   the two tables' third columns out of step; a reader moving between the tabs had to re-find the
+   column each time. It also matches the owner's own phrasing of the ask — 누가 무엇을 어떻게. */
+const GRID = "150px 150px 1.1fr 1fr 1.4fr";
 /** Where a fallback row's sentence starts — see the row body. */
 const FALLBACK_SPAN = "span 3";
 
@@ -64,7 +82,7 @@ const T = {
     /* "Screen" is the search log's own heading for this axis, not a second word for it. The last
        one keeps the heading the single column always had, because it is still the same question —
        the two before it were carved out of it. */
-    colAt: "When", colActor: "Who", colArea: "Screen", colTarget: "What", colMessage: "What changed",
+    colAt: "When", colActor: "Who", colTarget: "What", colArea: "Screen", colMessage: "What changed",
     searchPlaceholder: "Search what changed",
     filterAllActors: "Everyone",
     filterAllAreas: "Every screen",
@@ -79,7 +97,7 @@ const T = {
     statTotal: "changes", statTotalLabel: "in range",
     statActors: "people", statActorsLabel: "made them",
     statLatest: "latest", statLatestNone: "—",
-    csvAt: "When", csvActor: "Who", csvArea: "Screen", csvTarget: "What", csvMessage: "What changed",
+    csvAt: "When", csvActor: "Who", csvTarget: "What", csvArea: "Screen", csvMessage: "What changed",
     // Said on the exception, not on the rule. Server rows are the ordinary case and badging all
     // of them would make the badge the background — which is how the offline camera ended up the
     // quietest thing on its own screen.
@@ -90,7 +108,7 @@ const T = {
     intro: "포털에서 이 프로젝트에 가해진 모든 변경입니다. 기관 전체에 적용되는 정책 변경과, 등록 코드로 가입해 계정이 만들어진 일도 함께 나옵니다.",
     empty: "기록된 변경이 없습니다.",
     noMatch: "조건에 맞는 기록이 없습니다.",
-    colAt: "시각", colActor: "담당자", colArea: "화면", colTarget: "대상", colMessage: "변경 내용",
+    colAt: "시각", colActor: "담당자", colTarget: "대상", colArea: "화면", colMessage: "변경 내용",
     searchPlaceholder: "변경 내용 검색",
     filterAllActors: "전체",
     filterAllAreas: "전체 화면",
@@ -103,7 +121,7 @@ const T = {
     statTotal: "건", statTotalLabel: "기간 내 변경",
     statActors: "명", statActorsLabel: "변경한 사람",
     statLatest: "마지막", statLatestNone: "—",
-    csvAt: "시각", csvActor: "담당자", csvArea: "화면", csvTarget: "대상", csvMessage: "변경 내용",
+    csvAt: "시각", csvActor: "담당자", csvTarget: "대상", csvArea: "화면", csvMessage: "변경 내용",
     recordedClient: "브라우저 보고 · 서버 미관측",
     csvRecordedBy: "기록 주체", csvServer: "서버", csvClient: "브라우저",
   },
@@ -154,6 +172,27 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
   );
 
   const areaLabel = (area: AuditArea) => AUDIT_AREA_LABEL[area][lang];
+  /*
+   * THE RAIL'S OWN MARK IN FRONT OF THE NAME (owner, 2026-09-28: 화면 앞에 사이드바에 있는
+   * 아이콘 넣어줘).
+   *
+   * Not a new icon set — `PROJECT_TABS` is where the rail draws these, so the mark beside
+   * 「입력 소스」 here is the same 16px glyph the reader clicked to get to this screen. Three areas
+   * are not rail rows (the settings sheet, the sign-up page, and the one app screen that writes
+   * here), and they get no mark rather than a borrowed one: an icon that belongs to another row
+   * would send the reader to the wrong place.
+   */
+  const AREA_TAB: Partial<Record<AuditArea, DetailTab>> = {
+    vip: "vip", cameras: "cameras", server: "server",
+    accounts: "users", roster: "users",
+    presets: "grants", cameraGroups: "grants",
+    license: "license", records: "records", requests: "requests",
+  };
+  const areaIcon = (area: AuditArea) => {
+    const tab = AREA_TAB[area];
+    const Icon = tab ? PROJECT_TABS.find(x => x.id === tab)?.icon : undefined;
+    return Icon ? <Icon color="var(--gray-400)" /> : null;
+  };
 
   /* Only the screens this project's log actually has rows for, and in rail order rather than
      alphabetically — the same rule as the actor list above. A filter offering thirteen screens
@@ -201,7 +240,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
   };
 
   const exportCsv = () => {
-    const header = [t.csvAt, t.csvActor, t.csvArea, t.csvTarget, t.csvMessage, t.csvRecordedBy];
+    const header = [t.csvAt, t.csvActor, t.csvTarget, t.csvArea, t.csvMessage, t.csvRecordedBy];
     // The column goes out with the file. A row pulled into a spreadsheet loses the screen's
     // second line, and what gets quoted in a review is the spreadsheet.
     //
@@ -306,8 +345,8 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
           {([
             { label: t.colAt, key: "at" as ActivitySortKey },
             { label: t.colActor, key: "actor" as ActivitySortKey },
-            { label: t.colArea, key: "area" as ActivitySortKey },
             { label: t.colTarget, key: "target" as ActivitySortKey },
+            { label: t.colArea, key: "area" as ActivitySortKey },
             /* Not sortable, and the only one of the five that is not. Sorting by the predicate
                groups "Removed" beside "Renamed" — an alphabet, not a subject. The two columns
                beside it are the ones a reader groups by, and they sort. */
@@ -373,9 +412,15 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
                 {/* The screen, one step quieter than the two beside it: on a list filtered to one
                     screen it repeats down the column, and it is the column a reader scans rather
                     than reads. */}
-                <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                  title={areaLabel(a.area)}>
-                  {areaLabel(a.area)}
+                <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }} title={areaLabel(a.area)}>
+                  {/* 16px, the rail's own size. Fixed box so the labels line up whether or not the
+                      area has a mark. */}
+                  <span style={{ flexShrink: 0, width: "16px", height: "16px", display: "flex", alignItems: "center", justifyContent: "center" }} aria-hidden="true">
+                    {areaIcon(a.area)}
+                  </span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {areaLabel(a.area)}
+                  </span>
                 </span>
                 {/* The thing that changed, in the weight a name gets everywhere else in Portal.
                     Ellipsised, not wrapped: it is a name, and a name broken over two lines makes
