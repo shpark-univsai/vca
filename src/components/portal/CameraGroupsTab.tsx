@@ -57,7 +57,6 @@ const T = {
     cardEdit: "Edit",
     remove: "Delete", cancel: "Cancel",
     goToCameras: "Go to Input Sources",
-    newCard: "New group",
     membersSearch: "Search by name or code",
     membersNone: "No camera on this project matches that.",
     andMore: (n: number) => `and ${n} more`,
@@ -109,7 +108,6 @@ const T = {
     cardEdit: "편집",
     remove: "삭제", cancel: "취소",
     goToCameras: "입력 소스로 가기",
-    newCard: "새 그룹",
     membersSearch: "이름이나 코드로 검색",
     membersNone: "그 조건에 맞는 카메라가 이 프로젝트에 없습니다.",
     andMore: (n: number) => `외 ${n}대`,
@@ -162,12 +160,12 @@ type Dict = typeof T.en;
 /**
  * How many member names a card prints before it says 「외 N대」.
  *
- * The cap is what keeps a 3-camera group and a 40-camera group the same height in one grid;
- * without it a long group stretches its row and pushes its neighbours' footers out of line. Six
- * is two rows of three at the width the grid gives a card, and the number is checked by
- * measurement rather than by eye — see the note on the grid below.
+ * The cap is what keeps a 3-camera group and a 40-camera group from being wildly different
+ * heights. At one card per row (see the grid below) a row of names is the card's full width, not
+ * a third of it, so the cap rises with it: 18 is three rows of six at the width a full-width card
+ * gives a name, measured rather than guessed.
  */
-const CARD_CHIP_CAP = 6;
+const CARD_CHIP_CAP = 18;
 
 /**
  * The picker's first section when a group is being CHANGED: the cameras it already holds. Not a
@@ -859,15 +857,24 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
   return (
     <div>
       {/*
-        ONE DOOR INTO THE DRAWER, AND IT IS THE LAST CELL OF THE GRID.
-       
-        There was a 「그룹 만들기」 button in a header row here as well, 100px above the dashed card
-        that does the same thing — the duplicate-button shape the owner caught earlier the same day
-        on this screen. The dashed cell wins because of where it sits: making a group is mostly
-        deciding whether one like it already exists, so the control belongs AFTER the cards you
-        read to decide that, not above them. The empty state keeps its own button, because then
-        there are no cards to read and no grid to end.
+        ONE DOOR INTO THE DRAWER, AT THE TOP RIGHT (owner, 2026-09-28: 카메라 그룹 추가도
+        다른화면에서처럼 추가하기 엑션 버튼을 오른쪽 상단에 위치시켜줘).
+        
+        It was the last cell of the grid — a dashed card after the ones you read to decide whether
+        a group like it exists. That reasoning held while the grid was three columns wide; at one
+        card per row the dashed cell became a full-width empty band at the bottom of the page, and
+        it put this screen's create button somewhere no other screen in the console puts one.
+        Top right is where 프리셋 만들기, 프로젝트 추가 and 서버 추가 all sit, so it goes there and
+        the dashed cell goes away. The empty state keeps its own button — there is no list yet.
       */}
+      {groups.length > 0 && mayEdit && (
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "14px", minHeight: CONTROL_HEIGHT }}>
+          <button type="button" onClick={() => setCreating(true)}
+            style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            + {t.createButton}
+          </button>
+        </div>
+      )}
       {groups.length === 0 ? (
         /* ONE LINE, THEN THE TWO DOORS. The line used to name both of them in prose — make one
            here, or group them on Input Sources — with both buttons sitting directly under it.
@@ -888,10 +895,19 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
           )}
         </div>
       ) : (
-        /* auto-fill at a 300px floor: three columns on a 1440 window, two at about 1100, one on a
-           narrow one — and the cards keep their width instead of stretching to fill a half-empty
-           row, which is what `1fr` columns do with three cards in a four-wide grid. */
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "16px" }}>
+        /*
+         * ONE CARD PER ROW, EVERY CARD THE SAME WIDTH (owner, 2026-09-28: 카메라 여러대를 한
+         * 그룹으로 묶을 가능성이 높아 카드 가로폭을 일정하고 최대로 해서 넓혀줘).
+         *
+         * It was auto-fill at a 300px floor — three columns on a wide window, which meant a card
+         * 300-ish px wide held six camera names and said 「+34개 더」 about the rest. The whole
+         * point of the card is which cameras are in the group, and a group is expected to hold
+         * many, so the width the names need is the width the card gets.
+         *
+         * A single column also removes the reflow: at three columns the same card was 300px on
+         * one window and 460px on another, so what it could show depended on the window.
+         */
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
           {groups.map(group => {
             const cams = liveCameras(group);
             const holders = holderCount(group);
@@ -967,25 +983,6 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
             );
           })}
 
-          {/* The last cell of the grid rather than a card that looks like a group: dashed, no
-              shadow, one word. It repeats the header button on purpose — at the bottom of a long
-              grid the header has scrolled away. */}
-          {mayEdit && (
-            <button type="button" onClick={() => setCreating(true)}
-              style={{
-                /* WHITE INSIDE IT (owner: 새 그룹 박스안에도 흰색을 바탕에 깔아줘). It was
-                   transparent, so the page's off-white showed through and the dashed outline read
-                   as a hole in the grid rather than an empty card waiting to be filled. The
-                   dashes are what say "not a group yet"; the ground is what says "a card". */
-                minHeight: "120px", borderRadius: CARD_RADIUS, border: "1px dashed var(--gray-300)",
-                backgroundColor: "white", cursor: "pointer", fontFamily: "inherit",
-                fontSize: "12px", fontWeight: 700, color: "var(--gray-500)",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-              }}>
-              <span aria-hidden="true" style={{ fontSize: "14px", lineHeight: 1 }}>+</span>
-              {t.newCard}
-            </button>
-          )}
         </div>
       )}
 
