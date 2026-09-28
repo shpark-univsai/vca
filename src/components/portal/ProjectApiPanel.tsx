@@ -34,7 +34,7 @@ import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TextField,
-  ConfirmModal, FieldError, RequiredMark, RowActionsMenu, TableEmpty, Drawer,
+  ConfirmModal, FieldError, RequiredMark, RowActionsMenu, StatusBadge, TableEmpty, Drawer,
 } from "./PortalShared";
 
 const ENDPOINTS = [
@@ -141,24 +141,9 @@ const T = {
 
 type Dict = typeof T.en;
 
-const STATE_STYLE = {
-  active: { bg: "var(--success-100)", fg: "var(--success-400)" },
-  expired: { bg: "var(--warning-100)", fg: "var(--warning-500)" },
-  revoked: { bg: "var(--gray-200)", fg: "var(--gray-600)" },
-} as const;
-
-/** The same badge shape the server status and the VIP priority column use. */
-function StateBadge({ state, label }: { state: keyof typeof STATE_STYLE; label: string }) {
-  const style = STATE_STYLE[state];
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", height: "20px", padding: "0 8px", borderRadius: "999px",
-      backgroundColor: style.bg, color: style.fg, fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap",
-    }}>
-      {label}
-    </span>
-  );
-}
+/* The badge moved to PortalShared — see StatusBadge there for why the colour is tied to what the
+   state MEANS rather than to this screen. An expired key is a fault (time passed, nobody chose
+   it); a revoked one is a decision. They used to be amber and grey. */
 
 const GRID = "1.5fr 1fr 0.85fr 0.9fr 0.7fr 36px";
 
@@ -351,10 +336,22 @@ export default function ProjectApiPanel({ projectId }: { projectId: string }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      {/* KEYS FIRST. The console's job with an API is the credential; the reference below is here
-          only because an on-premise integrator has no documentation site to open. */}
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
+    /*
+     * SIDE BY SIDE (owner, 2026-09-28: api 화면에 두덩어리를 가로로 두개 배치해서 세로로
+     * 볼수있게 바꾸면 어떨까).
+     *
+     * Stacked, the reference sat below the fold on every window and the page was mostly scrolling.
+     * They are different kinds of thing — one is a list that grows as keys are issued, the other
+     * is fixed text an integrator copies from — so neither needs the other's width.
+     *
+     * Flex bases rather than a measured grid: at 1144px the keys take about 718 and the reference
+     * 426, and under about 880 the two bases no longer fit and the row wraps back to one column on
+     * its own. No ResizeObserver, and nothing to keep in sync with a breakpoint written elsewhere.
+     */
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: "16px" }}>
+      {/* KEYS FIRST, and wider: the console's job with an API is the credential. The reference is
+          here only because an on-premise integrator has no documentation site to open. */}
+      <div style={{ flex: "3 1 560px", minWidth: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
         <div style={{ padding: "20px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", minWidth: 0 }}>
             <span style={{ display: "flex", color: "var(--gray-400)", flexShrink: 0, marginTop: "1px" }}><KeyRound size={17} strokeWidth={2} /></span>
@@ -416,7 +413,7 @@ export default function ProjectApiPanel({ projectId }: { projectId: string }) {
                   </span>
                   {/* Empty for one frame before the clock is read, rather than a verdict that
                       changes in front of the reader. */}
-                  <span>{badge ? <StateBadge state={badge.state} label={badge.label} /> : null}</span>
+                  <span>{badge ? <StatusBadge tone={badge.state === "active" ? "normal" : badge.state === "expired" ? "fault" : "stopped"} label={badge.label} /> : null}</span>
                   <RowActionsMenu actions={[{
                     label: t.revoke,
                     danger: true,
@@ -431,8 +428,8 @@ export default function ProjectApiPanel({ projectId }: { projectId: string }) {
         )}
       </div>
 
-      {/* THE REFERENCE, second. */}
-      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
+      {/* THE REFERENCE, beside it. */}
+      <div style={{ flex: "2 1 320px", minWidth: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.baseUrl}</p>
         <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "8px 10px", overflowX: "auto" }}>
           {origin}/api/portal/projects/{projectId}

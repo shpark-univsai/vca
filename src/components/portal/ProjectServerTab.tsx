@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CircleAlert, CircleCheck, CircleDashed, RotateCcw, ServerCrash, Unplug, Video } from "lucide-react";
+import { RotateCcw, ServerCrash, Unplug, Video } from "lucide-react";
 import { useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import ProjectApiPanel from "./ProjectApiPanel";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { TablePagination, SummaryStrip, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError, Drawer } from "./PortalShared";
+import { TablePagination, SummaryStrip, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError, StatusBadge, Drawer } from "./PortalShared";
 
 // Ordered as the deployed Add Server dialog orders them, so an operator who has used that one
 // finds each entry where their hand already goes. Its list opens with "All", which this one does
@@ -114,32 +114,8 @@ const STATUS_T = {
  * clears 4.5:1 with or without this lightening. Until it is in the Figma library this badge is
  * as close as the existing tokens go, and the gap is the ramp's, not this file's.
  */
-const HALF_STRENGTH = (token: string) => `color-mix(in srgb, var(${token}) 50%, white)`;
-
-const STATUS_STYLE = {
-  success: { bg: HALF_STRENGTH("--success-100"), color: "var(--success-400)" },
-  error: { bg: HALF_STRENGTH("--danger-100"), color: "var(--danger-500)" },
-  unchecked: { bg: "var(--gray-100)", color: "var(--gray-600)" },
-} as const;
-
-function StatusBadge({ state, label }: { state: keyof typeof STATUS_STYLE; label: string }) {
-  const { bg, color } = STATUS_STYLE[state];
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0,
-      height: "18px", padding: "0 8px", borderRadius: "999px",
-      backgroundColor: bg, color, fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap",
-    }}>
-      {/* One glyph per state rather than a dot for all three: a colour-blind reader gets the
-          difference, and the shapes say which kind of news it is — a tick, an alarm, a dashed
-          ring for the one that is neither. */}
-      {state === "success" ? <CircleCheck size={11} strokeWidth={2.6} />
-        : state === "error" ? <CircleAlert size={11} strokeWidth={2.6} />
-        : <CircleDashed size={11} strokeWidth={2.6} />}
-      {label}
-    </span>
-  );
-}
+/* The badge moved to PortalShared — see StatusBadge there. A server that is failing is a fault
+   (amber) rather than a decision (red): nobody chose it, and red now means somebody did. */
 
 interface ServerFormValues {
   name: string;
@@ -670,7 +646,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                   borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
                 }}>
                   <div style={{ display: "flex", alignItems: "center" }}>
-                    <StatusBadge state={statusState} label={statusLabel} />
+                    <StatusBadge tone={statusState === "success" ? "normal" : statusState === "error" ? "fault" : "waiting"} label={statusLabel} />
                   </div>
                   {/* THE SPEC, BACK ON SCREEN. Its own column became 배정된 카메라 on 2026-09-18
                       because it was empty on every seeded row, which left a field the add form

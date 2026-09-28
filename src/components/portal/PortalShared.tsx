@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Check, ChevronLeft, EyeOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, ChevronLeft, CircleAlert, CircleCheck, CircleDashed, CircleSlash, EyeOff } from "lucide-react";
 import { APP_ACTION_CONTENT, APP_ACTIONS, SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, useVcaStore, type AppAction, type AppScreen, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -2742,6 +2742,59 @@ export function presetSummary(actions: AppAction[], lang: "en" | "ko"): string {
   const searches = GRANT_TREE.flatMap(group => group.rows)
     .some(row => (row.search && held.has(row.search)) || (row.searchIsAll && held.has(row.action)));
   return [...tabs, ...(searches ? [g.stage.searchOnly] : [])].join(" · ");
+}
+
+/**
+ * ONE STATE BADGE, AND THE COLOUR IS TIED TO MEANING RATHER THAN TO SCREEN.
+ *
+ * 「연결 안 됨」 was drawn five ways across this console — a black word with a red dot on Overview,
+ * an amber word on Input Sources, an outlined chip on Server & API, a filled pill on Users, plain
+ * red text on the roster tab — and each screen kept its own style table. Worse than the shapes was
+ * the palette: `warning-500` meant 「카메라가 끊겼다」 on one screen and 「초대했고 기다리는 중」 on
+ * the next, so the colour taught a reader nothing that carried between screens.
+ *
+ * Four tones, and they answer "what kind of news is this":
+ *
+ *   normal   working as intended. Quiet on purpose — the ordinary case is most of the rows, and a
+ *            column of lit pills is texture, not information.
+ *   waiting  waiting on a person, and nothing is wrong. An invitation sent, a code issued.
+ *   fault    something stopped working and nobody chose it — a camera refusing, a server failing,
+ *            a key that expired.
+ *   stopped  a person stopped it, or it cannot be used at all. Suspended, revoked, removed.
+ *
+ * The split that matters is the last two: red used to cover both a fault and a decision, so a
+ * screen could not say which one an operator was looking at. Red now means somebody did this.
+ *
+ * Each tone keeps one glyph as well as one colour, so the difference survives a colour-blind
+ * reader and a greyscale print.
+ */
+export type StatusTone = "normal" | "waiting" | "fault" | "stopped";
+
+const HALF = (token: string) => `color-mix(in srgb, var(${token}) 50%, white)`;
+
+const TONE_STYLE: Record<StatusTone, { bg: string; fg: string }> = {
+  normal: { bg: "var(--gray-100)", fg: "var(--gray-600)" },
+  waiting: { bg: HALF("--info-100"), fg: "var(--info-500)" },
+  fault: { bg: HALF("--warning-100"), fg: "var(--warning-500)" },
+  stopped: { bg: HALF("--danger-100"), fg: "var(--danger-500)" },
+};
+
+export function StatusBadge({ tone, label, title }: { tone: StatusTone; label: string; title?: string }) {
+  const { bg, fg } = TONE_STYLE[tone];
+  const Glyph = tone === "normal" ? CircleCheck
+    : tone === "waiting" ? CircleDashed
+    : tone === "fault" ? CircleAlert
+    : CircleSlash;
+  return (
+    <span title={title} style={{
+      display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0,
+      height: "18px", padding: "0 8px", borderRadius: "999px",
+      backgroundColor: bg, color: fg, fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap",
+    }}>
+      <Glyph size={11} strokeWidth={2.6} aria-hidden="true" />
+      {label}
+    </span>
+  );
 }
 
 /** The action names alone, for places that list a preset's grants without offering to change them. */
