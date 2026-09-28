@@ -619,12 +619,19 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         </div>
       </div>
 
-      {/* Outside the document, deliberately.
-          The card above is the agreement — what was bought, printed the way a contract prints. The
-          file is the instrument that delivers it, and putting a drop zone inside a document makes
-          the document look editable, which is the one thing this page has spent its whole design
-          saying it is not. */}
-      <LicenseFileSection projectId={projectId} t={t} />
+      {/*
+        THE LICENCE FILE CARD IS NOT DRAWN (owner, 2026-09-28: 이건 일단 지워줘).
+
+        Not disabled — not drawn, the same call this console made for 프로젝트 삭제. A card that
+        offers to install a file the release cannot actually accept is a promise, and a greyed-out
+        one still tells the reader the feature is here and they are not allowed to use it, which is
+        a different and equally wrong thing.
+
+        `LicenseFileSection` and its copy are kept below, unrendered, because nothing about the
+        design was found wanting — the whole card comes back by restoring this one line. What it
+        needs first is the server end: where an installed licence file lives and what it replaces.
+        Recorded for the backend in HANDOFF-SERVER §10.
+      */}
     </div>
   );
 }
@@ -657,6 +664,9 @@ const OUTLINE_BTN: React.CSSProperties = {
   fontSize: "12px", fontWeight: 700, fontFamily: "inherit", flexShrink: 0,
 };
 
+/* Kept, not deleted — see the note at its (removed) render site. It comes back by restoring one
+   line, and what it waits on is the server end rather than anything about the card. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function LicenseFileSection({ projectId, t }: {
   projectId: string;
   t: (typeof T)["en"] | (typeof T)["ko"];
