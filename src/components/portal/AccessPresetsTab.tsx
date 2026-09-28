@@ -307,9 +307,12 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
             footer={!editing ? undefined : pr => {
               const gone = removed.includes(pr.id);
               return (
+                /* No box (owner, 2026-09-28: 삭제버튼은 테두리없이 글자랑 아이콘만 남겨줘).
+                   Every cell in the column above it is already a bordered chip, so one more
+                   outline at the foot read as a fourth value rather than an action on the three. */
                 <button className="portal-btn-quiet"
                   onClick={() => setRemoved(r => gone ? r.filter(x => x !== pr.id) : [...r, pr.id])}
-                  style={{ display: "inline-flex", alignItems: "center", gap: "5px", height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: gone ? "var(--gray-600)" : "var(--danger-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ display: "inline-flex", alignItems: "center", gap: "5px", height: "26px", padding: "0 2px", border: "none", background: "none", color: gone ? "var(--gray-600)" : "var(--danger-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   {gone
                     ? <Undo2 size={13} strokeWidth={2.4} aria-hidden="true" />
                     : <Trash2 size={13} strokeWidth={2.2} aria-hidden="true" />}
@@ -723,7 +726,11 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
                 table lost its inner border, and without it a tab and a grant were the same kind of
                 line. It runs to the card's inner edge — it is the head of a section, not a row —
                 while its text keeps the rows' 12px so the column still lines up. */}
-            <div style={{ ...line, margin: "0 -4px", padding: "7px 24px", borderTop: gi === 0 ? "none" : BORDER, backgroundColor: "var(--gray-50)" }}>
+            {/* 16px against the band's own -4px bleed lands its grid on the rows' 12px — the value
+                  columns MUST share one origin with the rows below, or every chip in the band
+                  sits off its column (owner, 2026-09-28: 정렬을 좀 수정해야해). The icon's
+                  breathing room is paddingLeft on the label alone, which moves no column. */}
+              <div style={{ ...line, margin: "0 -4px", padding: "7px 16px", borderTop: gi === 0 ? "none" : BORDER, backgroundColor: "var(--gray-50)" }}>
               {/*
                 NO FOLD (owner, 2026-09-28: 접기가 왜 필요해?).
                 
@@ -734,7 +741,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
                 control whose only effect is to hide rows works against it. The state was not
                 stored either, so every visit started expanded regardless.
               */}
-              <span style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, paddingLeft: "11px" }}>
                 <GrantGroupIcon caption={group.caption} color="var(--gray-500)" />
                 <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>
                   {g.groupName[group.caption]}
