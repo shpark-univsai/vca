@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Minus, Pencil, Trash2, Undo2 } from "lucide-react";
+import { Check, Minus, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import {
   accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
   withAppActionDeps, type AccessPreset, type AppAction,
@@ -261,9 +261,14 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
                 {t.presetEdit}
               </button>
             )}
+            {/* A drawn + at the pencil's size, not a text 「+」 (owner, 2026-09-28: 상단 오른쪽
+                버튼 두개 아이콘 크기를 맞춰줘). The character rendered at the label's 12px with
+                the font's own weight, so the two buttons carried marks of different sizes and
+                different stroke weights sitting side by side. */}
             <button className="portal-btn-outline" onClick={() => setCreating(true)}
-              style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-              + {t.presetNew}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              <Plus size={13} strokeWidth={2.4} aria-hidden="true" />
+              {t.presetNew}
             </button>
           </>
         )}
@@ -459,7 +464,11 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
    * edge. A fixed width also means a preset's cell is the same size whatever the window does, and
    * the trailing `1fr` is the empty track that absorbs the rest.
    */
-  const COLS = `minmax(160px, 220px) repeat(${presets.length}, 168px) minmax(0, 1fr)`;
+  /* 188px, widened from 168 (owner, 2026-09-28: 운영자, 조사자, 감독자 사이 간격을 살짝만
+     넓혀줘). Widening the TRACK rather than the gap, because `columnGap` is one number for the
+     whole grid and raising it would reopen the space between a row's name and its first mark —
+     the thing that was just closed. */
+  const COLS = `minmax(160px, 220px) repeat(${presets.length}, 188px) minmax(0, 1fr)`;
   const line: React.CSSProperties = {
     display: "grid", gridTemplateColumns: COLS, columnGap: "12px",
     /* 6px, not 8 — measured 41px rows against 28-34px in the six admin matrices checked on
@@ -649,7 +658,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
     /* Scrolls sideways rather than squeezing: a customer can make more presets than fit, and a
        column narrower than its own name is worse than a scrollbar. */
     <div style={{ overflowX: "auto" }}>
-      <div style={{ minWidth: `${160 + presets.length * 168 + 40}px` }}>
+      <div style={{ minWidth: `${160 + presets.length * 188 + 40}px` }}>
         {/*
           A HEADER ROW, NOT THREE FLOATING NAMES (owner, 2026-09-28: 프리셋 디자인이 약간
           가격표같다).
