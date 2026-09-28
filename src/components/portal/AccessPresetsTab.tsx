@@ -428,7 +428,7 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
                          the screen. 128px still takes a name twice as long as any of the three. */
                       style={{ width: "100%", maxWidth: "104px", boxSizing: "border-box", height: "28px", padding: "0 8px", borderRadius: "7px", border: BORDER, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", backgroundColor: "white" }}
                     />
-                    {pr.id !== NEW_ID && <UseChip n={names.length} t={t} />}
+                    {pr.id !== NEW_ID && <UseChip n={names.length} t={t} plain />}
                     </div>
                   ) : null}
                   {editing && !gone ? null : (
@@ -861,7 +861,12 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
                 control whose only effect is to hide rows works against it. The state was not
                 stored either, so every visit started expanded regardless.
               */}
-              <span style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, paddingLeft: "11px" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0,
+                /* 8, and it is arithmetic, not taste: the band's content starts at the rows' 12px
+                   (16px padding against its own -4px bleed), then 8 + a 16px icon + a 10px gap
+                   lands its text on LABEL_INDENT's 34 + the rows' 12 = 46. It was 11 and every
+                   band sat 3px right of the rows under it — measured 330 against 327. */
+                paddingLeft: "8px" }}>
                 <GrantGroupIcon caption={group.caption} color="var(--gray-500)" />
                 <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>
                   {g.groupName[group.caption]}
@@ -940,13 +945,21 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
  * making it can see how many accounts it reaches. A chip on the name's own line says it in four
  * characters instead of ten.
  */
-function UseChip({ n, t }: { n: number; t: (typeof T)["en"] | (typeof T)["ko"] }) {
+function UseChip({ n, t, plain }: { n: number; t: (typeof T)["en"] | (typeof T)["ko"]; plain?: boolean }) {
   return (
     <span style={{
       flexShrink: 0, fontSize: "10.5px", fontWeight: 700,
       color: n === 0 ? "var(--gray-400)" : "var(--gray-600)",
-      padding: "2px 6px", borderRadius: "999px",
-      border: BORDER, backgroundColor: n === 0 ? "white" : "var(--gray-50)",
+      /* NO PILL WHILE EDITING (owner, 2026-09-28: 일약을 벗기자). The number stays — it is the
+         blast radius of the edit being made, and updateAccessPreset's own rule is that changing a
+         preset is defensible only while the person doing it can see how many accounts it reaches.
+         What goes is the box: beside a name INPUT it was a second bordered shape competing with
+         the field in a 188px column. Reading the saved table it keeps the pill, which is the same
+         vocabulary the cells below it use. */
+      ...(plain ? {} : {
+        padding: "2px 6px", borderRadius: "999px",
+        border: BORDER, backgroundColor: n === 0 ? "white" : "var(--gray-50)",
+      }),
       fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap",
     }}>
       {n === 0 ? t.presetFollowersNone : t.presetFollowers(n)}
