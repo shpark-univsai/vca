@@ -1174,7 +1174,12 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
              a 1,144px card around one figure reads as a panel that failed to load its other
              three. `flex: 1` with no siblings did exactly that on the users page once the
              exception counts left the strip for a line of chips. */
-          flex: "1 1 auto", maxWidth: "min(100%, 420px)", minWidth: "148px",
+          /* THE CAP IS FOR THE LONE CELL ONLY (owner, 2026-09-28: 이 카드도 아래 표 너비만큼
+             채워줘 가로폭). With two or more the row is meant to be shared, and 420px each left
+             the strip ending short of the table under it — three cards and a gap, which reads as a
+             fourth card that failed to arrive. The lone-cell reason below still holds, so the cap
+             stays exactly there. */
+          flex: "1 1 auto", maxWidth: cells.length === 1 ? "420px" : undefined, minWidth: "148px",
           display: "flex", alignItems: "center", gap: "12px",
           // Roomier than it was (10px 18px). These are the page's headline numbers and they were
           // wearing the padding of a table row.

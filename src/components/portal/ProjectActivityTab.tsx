@@ -6,7 +6,7 @@ import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
-  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, sortRows, useTableSort, MEASURE } from "./PortalShared";
+  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, sortRows, useTableSort } from "./PortalShared";
 import { FileOutput, History, UserCog, CalendarClock } from "lucide-react";
 
 /**
@@ -303,7 +303,11 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
           entry. What the sentence says is worth keeping (the log carries institution-wide policy
           changes too, which is not guessable from the rows), but it is something you check after
           reading, not before — the same job as the note beside it. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px", maxWidth: MEASURE }}>
+      {/* Full width, not MEASURE (owner, 2026-09-28: 이거 가로폭 위에 표만큼 넓혀 줘). The reading
+          measure is for prose somebody sits and reads; this is a two-sentence footnote under a
+          full-width table, and held to 38em it wrapped into a narrow block that looked like the
+          start of a column that was not there. */}
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px" }}>
         {t.intro}
       </p>
     </div>
