@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCcw, ServerCrash, Unplug, Video } from "lucide-react";
+import { ServerCrash, Unplug, Video } from "lucide-react";
 import { useVcaStore, type Server, type ServerType } from "@/lib/vcaStore";
 import ProjectApiPanel from "./ProjectApiPanel";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { TablePagination, SummaryStrip, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError, StatusBadge, Drawer } from "./PortalShared";
+import { TablePagination, SummaryStrip, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError, StatusBadge, ActiveFilterCount, Drawer } from "./PortalShared";
 
 // Ordered as the deployed Add Server dialog orders them, so an operator who has used that one
 // finds each entry where their hand already goes. Its list opens with "All", which this one does
@@ -293,7 +293,7 @@ const MAIN_T = {
     gapShowOnly: "Show only these",
     gapClear: "Show everything again",
     searchPlaceholder: "Search by server name or IP address",
-    allTypes: "All types", reset: "Reset", addServer: "Add server",
+    allTypes: "All types", filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`, addServer: "Add server",
     emptyNoServers: "No servers configured for this project yet.",
     emptyNoMatch: "No servers match these filters.",
     /* THE PARENTHETICAL STAYS, on both languages, and it is the one column in Portal that earns
@@ -352,7 +352,7 @@ const MAIN_T = {
     gapShowOnly: "이 항목만 보기",
     gapClear: "전체 다시 보기",
     searchPlaceholder: "서버 이름 또는 IP 주소로 검색",
-    allTypes: "전체 유형", reset: "초기화", addServer: "서버 추가",
+    allTypes: "전체 유형", filtersActive: (n: number) => `필터 ${n}개`, addServer: "서버 추가",
     emptyNoServers: "이 프로젝트에 아직 설정된 서버가 없습니다.",
     emptyNoMatch: "필터와 일치하는 서버가 없습니다.",
     colStatus: "상태", colName: "서버 이름", colIp: "서버 IP", colType: "서버 유형",
@@ -491,6 +491,9 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
     setTypeFilter("ALL");
     setGapFilter(null);
   };
+  /* What is actually narrowing the list, so the control that clears it can be absent when there is
+     nothing to clear — see the note where it is drawn. */
+  const activeFilterCount = (search.trim() ? 1 : 0) + (typeFilter !== "ALL" ? 1 : 0) + (gapFilter ? 1 : 0);
 
   const createServer = (values: ServerFormValues) => {
     /* The form's own save button is disabled until a type is chosen, and this is the same rule
@@ -590,14 +593,17 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
             <FilterSelect value={typeFilter} onChange={v => setTypeFilter(v as typeof typeFilter)}
               options={[{ value: "ALL", label: t.allTypes }, ...SERVER_TYPES.map(ty => ({ value: ty, label: SERVER_TYPE_LABELS[ty][lang] }))]} />
-            {/* The only control on this row without a mark of its own — the select had its chevron
-                and Add Server its plus, so Reset read as a word somebody had left there. lucide
-                rather than a hand-drawn path, at the 1.4 stroke every Portal icon now uses. */}
-            <button className="portal-btn-quiet" onClick={resetFilters}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
-              <RotateCcw size={14} strokeWidth={2.4} />
-              {t.reset}
-            </button>
+            {/*
+              ONLY WHEN THERE IS SOMETHING TO CLEAR (owner, 2026-09-28: 테이블위에 초기화버튼은
+              검색이나 필터링 걸기전엔 누를일이 없을것같은뎅 검색이나 필터 걸리면 뜨게끔).
+
+              This was a permanent 초기화 button — a control that does nothing on the screen a
+              reader first meets, and it was this list's own invention: every other list in Portal
+              already uses ActiveFilterCount, which appears only once a filter is on, says how many
+              are on, and clears them when pressed. One fewer bespoke control, and the toolbar now
+              reads the same on every list.
+            */}
+            <ActiveFilterCount count={activeFilterCount} onClear={resetFilters} label={t.filtersActive(activeFilterCount)} />
             {/* `marginLeft: auto` puts this at the right end of the toolbar, which is where every
                 other list in Portal keeps the one thing that MAKES something — left of the row is
                 how you narrow the list, right of it is what you do to it. Without it this button
