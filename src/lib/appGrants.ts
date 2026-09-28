@@ -95,7 +95,8 @@ export const APP_GRANT_LABELS = {
      * new action cannot render an empty title.
      */
     rowName: {
-      liveView: "Events",
+      /* The two kinds of row INSIDE 이벤트 — the app's own filter chips on that panel. */
+      liveView: "VIP detections",
       dashboardTrail: "Movement trails",
       systemStatus: "System",
       /* Under its own tab now, so the row names what you may do there rather than repeating
@@ -120,6 +121,8 @@ export const APP_GRANT_LABELS = {
        beside 베스트 프레임 and 레드맵, where an uppercase word would read as a different kind of
        thing from its own peers. Korean has one form, which is why only English differs. */
     groupName: { dashboard: "Dashboard", bestframe: "Best Frame", data: "Data", redmap: "Redmap" },
+    /** A heading inside a tab — see GrantRowDef.subhead. */
+    subName: { events: "Events" },
     actionDesc: {
       systemStatus: "Whether the cameras and servers are up. No personal data",
       liveView: "A registered person, as they walk past. Strangers do not appear",
@@ -152,7 +155,7 @@ export const APP_GRANT_LABELS = {
     } satisfies Record<AppAction, string>,
     /** 영어 쪽 주석 참조 — 캡션 아래에서 쓰는 짧은 이름. `actionName`은 목록 밖에서도 쓰므로 그대로 둔다. */
     rowName: {
-      liveView: "이벤트",
+      liveView: "VIP 감지",
       dashboardTrail: "동선 추적",
       systemStatus: "시스템",
       history: "지난 기록",
@@ -169,6 +172,7 @@ export const APP_GRANT_LABELS = {
     stage: { view: "보기", viewSearch: "보기 \u00b7 검색", searchOnly: "검색" },
     groupCaption: { dashboard: "대시보드", bestframe: "베스트 프레임", data: "데이터", redmap: "레드맵" },
     groupName: { dashboard: "대시보드", bestframe: "베스트 프레임", data: "데이터", redmap: "레드맵" },
+    subName: { events: "이벤트" },
     actionDesc: {
       systemStatus: "카메라와 서버가 살아 있는지 봅니다. 개인정보는 없습니다",
       liveView: "등록된 사람이 지나갈 때만 올라옵니다",

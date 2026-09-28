@@ -500,8 +500,17 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
             </div>
             {group.rows.map(row => (
               <div key={row.action}>
+                {/* A heading inside the tab, with no cells of its own — 이벤트 is a panel, not a
+                    grant. See GrantRowDef.subhead. */}
+                {row.subhead && (
+                  <div style={line}>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", paddingLeft: "10px" }}>
+                      {g.subName[row.subhead]}
+                    </span>
+                  </div>
+                )}
                 <div style={line}>
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", minWidth: 0, paddingLeft: "10px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", minWidth: 0, paddingLeft: row.indent ? "22px" : "10px" }}>
                     {g.rowName[row.action] ?? g.actionName[row.action]}
                   </span>
                   {presets.map(pr => <span key={pr.id} style={{ opacity: removed.includes(pr.id) ? 0.4 : 1 }}>{cellFor(pr, row)}</span>)}

@@ -2255,6 +2255,20 @@ export type GrantRowDef = {
   searchIsAll?: boolean;
   /** A grant that is not a screen: an indented row under this one. */
   child?: AppAction;
+  /**
+   * A HEADING INSIDE A TAB, for the one place a tab holds two kinds of thing (owner, 2026-09-28:
+   * 아 이벤트 안에 VIP 감지랑 트레킹 이렇게 표시해 줘야겠구나).
+   *
+   * 대시보드 has two panels, and one of them — 이벤트 — carries two kinds of row: a registered
+   * person walking past, and one person's movement joined across cameras. The app's own filter
+   * chips on that panel say exactly that (전체 / VIP 감지 / 동선 추적). Printed as one row called
+   * 이벤트 the pair was invisible; printed as two rows without a heading they looked like two
+   * panels. So the heading is drawn and the rows under it are indented.
+   */
+  subhead?: "events";
+  /** Sits under the nearest `subhead` above it. Presentation only — the store's parent rule is
+   *  APP_ACTION_PARENT and it is unchanged. */
+  indent?: boolean;
 };
 export type GrantGroupDef = { caption: "dashboard" | "bestframe" | "data" | "redmap"; rows: GrantRowDef[] };
 
@@ -2274,7 +2288,14 @@ export type GrantGroupDef = { caption: "dashboard" | "bestframe" | "data" | "red
  * dependency between them is unchanged and still lives in `APP_ACTION_PARENT`.
  */
 export const GRANT_TREE: GrantGroupDef[] = [
-  { caption: "dashboard", rows: [{ action: "liveView", child: "dashboardTrail" }, { action: "systemStatus" }] },
+  {
+    caption: "dashboard",
+    rows: [
+      { action: "liveView", subhead: "events", indent: true },
+      { action: "dashboardTrail", indent: true },
+      { action: "systemStatus" },
+    ],
+  },
   { caption: "bestframe", rows: [{ action: "history" }] },
   {
     caption: "data",
