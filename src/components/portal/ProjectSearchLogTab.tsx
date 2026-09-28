@@ -174,11 +174,14 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   }, [projectRecords]);
 
   const showIp = projectRecords.some(r => r.ip);
+  /* 시각이 맨 뒤 (owner, 2026-09-28: 변경기록도 조회기록도 시각이 맨 뒤로갔으면 해) — the two
+     tabs of this screen keep the same column order as each other. */
   const columns = [
-    "at", "actor",
+    "actor",
     ...(purposeAsked ? ["purpose", "reference"] : []),
     "target", "surface", "results",
     ...(showIp ? ["ip"] : []),
+    "at",
   ] as (keyof typeof COLUMN_WIDTH)[];
   const grid = columns.map(c => COLUMN_WIDTH[c]).join(" ");
 
@@ -360,9 +363,6 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
                 no conversion at all: SearchAccessRecord.at is server-supplied and therefore UTC,
                 so an auditor sampling a Seoul site read every late-evening look-up under the
                 previous day. */}
-            <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
-              {`${dateKeyIn(new Date(r.at), projectZone)} ${clockMinutesIn(new Date(r.at), projectZone)}`}
-            </span>
             {/* Name over address, the shape every comparable audit log uses. The name is what a
                 reader recognises and the address is what makes the row name ONE person — two
                 operators with the same name produce rows nobody can tell apart, and telling them
@@ -386,6 +386,9 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
             {cell(t.surfaceName[r.surface] ?? r.surface)}
             {cell(r.resultCount === undefined ? t.none : String(r.resultCount), r.resultCount === undefined)}
             {showIp && cell(r.ip ?? t.none, !r.ip)}
+            <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+              {`${dateKeyIn(new Date(r.at), projectZone)} ${clockMinutesIn(new Date(r.at), projectZone)}`}
+            </span>
           </div>
         ))}
       </div>

@@ -60,7 +60,10 @@ import { FileOutput, History, UserCog, CalendarClock, Settings, KeyRound } from 
    화면 · 결과, so it names WHO, then WHAT, then WHERE. This table had 화면 before 대상, which put
    the two tables' third columns out of step; a reader moving between the tabs had to re-find the
    column each time. It also matches the owner's own phrasing of the ask — 누가 무엇을 어떻게. */
-const GRID = "150px 150px 1.1fr 1fr 1.4fr";
+/* 담당자 · 대상 · 화면 · 변경 내용 · 시각 (owner, 2026-09-28: 변경기록도 조회기록도 시각이 맨
+   뒤로갔으면 해). The stamp led the row until now; moved to the end it stops being the first thing
+   read on a table whose subject is what changed. */
+const GRID = "150px 1.1fr 1fr 1.4fr 150px";
 /** Where a fallback row's sentence starts — see the row body. */
 const FALLBACK_SPAN = "span 3";
 
@@ -374,7 +377,6 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
           color: TABLE_HEADER_COLOR,
         }}>
           {([
-            { label: t.colAt, key: "at" as ActivitySortKey },
             { label: t.colActor, key: "actor" as ActivitySortKey },
             { label: t.colTarget, key: "target" as ActivitySortKey },
             { label: t.colArea, key: "area" as ActivitySortKey },
@@ -382,6 +384,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
                groups "Removed" beside "Renamed" — an alphabet, not a subject. The two columns
                beside it are the ones a reader groups by, and they sort. */
             { label: t.colMessage },
+            { label: t.colAt, key: "at" as ActivitySortKey },
           ] as { label: string; key?: ActivitySortKey }[]).map((h, i) => (
             <span key={i}><SortableHeader label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} /></span>
           ))}
@@ -416,9 +419,6 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
             padding: "10px 16px", alignItems: "baseline",
             borderBottom: i === visible.length - 1 ? "none" : BORDER,
           }}>
-            <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
-              {stamp(a.at)}
-            </span>
             <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {a.actor}
             </span>
@@ -434,12 +434,24 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
                 It also means the fallback cannot be mistaken for the ordinary case: a split row
                 and an unsplit one do not look alike. */}
             {a.area === undefined ? (
-              <span style={{ gridColumn: FALLBACK_SPAN, fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>
-                {a.message}
-                {clientMark}
-              </span>
+              <>
+                <span style={{ gridColumn: FALLBACK_SPAN, fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>
+                  {a.message}
+                  {clientMark}
+                </span>
+                <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                  {stamp(a.at)}
+                </span>
+              </>
             ) : (
               <>
+                {/* The thing that changed, in the weight a name gets everywhere else in Portal.
+                    Ellipsised, not wrapped: it is a name, and a name broken over two lines makes
+                    the row taller without making it clearer. */}
+                <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  title={a.target}>
+                  {a.target}
+                </span>
                 {/* The screen, one step quieter than the two beside it: on a list filtered to one
                     screen it repeats down the column, and it is the column a reader scans rather
                     than reads. */}
@@ -453,13 +465,6 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
                     {areaLabel(a.area)}
                   </span>
                 </span>
-                {/* The thing that changed, in the weight a name gets everywhere else in Portal.
-                    Ellipsised, not wrapped: it is a name, and a name broken over two lines makes
-                    the row taller without making it clearer. */}
-                <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                  title={a.target}>
-                  {a.target}
-                </span>
                 {/* What was done to it wraps rather than truncating. It is the column the screen
                     exists for, and an entry cut off at the ellipsis is an entry nobody can act
                     on. `?? a.message` is the half-shape guard: a row with an area but no action
@@ -467,6 +472,11 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
                 <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>
                   {a.action ?? a.message}
                   {clientMark}
+                </span>
+                {/* Last, and in the same monospace it always had — a column of stamps only lines
+                    up if the digits do. */}
+                <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                  {stamp(a.at)}
                 </span>
               </>
             )}
