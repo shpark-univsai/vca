@@ -9,7 +9,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
   ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, sortRows, useTableSort } from "./PortalShared";
-import { FileOutput, History, UserCog, CalendarClock } from "lucide-react";
+import { FileOutput, History, UserCog, CalendarClock, Settings } from "lucide-react";
 
 /**
  * What was changed on this project, by whom, and when.
@@ -189,6 +189,11 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
     license: "license", records: "records", requests: "requests",
   };
   const areaIcon = (area: AuditArea) => {
+    /* 설정 is not a rail row — it opens from the account menu — but the console already has a mark
+       for it: the gear PortalProjectDetailPage draws on its settings affordance (SettingsIcon,
+       16px, stroke 2.1). Same glyph at the same weight rather than a second one, and imported from
+       lucide rather than from that file, which renders this one (importing back would be a cycle). */
+    if (area === "settings") return <Settings size={16} strokeWidth={2.1} color="var(--gray-400)" />;
     const tab = AREA_TAB[area];
     const Icon = tab ? PROJECT_TABS.find(x => x.id === tab)?.icon : undefined;
     return Icon ? <Icon color="var(--gray-400)" /> : null;
