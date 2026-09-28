@@ -188,6 +188,7 @@ const T = {
     tabReid: "Re-ID Analysis",
     tabRedface: "RedFace",
     redfaceTooltip: "Finds who shares camera frames with a chosen person, across every camera",
+    searchOnlyNotice: "This account may search here, but not watch the passers-by. Search for someone to see results.",
   },
   ko: {
     scrollToTop: "맨 위로",
@@ -348,6 +349,7 @@ const T = {
     tabReid: "Re-ID 분석",
     tabRedface: "RedFace",
     redfaceTooltip: "선택한 사람과 같은 프레임에 잡힌 사람을 모든 카메라에서 찾습니다",
+    searchOnlyNotice: "이 계정은 여기서 검색만 할 수 있고, 지나가는 사람 목록은 보지 않습니다. 찾을 사람을 검색하세요.",
   },
 } as const;
 
@@ -1810,6 +1812,17 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   const monPortalUsers = useVcaStore(state => state.portalUsers);
   const monMayVip = holdsAppAction(monPortalUsers, "monitoringVip");
   const monMayUnknown = holdsAppAction(monPortalUsers, "monitoringUnknown");
+  /*
+   * 검색만 — THE TAB OPENS, THE CROWD DOES NOT (owner, 2026-09-28: 모니터링에서 보기만하는 경우,
+   * 검색만 하는경우 있을것같은데).
+   *
+   * This tab holds two panes: before a search, everybody who walked past; after one, the person
+   * asked for. An account can now hold the second without the first, which is the tighter of the
+   * two — it can look up a named person and never watch the crowd. `screensForActions` opens the
+   * tab for either grant, so the pane has to be chosen here or a 검색만 account would land on the
+   * very list the permission withholds.
+   */
+  const monMayBrowse = holdsAppAction(monPortalUsers, "liveMonitoring");
   const allowedHere = (p: { status: ReIDStatus }) => (p.status === "VIP" ? monMayVip : monMayUnknown);
   const camDetailItems = (openCam === ALL_CAMERAS_ID
     ? onlineCameraCodes.flatMap(code => feed[code] ?? [])
@@ -1849,7 +1862,13 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
               onRefine={() => setSearched(false)} onReset={searchReset}
               topColors={topColors} bottomColors={bottomColors} shoesColors={shoesColors}
               emotion={emotion} ethnicGroup={ethnicGroup} />
-          : <CameraDetailView camId={openCam} items={camDetailItems} onSwitchCam={onOpenCamChange} onCardClick={setDetailId} onNavigateTab={handleNavigate} onGoRedmap={onGoRedmap} onGoRedmapFrame={onGoRedmapFrame} />
+          : monMayBrowse
+            ? <CameraDetailView camId={openCam} items={camDetailItems} onSwitchCam={onOpenCamChange} onCardClick={setDetailId} onNavigateTab={handleNavigate} onGoRedmap={onGoRedmap} onGoRedmapFrame={onGoRedmapFrame} />
+            /* Said, not blank. An empty pane would read as "nothing happened here", which is a
+               claim about the site; this is a claim about the account. */
+            : <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:"32px", textAlign:"center", fontSize:"13px", lineHeight:1.6, color:"var(--gray-500)" }}>
+                {t.searchOnlyNotice}
+              </div>
         }
       </div>
       {detailItem && <DetailModal item={reidToMatchItem(detailItem)} onClose={() => setDetailId(null)} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}

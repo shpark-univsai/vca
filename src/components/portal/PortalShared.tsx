@@ -1802,7 +1802,12 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
   useEscapeKey(onClose, !escapeSuspended);
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      /* 400, THE CONSOLE'S MODAL TIER (owner, 2026-09-28: 이렇게 팝업이 배경에 가려지는뎅?).
+         These two sat at 300 while Drawer's scrim is 320, so a confirm opened from inside a
+         right-hand panel — which is where most of them are opened — rendered UNDER that panel's
+         dim and read as disabled. 400 is what CameraStreamModal, PortalNewProjectWizard and
+         PortalShell already use, so an ask-before-you-act is now above every panel, everywhere. */
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       {/* The cap is on the CARD and the scroll is on the body, so the footer is outside the scroll
           region and cannot leave the screen. Both halves are spread in only when asked: with the
           prop off the card and the body carry exactly the styles they always did, which is what
@@ -2141,7 +2146,12 @@ export function SupportContactModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      /* 400, THE CONSOLE'S MODAL TIER (owner, 2026-09-28: 이렇게 팝업이 배경에 가려지는뎅?).
+         These two sat at 300 while Drawer's scrim is 320, so a confirm opened from inside a
+         right-hand panel — which is where most of them are opened — rendered UNDER that panel's
+         dim and read as disabled. 400 is what CameraStreamModal, PortalNewProjectWizard and
+         PortalShell already use, so an ask-before-you-act is now above every panel, everywhere. */
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", marginBottom: "2px" }}>{t.heading}</p>
@@ -2377,14 +2387,28 @@ const UNPLACED_ACTIONS = APP_ACTIONS.filter(a => !PLACED_ACTIONS.has(a));
  * `aria-disabled` — the span carries no role, so "disabled" would describe nothing; screen
  * readers get it as what it is, the sentence 「검색」 after the row's title.
  */
-function GrantStage({ rowLabel, held, twoCell, parentOn, locked, onPick, stage }: {
+/** Which pane of a two-pane screen this account gets. See `STAGE_VALUES`. */
+export type StageValue = "browse" | "both" | "searchOnly";
+
+/**
+ * THREE, NOT TWO (owner, 2026-09-28: 데이터 > 모니터링에서 보기만하는 경우, 검색만 하는경우
+ * 있을것같은데, 권한이 보기,검색 묶여있넹?).
+ *
+ * 모니터링 and Re-ID each hold two panes in one tab — the unsearched list of everybody who walked
+ * past, and the results of asking after one person. The control offered 보기 and 보기·검색, which
+ * made search an ADDITION to browsing and left the narrower of the two combinations unsayable:
+ * an investigator who may look up a named person but may not watch the crowd.
+ */
+export const STAGE_VALUES: StageValue[] = ["browse", "both", "searchOnly"];
+
+function GrantStage({ rowLabel, value, twoCell, parentOn, locked, onPickStage, stage }: {
   rowLabel: string;
-  /** For two cells: whether the second depth is held. Ignored for one cell (always held). */
-  held: boolean;
+  /** Which of the three. Ignored for one cell (the screen IS the search). */
+  value: StageValue;
   twoCell: boolean;
   parentOn: boolean;
   locked: boolean;
-  onPick: (next: boolean) => void;
+  onPickStage: (next: StageValue) => void;
   /** Just the three words, not the whole label table: `en` and `ko` are `as const` and so have
    *  different literal types, and a parameter typed as one of them will not take the other. */
   stage: { view: string; viewSearch: string; searchOnly: string };
@@ -2439,29 +2463,36 @@ function GrantStage({ rowLabel, held, twoCell, parentOn, locked, onPick, stage }
       </span>
     );
   }
-  const pick = (next: boolean) => (e: React.MouseEvent) => {
-    /* The row around this is the checkbox, so a click that reaches it toggles the SCREEN. */
-    e.stopPropagation();
-    if (!live || next === held) return;
-    onPick(next);
+  const label: Record<StageValue, string> = {
+    browse: stage.view, both: stage.viewSearch, searchOnly: stage.searchOnly,
+  };
+  const step = (dir: 1 | -1) => {
+    const i = STAGE_VALUES.indexOf(value);
+    return STAGE_VALUES[(i + dir + STAGE_VALUES.length) % STAGE_VALUES.length];
   };
   return (
     <span role="radiogroup" aria-label={rowLabel} style={frame} onClick={e => e.stopPropagation()}>
-      {[false, true].map(depth => (
-        <span key={String(depth)} role="radio" aria-checked={held === depth}
+      {STAGE_VALUES.map((v, i) => (
+        <span key={v} role="radio" aria-checked={value === v}
           aria-disabled={live ? undefined : true}
-          tabIndex={live && held === depth ? 0 : -1}
-          onClick={pick(depth)}
+          tabIndex={live && value === v ? 0 : -1}
+          onClick={e => {
+            /* The row around this is the checkbox, so a click that reaches it toggles the SCREEN. */
+            e.stopPropagation();
+            if (!live || v === value) return;
+            onPickStage(v);
+          }}
           onKeyDown={e => {
             if (!live) return;
-            if (e.key === " " || e.key === "Enter" || e.key === "ArrowRight" || e.key === "ArrowLeft") {
+            if (e.key === " " || e.key === "Enter") { e.preventDefault(); e.stopPropagation(); onPickStage(v); return; }
+            if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
               e.preventDefault();
               e.stopPropagation();
-              onPick(e.key === "ArrowRight" || e.key === "ArrowLeft" ? !held : depth);
+              onPickStage(step(e.key === "ArrowRight" ? 1 : -1));
             }
           }}
-          style={cell(held === depth, !depth, !!depth)}>
-          {depth ? stage.viewSearch : stage.view}
+          style={cell(value === v, i === 0, i === STAGE_VALUES.length - 1)}>
+          {label[v]}
         </span>
       ))}
     </span>
@@ -2571,15 +2602,21 @@ export function AppGrantList({ actions, locked, onToggle, rowFill }: {
    * coming back to life is exactly the plausible-looking value this console keeps being bitten by.
    */
   const toggleRow = (row: GrantRowDef) => {
-    if (has(row.action)) {
+    /* Reads the same `on` the row is drawn with — on a two-pane screen that is "either step",
+       so a tick taken off 검색만 has to clear the SEARCH grant, not grant the browse one. Reading
+       `has(row.action)` here did exactly that: unticking a 검색만 row turned browsing on. */
+    const on = row.search ? (has(row.action) || has(row.search)) : has(row.action);
+    if (on) {
       if (row.search && has(row.search)) onToggle(row.search);
       (row.children ?? []).forEach(c => { if (has(c)) onToggle(c); });
-    } else {
-      /* Switching the screen ON brings its content with it — see APP_ACTION_CONTENT. A screen
-         ticked with neither of its two types is a blank list, so it is never a state a click
-         here can land in. */
-      (APP_ACTION_CONTENT[row.action] ?? []).forEach(c => { if (!has(c)) onToggle(c); });
+      if (has(row.action)) onToggle(row.action);
+      return;
     }
+    /* Switching the screen ON brings its content with it — see APP_ACTION_CONTENT. A screen
+       ticked with neither of its two types is a blank list, so it is never a state a click here
+       can land in. A two-pane screen starts at 보기, the wider of the three and the one the
+       control shows first. */
+    (APP_ACTION_CONTENT[row.action] ?? []).forEach(c => { if (!has(c)) onToggle(c); });
     onToggle(row.action);
   };
 
@@ -2603,12 +2640,27 @@ export function AppGrantList({ actions, locked, onToggle, rowFill }: {
   };
 
   const renderRow = (row: GrantRowDef) => {
-    const on = has(row.action);
+    /* THE TICK NOW MEANS 「THIS TAB OPENS」, not 「the unsearched pane」. On a two-pane screen the
+       tab opens for either step, so the row is on when EITHER is held — otherwise 검색만 would
+       draw an unticked row above a lit control, which is a screen saying two things at once. */
+    const on = row.search ? (has(row.action) || has(row.search)) : has(row.action);
+    const value: StageValue = row.search
+      ? (has(row.search) ? (has(row.action) ? "both" : "searchOnly") : "browse")
+      : "browse";
     const stage = (row.search || row.searchIsAll) ? (
       <GrantStage rowLabel={nameOf(row.action)} twoCell={!!row.search}
-        held={row.search ? has(row.search) : true}
+        value={value}
         parentOn={on} locked={locked} stage={g.stage}
-        onPick={next => { if (row.search && next !== has(row.search)) onToggle(row.search); }} />
+        onPickStage={next => {
+          if (!row.search) return;
+          /* Each cell is a whole answer, so it sets both halves rather than flipping one and
+             hoping the other already agrees. 검색만 drops the browse grant, which drops its
+             content children with it — see withAppActionDeps. */
+          const wantBrowse = next !== "searchOnly";
+          const wantSearch = next !== "browse";
+          if (has(row.action) !== wantBrowse) onToggle(row.action);
+          if (has(row.search) !== wantSearch) onToggle(row.search);
+        }} />
     ) : undefined;
     return (
       <React.Fragment key={row.action}>

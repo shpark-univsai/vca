@@ -5027,7 +5027,21 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
         nobody wants to be, and the editors this opens are the same ones the menu opened.
       */}
       {managing && (() => {
-        const mu = managing;
+        /*
+         * READ THE ACCOUNT FROM THE STORE, NOT FROM THE CLICK (owner, 2026-09-28: 가운데 팝업이
+         * 뜨고 변경 버튼을 누르면 오른쪽 팝업에 정보가 바뀌거나 패널이 닫히고 표에서 정보가
+         * 바껴야할것같은뎅).
+         *
+         * `managing` is the row object as it was when the row was pressed. Every write this panel
+         * makes — the Portal role, the login scope, a grant — goes to the store, and the table
+         * behind picked those up because it reads the store; this panel kept redrawing the
+         * snapshot. So the confirm said "takes effect at once" and the card it was opened from
+         * went on showing the old value, which is the screen contradicting its own dialog.
+         *
+         * Falls back to the snapshot only if the row is gone from the list, which is the removal
+         * path — and that one closes the panel itself.
+         */
+        const mu = portalUsers.find(u => u.id === managing.id) ?? managing;
         const lastAdmin = isLastActiveAdmin(portalUsers, mu.id);
         const close = () => setManaging(null);
         /** Both groups from one list, so the guards cannot drift apart. `value` is what the
@@ -5327,7 +5341,12 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                       column: the eye had nothing to read it against, and 「인물 검색 허용」 had to
                       double as both the name of the thing and the verb. */}
                   {group === "what" && (
-                    <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--gray-500)", marginTop: "9px", marginLeft: "12px" }}>
+                    /* `display: block` (owner, 2026-09-28: 인물 검색 아래로 버튼이 오게
+                       수정해줘). The label was a bare span and the button beside it is
+                       inline-flex, so the two sat on one line — a label acting as a prefix to its
+                       own control instead of a heading over it, which is not how the three rows
+                       above this one read. */
+                    <span style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--gray-500)", marginTop: "9px", marginLeft: "12px" }}>
                       {t.axisSearch}
                     </span>
                   )}
@@ -5359,7 +5378,12 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                           display: "inline-flex", alignItems: "center", gap: "6px", alignSelf: "flex-start",
                           height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
                           backgroundColor: "white", fontFamily: "inherit", fontSize: "12px",
-                          marginTop: "6px", marginLeft: "12px",
+                          /* marginBottom because this is the LAST thing in the group and the
+                             group's own padding is 4px — the button was sitting on the rounded
+                             bottom edge (owner, 2026-09-28: 인물 검색 허용 버튼 아래로 공간
+                             조금만 더 줘). 8px puts the same air under it as the label has
+                             over it. */
+                          marginTop: "6px", marginBottom: "8px", marginLeft: "12px",
                           color: a.disabled ? "var(--gray-300)" : "var(--gray-600)",
                           fontWeight: 700, cursor: a.disabled ? "default" : "pointer",
                         }}>

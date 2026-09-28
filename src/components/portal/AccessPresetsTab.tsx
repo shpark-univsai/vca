@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Minus, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import {
-  accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
+  APP_ACTION_CONTENT, accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
   withAppActionDeps, type AccessPreset, type AppAction,
 } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -522,7 +522,15 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
   type CellState = { text: string; on: boolean; has: AppAction[]; mark?: boolean };
   const statesFor = (row: GrantRowDef): CellState[] => {
     const none: CellState = { text: editing ? t.presetDeny : "", on: false, has: [], mark: true };
-    if (row.search) return [none, { text: g.stage.view, on: true, has: [row.action] }, { text: g.stage.viewSearch, on: true, has: [row.action, row.search] }];
+    /* Four, because a two-pane screen has three ways to be on — see STAGE_VALUES. 검색만 is last
+       in the cycle and holds the search grant WITHOUT the browse one, which is the combination
+       the old two-cell control could not express. */
+    if (row.search) return [
+      none,
+      { text: g.stage.view, on: true, has: [row.action] },
+      { text: g.stage.viewSearch, on: true, has: [row.action, row.search] },
+      { text: g.stage.searchOnly, on: true, has: [row.search] },
+    ];
     if (row.searchIsAll) return [none, { text: g.stage.searchOnly, on: true, has: [row.action] }];
     return [none, { text: editing ? t.presetAllow : "", on: true, has: [row.action], mark: true }];
   };
@@ -586,7 +594,20 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
          { text: editing ? t.presetAllow : "", on: true, has: [child], mark: true }]
       : statesFor(row);
     const owned = child ? [child] : [row.action, ...(row.search ? [row.search] : [])];
-    const idx = Math.max(0, states.map((st, i) => ({ st, i })).filter(({ st }) => st.has.every(a => held.includes(a))).pop()?.i ?? 0);
+    /*
+     * EXACT MATCH, NOT "CONTAINS" (would have shipped a wrong cell).
+     *
+     * This used to take the LAST state whose grants were all held, which was right while the
+     * states were a ladder — each a superset of the one before. 검색만 broke that: it holds the
+     * search grant WITHOUT the browse one, so it is not above 보기·검색, it is beside it. An
+     * account holding both grants matched all four states and the cell printed 검색만, naming the
+     * one permission that account does not have.
+     *
+     * So a cell is the state whose grants are exactly the ones held out of this row's own.
+     */
+    const mine = owned.filter(a => held.includes(a));
+    const idx = Math.max(0, states.findIndex(st =>
+      st.has.length === mine.length && st.has.every(a => mine.includes(a))));
     const cur = states[idx];
     /*
      * THE HELD CELL HAS AREA (owner, 2026-09-28: 이렇게 연하게 표시되어 있으니까 권한이 없는
@@ -655,7 +676,17 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
     const apply = () => {
       const kept = held.filter(a => !owned.includes(a));
       const added = child && next.on ? [...next.has, row.action] : next.has;
-      onSetActions(pr.id, [...kept, ...added]);
+      /*
+       * TURNING A SCREEN BACK ON BRINGS ITS CONTENT WITH IT — without this the cycle was a dead
+       * end (measured: 보기 → 보기·검색 → 검색만 → 불가 → 불가 → 불가).
+       *
+       * 모니터링 with neither VIP nor 모르는 사람 is a blank list, so withAppActionDeps drops it
+       * on save — which meant stepping off 불가 granted the screen and had it taken away again in
+       * the same click, and the cell never moved. AppGrantList's own toggle has done this since
+       * the rule was written; the matrix was the caller that did not.
+       */
+      const content = added.flatMap(a2 => APP_ACTION_CONTENT[a2] ?? []).filter(c => !kept.includes(c) && !added.includes(c));
+      onSetActions(pr.id, [...kept, ...added, ...content]);
     };
     /*
      * A CHIP WHILE EDITING, BUT NOT A PURPLE ONE (owner, 2026-09-28: 아래 체크랑 보기/검색 이런

@@ -2570,8 +2570,10 @@ export const APP_ACTION_PARENT: Partial<Record<AppAction, AppAction>> = {
   dashboardTrail: "liveView",
   monitoringVip: "liveMonitoring",
   monitoringUnknown: "liveMonitoring",
-  liveMonitoringSearch: "liveMonitoring",
-  reidSearch: "reid",
+  /* `liveMonitoringSearch` and `reidSearch` USED TO HANG OFF THEIR SCREEN and no longer do.
+     While they did, 「검색만」 was not expressible: dropping the browse grant dropped the search
+     with it. The two are now siblings — one opens the unsearched pane, the other opens the search
+     — and `screensForActions` opens the tab for either. */
   /*
    * `export` IS GONE (owner, 2026-09-28: 내보내기 기능이 꼭 필요한가야.. → ① 앱에서 빼고 외부
    * 요청으로 일원화).
@@ -2704,11 +2706,18 @@ export function screensForActions(actions: AppAction[]): AppScreen[] {
   const has = (a: AppAction) => actions.includes(a);
   return APP_SCREENS.filter(screen => {
     switch (screen) {
-      case "live": return has("liveMonitoring");
+      /* EITHER STEP OPENS IT (owner, 2026-09-28: 데이터 > 모니터링에서 보기만하는 경우, 검색만
+         하는경우 있을것같은데, 권한이 보기,검색 묶여있넹?).
+         
+         Right — and the two really are different screens inside one tab: before a search the pane
+         is CameraDetailView, everybody who walked past; after one it is SmartSearchResults, only
+         the person asked for. So 검색만 is not a narrower version of 보기, it is the other pane —
+         and the tighter permission of the two, since it never shows the crowd. */
+      case "live": return has("liveMonitoring") || has("liveMonitoringSearch");
       /* Either one opens the tab: the wall and the records are two things on one screen. */
       case "bestframe": return has("history") || has("liveWall");
       case "redface": return has("redface");
-      case "reid": return has("reid");
+      case "reid": return has("reid") || has("reidSearch");
       case "redmap": return has("trail");
     }
   });
