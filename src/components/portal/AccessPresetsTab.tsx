@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Minus, Trash2, Undo2 } from "lucide-react";
+import { Check, Minus, Pencil, Trash2, Undo2 } from "lucide-react";
 import {
   accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
   withAppActionDeps, type AccessPreset, type AppAction,
@@ -55,21 +55,22 @@ const T = {
     presetDescPlaceholder: "One line \u2014 when this one is the right pick",
     presetGrantsField: "Permissions",
     presetNoScreens: "Tick at least one screen \u2014 an account following a preset with none cannot open the app",
-    presetFollowers: (n: number) => `${n} account${n === 1 ? "" : "s"} follow this`,
-    presetFollowersNone: "No accounts follow this yet",
+    presetFollowers: (n: number) => `In use · ${n}`,
+    presetFollowersNone: "Unused",
     presetEditReach: (n: number) => `Saving changes what these ${n} can open, at once.`,
     presetEdit: "Edit",
     presetNoActions: "A preset with nothing ticked cannot be given to anyone.",
     presetUndoRemove: "Undo",
     presetCycleHint: "Click to change",
-    presetGroupAll: "All",
-    presetGroupSome: "Some",
+    presetGroupAll: "All allowed",
+    presetGroupSome: "Some allowed",
     presetRetire: "Delete",
     presetRetireAsk: "Retire this preset?",
     presetRetireBody: (n: number) => n === 0
       ? "It stops being offered on the invite form. Nothing else changes."
       : `It stops being offered, and the ${n} account${n === 1 ? "" : "s"} following it become individual \u2014 holding exactly what they hold now. Nobody gains or loses access.`,
     presetRetireConfirm: "Retire",
+    presetColHead: "What it opens",
     presetEditing: "Editing presets",
     presetAllow: "Yes",
     presetDeny: "No",
@@ -92,21 +93,22 @@ const T = {
     presetDescPlaceholder: "한 줄 — 어떤 사람에게 주는 묶음인지",
     presetGrantsField: "권한",
     presetNoScreens: "화면을 하나 이상 골라주세요 — 화면이 없는 프리셋을 따르는 계정은 앱을 열 수 없습니다",
-    presetFollowers: (n: number) => `이 프리셋을 따르는 계정 ${n}개`,
-    presetFollowersNone: "이 프리셋을 따르는 계정이 아직 없습니다",
+    presetFollowers: (n: number) => `사용중 · ${n}`,
+    presetFollowersNone: "미사용",
     presetEditReach: (n: number) => `저장하면 이 ${n}명이 열 수 있는 화면이 한 번에 바뀝니다.`,
     presetEdit: "편집",
     presetNoActions: "아무것도 고르지 않은 프리셋은 아무에게도 줄 수 없습니다.",
     presetUndoRemove: "되돌리기",
     presetCycleHint: "눌러서 바꾸기",
-    presetGroupAll: "전체",
-    presetGroupSome: "일부",
+    presetGroupAll: "전체 가능",
+    presetGroupSome: "일부 가능",
     presetRetire: "삭제",
     presetRetireAsk: "이 프리셋을 폐기할까요?",
     presetRetireBody: (n: number) => n === 0
       ? "초대 폼에서 더 이상 제시되지 않습니다. 그 밖에 바뀌는 것은 없습니다."
       : `초대 폼에서 더 이상 제시되지 않고, 이것을 따르던 계정 ${n}개는 지금 가진 것을 그대로 들고 개별 지정으로 바뀝니다. 권한을 얻거나 잃는 사람은 없습니다.`,
     presetRetireConfirm: "폐기",
+    presetColHead: "앱에서 열리는 것",
     presetEditing: "프리셋 편집 중",
     presetAllow: "허용",
     presetDeny: "불가",
@@ -254,7 +256,8 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
           <>
             {presets.length > 0 && (
               <button className="portal-btn-outline" onClick={startEditing}
-                style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                <Pencil size={13} strokeWidth={2.4} aria-hidden="true" />
                 {t.presetEdit}
               </button>
             )}
@@ -318,22 +321,19 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
                          hold 보기 · 검색 in its cells, but the name in it is three letters —
                          stretching the box to the column made an empty field the widest thing on
                          the screen. 128px still takes a name twice as long as any of the three. */
-                      style={{ width: "100%", maxWidth: "128px", boxSizing: "border-box", height: "28px", padding: "0 8px", borderRadius: "7px", border: BORDER, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", backgroundColor: "white" }}
+                      style={{ width: "100%", maxWidth: "104px", boxSizing: "border-box", height: "28px", padding: "0 8px", borderRadius: "7px", border: BORDER, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", backgroundColor: "white" }}
                     />
+                    <UseChip n={names.length} t={t} />
                     </div>
                   ) : (
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
                       <span title={presetLabel(pr, lang)} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: gone ? "line-through" : undefined }}>
                         {draft[pr.id]?.label || presetLabel(pr, lang)}
                       </span>
+                      <UseChip n={names.length} t={t} />
                     </div>
                   )}
-                  {/* The count, not the names: a column is 104px at its narrowest and a list of
-                      names would set the width of the whole table. It stays visible while editing,
-                      which is the condition updateAccessPreset's own note puts on this screen. */}
-                  <span style={{ fontSize: "11px", color: names.length === 0 ? "var(--gray-400)" : "var(--gray-500)" }}>
-                    {names.length === 0 ? t.presetFollowersNone : t.presetFollowers(names.length)}
-                  </span>
+
                 </div>
               );
             }}
@@ -445,7 +445,21 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
 }) {
   const g = APP_GRANT_LABELS[lang];
   const actionsOf = (pr: AccessPreset) => (editing ? draft[pr.id]?.actions ?? pr.actions : pr.actions);
-  const COLS = `minmax(180px, 1.6fr) repeat(${presets.length}, minmax(104px, 1fr))`;
+  /*
+   * VALUE COLUMNS ARE 150px, AND THE SLACK GOES TO THE RIGHT MARGIN (owner, 2026-09-28: 왼쪽에
+   * 제목들이랑 오른쪽 항목들이 거리가 있는데 좋은 방법없을까?).
+   *
+   * Measured: with three presets the columns came out 228px each holding an 18px mark, and the
+   * run from the end of 「VIP 감지」 to its own first mark was about 270px of nothing — far enough
+   * that following a row meant tracking across blank space, which is the thing a zebra or a
+   * vertical rule is usually patched on to fix.
+   *
+   * Every admin matrix checked on Mobbin (Vanta, StackAI, Confluence, Fresha, Workable, Langdock)
+   * keeps its value columns between about 90 and 150px and lets the leftover sit at the right
+   * edge. A fixed width also means a preset's cell is the same size whatever the window does, and
+   * the trailing `1fr` is the empty track that absorbs the rest.
+   */
+  const COLS = `minmax(160px, 220px) repeat(${presets.length}, 168px) minmax(0, 1fr)`;
   const line: React.CSSProperties = {
     display: "grid", gridTemplateColumns: COLS, columnGap: "12px",
     alignItems: "center", padding: "8px 12px", borderTop: BORDER,
@@ -494,7 +508,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
         fontSize: "11.5px", fontWeight: state === "none" ? 500 : 700,
         color: state === "none" ? "var(--gray-300)" : state === "some" ? "var(--gray-500)" : "var(--gray-900)",
         whiteSpace: "nowrap",
-      }}>{state === "none" ? "\u2014" : state === "all" ? t.presetGroupAll : t.presetGroupSome}</span>
+      }}>{state === "none" ? (editing ? t.presetDeny : "\u2014") : state === "all" ? t.presetGroupAll : t.presetGroupSome}</span>
     );
     if (!editing || gone) return body;
     const apply = () => onSetActions(pr.id, state === "all" ? held.filter(a => !owned.includes(a)) : [...held, ...owned]);
@@ -620,10 +634,24 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
     /* Scrolls sideways rather than squeezing: a customer can make more presets than fit, and a
        column narrower than its own name is worse than a scrollbar. */
     <div style={{ overflowX: "auto" }}>
-      <div style={{ minWidth: `${180 + presets.length * 104 + 40}px` }}>
-        <div style={{ display: "grid", gridTemplateColumns: COLS, columnGap: "12px", alignItems: "end", padding: "2px 12px 12px" }}>
-          <span />
+      <div style={{ minWidth: `${160 + presets.length * 168 + 40}px` }}>
+        {/*
+          A HEADER ROW, NOT THREE FLOATING NAMES (owner, 2026-09-28: 프리셋 디자인이 약간
+          가격표같다).
+          
+          Three bold names spaced across white, with nothing ruling them off from the body, is the
+          shape of a plan comparison — and the first grey band under them (대시보드) was being read
+          as the header's own band. Of six admin permission matrices checked on Mobbin, five set
+          the names in a header ROW with a tinted ground or a rule under it, and five label the
+          first cell (Vanta 「ACTIONS」, StackAI 「Permission」, Workable 「Hiring team role」).
+          The label is what says the left column holds the questions and the right ones the answers.
+        */}
+        <div style={{ display: "grid", gridTemplateColumns: COLS, columnGap: "12px", alignItems: "end", padding: "10px 12px 10px", borderBottom: BORDER }}>
+          <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            {t.presetColHead}
+          </span>
           {presets.map(pr => <div key={pr.id} style={{ minWidth: 0 }}>{header(pr)}</div>)}
+          <span />
         </div>
         {GRANT_TREE.map((group, gi) => (
           <div key={gi}>
@@ -702,10 +730,40 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
           <div style={{ ...line, borderTop: BORDER, alignItems: "start", padding: "12px" }}>
             <span />
             {presets.map(pr => <div key={pr.id} style={{ minWidth: 0 }}>{footer(pr)}</div>)}
+            <span />
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * 「사용중 1」 BESIDE THE NAME, NOT UNDER IT (owner, 2026-09-28: 이거는 없어두되지않을까? ·
+ * 사용중 이런식으로 표시해줄까?).
+ *
+ * It was a full grey sentence on a second line under every column name — 「이 프리셋을 따르는
+ * 계정 1개」 — and that stack, a bold name over a grey line, is precisely the shape of a plan name
+ * over its price. Six admin permission matrices were checked on Mobbin (Vanta, StackAI,
+ * Confluence, Fresha, Workable, Langdock) and not one puts a second line under a role name; the
+ * six pricing tables checked all do.
+ *
+ * The number stays, because it is the one thing this screen has to say before somebody edits a
+ * preset — updateAccessPreset's own rule is that an edit is defensible only while the person
+ * making it can see how many accounts it reaches. A chip on the name's own line says it in four
+ * characters instead of ten.
+ */
+function UseChip({ n, t }: { n: number; t: (typeof T)["en"] | (typeof T)["ko"] }) {
+  return (
+    <span style={{
+      flexShrink: 0, fontSize: "10.5px", fontWeight: 700,
+      color: n === 0 ? "var(--gray-400)" : "var(--gray-600)",
+      padding: "2px 6px", borderRadius: "999px",
+      border: BORDER, backgroundColor: n === 0 ? "white" : "var(--gray-50)",
+      fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap",
+    }}>
+      {n === 0 ? t.presetFollowersNone : t.presetFollowers(n)}
+    </span>
   );
 }
 
