@@ -2246,7 +2246,7 @@ const GRANT_T = APP_GRANT_LABELS;
  * was held by another session while this was written. Moving it there is a safe follow-up as long
  * as the fallback below moves with it.
  */
-type GrantRowDef = {
+export type GrantRowDef = {
   /** The screen — or, for 증거 내보내기, the button — this row's checkbox switches on. */
   action: AppAction;
   /** A second depth on the SAME screen: two cells at the row's right edge, 보기 / 보기 · 검색. */
@@ -2256,9 +2256,9 @@ type GrantRowDef = {
   /** A grant that is not a screen: an indented row under this one. */
   child?: AppAction;
 };
-type GrantGroupDef = { caption?: "dashboard" | "data"; rows: GrantRowDef[] };
+export type GrantGroupDef = { caption?: "dashboard" | "data"; rows: GrantRowDef[] };
 
-const GRANT_TREE: GrantGroupDef[] = [
+export const GRANT_TREE: GrantGroupDef[] = [
   { caption: "dashboard", rows: [{ action: "liveView" }, { action: "systemStatus" }] },
   { rows: [{ action: "history" }] },
   {

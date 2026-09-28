@@ -4,14 +4,15 @@ import { useMemo, useState } from "react";
 import { KeySquare } from "lucide-react";
 import {
   accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
-  APP_ACTIONS, type AccessPreset, type AppAction,
+  type AccessPreset, type AppAction,
 } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, AppGrantList,
-  TextField, useGrantNames,
+  TextField, GRANT_TREE,
 } from "./PortalShared";
+import { APP_GRANT_LABELS } from "@/lib/appGrants";
 
 /**
  * APP-ACCESS PRESETS, BESIDE THE ACCOUNTS THEY ARE HANDED TO.
@@ -162,6 +163,8 @@ function AccessPresetList({ t, teamId, canEdit }: {
   const [retiring, setRetiring] = useState<string | null>(null);
 
   const closeAll = () => { setEditing(null); setCreating(false); setRetiring(null); };
+  const editingPreset = presets.find(pr => pr.id === editing) ?? null;
+  const retiringPreset = presets.find(pr => pr.id === retiring) ?? null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -169,67 +172,74 @@ function AccessPresetList({ t, teamId, canEdit }: {
         <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.presetEmpty}</p>
       )}
 
-      {presets.map(pr => {
-        const names = followersOf.get(pr.id) ?? [];
-        if (editing === pr.id) {
-          return (
-            <PresetEditor key={pr.id} t={t} preset={pr} followers={names}
-              onCancel={closeAll}
-              onSave={patch => {
-                updateAccessPreset(pr.id, patch);
-                showToast({ variant: "success", title: t.presetSavedToast, desc: patch.label ?? pr.label });
-                closeAll();
-              }} />
-          );
-        }
-        return (
-          <div key={pr.id} style={{ padding: "12px", border: BORDER, borderRadius: "10px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-              <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{presetLabel(pr, lang)}</span>
-              {canEdit && retiring !== pr.id && (
-                <>
-                  <button className="portal-btn-quiet" onClick={() => { closeAll(); setEditing(pr.id); }}
-                    style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                    {t.presetEdit}
-                  </button>
-                  <button className="portal-btn-quiet" onClick={() => { closeAll(); setRetiring(pr.id); }}
-                    style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                    {t.presetRetire}
-                  </button>
-                </>
-              )}
-            </div>
-            <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "3px" }}>{pr.description}</p>
-            <PresetGrantSummary preset={pr} />
-            {/* The count sits on the row, not only inside the editor. Somebody deciding whether to
-                open this at all is already deciding how many people to touch. */}
-            <p style={{ fontSize: "11px", color: names.length === 0 ? "var(--gray-400)" : "var(--gray-500)", marginTop: "6px" }}>
-              {names.length === 0 ? t.presetFollowersNone : `${t.presetFollowers(names.length)} — ${names.join(", ")}`}
-            </p>
-            {retiring === pr.id && (
-              <div style={{ marginTop: "10px", padding: "12px", borderRadius: "8px", backgroundColor: "var(--gray-50)" }}>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{t.presetRetireAsk}</p>
-                {/* The consequence in this installation's numbers, not in general. */}
-                <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.55, marginTop: "4px" }}>{t.presetRetireBody(names.length)}</p>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "10px" }}>
-                  <button className="portal-btn-outline" onClick={closeAll}
-                    style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                    {t.presetCancel}
-                  </button>
-                  <button onClick={() => {
-                      archiveAccessPreset(pr.id);
-                      showToast({ variant: "warning", title: t.presetRetiredToast, desc: pr.label });
-                      closeAll();
-                    }}
-                    style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-500)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                    {t.presetRetireConfirm}
-                  </button>
+      {/* The editor replaces the table while it is open: one preset being changed is the whole
+          screen's subject, and a matrix behind a form invites comparing against a row that is
+          already stale. */}
+      {editingPreset ? (
+        <PresetEditor key={editingPreset.id} t={t} preset={editingPreset} followers={followersOf.get(editingPreset.id) ?? []}
+          onCancel={closeAll}
+          onSave={patch => {
+            updateAccessPreset(editingPreset.id, patch);
+            showToast({ variant: "success", title: t.presetSavedToast, desc: patch.label ?? editingPreset.label });
+            closeAll();
+          }} />
+      ) : presets.length > 0 && (
+        <>
+          <PresetMatrix
+            presets={presets}
+            lang={lang}
+            header={pr => {
+              const names = followersOf.get(pr.id) ?? [];
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0 }}>
+                  <span title={presetLabel(pr, lang)} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {presetLabel(pr, lang)}
+                  </span>
+                  {/* The count, not the names: a column is 104px at its narrowest and a list of
+                      names would set the width of the whole table. The names are in the editor. */}
+                  <span style={{ fontSize: "11px", color: names.length === 0 ? "var(--gray-400)" : "var(--gray-500)" }}>
+                    {names.length === 0 ? t.presetFollowersNone : t.presetFollowers(names.length)}
+                  </span>
+                  {canEdit && (
+                    <span style={{ display: "flex", gap: "4px", marginTop: "2px" }}>
+                      <button className="portal-btn-quiet" onClick={() => { closeAll(); setEditing(pr.id); }}
+                        style={{ height: "24px", padding: "0 8px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                        {t.presetEdit}
+                      </button>
+                      <button className="portal-btn-quiet" onClick={() => { closeAll(); setRetiring(pr.id); }}
+                        style={{ height: "24px", padding: "0 8px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                        {t.presetRetire}
+                      </button>
+                    </span>
+                  )}
                 </div>
+              );
+            }}
+          />
+          {/* Under the table rather than inside a cell: retiring one is a decision about the
+              people following it, and the sentence that says how many needs a line of its own. */}
+          {retiringPreset && (
+            <div style={{ padding: "12px", borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{presetLabel(retiringPreset, lang)} — {t.presetRetireAsk}</p>
+              <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.55, marginTop: "4px" }}>{t.presetRetireBody((followersOf.get(retiringPreset.id) ?? []).length)}</p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "10px" }}>
+                <button className="portal-btn-outline" onClick={closeAll}
+                  style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t.presetCancel}
+                </button>
+                <button onClick={() => {
+                    archiveAccessPreset(retiringPreset.id);
+                    showToast({ variant: "warning", title: t.presetRetiredToast, desc: retiringPreset.label });
+                    closeAll();
+                  }}
+                  style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-500)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t.presetRetireConfirm}
+                </button>
               </div>
-            )}
-          </div>
-        );
-      })}
+            </div>
+          )}
+        </>
+      )}
 
       {!canEdit ? (
         // Said, not hidden — the same rule the purpose list follows.
@@ -253,6 +263,95 @@ function AccessPresetList({ t, teamId, canEdit }: {
           + {t.presetNew}
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * THE THREE SIDE BY SIDE, SO THE DIFFERENCE IS THE THING YOU SEE (owner, 2026-09-28: 이거 세로로
+ * 세 개 두면 어때? · 구분된 차이를 더 쉽게 알 수 있게 바꾸고 싶어).
+ *
+ * They were already stacked — three rows, each ending in a long horizontal run of grant names
+ * separated by 「·」. Reading what separates 운영자 from 조사자 meant holding one 10-item sentence
+ * in your head while scanning the next one. The answer every comparable screen reaches for is a
+ * MATRIX: eight web screens checked on Mobbin (Synthesia, Slack, Webflow, Frame.io, Clockwise,
+ * folk, Krea AI, NordVPN) and all eight put the capabilities down the left and the options across
+ * the top, with a mark in the cell. Not one of them prints a per-option list of what it includes.
+ *
+ * THE CELL SAYS HOW FAR, NOT JUST WHETHER. On the two screens that have two depths the cell prints
+ * 「보기」 or 「보기 · 검색」, because that IS the difference between our first two presets — a ✓ in
+ * both cells would have hidden exactly what the owner asked to see.
+ *
+ * Same GRANT_TREE the permission panel draws, so the order, the grouping and the wording cannot
+ * drift between the screen that hands a preset out and the screen that defines it.
+ */
+function PresetMatrix({ presets, lang, header }: {
+  presets: AccessPreset[];
+  lang: "en" | "ko";
+  /** What sits over each column — the name, its actions, its follower line. */
+  header: (preset: AccessPreset) => React.ReactNode;
+}) {
+  const g = APP_GRANT_LABELS[lang];
+  const has = (pr: AccessPreset, a: AppAction) => pr.actions.includes(a);
+  const cell = (text: string, on: boolean) => (
+    <span style={{
+      fontSize: "11.5px", fontWeight: on ? 700 : 500,
+      color: on ? "var(--gray-900)" : "var(--gray-300)",
+      whiteSpace: "nowrap",
+    }}>{text}</span>
+  );
+  const COLS = `minmax(180px, 1.6fr) repeat(${presets.length}, minmax(104px, 1fr))`;
+  const line: React.CSSProperties = {
+    display: "grid", gridTemplateColumns: COLS, columnGap: "12px",
+    alignItems: "center", padding: "8px 12px", borderTop: BORDER,
+  };
+  return (
+    /* Scrolls sideways rather than squeezing: a customer can make more presets than fit, and a
+       column narrower than its own name is worse than a scrollbar. */
+    <div style={{ overflowX: "auto", border: BORDER, borderRadius: "12px", backgroundColor: "white" }}>
+      <div style={{ minWidth: `${180 + presets.length * 104 + 40}px` }}>
+        <div style={{ display: "grid", gridTemplateColumns: COLS, columnGap: "12px", alignItems: "end", padding: "14px 12px 12px" }}>
+          <span />
+          {presets.map(pr => <div key={pr.id} style={{ minWidth: 0 }}>{header(pr)}</div>)}
+        </div>
+        {GRANT_TREE.map((group, gi) => (
+          <div key={gi}>
+            {group.caption && (
+              <div style={{ ...line, backgroundColor: "var(--gray-50)" }}>
+                <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", color: "var(--gray-400)" }}>
+                  {g.groupCaption[group.caption]}
+                </span>
+              </div>
+            )}
+            {group.rows.map(row => (
+              <div key={row.action}>
+                <div style={line}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", minWidth: 0, paddingLeft: group.caption ? "10px" : 0 }}>
+                    {g.rowName[row.action] ?? g.actionName[row.action]}
+                  </span>
+                  {presets.map(pr => (
+                    <span key={pr.id}>
+                      {row.search
+                        ? cell(!has(pr, row.action) ? "\u2014" : has(pr, row.search) ? g.stage.viewSearch : g.stage.view, has(pr, row.action))
+                        : cell(has(pr, row.action) ? (row.searchIsAll ? g.stage.searchOnly : "\u2713") : "\u2014", has(pr, row.action))}
+                    </span>
+                  ))}
+                </div>
+                {row.child && (
+                  <div style={line}>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", paddingLeft: "22px", minWidth: 0 }}>
+                      {g.rowName[row.child] ?? g.actionName[row.child]}
+                    </span>
+                    {presets.map(pr => (
+                      <span key={pr.id}>{cell(has(pr, row.child!) ? "\u2713" : "\u2014", has(pr, row.child!))}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -314,17 +413,5 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
         </button>
       </div>
     </div>
-  );
-}
-
-/** The actions a preset hands out, in one line, for the collapsed row. */
-function PresetGrantSummary({ preset }: { preset: AccessPreset }) {
-  const names = useGrantNames();
-  // In APP_ACTIONS order, so two presets holding the same set read identically.
-  const parts = APP_ACTIONS.filter(a => preset.actions.includes(a)).map(a => names.action[a]);
-  return (
-    <p style={{ fontSize: "11px", color: "var(--gray-600)", lineHeight: 1.5, marginTop: "5px" }}>
-      {parts.join(" · ")}
-    </p>
   );
 }
