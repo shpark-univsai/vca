@@ -551,7 +551,17 @@ RedFace 화면을 열고, 동시에 모니터링·Re-ID·레드맵의 검색창�
 | `dashboardTrail` | `liveView` |
 | `monitoringVip` · `monitoringUnknown` · `liveMonitoringSearch` | `liveMonitoring` |
 | `reidSearch` | `reid` |
-| `export` | `trail` |
+
+**`export`에는 부모가 없습니다(2026-09-28 변경).** 전에는 `trail`이 부모였습니다 — 레드맵이 앱
+안에서 내보내기 버튼을 가진 유일한 화면이었기 때문입니다. 베스트 프레임에도 같은 버튼이
+생겨(같은 매니페스트·같은 해시, `surface: "bestframe"`) 이제 두 화면에 걸칩니다. 부모를 그대로
+뒀다면 `withAppActionDeps`가 레드맵 없는 계정에서 이 권한을 조용히 떨어뜨렸을 것입니다.
+
+> 검토 중: 앱의 증거 내보내기를 남길지 자체가 아직 정해지지 않았습니다. 내보내는 파일에는
+> 영상도 사진도 들어 있지 않고(`frame_sha256`은 `null`), 파일 스스로 서명이 없다고 적으며,
+> `purpose`는 앱이 목적을 묻지 않아 `null`로 나갑니다. 같은 자료를 포털의 「외부 요청」은 근거·
+> 목적·결정 사유·전달 방식·가림 여부까지 기록하고 내보냅니다. 없애기로 하면 이 권한
+> (`export`)과 위 문단은 함께 사라집니다.
 
 **`bestframeVip` · `bestframeVehicle` · `bestframeUnknown`에는 부모가 없습니다.** 베스트
 프레임 탭은 `liveWall`이나 `history` 중 **어느 하나로도 열려서** 매달 곳이 하나가 아닙니다.
