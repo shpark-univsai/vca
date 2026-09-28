@@ -371,7 +371,12 @@ const T = {
     scopeLabel: "Cameras",
     scopeHeldAll: (n: number) => `Every camera on their projects — ${n} today, and any added later.`,
     scopeHeldSome: (n: number, total: number) => `${n} of ${total} cameras.`,
-    scopePick: "Choose cameras",
+    /* Names the GROUP too (owner, 2026-09-28: 카메라 그룹 만들고, 만든걸 활용해야하는뎅 지금
+       계정 초대에는 그게 없는것같은뎅?). The picker behind this button has led with camera groups
+       since it was built, and an account's scope can be nothing but groups — but this button, the
+       only door to it on the invite step, said only "cameras". Somebody who had just built a group
+       had no reason to think this was where it gets used. */
+    scopePick: "Choose groups or cameras",
     // WHAT THE SITE CAN REACH, NOT A SEND THAT DOES NOT HAPPEN. These three lines used to read
     // "Invite will be sent by external email…" — a future-tense promise made one button before the
     // panel that says, in as many words, that nothing has been sent and the link is handed over by
@@ -746,7 +751,7 @@ const T = {
     scopeLabel: "카메라 범위",
     scopeHeldAll: (n: number) => `담당 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
     scopeHeldSome: (n: number, total: number) => `${total}대 중 ${n}대.`,
-    scopePick: "카메라 고르기",
+    scopePick: "그룹·카메라 고르기",
     /* 「…에는」 rather than 「…는」: a project's name can end in either a vowel or a consonant —
        and half of them are English — so no single subject particle is correct for all of them.
        This is the same trap the camera scope sentence was rewritten to avoid. */
