@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Minus, Pencil, Trash2, Undo2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Minus, Pencil, Trash2, Undo2 } from "lucide-react";
 import {
   accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
   withAppActionDeps, type AccessPreset, type AppAction,
@@ -62,8 +62,8 @@ const T = {
     presetNoActions: "A preset with nothing ticked cannot be given to anyone.",
     presetUndoRemove: "Undo",
     presetCycleHint: "Click to change",
-    presetGroupAll: "All allowed",
-    presetGroupSome: "Some allowed",
+    presetGroupAll: "All",
+    presetGroupSome: "Some",
     presetRetire: "Delete",
     presetRetireAsk: "Retire this preset?",
     presetRetireBody: (n: number) => n === 0
@@ -100,8 +100,8 @@ const T = {
     presetNoActions: "아무것도 고르지 않은 프리셋은 아무에게도 줄 수 없습니다.",
     presetUndoRemove: "되돌리기",
     presetCycleHint: "눌러서 바꾸기",
-    presetGroupAll: "전체 가능",
-    presetGroupSome: "일부 가능",
+    presetGroupAll: "전체 허용",
+    presetGroupSome: "일부 허용",
     presetRetire: "삭제",
     presetRetireAsk: "이 프리셋을 폐기할까요?",
     presetRetireBody: (n: number) => n === 0
@@ -444,6 +444,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
   onSetActions: (id: string, actions: AppAction[]) => void;
 }) {
   const g = APP_GRANT_LABELS[lang];
+  const [shut, setShut] = useState<Set<string>>(new Set());
   const actionsOf = (pr: AccessPreset) => (editing ? draft[pr.id]?.actions ?? pr.actions : pr.actions);
   /*
    * VALUE COLUMNS ARE 150px, AND THE SLACK GOES TO THE RIGHT MARGIN (owner, 2026-09-28: 왼쪽에
@@ -462,7 +463,9 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
   const COLS = `minmax(160px, 220px) repeat(${presets.length}, 168px) minmax(0, 1fr)`;
   const line: React.CSSProperties = {
     display: "grid", gridTemplateColumns: COLS, columnGap: "12px",
-    alignItems: "center", padding: "8px 12px", borderTop: BORDER,
+    /* 6px, not 8 — measured 41px rows against 28-34px in the six admin matrices checked on
+       Mobbin. At seventeen rows the difference is a whole screen. */
+    alignItems: "center", padding: "6px 12px", borderTop: BORDER,
   };
 
   /** The states one row can hold, in the order clicking walks them. */
@@ -491,7 +494,20 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
   const actionsIn = (group: GrantGroupDef): AppAction[] =>
     group.rows.flatMap(r => [r.action, ...(r.search ? [r.search] : []), ...(r.children ?? [])]);
 
+  /*
+   * THE BAND'S CELL IS A CONTROL, SO IT ONLY EXISTS WHILE THERE IS SOMETHING TO CONTROL.
+   *
+   * It was drawn in both modes, and reading 「전체 허용」 on 베스트 프레임 with the five rows that
+   * say the same thing sitting directly under it is the one line on this screen that says nothing
+   * you cannot already see — and a bold summary value per column over a list of features is the
+   * pricing table's tier row. Six admin matrices were checked on Mobbin and every one of them
+   * leaves the group row's cells empty.
+   *
+   * While EDITING it earns its place: it is the only way to turn a whole tab on in one press,
+   * which is what the owner asked it for.
+   */
   const groupCell = (pr: AccessPreset, group: GrantGroupDef) => {
+    if (!editing) return null;
     const held = actionsOf(pr);
     const gone = removed.includes(pr.id);
     const owned = actionsIn(group);
@@ -673,12 +689,23 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
                 table lost its inner border, and without it a tab and a grant were the same kind of
                 line. It runs to the card's inner edge — it is the head of a section, not a row —
                 while its text keeps the rows' 12px so the column still lines up. */}
-            <div style={{ ...line, margin: "0 -4px", padding: "8px 16px", borderTop: gi === 0 ? "none" : BORDER, backgroundColor: "var(--gray-50)" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0 }}>
-                <GrantGroupIcon caption={group.caption} color="var(--gray-500)" />
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>
-                  {g.groupName[group.caption]}
-                </span>
+            <div style={{ ...line, margin: "0 -4px", padding: "7px 16px", borderTop: gi === 0 ? "none" : BORDER, backgroundColor: "var(--gray-50)" }}>
+              {/* THE TAB FOLDS (Vanta, StackAI and Cofounder all do). Seventeen rows is more than
+                  a screen, and somebody checking what 데이터 gives away should not have to scroll
+                  past 베스트 프레임's five to reach it. Its own button, not the whole band — the
+                  band's cells are controls of their own while editing. */}
+              <span style={{ display: "flex", alignItems: "center", gap: "5px", minWidth: 0 }}>
+                <button type="button" onClick={() => setShut(c => { const n = new Set(c); if (n.has(group.caption)) n.delete(group.caption); else n.add(group.caption); return n; })}
+                  aria-expanded={!shut.has(group.caption)} aria-label={g.groupName[group.caption]}
+                  style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0, padding: "2px 4px 2px 0", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", color: "var(--gray-500)" }}>
+                  {shut.has(group.caption)
+                    ? <ChevronRight size={13} strokeWidth={2.6} aria-hidden="true" />
+                    : <ChevronDown size={13} strokeWidth={2.6} aria-hidden="true" />}
+                  <GrantGroupIcon caption={group.caption} color="var(--gray-500)" />
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>
+                    {g.groupName[group.caption]}
+                  </span>
+                </button>
               </span>
               {/* THE WHOLE TAB IN ONE CELL (owner, 2026-09-28: 회색 배경에도 체크 가능하게 해서
                   그 화면에 모든 기능 허용하게 할 건지 체크하는 걸로 만들어 줘). It reads as a
@@ -687,7 +714,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
                   set: it is what the rows below say, so the press from there goes to 전체. */}
               {presets.map(pr => <span key={pr.id} style={{ opacity: removed.includes(pr.id) ? 0.4 : 1 }}>{groupCell(pr, group)}</span>)}
             </div>
-            {group.rows.map(row => (
+            {!shut.has(group.caption) && group.rows.map(row => (
               <div key={row.action}>
                 {/* A heading inside the tab, with no cells of its own — 이벤트 is a panel, not a
                     grant. See GrantRowDef.subhead. */}
