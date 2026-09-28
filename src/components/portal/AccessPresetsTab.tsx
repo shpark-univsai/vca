@@ -303,21 +303,25 @@ function PresetMatrix({ presets, lang, header }: {
   const COLS = `minmax(180px, 1.6fr) repeat(${presets.length}, minmax(104px, 1fr))`;
   const line: React.CSSProperties = {
     display: "grid", gridTemplateColumns: COLS, columnGap: "12px",
-    alignItems: "center", padding: "8px 12px", borderTop: BORDER,
+    alignItems: "center", padding: "8px 0", borderTop: BORDER,
   };
   return (
     /* Scrolls sideways rather than squeezing: a customer can make more presets than fit, and a
        column narrower than its own name is worse than a scrollbar. */
-    <div style={{ overflowX: "auto", border: BORDER, borderRadius: "12px", backgroundColor: "white" }}>
+    /* NO BORDER OF ITS OWN (owner, 2026-09-28: 안에 테두리가 크게 있는데 이게 라인이 두 개 있는
+       것 같아 보여서 지저분해 보여). The tab already draws a bordered, rounded card around this —
+       a second rounded box 16px inside the first is two edges saying one thing. The rows' own
+       hairlines are what separates them, which is all a table needs. */
+    <div style={{ overflowX: "auto" }}>
       <div style={{ minWidth: `${180 + presets.length * 104 + 40}px` }}>
-        <div style={{ display: "grid", gridTemplateColumns: COLS, columnGap: "12px", alignItems: "end", padding: "14px 12px 12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: COLS, columnGap: "12px", alignItems: "end", padding: "2px 0 12px" }}>
           <span />
           {presets.map(pr => <div key={pr.id} style={{ minWidth: 0 }}>{header(pr)}</div>)}
         </div>
         {GRANT_TREE.map((group, gi) => (
           <div key={gi}>
             {group.caption && (
-              <div style={{ ...line, backgroundColor: "var(--gray-50)" }}>
+              <div style={{ ...line, padding: "8px 10px", margin: "0 -10px", backgroundColor: "var(--gray-50)" }}>
                 <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", color: "var(--gray-400)" }}>
                   {g.groupCaption[group.caption]}
                 </span>
