@@ -173,9 +173,9 @@ const T = {
     reasonNoApp: "This account has no app access — there are no screens to grant or to search on.",
     reasonNoPortal: "This account does not open Portal — change where they sign in first.",
     manageAccount: "Manage account",
-    panelWhereSection: "Where they get in",
-    panelWhatSection: "What they may do",
-    panelAccountSection: "Getting back in",
+    panelWhereSection: "Access",
+    panelWhatSection: "Permissions",
+    panelAccountSection: "Passwords and codes",
     panelStatusSection: "Account status",
     panelGrants: "App permissions",
     panelNoPortal: "No Portal",
@@ -467,7 +467,9 @@ const T = {
     scopeFilterNone: "앱 접근 없음",
 
     // Role/status summary strip
-    axisConsoleRole: "포털 역할",
+    /* 「Portal 역할」, not 「포털 역할」 — the console says it the first way in seven other places
+       (the row menu, the confirm, the guide, permNone) and this was the only 포털. */
+    axisConsoleRole: "Portal 역할",
     axisDoor: "로그인",
     countOwners: "최고관리자",
     countAdmins: "관리자",
@@ -582,9 +584,19 @@ const T = {
     reasonNoApp: "앱 접근이 없는 계정입니다 — 지정하거나 검색할 화면이 없습니다.",
     reasonNoPortal: "Portal을 열지 않는 계정입니다 — 로그인 위치를 먼저 바꾸세요.",
     manageAccount: "계정 관리",
-    panelWhereSection: "들어가는 곳",
-    panelWhatSection: "할 수 있는 일",
-    panelAccountSection: "다시 들어가게 하기",
+    /* THE WORDS THE REST OF THE CONSOLE ALREADY USES (owner, 2026-09-28: 들어가는 곳, 할 수
+       있는 일, 다시 들어가게 하기 — 이 단어들이 어색해 보여, 다른 화면들에서 쓰이는 것들 보고
+       맞춰줘 직관적이고 쉽게).
+
+       They were descriptions of a category rather than names of one, and none of the three
+       appeared anywhere else. The replacements are lifted from screens this reader has already
+       used: 「접근」 is what the 등록 코드 panel's own buttons say (접근: 앱만 / 접근: Portal + 앱),
+       「권한」 is the invite form's field and the accounts table's column heading, and the third
+       section is now named after the two things in it rather than after the reason for using them
+       — which is also why 인물 검색 차단 left it (see the 권한 group below). */
+    panelWhereSection: "접근",
+    panelWhatSection: "권한",
+    panelAccountSection: "비밀번호와 코드",
     panelStatusSection: "계정 상태",
     panelGrants: "앱 권한",
     panelNoPortal: "Portal 없음",
@@ -5102,9 +5114,24 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                        PANEL_GROUP. What keeps two rows apart now is their own padding. */
                     const style: React.CSSProperties = {
                       width: "100%", display: "flex", alignItems: "center", gap: "8px", textAlign: "left",
-                      padding: row.hero ? "11px 12px" : "8px 12px", border: "none", borderRadius: "8px",
+                      /* Taller than the one-line version it replaces, because the row is now two
+                         lines — see the stacked block below. */
+                      padding: row.hero ? "10px 12px" : "9px 12px", border: "none", borderRadius: "8px",
                       backgroundColor: "transparent", fontFamily: "inherit",
                     };
+                    /*
+                     * STACKED, NOT SIDE BY SIDE (owner, 2026-09-28: 가로로 저렇게 되어 있으니까
+                     * 읽기 불편해 · 세로형으로 바꿔줘).
+                     *
+                     * The label sat left and the value was pushed to the right edge, so reading one
+                     * row meant crossing an empty gap that changed width on every row — the eye had
+                     * to find where the answer started each time. Stacked, every answer begins on
+                     * the same x as the question above it and as every other row's.
+                     *
+                     * It also stops the values from being truncated for no reason: pushed right
+                     * they shared the line with their own label, so 「Portal + 앱」 and 「최고관리자」
+                     * were competing for one line's width. On their own line they have the row.
+                     */
                     const label = (
                       <>
                         {/* The label gives way to the value: it was 700 in gray-600, the same
@@ -5134,23 +5161,25 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                         )}
                       </>
                     );
-                    const value = (
-                      <span style={{
-                        flex: 1, minWidth: 0, textAlign: "right",
-                        fontSize: row.hero ? "15px" : "13px", fontWeight: row.hero ? 800 : 700,
-                        color: row.disabled ? "var(--gray-400)" : "var(--gray-900)",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      }}>{row.value}</span>
+                    const stacked = (
+                      <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px", minWidth: 0 }}>{label}</span>
+                        <span style={{
+                          maxWidth: "100%",
+                          fontSize: row.hero ? "15px" : "13px", fontWeight: row.hero ? 800 : 700,
+                          color: row.disabled ? "var(--gray-400)" : "var(--gray-900)",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>{row.value}</span>
+                      </span>
                     );
-                    if (row.disabled) return <div key={row.key} style={style}>{label}{value}</div>;
+                    if (row.disabled) return <div key={row.key} style={style}>{stacked}</div>;
                     return (
                       /* portal-btn-quiet, because a row with no border and no fill of its own has
                          nothing but the chevron to say it opens something. The tint on pointing is
                          the rest of that sentence — see the class's own note: nothing at rest and
                          nothing on pointing is not a quiet control, it is text. */
                       <button key={row.key} type="button" className="portal-btn-quiet" onClick={row.onClick} style={{ ...style, cursor: "pointer" }}>
-                        {label}
-                        {value}
+                        {stacked}
                         {/* No chevron on a row that cannot be opened — an arrow that leads nowhere
                             is the control this console keeps being asked to stop drawing. */}
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -5159,6 +5188,48 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                       </button>
                     );
                   })}
+                  {/*
+                    인물 검색 차단 MOVED HERE FROM THE ACTIONS BLOCK (2026-09-28).
+
+                    It was filed under the section that is now 「비밀번호와 코드」, next to a
+                    password reset and a setup code, because that block used to be called
+                    「다시 들어가게 하기」 — and blocking somebody's search is not a way back in, it
+                    is a permission. It is a verb rather than a value, so it keeps the quiet-button
+                    treatment the other actions use instead of becoming a fifth row with a chevron.
+                  */}
+                  {group === "what" && (() => {
+                    const a = { key: "search", label: holdsSearch(mu) ? t.appSearchRevoke : t.appSearchGrant, icon: <UserSearch size={14} strokeWidth={2.2} />,
+                      disabled: !manageAccess || (!holdsSearch(mu) && !mu.appAccess),
+                      reason: !manageAccess ? t.reasonNotOwner : (!holdsSearch(mu) && !mu.appAccess) ? t.reasonNoApp : undefined,
+                      /* Confirmed, and deliberately NOT danger — red means what cannot be undone,
+                         and blocking person search deletes nothing; this same button flips back.
+                         Verbatim from the menu, toast and all. */
+                      onClick: () => {
+                        const next = !holdsSearch(mu);
+                        close();
+                        setConfirming({
+                          title: next ? t.confirmSearchGrantTitle(mu.name) : t.confirmSearchRevokeTitle(mu.name),
+                          body: next ? t.confirmSearchGrantBody : t.confirmSearchRevokeBody,
+                          confirmLabel: next ? t.appSearchGrant : t.appSearchRevoke,
+                          onConfirm: () => {
+                            setAppSearch(mu.id, next);
+                            showToast({ variant: next ? "success" : "warning", title: next ? t.appSearchToastOn : t.appSearchToastOff, desc: t.appSearchToastDesc(mu.name) });
+                          },
+                        });
+                      }, };
+                    return (
+                      <button type="button" className={a.disabled ? undefined : "portal-btn-quiet"}
+                        onClick={a.disabled ? undefined : a.onClick} disabled={a.disabled}
+                        title={a.disabled ? a.reason : undefined}
+                        style={{
+                          ...SECONDARY_BTN, height: CONTROL_HEIGHT, padding: "0 12px", marginTop: "2px",
+                          color: a.disabled ? "var(--gray-300)" : "var(--gray-700)",
+                          fontWeight: 700, cursor: a.disabled ? "default" : "pointer",
+                        }}>
+                        {a.icon}{a.label}
+                      </button>
+                    );
+                  })()}
                 </div>
                 </div>
                 ))}
@@ -5209,27 +5280,6 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                       disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
                       onClick: () => { close(); setViewingCodeFor(mu); },
                     }] : []),
-                    {
-                      key: "search", label: holdsSearch(mu) ? t.appSearchRevoke : t.appSearchGrant, icon: <UserSearch size={14} strokeWidth={2.2} />,
-                      disabled: !manageAccess || (!holdsSearch(mu) && !mu.appAccess),
-                      reason: !manageAccess ? t.reasonNotOwner : (!holdsSearch(mu) && !mu.appAccess) ? t.reasonNoApp : undefined,
-                      /* Confirmed, and deliberately NOT danger — red means what cannot be undone,
-                         and blocking person search deletes nothing; this same button flips back.
-                         Verbatim from the menu, toast and all. */
-                      onClick: () => {
-                        const next = !holdsSearch(mu);
-                        close();
-                        setConfirming({
-                          title: next ? t.confirmSearchGrantTitle(mu.name) : t.confirmSearchRevokeTitle(mu.name),
-                          body: next ? t.confirmSearchGrantBody : t.confirmSearchRevokeBody,
-                          confirmLabel: next ? t.appSearchGrant : t.appSearchRevoke,
-                          onConfirm: () => {
-                            setAppSearch(mu.id, next);
-                            showToast({ variant: next ? "success" : "warning", title: next ? t.appSearchToastOn : t.appSearchToastOff, desc: t.appSearchToastDesc(mu.name) });
-                          },
-                        });
-                      },
-                    },
                   ].map(a => (
                     <button key={a.key} type="button" className={a.disabled ? undefined : "portal-btn-quiet"}
                       onClick={a.disabled ? undefined : a.onClick} disabled={a.disabled}
