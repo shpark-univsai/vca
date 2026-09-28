@@ -45,6 +45,17 @@ export const UNLIMITED_EXPIRY = "Unlimited";
  * what we typed), so the state is different, and the app treats anything that is not "online" as
  * not live, which is correct for both.
  */
+/**
+ * Why one row of a bulk write was left alone.
+ *
+ * `lastAdmin`  — suspending it would leave the installation with no active administrator.
+ * `already`    — it is already in the state being asked for, or it is gone.
+ *
+ * HANDOFF NOTE: a server doing this work will have its own reasons and should send them per row.
+ * The screen prints one line per refusal, so a new reason needs a string and nothing else.
+ */
+export type BulkRefusal = "lastAdmin" | "already";
+
 export type CameraStatus = "online" | "offline" | "error";
 
 /**
@@ -1284,7 +1295,15 @@ interface VcaStoreState {
    * a bulk action must not be the way around a guard the individual action enforces. Ids it
    * refused come back so the screen can say who is still active and why.
    */
-  suspendPortalUsers: (userIds: string[]) => string[];
+  /**
+   * Suspend several accounts. Returns the ones it would NOT suspend, WITH THE REASON.
+   *
+   * It returned bare ids and the screen reported only how many succeeded, so a bulk action that
+   * half worked said 「9명 정지됨」 and never said who the other three were or why. A partial result
+   * is the normal case for a bulk write against a real server, so the reason travels with the
+   * refusal rather than being guessed by whoever draws it.
+   */
+  suspendPortalUsers: (userIds: string[]) => { id: string; reason: BulkRefusal }[];
   /**
    * Issue a temporary password for an account and return the plaintext, once. Returns null when
    * there is no such user, so the caller shows nothing rather than an empty credential box.
@@ -5952,18 +5971,18 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     }),
   suspendPortalUsers: (userIds) => {
     const state = get();
-    const refused: string[] = [];
+    const refused: { id: string; reason: BulkRefusal }[] = [];
     // Evaluated against a list that shrinks as we go: suspending four of five administrators must
     // still leave the fifth, and checking every id against the ORIGINAL list would let all five
     // through — each one individually "not the last" at the moment it was checked.
     let projected = state.portalUsers;
     userIds.forEach(id => {
       const target = projected.find(u => u.id === id);
-      if (!target || target.status === "suspended") { refused.push(id); return; }
-      if (isLastActiveAdmin(projected, id)) { refused.push(id); return; }
+      if (!target || target.status === "suspended") { refused.push({ id, reason: "already" }); return; }
+      if (isLastActiveAdmin(projected, id)) { refused.push({ id, reason: "lastAdmin" }); return; }
       projected = projected.map(u => (u.id === id ? { ...u, status: "suspended" as const } : u));
     });
-    const changed = userIds.filter(id => !refused.includes(id));
+    const changed = userIds.filter(id => !refused.some(r => r.id === id));
     if (changed.length > 0) {
       set(st => ({
         portalUsers: st.portalUsers.map(u => (changed.includes(u.id) ? { ...u, status: "suspended" as const } : u)),

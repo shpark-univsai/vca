@@ -339,6 +339,10 @@ const T = {
     lastAdminReason: "The only owner who can sign in. Make someone else an owner first.",
     lastAdminRoleFixed: "The only owner — the role cannot be changed until there is another one.",
     tempExpires: (hours: number) => `Expires in ${hours} hours`,
+    bulkResultTitle: "Not everything was changed",
+    bulkResultBody: (done: number, left: number) => `${done} changed. ${left} left as ${left === 1 ? "it was" : "they were"}:`,
+    bulkRefusedLastAdmin: "The last administrator who can still sign in to Portal. Suspending them would lock everyone out of access management.",
+    bulkRefusedAlready: "Already suspended, or no longer on this project.",
     tempDone: "Done",
 
     // Recovery-mode notice (deployment with no outbound mail)
@@ -722,6 +726,10 @@ const T = {
     tempHandoverTitle: "전달 방법",
     tempHandover: "내선 전화로 불러주거나, 대면 또는 사내 메신저로 전달하세요.",
     tempExpires: (hours: number) => `${hours}시간 후 만료`,
+    bulkResultTitle: "전부 바뀌지는 않았습니다",
+    bulkResultBody: (done: number, left: number) => `${done}명 적용, ${left}명은 그대로 뒀습니다:`,
+    bulkRefusedLastAdmin: "Portal에 들어올 수 있는 마지막 관리자입니다. 정지하면 아무도 접근 권한을 관리할 수 없게 됩니다.",
+    bulkRefusedAlready: "이미 정지됐거나 이 프로젝트에 없습니다.",
     tempDone: "완료",
 
     // Recovery-mode notice (deployment with no outbound mail)
@@ -3653,6 +3661,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
   const removePortalUser = useVcaStore(s => s.removePortalUser);
   const suspendPortalUsers = useVcaStore(s => s.suspendPortalUsers);
   const [confirmingBulkSuspend, setConfirmingBulkSuspend] = useState(false);
+  /** What a bulk write actually did, when it did not do all of it — see the panel at the end. */
+  const [bulkResult, setBulkResult] = useState<{ done: number; refused: { name: string; reason: string }[] } | null>(null);
   const setAppSearch = useVcaStore(s => s.setAppSearch);
   const issueInviteToken = useVcaStore(s => s.issueInviteToken);
   const { showToast } = useToast();
@@ -4510,7 +4520,25 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             const refused = suspendPortalUsers(bulkSuspendTargets.map(u => u.id));
             const done = bulkSuspendTargets.length - refused.length;
             setConfirmingBulkSuspend(false);
-            showToast({ variant: done > 0 ? "success" : "warning", title: t.bulkSuspendedToast(done) });
+            /*
+             * A PARTIAL RESULT GETS A SCREEN, not a number in a toast.
+             *
+             * This said 「9명 정지됨」 and dropped the other three on the floor — which three, and
+             * why, had nowhere to be. A bulk write against a real server half-succeeds as a matter
+             * of course, so the place has to exist before the server does. A toast is wrong for it
+             * twice over: it leaves after five seconds, and it cannot hold a list.
+             */
+            if (refused.length > 0) {
+              setBulkResult({
+                done,
+                refused: refused.map(r => ({
+                  name: bulkSuspendTargets.find(u => u.id === r.id)?.name ?? r.id,
+                  reason: r.reason === "lastAdmin" ? t.bulkRefusedLastAdmin : t.bulkRefusedAlready,
+                })),
+              });
+              return;
+            }
+            showToast({ variant: "success", title: t.bulkSuspendedToast(done) });
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "40vh", overflowY: "auto" }}>
@@ -5644,6 +5672,32 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
         <InviteLinkPanel title={invitePanel.title} links={invitePanel.links}
           onClose={() => setInvitePanel(null)} onBack={managing ? () => setInvitePanel(null) : undefined} />
       )}
+      {/*
+        WHAT THE BULK ACTION ACTUALLY DID.
+        
+        Only when something was refused — a write that did all of it says so in a toast and gets
+        out of the way. This one has to stay until it is read: it names every account that was left
+        alone and why, which is the half a count cannot carry.
+      */}
+      {bulkResult && (
+        <Drawer title={t.bulkResultTitle} onClose={() => setBulkResult(null)} width="440px"
+          footer={<PanelPrimary onClick={() => setBulkResult(null)} label={t.tempDone} />}>
+          <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <p style={{ fontSize: "13px", color: "var(--gray-700)", lineHeight: 1.6 }}>
+              {t.bulkResultBody(bulkResult.done, bulkResult.refused.length)}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {bulkResult.refused.map(r => (
+                <div key={r.name} style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "10px 12px", borderRadius: "10px", border: BORDER, backgroundColor: "var(--gray-50)" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{r.name}</span>
+                  <span style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5 }}>{r.reason}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Drawer>
+      )}
+
       {credentialFor && (
         <TempPasswordModal user={credentialFor} mailAvailable={mailAvailable}
           onClose={() => setCredentialFor(null)} onBack={() => setCredentialFor(null)} />
