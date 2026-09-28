@@ -390,6 +390,59 @@ export const BREADCRUMB_PROJECT_MAX_WIDTH = "min(320px, 22vw)";
  * opposed to nothing exists. A reader who has narrowed a list and sees "nothing registered yet"
  * concludes the registry is empty rather than that their filter is.
  */
+/**
+ * A LIST HAS FOUR STATES AND THIS FILE DRAWS THREE OF THEM.
+ *
+ * rows · empty (TableEmpty) · loading (TableSkeleton) · failed (TableLoadFailed). Portal reads an
+ * in-memory store today, so nothing is ever loading and nothing ever fails to load — which is
+ * exactly why these were missing, and why they are here before the server is. Whoever wires the
+ * fetch should not have to invent a screen for the second the data is in the air, or for a request
+ * that comes back 500; both are ordinary and both need somewhere to be.
+ *
+ * The skeleton takes the table's own grid, so it occupies the space the rows will occupy rather
+ * than a spinner in the middle of nowhere — the header stays put and the page does not jump when
+ * the answer arrives.
+ */
+export function TableSkeleton({ grid, rows = 6, columnGap = TABLE_COLUMN_GAP }: { grid: string; rows?: number; columnGap?: string }) {
+  return (
+    <div aria-busy="true" aria-live="polite">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} style={{
+          display: "grid", gridTemplateColumns: grid, columnGap,
+          padding: "10px 16px", alignItems: "center",
+          borderBottom: i === rows - 1 ? "none" : BORDER,
+        }}>
+          {grid.split(" ").map((_c, j) => (
+            <span key={j} style={{
+              height: "10px", borderRadius: "5px", backgroundColor: "var(--gray-100)",
+              /* Not every bar the same length: a column of identical grey pills reads as a
+                 rendering fault rather than as text that has not arrived. */
+              width: `${[70, 52, 84, 46, 62, 38][(i + j) % 6]}%`,
+            }} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The list could not be fetched — distinct from 「nothing matches your filter」, which TableEmpty
+ * says, and from 「nothing exists yet」, which it also says. Those are facts about the data; this is
+ * a fact about the request, and the only one of the three a reader can do something about.
+ */
+export function TableLoadFailed({ text, retryLabel, onRetry }: { text: string; retryLabel: string; onRetry: () => void }) {
+  return (
+    <div style={{ padding: "40px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+      <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)" }}>{text}</p>
+      <button type="button" onClick={onRetry}
+        style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+        {retryLabel}
+      </button>
+    </div>
+  );
+}
+
 export function TableEmpty({ text }: { text: string }) {
   return (
     <div style={{ padding: "40px 20px", textAlign: "center" }}>
