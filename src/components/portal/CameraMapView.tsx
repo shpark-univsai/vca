@@ -188,11 +188,23 @@ function escapeHtml(value: string): string {
   ));
 }
 
-/** The status colours this screen already uses in its table and its summary cells. */
+/*
+ * THE MAP IS THE ONE SURFACE WHERE COLOUR IS THE ONLY CHANNEL, and it is a documented exception to
+ * the four tones in PortalShared rather than an oversight.
+ *
+ * In a table the words 「오프라인」 and 「연결 거부」 separate two faults and the colour only has to
+ * say "a fault"; both are amber there. A dot on a map carries no word, so merging them would take
+ * away the only thing that lets an operator see, at a glance, that the dead cameras on the north
+ * road are refusing credentials while the ones by the river are unreachable — which is the triage
+ * this view exists for. The legend under the map names all four on the spot.
+ *
+ * The two ends DO follow the tones: a camera that is fine is quiet (it is most of the dots, and a
+ * field of green says nothing), and one awaiting its first contact is waiting on an installer.
+ */
 function statusColor(cam: Camera): string {
-  if (cam.status === "online") return "var(--success-400)";
+  if (cam.status === "online") return "var(--gray-300)";
   if (cam.status === "error") return "var(--danger-400)";
-  if (isAwaitingFirstContact(cam)) return "var(--gray-300)";
+  if (isAwaitingFirstContact(cam)) return "var(--info-500)";
   return "var(--warning-400)";
 }
 
@@ -742,10 +754,10 @@ export default function CameraMapView({
         {!alwaysPicking && !tintOf && (
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
           {([
-            { color: "var(--success-400)", label: t.connected },
+            { color: "var(--gray-300)", label: t.connected },
             { color: "var(--warning-400)", label: t.offline },
             { color: "var(--danger-400)", label: t.error },
-            { color: "var(--gray-300)", label: t.awaiting },
+            { color: "var(--info-500)", label: t.awaiting },
           ]).map(item => (
             <span key={item.label} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", fontWeight: 600, color: "var(--gray-500)" }}>
               <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: item.color }} />

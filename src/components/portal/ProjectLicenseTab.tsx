@@ -314,8 +314,13 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
     : isExpired ? { label: t.expired, color: "var(--danger-400)" }
     : expiringUrgently ? { label: t.expiringSoon, color: "var(--danger-400)" }
     : expiringSoon ? { label: t.expiringSoon, color: "var(--warning-500)" }
-    : isUnlimitedExpiry ? { label: t.perpetual, color: "var(--success-400)" }
-    : { label: t.valid, color: "var(--success-400)" };
+    /* 「정상」 and 「영구」 are quiet now, like every other well state in Portal since the badge
+       tones were unified — a server that answers, an active account. Green was the last one left,
+       and a green mark on the one screen that has nothing wrong with it was the loudest thing on
+       it. The amber and red steps above stay: this badge is a scale of urgency, not a kind of
+       state, and flattening it would lose the difference between 「곧 만료」 and 「만료 임박」. */
+    : isUnlimitedExpiry ? { label: t.perpetual, color: "var(--gray-600)" }
+    : { label: t.valid, color: "var(--gray-600)" };
 
 
   const used = projectCameras.length;

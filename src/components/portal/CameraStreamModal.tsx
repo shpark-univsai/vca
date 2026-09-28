@@ -105,7 +105,8 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
             does not need to be fenced off from the camera's own facts. The gap does the work. */}
         <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: online ? "var(--success-400)" : "var(--gray-400)", flexShrink: 0 }} />
+            <span style={{ width: "8px", height: "8px", borderRadius: "50%", /* Quiet when it is fine, like every other well state in Portal. */
+              backgroundColor: online ? "var(--gray-300)" : "var(--warning-500)", flexShrink: 0 }} />
             <div>
               <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{camera.name}</p>
               <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{camera.code}</p>
