@@ -9,7 +9,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
   ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, sortRows, useTableSort } from "./PortalShared";
-import { FileOutput, History, UserCog, CalendarClock, Settings } from "lucide-react";
+import { FileOutput, History, UserCog, CalendarClock, Settings, KeyRound } from "lucide-react";
 
 /**
  * What was changed on this project, by whom, and when.
@@ -177,10 +177,15 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
    * 아이콘 넣어줘).
    *
    * Not a new icon set — `PROJECT_TABS` is where the rail draws these, so the mark beside
-   * 「입력 소스」 here is the same 16px glyph the reader clicked to get to this screen. Three areas
-   * are not rail rows (the settings sheet, the sign-up page, and the one app screen that writes
-   * here), and they get no mark rather than a borrowed one: an icon that belongs to another row
-   * would send the reader to the wrong place.
+   * 「입력 소스」 here is the same 16px glyph the reader clicked to get to this screen.
+   *
+   * EVERY AREA HAS ONE, AND NONE IS BORROWED (owner, 2026-09-28: 설정 · 가입 화면 · 앱의 레드맵,
+   * 이거 세 개에만 아이콘이 없는 게 어색하네.. 흠 아이콘을 뺄까..). Dropping them all was the
+   * other way out, and it would have cost the column the thing it is for — a category you scan
+   * rather than read. The three with no rail row turned out to have marks already: 설정 wears the
+   * gear the project screen's settings affordance draws, 가입 화면 wears the key the console uses
+   * for a registration code, and 레드맵 wears the app's OWN tab icon. Nothing new was drawn and
+   * nothing was taken from a neighbouring row.
    */
   const AREA_TAB: Partial<Record<AuditArea, DetailTab>> = {
     vip: "vip", cameras: "cameras", server: "server",
@@ -194,6 +199,21 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
        16px, stroke 2.1). Same glyph at the same weight rather than a second one, and imported from
        lucide rather than from that file, which renders this one (importing back would be a cycle). */
     if (area === "settings") return <Settings size={16} strokeWidth={2.1} color="var(--gray-400)" />;
+    /* 가입 화면 — the page a registration code is redeemed on. No menu row anywhere, but the
+       console already carries a mark for that code: the key the roster's 코드 일괄 발급 wears. The
+       row is "somebody used their code", so the key is what it is ABOUT rather than a borrowed
+       screen. */
+    if (area === "signup") return <KeyRound size={16} strokeWidth={2.1} color="var(--gray-400)" />;
+    /* 레드맵 — an app screen, so it gets the APP's own tab icon, the same way the portal areas get
+       the rail's. The app draws these as a CSS mask so the colour is the caller's; drawn the same
+       way here, because an <img> would arrive in the file's own black. */
+    if (area === "redmap") return (
+      <span style={{
+        width: "16px", height: "16px", backgroundColor: "var(--gray-400)",
+        maskImage: "url(/icons/nav-redmap.svg)", maskSize: "contain", maskRepeat: "no-repeat", maskPosition: "center",
+        WebkitMaskImage: "url(/icons/nav-redmap.svg)", WebkitMaskSize: "contain", WebkitMaskRepeat: "no-repeat", WebkitMaskPosition: "center",
+      }} />
+    );
     const tab = AREA_TAB[area];
     const Icon = tab ? PROJECT_TABS.find(x => x.id === tab)?.icon : undefined;
     return Icon ? <Icon color="var(--gray-400)" /> : null;
