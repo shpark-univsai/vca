@@ -2133,7 +2133,7 @@ export function screensFor(users: PortalUser[]): AppScreen[] {
 
 /** The grants a preset hands out, as the fields they are stored in. */
 /**
- * The product strings for the three presets we ship, keyed by `builtinKey` — the same arrangement
+ * The product strings for the two presets we ship, keyed by `builtinKey` — the same arrangement
  * SERVER_TYPE_LABELS and the licence tab's FEATURE_LABELS make, so the lookup never touches the
  * data. A preset the customer made has no key and keeps its own label.
  */
@@ -2144,9 +2144,16 @@ export function screensFor(users: PortalUser[]): AppScreen[] {
  * called 지난 기록 열람. The grants themselves are unchanged (they are the same pair the old
  * preset held: live plus Best Frame); it is the sentence that was approximate.
  *
- * The three are a LADDER, each a prefix of the next, which is what makes them pickable at a
- * glance — and it is also why custom exists: the off-ladder combinations (export without the
- * trail, say) are real and nothing here should pretend they are not.
+ * The two are a LADDER, 조사자 being 운영자 plus finding a person and following them, which is what
+ * makes them pickable at a glance — and it is also why custom exists: the off-ladder combinations
+ * are real and nothing here should pretend they are not.
+ *
+ * 감독자 WAS A THIRD RUNG AND IS GONE (owner, 2026-09-28). The only grant that separated it from
+ * 조사자 was 증거 내보내기, and that left the app the same day — the app has nothing left that a
+ * supervisor may do and an investigator may not, because supervising lives in the PORTAL role
+ * (`portalRole`), not in what the app opens. Two identical columns in the preset table would have
+ * been a distinction the product cannot back up. The three accounts that followed it now follow
+ * 조사자, which is the same sixteen grants they already held.
  */
 export const PRESET_BUILTIN_LABELS: Record<NonNullable<AccessPreset["builtinKey"]>, { label: { en: string; ko: string }; description: { en: string; ko: string } }> = {
   operator: {
@@ -2156,10 +2163,6 @@ export const PRESET_BUILTIN_LABELS: Record<NonNullable<AccessPreset["builtinKey"
   investigator: {
     label: { en: "Investigator", ko: "조사자" },
     description: { en: "Operator, plus finding a person and following their route", ko: "운영자가 하는 일에 인물 검색과 동선 추적을 더합니다" },
-  },
-  supervisor: {
-    label: { en: "Supervisor", ko: "감독자" },
-    description: { en: "Investigator, plus taking evidence out of the building", ko: "조사자가 하는 일에 증거 내보내기를 더합니다" },
   },
 };
 
@@ -2754,7 +2757,7 @@ export interface AccessPreset {
    * DROPPED THE MOMENT SOMEBODY RENAMES IT. Once the customer has named it, it is theirs and the
    * translation would overwrite their word — see updateAccessPreset.
    */
-  builtinKey?: "operator" | "investigator" | "supervisor";
+  builtinKey?: "operator" | "investigator";
   /** One line saying what this is for. Required: a list of names with no descriptions cannot be
    *  chosen from, which is the whole failure mode of removing the pre-selected default. */
   description: string;
@@ -3177,7 +3180,7 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-supervisor", status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-25 09:14" },
   { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
   { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
@@ -3221,7 +3224,7 @@ const ACCESS_REQUESTS: AccessRequest[] = [];
  * in red, before the code is handed over, which is the whole reason that state is drawn.
  */
 const STAFF_ROSTER: RosterEntry[] = [
-  { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "FQ4M7XB2", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "FQ4M7XB2", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3002", name: "Priya Nair", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "BPXW4762" },
   { employeeId: "EMP-3003", name: "Daniel Cruz", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "HKLM9234" },
   { employeeId: "EMP-3004", name: "Farah Ismail", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "TN8R3KD5", issuedAt: "2026-09-20T09:00:00+08:00" },
@@ -3232,7 +3235,7 @@ const STAFF_ROSTER: RosterEntry[] = [
   // used in the seeds any more — it could never demonstrate that expiry actually works.
   { employeeId: "EMP-3007", name: "Marcus Ho", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "VXYZ2345", issuedAt: "2026-07-15T09:00:00+08:00" },
   { employeeId: "EMP-3008", name: "Aisha Bakar", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "JKMN6789" },
-  { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "MZ2K5QP7", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "MZ2K5QP7", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3010", name: "Sana Idris", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "used", code: "CDFG3456" },
   { employeeId: "EMP-3011", name: "Emily Foster", department: "Operations", projectId: "proj-riverside", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "RB9T4LN6", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3012", name: "Kevin Ng", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "LMPQ8765" },
@@ -4451,11 +4454,6 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     {
       id: "preset-investigator", teamId: "team-univs", builtinKey: "investigator", label: "조사자",
       description: "운영자가 하는 일에 인물 검색과 동선 추적을 더합니다",
-      actions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"],
-    },
-    {
-      id: "preset-supervisor", teamId: "team-univs", builtinKey: "supervisor", label: "감독자",
-      description: "조사자가 하는 일에 증거 내보내기를 더합니다",
       actions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"],
     },
   ],
