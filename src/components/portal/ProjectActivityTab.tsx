@@ -82,7 +82,10 @@ const T = {
     /* "Screen" is the search log's own heading for this axis, not a second word for it. The last
        one keeps the heading the single column always had, because it is still the same question —
        the two before it were carved out of it. */
-    colAt: "When", colActor: "Who", colTarget: "What", colArea: "Screen", colMessage: "What changed",
+    /* 「대상」 is "Target", not "What": with "What" the table had two columns opening on the same
+       word (What · What changed) and the one holding 「CAM-NOV-001」 read as "what happened" rather
+       than "what was acted on". The Korean was never wrong — this was a translation collision. */
+    colAt: "When", colActor: "Who", colTarget: "Target", colArea: "Screen", colMessage: "What changed",
     searchPlaceholder: "Search what changed",
     filterAllActors: "Everyone",
     filterAllAreas: "Every screen",

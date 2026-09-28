@@ -113,7 +113,10 @@ const T = {
     deepfakeFileOption: "Upload for deepfake check",
     deepfakeUploadTitle: "Deepfake check",
     deepfakeUploadHint: "MP4, MOV, JPG, PNG. Judged authentic or manipulated — this does not search the file for faces.",
-    colSource: "Source",
+    /* "Type", because 「소스」 next to it is also "Source" in English — one table, two columns,
+       one word, and neither says which is the name and which is the kind. Korean reads 소스 ·
+       종류 and never had the clash. */
+    colSource: "Type",
     sourceCamera: "Camera",
     sourceVideo: "Video",
     sourceImage: "Image",
