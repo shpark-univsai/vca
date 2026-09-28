@@ -1015,7 +1015,11 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
    * a control that lies about what the panel holds.
    */
   const portalUsers = useVcaStore(st => st.portalUsers);
-  const maySeeTrails = holdsAppAction(portalUsers, "trail");
+  /* THE DASHBOARD'S OWN GRANT, NOT REDMAP'S (2026-09-28). These rows used to ride on `trail`, so
+     taking them off the landing screen meant taking the map away too and the permission list said
+     nothing about the dashboard. `dashboardTrail` is a child of `liveView` — the panel has to be
+     open for its rows to be in it — and the store keeps that true (APP_ACTION_PARENT). */
+  const maySeeTrails = holdsAppAction(portalUsers, "dashboardTrail");
   const FILTERS: FilterType[] = maySeeTrails
     ? ["All", "VIP Detection", "Tracking"]
     : ["All", "VIP Detection"];

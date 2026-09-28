@@ -2256,11 +2256,26 @@ export type GrantRowDef = {
   /** A grant that is not a screen: an indented row under this one. */
   child?: AppAction;
 };
-export type GrantGroupDef = { caption?: "dashboard" | "data"; rows: GrantRowDef[] };
+export type GrantGroupDef = { caption: "dashboard" | "bestframe" | "data" | "redmap"; rows: GrantRowDef[] };
 
+/*
+ * THE APP'S FOUR TABS, AND WHAT EACH ONE LETS YOU DO (owner, 2026-09-28: 왼쪽에 메뉴로 구분해서
+ * 보여주려면 이 네 개를 중심으로 아래 각각 기능을 나열해야 할 것 같은데?).
+ *
+ * Two of the four used to be captions and two were bare rows, which read as if 베스트 프레임 sat
+ * inside 대시보드 and 증거 내보내기 sat inside a screen called 레드맵. The app's menu bar has four
+ * tabs — DASHBOARD · BEST FRAME · DATA · REDMAP — and every grant belongs under exactly one of
+ * them, so all four are captions now and every grant is a row beneath its own tab.
+ *
+ * The two rows that used to repeat their tab's name were renamed to what they actually grant:
+ * 「지난 기록」 under 베스트 프레임 and 「동선 추적」 under 레드맵 — both the product's own words
+ * (see the note in appGrants' rowName). 증거 내보내기 moved from being that row's child to being
+ * its sibling: under 레드맵 the two are peers, which is what the owner's reading says. The
+ * dependency between them is unchanged and still lives in `APP_ACTION_PARENT`.
+ */
 export const GRANT_TREE: GrantGroupDef[] = [
-  { caption: "dashboard", rows: [{ action: "liveView" }, { action: "systemStatus" }] },
-  { rows: [{ action: "history" }] },
+  { caption: "dashboard", rows: [{ action: "liveView", child: "dashboardTrail" }, { action: "systemStatus" }] },
+  { caption: "bestframe", rows: [{ action: "history" }] },
   {
     caption: "data",
     rows: [
@@ -2269,7 +2284,7 @@ export const GRANT_TREE: GrantGroupDef[] = [
       { action: "redface", searchIsAll: true },
     ],
   },
-  { rows: [{ action: "trail", searchIsAll: true, child: "export" }] },
+  { caption: "redmap", rows: [{ action: "trail", searchIsAll: true }, { action: "export" }] },
 ];
 
 /**

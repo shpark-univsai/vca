@@ -9,7 +9,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, AppGrantList,
-  TextField, GRANT_TREE, type GrantRowDef,
+  TextField, GRANT_TREE, PICKED_LINE, PICKED_FILL, type GrantRowDef, type GrantGroupDef,
 } from "./PortalShared";
 import { APP_GRANT_LABELS } from "@/lib/appGrants";
 
@@ -60,6 +60,9 @@ const T = {
     presetEdit: "Edit",
     presetNoActions: "A preset with nothing ticked cannot be given to anyone.",
     presetUndoRemove: "Undo",
+    presetCycleHint: "Click to change",
+    presetGroupAll: "All",
+    presetGroupSome: "Some",
     presetRetire: "Delete",
     presetRetireAsk: "Retire this preset?",
     presetRetireBody: (n: number) => n === 0
@@ -91,6 +94,9 @@ const T = {
     presetEdit: "편집",
     presetNoActions: "아무것도 고르지 않은 프리셋은 아무에게도 줄 수 없습니다.",
     presetUndoRemove: "되돌리기",
+    presetCycleHint: "눌러서 바꾸기",
+    presetGroupAll: "전체",
+    presetGroupSome: "일부",
     presetRetire: "삭제",
     presetRetireAsk: "이 프리셋을 폐기할까요?",
     presetRetireBody: (n: number) => n === 0
@@ -271,6 +277,7 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
           <PresetMatrix
             presets={presets}
             lang={lang}
+            t={t}
             editing={editing}
             draft={draft}
             removed={removed}
@@ -299,7 +306,10 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
                   </span>
                   {editing && (
                     <button className="portal-btn-quiet" onClick={() => setRemoved(r => gone ? r.filter(x => x !== pr.id) : [...r, pr.id])}
-                      style={{ marginTop: "2px", height: "24px", padding: "0 8px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: gone ? "var(--gray-600)" : "var(--danger-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      /* alignSelf, because the header is a flex COLUMN and a child with no
+                         opinion stretches to the column's width — a 260px 삭제 button over a
+                         table (owner, 2026-09-28: 편집 상태일 때 삭제 버튼이 가로로 너무 길어). */
+                      style={{ alignSelf: "flex-start", marginTop: "2px", height: "24px", padding: "0 8px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: gone ? "var(--gray-600)" : "var(--danger-500)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                       {gone ? t.presetUndoRemove : t.presetRetire}
                     </button>
                   )}
@@ -344,9 +354,10 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
  * Same GRANT_TREE the permission panel draws, so the order, the grouping and the wording cannot
  * drift between the screen that hands a preset out and the screen that defines it.
  */
-function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetActions }: {
+function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetActions, t }: {
   presets: AccessPreset[];
   lang: "en" | "ko";
+  t: (typeof T)["en"] | (typeof T)["ko"];
   /** What sits over each column — the name, its follower line, its remove button. */
   header: (preset: AccessPreset) => React.ReactNode;
   editing: boolean;
@@ -368,6 +379,38 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
     if (row.search) return [none, { text: g.stage.view, on: true, has: [row.action] }, { text: g.stage.viewSearch, on: true, has: [row.action, row.search] }];
     if (row.searchIsAll) return [none, { text: g.stage.searchOnly, on: true, has: [row.action] }];
     return [none, { text: "✓", on: true, has: [row.action] }];
+  };
+
+  /** Every grant the tab holds, in one list — what the band's own cell switches. */
+  const actionsIn = (group: GrantGroupDef): AppAction[] =>
+    group.rows.flatMap(r => [r.action, ...(r.search ? [r.search] : []), ...(r.child ? [r.child] : [])]);
+
+  const groupCell = (pr: AccessPreset, group: GrantGroupDef) => {
+    const held = actionsOf(pr);
+    const gone = removed.includes(pr.id);
+    const owned = actionsIn(group);
+    const on = owned.filter(a => held.includes(a)).length;
+    const state = on === 0 ? "none" : on === owned.length ? "all" : "some";
+    const body = (
+      <span style={{
+        fontSize: "11.5px", fontWeight: state === "none" ? 500 : 700,
+        color: state === "none" ? "var(--gray-300)" : "var(--gray-900)", whiteSpace: "nowrap",
+      }}>{state === "none" ? "\u2014" : state === "all" ? t.presetGroupAll : t.presetGroupSome}</span>
+    );
+    if (!editing || gone) return body;
+    const apply = () => onSetActions(pr.id, state === "all" ? held.filter(a => !owned.includes(a)) : [...held, ...owned]);
+    return (
+      <button type="button" onClick={apply} title={t.presetCycleHint}
+        style={{
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          height: "24px", padding: "0 8px", borderRadius: "7px",
+          border: state === "none" ? "1px dashed var(--gray-300)" : PICKED_LINE,
+          backgroundColor: state === "none" ? "white" : PICKED_FILL,
+          cursor: "pointer", fontFamily: "inherit",
+        }}>
+        {body}
+      </button>
+    );
   };
 
   const cellFor = (pr: AccessPreset, row: GrantRowDef, child?: AppAction) => {
@@ -396,11 +439,19 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
       const added = child && next.on ? [...next.has, row.action] : next.has;
       onSetActions(pr.id, [...kept, ...added]);
     };
+    /* A CHIP WHILE EDITING, NOT BARE TEXT (owner, 2026-09-28: 아래 체크랑 보기/검색 이런 것도
+       변경할 수 있게 해줘). It was already clickable and cycled correctly — what it did not do was
+       LOOK clickable, so the reader had no reason to try. In edit mode the value wears a box: a
+       picked one takes the console's picked colours, an empty one a dashed outline, which is the
+       same pair the camera picker and the invite form use for chosen / not chosen. */
     return (
-      <button type="button" onClick={apply}
+      <button type="button" onClick={apply} title={t.presetCycleHint}
         style={{
-          width: "100%", textAlign: "left", background: "none", border: "none", padding: "2px 0",
-          cursor: "pointer", fontFamily: "inherit", borderRadius: "6px",
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          height: "24px", padding: "0 8px", borderRadius: "7px",
+          border: cur.on ? PICKED_LINE : "1px dashed var(--gray-300)",
+          backgroundColor: cur.on ? PICKED_FILL : "white",
+          cursor: "pointer", fontFamily: "inherit",
         }}>
         {body}
       </button>
@@ -431,17 +482,26 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
               their peer, and what it holds is indented under it. It has no cells — 대시보드 is not
               a grant, which is the other thing the band was hiding.
             */}
-            {group.caption && (
-              <div style={{ ...line, borderTop: gi === 0 ? "none" : BORDER }}>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>
-                  {g.groupName[group.caption]}
-                </span>
-              </div>
-            )}
+            {/* GREY, SO THE FOUR READ AS THE MENU THEY ARE (owner, 2026-09-28: 아까처럼 큰 메뉴엔
+                회색 배경을 넣어주면 더 쉽게 알 수 있을 것 같아). The band went away when the
+                table lost its inner border, and without it a tab and a grant were the same kind of
+                line. It runs to the card's inner edge — it is the head of a section, not a row —
+                while its text keeps the rows' 12px so the column still lines up. */}
+            <div style={{ ...line, margin: "0 -4px", padding: "8px 16px", borderTop: gi === 0 ? "none" : BORDER, backgroundColor: "var(--gray-50)" }}>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>
+                {g.groupName[group.caption]}
+              </span>
+              {/* THE WHOLE TAB IN ONE CELL (owner, 2026-09-28: 회색 배경에도 체크 가능하게 해서
+                  그 화면에 모든 기능 허용하게 할 건지 체크하는 걸로 만들어 줘). It reads as a
+                  summary in both modes — 전체 / 일부 / — — and in edit mode pressing it turns the
+                  tab's rows all on, or all off if they already are. 일부 is never something you
+                  set: it is what the rows below say, so the press from there goes to 전체. */}
+              {presets.map(pr => <span key={pr.id} style={{ opacity: removed.includes(pr.id) ? 0.4 : 1 }}>{groupCell(pr, group)}</span>)}
+            </div>
             {group.rows.map(row => (
               <div key={row.action}>
                 <div style={line}>
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", minWidth: 0, paddingLeft: group.caption ? "10px" : 0 }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", minWidth: 0, paddingLeft: "10px" }}>
                     {g.rowName[row.action] ?? g.actionName[row.action]}
                   </span>
                   {presets.map(pr => <span key={pr.id} style={{ opacity: removed.includes(pr.id) ? 0.4 : 1 }}>{cellFor(pr, row)}</span>)}

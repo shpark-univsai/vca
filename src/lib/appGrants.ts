@@ -67,6 +67,7 @@ export const APP_GRANT_LABELS = {
     actionName: {
       systemStatus: "Dashboard > System",
       liveView: "Dashboard > Events",
+      dashboardTrail: "Dashboard > Events \u00b7 trails",
       liveMonitoring: "Data > Live Monitoring",
       liveMonitoringSearch: "Search on Live Monitoring",
       history: "Best Frame",
@@ -95,33 +96,41 @@ export const APP_GRANT_LABELS = {
      */
     rowName: {
       liveView: "Events",
+      dashboardTrail: "Movement trails",
       systemStatus: "System",
-      history: "Best Frame",
+      /* Under its own tab now, so the row names what you may do there rather than repeating
+         the tab. The words are the product's own: the operator preset describes itself as watching
+         "live and after the fact", and this grant was called 지난 기록 열람 before it was renamed
+         to the screen. */
+      history: "Past records",
       liveMonitoring: "Live Monitoring",
       reid: "Re-ID Analysis",
       redface: "RedFace",
-      trail: "Redmap",
+      /* Not 「Movement trails」 — that is the dashboard row two groups up, and one name over two
+         different grants is the thing this list exists to prevent. This one is the map. */
+      trail: "Trail map",
       export: "Evidence export",
     } as Partial<Record<AppAction, string>>,
     /** The two depths of one screen, and the one depth of a screen that is nothing but search. */
     stage: { view: "View", viewSearch: "View \u00b7 Search", searchOnly: "Search" },
     /** Over the rows, in the app's own capitals (Navbar.tsx TABS). Not switches — see AppGrantList. */
-    groupCaption: { dashboard: "DASHBOARD", data: "DATA" },
+    groupCaption: { dashboard: "DASHBOARD", bestframe: "BEST FRAME", data: "DATA", redmap: "REDMAP" },
     /* The same two, as a NAME rather than a caption. The permission panel draws them as an
        uppercase band over the rows they hold; the preset table draws them as a row that sits
        beside 베스트 프레임 and 레드맵, where an uppercase word would read as a different kind of
        thing from its own peers. Korean has one form, which is why only English differs. */
-    groupName: { dashboard: "Dashboard", data: "Data" },
+    groupName: { dashboard: "Dashboard", bestframe: "Best Frame", data: "Data", redmap: "Redmap" },
     actionDesc: {
       systemStatus: "Whether the cameras and servers are up. No personal data",
       liveView: "A registered person, as they walk past. Strangers do not appear",
+      dashboardTrail: "One person's movement joined across cameras, in that same panel. Redmap is a different grant \u2014 this is the landing screen only",
       liveMonitoring: "EVERYBODY who walks past, including faces nobody registered",
       liveMonitoringSearch: "Turns \u201csomebody was here\u201d into \u201cthis person was here\u201d, on that screen",
       history: "The same detections, from before now",
       reid: "What the server joins up live out of those detections",
       reidSearch: "Looking a particular person up in that result",
       redface: "Face search",
-      trail: "One person's route on the map. It also switches on the dashboard's trail rows",
+      trail: "One person's route on the map",
       export: "Takes what Redmap found out of the console as a file",
     } satisfies Record<AppAction, string>,
   },
@@ -131,6 +140,7 @@ export const APP_GRANT_LABELS = {
     actionName: {
       systemStatus: "대시보드 > 시스템",
       liveView: "대시보드 > 이벤트",
+      dashboardTrail: "대시보드 > 이벤트 \u00b7 동선",
       liveMonitoring: "데이터 > 모니터링",
       liveMonitoringSearch: "모니터링에서 검색",
       history: "베스트 프레임",
@@ -143,27 +153,33 @@ export const APP_GRANT_LABELS = {
     /** 영어 쪽 주석 참조 — 캡션 아래에서 쓰는 짧은 이름. `actionName`은 목록 밖에서도 쓰므로 그대로 둔다. */
     rowName: {
       liveView: "이벤트",
+      dashboardTrail: "동선 추적",
       systemStatus: "시스템",
-      history: "베스트 프레임",
+      history: "지난 기록",
       liveMonitoring: "모니터링",
       reid: "Re-ID 분석",
       redface: "RedFace",
-      trail: "레드맵",
+      /* 「동선 추적」 — the app's own word: the dashboard sidebar's filter chip and Redmap's own
+         「… 동선 추적 중」 both say it. */
+      /* 「동선 추적」은 두 묶음 위 대시보드 줄의 이름입니다. 한 이름이 서로 다른 권한 둘을
+         가리키면 목록이 하는 일이 사라집니다. 이쪽은 지도입니다. */
+      trail: "동선 지도",
       export: "증거 내보내기",
     } as Partial<Record<AppAction, string>>,
     stage: { view: "보기", viewSearch: "보기 \u00b7 검색", searchOnly: "검색" },
-    groupCaption: { dashboard: "대시보드", data: "데이터" },
-    groupName: { dashboard: "대시보드", data: "데이터" },
+    groupCaption: { dashboard: "대시보드", bestframe: "베스트 프레임", data: "데이터", redmap: "레드맵" },
+    groupName: { dashboard: "대시보드", bestframe: "베스트 프레임", data: "데이터", redmap: "레드맵" },
     actionDesc: {
       systemStatus: "카메라와 서버가 살아 있는지 봅니다. 개인정보는 없습니다",
       liveView: "등록된 사람이 지나갈 때만 올라옵니다",
+      dashboardTrail: "같은 패널에서 한 사람의 이동을 카메라들 사이로 이어 붙인 줄입니다. 레드맵은 별개 권한이고, 이건 첫 화면에만 해당합니다",
       liveMonitoring: "등록되지 않은 사람까지 지나가는 모두를 봅니다",
       liveMonitoringSearch: "\u201c누군가 지나갔다\u201d를 \u201c이 사람이 지나갔다\u201d로 바꿉니다",
       history: "같은 감지를 지난 시점에서 봅니다",
       reid: "모니터링에서 잡힌 사람들을 서버가 실시간으로 이어 붙인 결과를 봅니다",
       reidSearch: "그 결과에서 특정 인물을 직접 찾습니다",
       redface: "얼굴로 찾습니다",
-      trail: "지도 위에 한 사람의 경로를 그립니다. 대시보드 이벤트의 동선 줄도 켭니다",
+      trail: "지도 위에 한 사람의 경로를 그립니다",
       export: "레드맵에서 찾은 것을 파일로 콘솔 밖으로 냅니다",
     } satisfies Record<AppAction, string>,
   },
