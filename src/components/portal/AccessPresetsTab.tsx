@@ -391,8 +391,14 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
     const owned = actionsIn(group);
     const on = owned.filter(a => held.includes(a)).length;
     const state = on === 0 ? "none" : on === owned.length ? "all" : "some";
+    /* The band's own cell wears the same pill — see the note on the row cell. 「일부」 is filled
+       too but in the lighter ground, so a tab that is half given does not read as a whole one. */
     const body = (
       <span style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        minWidth: state === "none" ? undefined : "26px",
+        height: "22px", padding: state === "none" ? "0 2px" : "0 8px", borderRadius: "6px",
+        backgroundColor: state === "all" ? "var(--gray-200)" : state === "some" ? "var(--gray-100)" : "transparent",
         fontSize: "11.5px", fontWeight: state === "none" ? 500 : 700,
         color: state === "none" ? "var(--gray-300)" : "var(--gray-900)", whiteSpace: "nowrap",
       }}>{state === "none" ? "\u2014" : state === "all" ? t.presetGroupAll : t.presetGroupSome}</span>
@@ -422,8 +428,29 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
     const owned = child ? [child] : [row.action, ...(row.search ? [row.search] : [])];
     const idx = Math.max(0, states.map((st, i) => ({ st, i })).filter(({ st }) => st.has.every(a => held.includes(a))).pop()?.i ?? 0);
     const cur = states[idx];
+    /*
+     * THE HELD CELL HAS AREA (owner, 2026-09-28: 이렇게 연하게 표시되어 있으니까 권한이 없는
+     * 거라는 느낌이 너무 안 들어서 운영자, 조사자, 감독자 차이가 덜 느껴지는 것 같은데).
+     *
+     * Right: both states were the same shape at the same size and differed only in ink — a 11.5px
+     * ✓ in gray-900 against a 11.5px — in gray-300. At arm's length from a column of seventeen
+     * rows that is not a difference, it is a shade.
+     *
+     * Of the eight comparison tables checked on Mobbin, the ones that read at a glance are the
+     * ones where the granted cell carries AREA, not a heavier glyph: Clockwise tints, Synthesia
+     * and Krea fill a disc, NordVPN pairs a filled ✓ with a grey ✗. So a held cell is a filled
+     * pill and a missing one is bare — a column now reads as a stack of blocks with gaps in it.
+     *
+     * Neutral, not purple: at seventeen rows × three columns a tinted fill would put the accent
+     * colour over most of the table, and this console keeps purple for what one person just
+     * chose. The edit-mode chip stays purple for exactly that reason.
+     */
     const body = (
       <span style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        minWidth: cur.on ? "26px" : undefined,
+        height: "22px", padding: cur.on ? "0 8px" : "0 2px", borderRadius: "6px",
+        backgroundColor: cur.on ? "var(--gray-100)" : "transparent",
         fontSize: "11.5px", fontWeight: cur.on ? 700 : 500,
         color: cur.on ? "var(--gray-900)" : "var(--gray-300)",
         whiteSpace: "nowrap",
