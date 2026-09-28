@@ -557,8 +557,25 @@ RedFace 화면을 열고, 동시에 모니터링·Re-ID·레드맵의 검색창�
 | 자식 | 부모 |
 |---|---|
 | `dashboardTrail` | `liveView` |
-| `monitoringVip` · `monitoringUnknown` · `liveMonitoringSearch` | `liveMonitoring` |
-| `reidSearch` | `reid` |
+| `monitoringVip` · `monitoringUnknown` | `liveMonitoring` |
+
+**`liveMonitoringSearch`와 `reidSearch`는 더 이상 자식이 아닙니다(2026-09-28).** 각각
+`liveMonitoring` · `reid`에 매달려 있었는데, 그러면 「검색만 하고 목록은 못 본다」를 적을 수가
+없습니다 — 보기를 떼면 검색이 같이 떨어지니까요.
+
+이 두 탭은 한 칸 안에 화면이 둘입니다. 검색 전에는 지나간 사람 전부의 목록, 검색 후에는 찾는
+사람만. 그래서 **검색만**은 보기의 축소판이 아니라 다른 화면이고, 지나가는 사람을 안 보므로 둘
+중 **더 좁은** 권한입니다. 셋 다 유효한 조합입니다:
+
+| 든 것 | 뜻 |
+|---|---|
+| `liveMonitoring` | 보기 — 검색 전 목록만 |
+| `liveMonitoring` + `liveMonitoringSearch` | 보기 · 검색 |
+| `liveMonitoringSearch` | 검색만 — 목록은 안 보여줍니다 |
+
+Re-ID도 `reid` / `reidSearch`로 같습니다. **화면은 둘 중 하나만 들어도 열립니다** —
+`screensForActions`가 그렇게 파생합니다. 저장할 때 검색만 든 계정의 화면 권한을 「없음」으로
+정규화하지 마세요.
 
 **`export`는 삭제됐습니다(2026-09-28).** 앱의 증거 내보내기 기능 자체를 걷어냈습니다 — 앱 권한은
 **17개에서 16개**가 됩니다. 이유: 내보내던 파일에 프레임이 들어 있지 않았고(`frame_sha256`은
