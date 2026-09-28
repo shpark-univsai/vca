@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Asterisk, Boxes, ChevronRight, CircleHelp, ClipboardList, Eye, KeyRound, KeySquare, Link2, MailQuestion, MonitorOff, MoreVertical, Trash2, UserCheck, UserMinus, UserSearch, UserX, Users as UsersIcon, Users2 } from "lucide-react";
+import { Asterisk, ChevronRight, CircleHelp, Eye, KeyRound, Link2, MailQuestion, MonitorOff, Trash2, UserCheck, UserMinus, UserSearch, UserX, Users2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, withAppActionDeps, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -480,7 +480,7 @@ const T = {
     guideLead: "접근은 계정에 열리는 문을 정하고, 역할은 Portal 안에서 할 수 있는 일을 정합니다.",
     guideRolesHeading: "Portal 역할 — 서로 다른 것만",
     guideRowGrant: "사용자 · 권한 부여",
-    guideRowSettings: "카메라 · VIP · 등록 대기 · 라이선스 · 서버",
+    guideRowSettings: "카메라 · VIP · 가입 대기 · 라이선스 · 서버",
     guideRowAudit: "감사 로그",
     guideEdit: "변경",
     guideViewOnly: "보기만",
@@ -493,7 +493,7 @@ const T = {
     railPeople: "사용자",
     railGrants: "권한",
     peopleTabAccounts: "계정",
-    peopleTabRoster: "등록 대기",
+    peopleTabRoster: "가입 대기",
     peopleTabAccountsHint: "이 프로젝트에 닿을 수 있는 계정입니다 — 초대만 받고 아직 로그인하지 않은 사람도 포함합니다.",
     peopleTabRosterHint: "아직 계정이 없는 사람입니다. 등록 코드를 건네주고, 그 코드로 가입하면 계정이 됩니다.",
     peopleTabPresets: "앱 권한 프리셋",
@@ -504,7 +504,7 @@ const T = {
     colPlannedPermission: "가입 시 권한",
     plannedNoGrants: "권한 없음",
     colCode: "등록 코드",
-    countRosterWaiting: "등록 대기",
+    countRosterWaiting: "가입 대기",
     stageRosterListed: "적어둠",
     stageCodeIssued: "발급됨",
     stageCodeExpired: "만료됨",
@@ -571,7 +571,7 @@ const T = {
     permAuditor: "읽기 전용 관리자",
     permNone: "Portal 역할 없음",
     permOwnerDesc: "권한을 주고 회수하고, 사람을 지웁니다. 이걸 할 수 있는 유일한 역할입니다.",
-    permAdminDesc: "카메라·VIP 등록·등록 대기·라이선스를 바꿉니다. 누가 접근하는지는 못 바꿉니다.",
+    permAdminDesc: "카메라·VIP 등록·가입 대기·라이선스를 바꿉니다. 누가 접근하는지는 못 바꿉니다.",
     permAuditorDesc: "Portal의 모든 화면과 감사 로그를 봅니다. 아무것도 바꾸지 않습니다.",
     permNoneDesc: "Portal에는 들어오지 않습니다.",
     accessBoth: "Portal + 앱",
@@ -3266,12 +3266,12 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
  *
  * Exported because the header's trail names the open one (PortalShell), and a second copy of these
  * labels there would drift the first time one is renamed — which is exactly what happened to
- * 「명부 대기」 the day it became 「등록 대기」.
+ * 「명부 대기」 the day it became 「등록 대기」, and 「등록 대기」 the day it became 「가입 대기」.
  */
 export type PeopleTab = "accounts" | "roster" | "groups" | "presets";
 export const PEOPLE_TABS: { id: PeopleTab; half: PeopleHalf; label: { en: string; ko: string } }[] = [
   { id: "accounts", half: "users", label: { en: "Accounts", ko: "계정" } },
-  { id: "roster", half: "users", label: { en: "Awaiting sign-up", ko: "등록 대기" } },
+  { id: "roster", half: "users", label: { en: "Awaiting sign-up", ko: "가입 대기" } },
   /* Preset before group, the order the invite form asks them in (owner, 2026-09-23). */
   { id: "presets", half: "grants", label: { en: "App permission presets", ko: "앱 권한 프리셋" } },
   { id: "groups", half: "grants", label: { en: "Camera groups", ko: "카메라 그룹" } },
@@ -3899,6 +3899,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
   const [editingProjectsFor, setEditingProjectsFor] = useState<PortalUser | null>(null);
   /** The account whose card is open. One card replaced the row's nine-item menu. */
   const [managing, setManaging] = useState<PortalUser | null>(null);
+  /* Which account row the pointer is on — the row is a control now and has to look like one. */
+  const [hoverRow, setHoverRow] = useState<string | null>(null);
   const currentProject = projects.find(p => p.id === projectId);
   /**
    * Which of the "on the way in, or stopped" states the table is narrowed to, if any — set by the
@@ -4393,22 +4395,22 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             the list the row will land in, so the result is never somewhere you were not looking.
           */}
           {/*
-            THE DOOR LIVES ON 계정 ONLY (owner, 2026-09-23: 등록 대기라는 타이틀만 봤을 때는
+            THE DOOR LIVES ON 계정 ONLY (owner, 2026-09-23: 가입 대기라는 타이틀만 봤을 때는
             대기 중인 명단만 있어야 할 것 같거든, 그래서 초대하고 코드 발급 자체는 모두 계정
             화면에서 해야 할 것만 같아).
 
-            Right, and it draws the line in the words themselves: 등록 대기 is a list of people
+            Right, and it draws the line in the words themselves: 가입 대기 is a list of people
             waiting, so it holds the things you do TO a row that is already there — issue or reissue
             that person's code, edit them, take them off. Making a person is a different act and it
             belongs where the outcome is administered. Choosing the code path still carries the
-            reader to 등록 대기, so the new row is never left on a list they were not looking at.
+            reader to 가입 대기, so the new row is never left on a list they were not looking at.
 
             It also fixes something that was measured: the same button sat at (1283, 176) on 계정
-            and (1123, 64) on 등록 대기, because the two toolbars hold a different number of
+            and (1123, 64) on 가입 대기, because the two toolbars hold a different number of
             controls and wrapped differently — a primary action that jumps 160px sideways between
             two tabs does not read as the same button.
 
-            The CSV import stays on 등록 대기, in its ⋮ menu: it is a tool of the list it fills,
+            The CSV import stays on 가입 대기, in its ⋮ menu: it is a tool of the list it fills,
             not the one-person door, and it is not a primary action there.
           */}
           {peopleTab === "accounts" && (
@@ -4618,10 +4620,37 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           // the other administrators, and "last one visible" is not "last one there is".
           const lastAdmin = isLastActiveAdmin(portalUsers, u.id);
           return (
-          <div key={u.id} style={{
+          /*
+           * THE ROW IS THE DOOR (owner, 2026-09-28: 표에 점점점 누르면 바로 열리잖아, 근데 보통
+           * 점점점 같은 아이콘은 누르면 드롭다운이 열려야 할 것 같은 느낌이란 말이지? 나만 그래?).
+           *
+           * Not just them. Counted in this console: ⋯ appears in eleven places and opens a dropdown
+           * in ten of them — this table was the one exception. The worst part was next door: 계정
+           * and 가입 대기 are the same table one tab apart, their ⋯ buttons are identical and sit at
+           * the same x, and one opened a panel while the other opened a menu.
+           *
+           * 12 products on Mobbin whose table rows carry ⋯ (Ditto, Cal.com, Retool, Whop, Attio,
+           * Sprig, Churnkey, Lightfield, ClickUp, Vapi, Zapier, Amplitude): not one opens a panel
+           * with it. The ones that offer both split it the same way — the row opens the detail, ⋯
+           * lists that row's short actions.
+           *
+           * Measured before: the row was 1142x59 and inert (no cursor, no hover, no keyboard), and
+           * the only way in was a 24px button — 0.85% of the row. Input Sources and VIP Registry
+           * already make their rows openable, so the answer was already in the repo.
+           *
+           * A div with a role rather than a <button>: the row holds its own buttons (the repair
+           * link in the 접근 cell), and a button inside a button is not valid HTML.
+           */
+          <div key={u.id} role="button" tabIndex={0}
+            onClick={e => { if (!(e.target as HTMLElement).closest("button,a")) setManaging(u); }}
+            onKeyDown={e => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); setManaging(u); } }}
+            onMouseEnter={() => setHoverRow(u.id)} onMouseLeave={() => setHoverRow(null)}
+            aria-label={t.manageAccount}
+            style={{
             display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
             borderBottom: isLast ? "none" : BORDER,
             borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
+            cursor: "pointer", backgroundColor: hoverRow === u.id ? "var(--gray-50)" : "transparent",
           }}>
             <div style={{ minWidth: 0 }}>
               <p title={u.name} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</p>
@@ -4847,11 +4876,10 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                 900px window — the menu opened partly off the screen — and three of the nine were
                 disabled on this row. The same actions now live in the account card, which says
                 what the account holds before offering to change it. */}
-            <button className="portal-icon-btn" onClick={() => setManaging(u)} title={t.manageAccount}
-              aria-label={t.manageAccount}
-              style={{ justifySelf: "end", padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-              <MoreVertical size={16} strokeWidth={2} />
-            </button>
+            {/* A MARK, NOT A BUTTON. The row is the control now, so this says "this opens" and
+                takes no click of its own — aria-hidden because the row already carries the label. */}
+            <ChevronRight size={14} strokeWidth={2} aria-hidden="true"
+              style={{ justifySelf: "end", color: hoverRow === u.id ? "var(--gray-500)" : "var(--gray-300)" }} />
           </div>
           );
         })}

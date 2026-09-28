@@ -3122,7 +3122,7 @@ const ACCESS_REQUESTS: AccessRequest[] = [];
  * THE ROWS CARRY THE GRANTS THE PANEL WOULD HAVE WRITTEN (2026-09-28).
  *
  * A row created through 등록 코드로 추가 now answers four questions, so seeds that answer none of
- * them would show every row in 등록 대기 as 「권한 없음」 — a console that looks broken on first
+ * them would show every row in 가입 대기 as 「권한 없음」 — a console that looks broken on first
  * open, describing a state the product no longer produces.
  *
  * EMP-3008 and EMP-3010 are LEFT WITHOUT ON PURPOSE. That is the Excel import's row: the
