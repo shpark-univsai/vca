@@ -815,10 +815,22 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
    * doing) → grey (worth knowing). The array above is built in a reading order that mixes them,
    * which is fine while every item is on screen and wrong the moment only the first three are.
    */
-  const rankedAttention = useMemo(() => {
-    const weight = (c: string) => (c === "var(--danger-400)" ? 0 : c === "var(--warning-500)" ? 1 : 2);
-    return [...attentionItems].sort((a, b) => weight(a.color) - weight(b.color));
-  }, [attentionItems]);
+  /*
+   * A PLAIN SORT, NOT useMemo — the memo was a rules-of-hooks violation and bought nothing.
+   *
+   * It sat AFTER this component's early return (`if (!project) return …`), so a render with no
+   * project ran one hook fewer than a render with one: React throws "Rendered fewer hooks than
+   * expected" the moment the project appears, which is reachable whenever the active project id
+   * outlives the project (removal, a stale id after a switch). It has been shipping this way —
+   * portal-handoff-v7 has the same shape.
+   *
+   * And it never memoized anything: `attentionItems` is rebuilt every render, so the dependency
+   * changed every time and the callback re-ran every time. Dropping it removes the violation and
+   * the eslint warning about that dependency at once, and nothing else changes — this is a sort
+   * of at most a dozen strings.
+   */
+  const weightAttention = (c: string) => (c === "var(--danger-400)" ? 0 : c === "var(--warning-500)" ? 1 : 2);
+  const rankedAttention = [...attentionItems].sort((a, b) => weightAttention(a.color) - weightAttention(b.color));
   /** One place that knows where each errand leads, so the strip and the popup cannot disagree. */
   const goToAttention = (item: (typeof rankedAttention)[number]) => {
     if (item.settings) { onOpenSettings?.(); return; }
