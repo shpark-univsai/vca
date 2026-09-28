@@ -3752,6 +3752,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
   /* The half's first list is the default, and a `sub` naming a list from the OTHER half is
      ignored — the two halves are separate screens now, and honouring it would open 카메라 그룹
      under 「사용자」. See the note on the tab strip. */
+  /** Where a grant tab puts its own action button — see the note on the tab strip. */
+  const [tabActions, setTabActions] = useState<HTMLDivElement | null>(null);
   const firstOfHalf = PEOPLE_TABS.find(x => x.half === half)!.id;
   const [storedTab, setPeopleTab] = useState<PeopleTab>(() => {
     if (typeof window === "undefined") return firstOfHalf;
@@ -4180,7 +4182,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
         The counts come with the labels, where they were before the rail took them.
       */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: "0" }}>
-      <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
         {PEOPLE_TABS.filter(x => x.half === half).map(x => {
           const active = peopleTab === x.id;
           const count = x.id === "accounts" ? projectUsers.length
@@ -4201,10 +4203,25 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             </button>
           );
         })}
+        {/*
+          THE TAB'S OWN ACTION, AT THE END OF THE TAB LINE (owner, 2026-09-28: 편집이랑
+          프리셋만들기 버튼 옆에 아무것도 없어서 빈공간이 덩그러니있는뎅..).
+          
+          Both grant tabs used to open with a 50px strip of their own holding two right-aligned
+          buttons and nothing else — the button sat in mid-air over a wide empty band. The space
+          it wanted was already here: this line carries two short tab names and is empty from
+          about 400px rightward. Tabs on the left, the action on the right, is what the rest of
+          this console's list screens do.
+          
+          Filled by the tab itself through a portal rather than by lifting `creating`/`editing`
+          state up here — the button belongs to the list that owns the panel it opens, and the
+          only thing that has to be shared is where it lands.
+        */}
+        <div ref={setTabActions} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px", paddingBottom: "6px" }} />
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
-      {peopleTab === "presets" ? <AccessPresetsTab teamId={pageTeamId ?? ""} canEdit={manageAccess} />
-        : peopleTab === "groups" ? <CameraGroupsTab projectId={projectId} onGoToCameras={onGoToCameras} /> : (<>
+      {peopleTab === "presets" ? <AccessPresetsTab teamId={pageTeamId ?? ""} canEdit={manageAccess} actionsSlot={tabActions} />
+        : peopleTab === "groups" ? <CameraGroupsTab projectId={projectId} onGoToCameras={onGoToCameras} actionsSlot={tabActions} /> : (<>
       {!mailAvailable && <RecoveryModeNotice supportContact={authConfig.supportContact} />}
 
       {/* The strip drives the tab as well as the filter. Picking "on the roster" from the

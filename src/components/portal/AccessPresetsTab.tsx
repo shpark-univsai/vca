@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, Minus, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import {
   accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
@@ -122,16 +123,18 @@ const T = {
   },
 };
 
-export default function AccessPresetsTab({ teamId, canEdit }: {
+export default function AccessPresetsTab({ teamId, canEdit, actionsSlot }: {
   teamId: string;
   /** Owners only — the store's guard is on the actions, this is the screen saying so first. */
   canEdit: boolean;
+  /** The element on the tab line where 편집 and 프리셋 만들기 land. See PortalUsersPage. */
+  actionsSlot?: HTMLElement | null;
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   /* NO TITLE. The lit tab above already reads 앱 권한 프리셋. Everything else — the buttons, the
      table, the one sentence under it — belongs to the list, which is what holds the draft. */
-  return <AccessPresetList t={t} teamId={teamId} canEdit={canEdit} lang={lang} />;
+  return <AccessPresetList t={t} teamId={teamId} canEdit={canEdit} lang={lang} actionsSlot={actionsSlot} />;
 }
 
 /**
@@ -154,11 +157,12 @@ export default function AccessPresetsTab({ teamId, canEdit }: {
  * gesture too, so the consequence sentence is read while the rest of the edit is still on screen
  * and nothing is destroyed until 저장.
  */
-function AccessPresetList({ t, teamId, canEdit, lang }: {
+function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
   t: (typeof T)["en"] | (typeof T)["ko"];
   teamId: string;
   canEdit: boolean;
   lang: "en" | "ko";
+  actionsSlot?: HTMLElement | null;
 }) {
   const { showToast } = useToast();
   // Raw slices out of the selectors, filtering in memos — presetsForTeam and
@@ -225,11 +229,10 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
     ? presets.filter(pr => draft[pr.id] || removed.includes(pr.id)).reduce((n, pr) => n + (followersOf.get(pr.id) ?? []).length, 0)
     : 0;
 
-  return (
-    <div>
-      {/* THE ACTIONS, AT THE TOP RIGHT. They were a dashed full-width row under the list and two
-          buttons over every column; both put a verb where the eye was reading values. */}
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "8px", marginBottom: "14px", minHeight: CONTROL_HEIGHT }}>
+  /* Onto the tab line when there is one to land on, otherwise a row of its own — see the note on
+     the slot in PortalUsersPage. */
+  const actions = (
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "8px", marginBottom: actionsSlot ? 0 : "14px", minHeight: CONTROL_HEIGHT }}>
         {!canEdit ? (
           // Said, not hidden — the same rule the purpose list follows.
           <p style={{ flex: 1, fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.presetOwnerOnly}</p>
@@ -273,6 +276,11 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
           </>
         )}
       </div>
+  );
+
+  return (
+    <div>
+      {actionsSlot ? createPortal(actions, actionsSlot) : actions}
 
       {/*
         THE TABLE STAYS UP WHILE THE PANEL IS OPEN (owner, 2026-09-28: 만들기 누르니까 배경이
@@ -435,6 +443,24 @@ function AccessPresetList({ t, teamId, canEdit, lang }: {
  * Same GRANT_TREE the permission panel draws, so the order, the grouping and the wording cannot
  * drift between the screen that hands a preset out and the screen that defines it.
  */
+/*
+ * ONE LEFT EDGE FOR EVERY LABEL (owner, 2026-09-28: 이벤트 글자 시작이 대시보드 대에 맞춰줘).
+ *
+ * The band's text is pushed right by its own icon, so 대시보드 started at 316 while 이벤트 and
+ * 시스템 under it started at 303 and the indented 「VIP 감지」 at 315 — three left edges within
+ * 13px of each other, which reads as things not lining up rather than as a hierarchy.
+ *
+ * The first step now lands ON the band's text, and the indents step off from there. The tab is
+ * still told apart by its grey ground and its icon, not by a 13px offset nobody can measure.
+ *
+ * The numbers move together with the band's own left padding (owner: 메뉴 4개도 아이콘 왼쪽 공간
+ * 조금더 여유를 주면 좋겠어) — the icon had 7px of grey to its left and now has 15px, so every
+ * label steps right by the same 8.
+ */
+const LABEL_INDENT = "34px";
+const LABEL_INDENT_2 = "46px";
+const LABEL_INDENT_3 = "58px";
+
 function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, onSetActions, t }: {
   presets: AccessPreset[];
   lang: "en" | "ko";
@@ -697,7 +723,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
                 table lost its inner border, and without it a tab and a grant were the same kind of
                 line. It runs to the card's inner edge — it is the head of a section, not a row —
                 while its text keeps the rows' 12px so the column still lines up. */}
-            <div style={{ ...line, margin: "0 -4px", padding: "7px 16px", borderTop: gi === 0 ? "none" : BORDER, backgroundColor: "var(--gray-50)" }}>
+            <div style={{ ...line, margin: "0 -4px", padding: "7px 24px", borderTop: gi === 0 ? "none" : BORDER, backgroundColor: "var(--gray-50)" }}>
               {/*
                 NO FOLD (owner, 2026-09-28: 접기가 왜 필요해?).
                 
@@ -708,7 +734,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
                 control whose only effect is to hide rows works against it. The state was not
                 stored either, so every visit started expanded regardless.
               */}
-              <span style={{ display: "flex", alignItems: "center", gap: "7px", minWidth: 0 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
                 <GrantGroupIcon caption={group.caption} color="var(--gray-500)" />
                 <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>
                   {g.groupName[group.caption]}
@@ -727,20 +753,20 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
                     grant. See GrantRowDef.subhead. */}
                 {row.subhead && (
                   <div style={line}>
-                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", paddingLeft: "10px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", paddingLeft: LABEL_INDENT }}>
                       {g.subName[row.subhead]}
                     </span>
                   </div>
                 )}
                 <div style={line}>
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", minWidth: 0, paddingLeft: row.indent ? "22px" : "10px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", minWidth: 0, paddingLeft: row.indent ? LABEL_INDENT_2 : LABEL_INDENT }}>
                     {g.rowName[row.action] ?? g.actionName[row.action]}
                   </span>
                   {presets.map(pr => <span key={pr.id} style={{ opacity: removed.includes(pr.id) ? 0.4 : 1 }}>{cellFor(pr, row)}</span>)}
                 </div>
                 {(row.children ?? []).map(c => (
                   <div key={c} style={line}>
-                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", paddingLeft: row.indent ? "34px" : "22px", minWidth: 0 }}>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", paddingLeft: row.indent ? LABEL_INDENT_3 : LABEL_INDENT_2, minWidth: 0 }}>
                       {g.rowName[c] ?? g.actionName[c]}
                     </span>
                     {presets.map(pr => <span key={pr.id} style={{ opacity: removed.includes(pr.id) ? 0.4 : 1 }}>{cellFor(pr, row, c)}</span>)}

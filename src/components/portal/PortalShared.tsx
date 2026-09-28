@@ -2393,35 +2393,39 @@ function GrantStage({ rowLabel, held, twoCell, parentOn, locked, onPick, stage }
      "may they search there" with silence, and letting a click through it would switch the screen
      on as a hidden side effect of touching a step. */
   const live = parentOn && !locked;
+  /*
+   * NO FRAME AROUND THE CELLS — EACH ONE DRAWS ITS OWN BOX (owner, 2026-09-28: 이거 버튼 아직
+   * 깨져).
+   *
+   * There were two rings: a grey `border` on the wrapper with `overflow: hidden`, and, since the
+   * held cell started closing its own outline, a purple one just inside it. At the outer edges
+   * that stacked into a 2px line of two colours, and the held cell's square corners were being
+   * clipped by the wrapper's 6px radius — which is the broken corner in the screenshot.
+   *
+   * One ring now. The wrapper only lays the cells out; each cell carries its own border, the
+   * second overlaps the first by 1px so the divider is a single line, and the held cell is lifted
+   * above its neighbour so its colour wins that shared line. The outer corners are rounded on the
+   * cells themselves, so nothing is clipped.
+   */
   const frame = {
     display: "inline-flex", alignItems: "center", height: "22px", boxSizing: "border-box" as const,
-    borderRadius: "6px", border: "1px solid var(--gray-200)", overflow: "hidden",
     flexShrink: 0, marginLeft: "8px", opacity: parentOn ? 1 : 0.4,
   };
-  /**
-   * `siblingLit` is what closes the purple box (owner, 2026-09-28: 보기, 보기/검색 버튼에 라인이
-   * 잘려).
-   *
-   * The held cell used to draw its right border transparent, on the rule that the divider belongs
-   * to the second cell alone so the two never stack into a 2px line. But on the LEFT cell that
-   * left the purple outline open on its right side, with the neighbour's grey divider standing in
-   * the gap — a box with one side missing and the wrong colour where it should have closed.
-   *
-   * So the held cell now draws all four of its own sides, and the cell beside a held one drops its
-   * divider instead. Still exactly one line between them; it is just the held cell's line.
-   */
-  const cell = (picked: boolean, first: boolean, siblingLit = false) => {
+  const cell = (picked: boolean, first: boolean, last: boolean) => {
     /* Parent off means no purple at all: an unreachable step is not a held one. */
     const lit = picked && parentOn;
-    const edge = lit ? "1px solid var(--primary-300)" : "1px solid transparent";
     return {
       display: "flex", alignItems: "center", height: "100%", boxSizing: "border-box" as const,
       padding: "0 10px", fontSize: "11px", fontWeight: 600, fontFamily: "inherit",
       whiteSpace: "nowrap" as const, letterSpacing: "-0.1px",
-      backgroundColor: lit ? PICKED_FILL : "transparent",
+      backgroundColor: lit ? PICKED_FILL : "white",
       color: lit ? "var(--gray-900)" : "var(--gray-500)",
-      borderTop: edge, borderBottom: edge, borderRight: edge,
-      borderLeft: first || lit || siblingLit ? edge : "1px solid var(--gray-200)",
+      border: `1px solid ${lit ? "var(--primary-300)" : "var(--gray-200)"}`,
+      borderTopLeftRadius: first ? "6px" : 0, borderBottomLeftRadius: first ? "6px" : 0,
+      borderTopRightRadius: last ? "6px" : 0, borderBottomRightRadius: last ? "6px" : 0,
+      /* The seam: one line, owned by whichever cell is lit. */
+      marginLeft: first ? 0 : "-1px",
+      position: "relative" as const, zIndex: lit ? 1 : 0,
       cursor: live ? "pointer" : "default",
     };
   };
@@ -2431,7 +2435,7 @@ function GrantStage({ rowLabel, held, twoCell, parentOn, locked, onPick, stage }
          screen was on, which promises a control that does nothing. The row around it stays
          `pointer`, so the cursor changing at this pill's edge is the cue, before the click. */
       <span style={frame} onClick={e => e.stopPropagation()}>
-        <span style={{ ...cell(true, true), cursor: "default" }}>{stage.searchOnly}</span>
+        <span style={{ ...cell(true, true, true), cursor: "default" }}>{stage.searchOnly}</span>
       </span>
     );
   }
@@ -2456,7 +2460,7 @@ function GrantStage({ rowLabel, held, twoCell, parentOn, locked, onPick, stage }
               onPick(e.key === "ArrowRight" || e.key === "ArrowLeft" ? !held : depth);
             }
           }}
-          style={cell(held === depth, !depth, held !== depth && parentOn)}>
+          style={cell(held === depth, !depth, !!depth)}>
           {depth ? stage.viewSearch : stage.view}
         </span>
       ))}

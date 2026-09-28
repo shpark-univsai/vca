@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCheck, ChevronLeft, RotateCcw } from "lucide-react";
+import { createPortal } from "react-dom";
+import { CheckCheck, ChevronLeft, Plus, RotateCcw } from "lucide-react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import {
   cameraGroupsInProject, camerasInProject, useVcaStore, type Camera, type CameraGroup,
@@ -823,9 +824,11 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
   );
 }
 
-export default function CameraGroupsTab({ projectId, onGoToCameras }: {
+export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot }: {
   projectId: string;
   onGoToCameras?: () => void;
+  /** The element on the tab line where 그룹 만들기 lands. See PortalUsersPage. */
+  actionsSlot?: HTMLElement | null;
 }) {
   const [lang] = usePortalLanguage();
   const t: Dict = T[lang];
@@ -867,14 +870,18 @@ export default function CameraGroupsTab({ projectId, onGoToCameras }: {
         Top right is where 프리셋 만들기, 프로젝트 추가 and 서버 추가 all sit, so it goes there and
         the dashed cell goes away. The empty state keeps its own button — there is no list yet.
       */}
-      {groups.length > 0 && mayEdit && (
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "14px", minHeight: CONTROL_HEIGHT }}>
-          <button type="button" onClick={() => setCreating(true)}
-            style={{ flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            + {t.createButton}
-          </button>
-        </div>
-      )}
+      {groups.length > 0 && mayEdit && (() => {
+        const bar = (
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: actionsSlot ? 0 : "14px", minHeight: CONTROL_HEIGHT }}>
+            <button type="button" onClick={() => setCreating(true)}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              <Plus size={13} strokeWidth={2.4} aria-hidden="true" />
+              {t.createButton}
+            </button>
+          </div>
+        );
+        return actionsSlot ? createPortal(bar, actionsSlot) : bar;
+      })()}
       {groups.length === 0 ? (
         /* ONE LINE, THEN THE TWO DOORS. The line used to name both of them in prose — make one
            here, or group them on Input Sources — with both buttons sitting directly under it.
