@@ -3118,21 +3118,33 @@ const ACCESS_REQUESTS: AccessRequest[] = [];
 // The TYPE still allows it and so does the server contract — a row handed over by the server with
 // no code is possible, and then those two buttons are how it gets one. The console just never
 // writes one itself.
+/*
+ * THE ROWS CARRY THE GRANTS THE PANEL WOULD HAVE WRITTEN (2026-09-28).
+ *
+ * A row created through 등록 코드로 추가 now answers four questions, so seeds that answer none of
+ * them would show every row in 등록 대기 as 「권한 없음」 — a console that looks broken on first
+ * open, describing a state the product no longer produces.
+ *
+ * EMP-3008 and EMP-3010 are LEFT WITHOUT ON PURPOSE. That is the Excel import's row: the
+ * spreadsheet has a 「권한」 column with two values and no column for app grants, so nobody
+ * answered the question and the person would arrive at an app with no screens. The table says so
+ * in red, before the code is handed over, which is the whole reason that state is drawn.
+ */
 const STAFF_ROSTER: RosterEntry[] = [
-  { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "unused", code: "FQ4M7XB2", issuedAt: "2026-09-20T09:00:00+08:00" },
-  { employeeId: "EMP-3002", name: "Priya Nair", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", code: "BPXW4762" },
-  { employeeId: "EMP-3003", name: "Daniel Cruz", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "HKLM9234" },
-  { employeeId: "EMP-3004", name: "Farah Ismail", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "TN8R3KD5", issuedAt: "2026-09-20T09:00:00+08:00" },
-  { employeeId: "EMP-3005", name: "Tom Reyes", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "used", code: "QRST5678" },
-  { employeeId: "EMP-3006", name: "Lena Brooks", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "unused", code: "YC6V9HJ4", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "liveMonitoring", "liveMonitoringSearch", "history", "reid", "reidSearch", "redface", "trail", "export"], code: "FQ4M7XB2", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3002", name: "Priya Nair", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "history"], code: "BPXW4762" },
+  { employeeId: "EMP-3003", name: "Daniel Cruz", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "history"], code: "HKLM9234" },
+  { employeeId: "EMP-3004", name: "Farah Ismail", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "liveMonitoring", "liveMonitoringSearch", "history", "reid", "reidSearch", "redface", "trail"], code: "TN8R3KD5", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3005", name: "Tom Reyes", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "used", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "history"], code: "QRST5678" },
+  { employeeId: "EMP-3006", name: "Lena Brooks", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "history"], code: "YC6V9HJ4", issuedAt: "2026-09-20T09:00:00+08:00" },
   // Issued long enough ago that REGISTRATION_CODE_TTL_DAYS has passed: the row still says
   // "unused", and effectiveCodeStatus() is what turns it into "expired". Stored-as-expired is not
   // used in the seeds any more — it could never demonstrate that expiry actually works.
-  { employeeId: "EMP-3007", name: "Marcus Ho", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", code: "VXYZ2345", issuedAt: "2026-07-15T09:00:00+08:00" },
+  { employeeId: "EMP-3007", name: "Marcus Ho", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "liveMonitoring", "liveMonitoringSearch", "history", "reid", "reidSearch", "redface", "trail"], code: "VXYZ2345", issuedAt: "2026-07-15T09:00:00+08:00" },
   { employeeId: "EMP-3008", name: "Aisha Bakar", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "JKMN6789" },
-  { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "unused", code: "MZ2K5QP7", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-supervisor", appActions: ["systemStatus", "liveView", "liveMonitoring", "liveMonitoringSearch", "history", "reid", "reidSearch", "redface", "trail", "export"], code: "MZ2K5QP7", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3010", name: "Sana Idris", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "used", code: "CDFG3456" },
-  { employeeId: "EMP-3011", name: "Emily Foster", department: "Operations", projectId: "proj-riverside", permission: "admin", status: "unused", code: "RB9T4LN6", issuedAt: "2026-09-20T09:00:00+08:00" },
+  { employeeId: "EMP-3011", name: "Emily Foster", department: "Operations", projectId: "proj-riverside", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "liveMonitoring", "liveMonitoringSearch", "history", "reid", "reidSearch", "redface", "trail"], code: "RB9T4LN6", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3012", name: "Kevin Ng", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "LMPQ8765" },
   { employeeId: "EMP-3013", name: "Hana Suzuki", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "unused", code: "DX7J2WF8", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3014", name: "Oliver Grant", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "used", code: "RSTU4325" },
@@ -6190,24 +6202,44 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     const id = `user-${++portalUserSeq}`;
     // The address is optional on a roster row — a site with no mail has none — and an account
     // without one is normal here: they sign in with the employee number.
+    const mode = entry.accessMode ?? (entry.permission === "admin" ? "both" : "appOnly");
+    const role = entry.portalRole ?? (entry.permission === "admin" ? "admin" : "none");
     const user: PortalUser = {
       id, name: entry.name, email: entry.email ?? "", employeeId: entry.employeeId,
-      teamId: project.teamId,
       projectIds: [entry.projectId],
-      // The roster's own permission field is a two-value thing ("admin" | "operator") describing
-      // what the person is being hired onto the system as, not a Portal console role. Its
-      // "operator" is the app-only shape, which is now spelled as a role of none plus app access.
-      //
-      // Its "admin" becomes a full admin, NOT the auditor that PortalUsersPage's Access select
-      // hands out when it first lets an account into Portal. That looks inconsistent and is not:
-      // the select is widening someone's access as a side effect of a different question, so it
-      // takes the least it can, whereas an administrator ticking "관리자" on a roster row has
-      // answered exactly this question about exactly this person. Auditor here would also be
-      // useless — admin is the only role among the two this path can reach that can actually do
-      // anything in Portal, so a read-only "admin" would be an option that grants nothing, on the
-      // one enrolment path an on-premise site with no mail actually has.
-      permission: entry.permission === "admin" ? "admin" : "none",
-      appAccess: true,
+      /*
+       * THE ROW'S OWN ANSWERS WHEN IT HAS THEM, THE TWO-VALUE FIELD WHEN IT DOES NOT.
+       *
+       * A row written by the 등록 코드 panel carries the same four answers the mail invite
+       * collects (scope, console role, app grants, team). A row that came out of the Excel import
+       * carries only `permission`, because that is all a spreadsheet column can hold — so it falls
+       * back to the old mapping, which is what every row used to get.
+       *
+       * WHAT THIS FIXES: before the four fields existed this minted `appAccess: true` with no
+       * `appActions` at all, so the person redeemed their code, signed in, and the app refused
+       * them with `noScreens` — while 등록 대기 had been telling the administrator they were an
+       * 「앱 사용자」. On an on-premise site with no mail this is the only enrolment path there is.
+       *
+       * An imported row still arrives with nothing granted, and that is honest rather than fixed
+       * here: nobody answered the question, and inventing an answer would hand out screens no
+       * administrator chose. The roster table says so on the row instead, before the code is used.
+       *
+       * ON THE FALLBACK PATH, "admin" BECOMES A FULL ADMIN, not the auditor that PortalUsersPage's
+       * Access select hands out when it first lets an account into Portal. That looks inconsistent
+       * and is not: the select is widening someone's access as a side effect of a different
+       * question, so it takes the least it can, whereas the 「권한」 column of an imported roster
+       * saying 관리자 has answered exactly this question about exactly this person. Auditor would
+       * also be useless here — admin is the only role this path can reach that can do anything in
+       * Portal at all.
+       */
+      teamId: entry.teamId ?? project.teamId,
+      permission: mode === "appOnly" ? "none" : role,
+      appAccess: mode !== "portalOnly",
+      /* Through withAppActionDeps, so a row that somehow carries a step without its screen cannot
+         mint an account holding a capability on a screen it may not open. */
+      appActions: mode === "portalOnly" ? undefined : withAppActionDeps(entry.appActions ?? []),
+      grantMode: entry.grantMode,
+      presetId: entry.presetId,
       status: "active",
     };
     const auditEntry: AuditEvent = clientAudit({

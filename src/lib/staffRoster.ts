@@ -25,6 +25,11 @@
  * Portal collection (cameras, servers, persons). Whether it should instead be org-wide (one list
  * shared across a customer's projects) is not settled — see the note on ProjectRosterTab.tsx.
  */
+/* TYPE-ONLY, so this does not create a runtime cycle with vcaStore (which imports this file
+   for real). The roster row now carries the same two vocabularies an account does, and naming
+   them here rather than restating their shapes is what keeps them from drifting. */
+import type { AppAction, PortalPermission } from "./vcaStore";
+
 export interface RosterEntry {
   /** The 8-character code, no dashes. Grouped as XXXX-XXXX only when displayed. Absent until an
    *  admin issues one — see `status`. */
@@ -40,7 +45,45 @@ export interface RosterEntry {
   /** Optional — a company with no mail leaves this empty. */
   email?: string;
   projectId: string;
+  /**
+   * THE COARSE ANSWER, AND THE ONE THE SPREADSHEET CAN CARRY.
+   *
+   * The Excel import has a 「권한」 column with two values (see rosterImport.ts), because a column
+   * of free text is the most a spreadsheet handed to an HR office can honestly hold. It stays the
+   * field the import writes, the CSV export prints and /register shows back to the person.
+   *
+   * When the panel wrote the row it also filled the four fields below, which say the same thing
+   * more exactly; this one is then DERIVED from them so the two can never disagree. On an imported
+   * row the four are absent and this is all there is — see activateRosterEntry for what that means
+   * on sign-up.
+   */
   permission: "admin" | "operator";
+  /**
+   * WHAT THE CODE DOOR NOW ASKS, MATCHING THE MAIL DOOR (owner, 2026-09-28: 메일로 초대할 때처럼
+   * 프로젝트, 로그인 범위, 권한, 팀 선택이 모두 동일하게 들어가야 할 것 같은데?).
+   *
+   * Before this, a code invite asked one two-way question and the account it created held
+   * `appAccess: true` with NO app grants — so the person redeemed their code, signed in, and the
+   * app turned them away with `noScreens`. On an on-premise site with no mail this is the only
+   * enrolment path there is, which made it impossible to enrol a working app user in one step.
+   *
+   * All four are optional because a row can also arrive from the Excel import, which has no
+   * columns for them. Absent means "fall back to `permission`" — never "grant nothing", which is
+   * the state that caused the bug.
+   */
+  accessMode?: "both" | "appOnly" | "portalOnly";
+  /** The Portal console role. Only meaningful when `accessMode` includes Portal. */
+  portalRole?: PortalPermission;
+  /** The app grants to hand over on sign-up, and how they were decided. */
+  appActions?: AppAction[];
+  grantMode?: "preset" | "custom";
+  presetId?: string;
+  /**
+   * Which team the account is filed under. Absent means the project's own team, which is what
+   * every row used to get — an installation with one team never sees the difference, and one with
+   * two needs the answer said out loud rather than guessed.
+   */
+  teamId?: string;
   status: RosterCodeStatus;
 }
 

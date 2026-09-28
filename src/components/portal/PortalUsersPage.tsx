@@ -3,14 +3,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Asterisk, Boxes, ChevronRight, CircleHelp, ClipboardList, Eye, KeyRound, KeySquare, Link2, MailQuestion, MonitorOff, MoreVertical, Trash2, UserCheck, UserMinus, UserSearch, UserX, Users as UsersIcon, Users2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, presetDescription, scopedCameraIds, cameraGroupsInProject, withAppActionDeps, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, SectionNav, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -18,7 +18,7 @@ import { withEffectiveStatus, type RosterEntry, type RosterCodeStatus } from "@/
 import RosterImportModal from "./RosterImportModal";
 import CameraScopePicker from "./CameraScopePicker";
 import {
-  ROSTER_T, RosterCodeCell, RosterEntryModal, IssueConfirmModal, RemoveConfirmModal, PrintSheet,
+  ROSTER_T, RosterCodeCell, IssueConfirmModal, RemoveConfirmModal, PrintSheet, type RosterTranslations,
   exportRosterCsv,
 } from "./ProjectRosterTab";
 
@@ -77,6 +77,8 @@ const T = {
     peopleTabGroupsFor: "for granting",
     peopleTabGroupsHint: "Named sets of cameras, handed out as one when granting camera access.",
     colPlannedPermission: "Permission on signup",
+    /* A roster row that carries no app grants — see the cell that prints it. */
+    plannedNoGrants: "No permissions",
     colCode: "Registration code",
     countRosterWaiting: "Awaiting sign-up",
     stageRosterListed: "Written down",
@@ -498,6 +500,7 @@ const T = {
     peopleTabGroupsFor: "권한용 묶음",
     peopleTabGroupsHint: "이름 붙인 카메라 묶음입니다. 카메라 권한을 줄 때 한 덩어리로 줍니다.",
     colPlannedPermission: "가입 시 권한",
+    plannedNoGrants: "권한 없음",
     colCode: "등록 코드",
     countRosterWaiting: "등록 대기",
     stageRosterListed: "적어둠",
@@ -2767,6 +2770,296 @@ function AppGrantEditor({ presets, initial, subtitle, nested, warning, blockedRe
  * difference is not an inconsistency: there is a decision on file here, and showing it is
  * reporting rather than defaulting.
  */
+/**
+ * Add or edit one roster row.
+ *
+ * The roster is a shortcut for setting many people up at once, not the only way in — so a person
+ * can be entered here by hand, one at a time, and the Excel import is what saves repeating it.
+ * Everything the import would carry is on this form: name, employee number, department, an optional
+ * address, and the role the account will get when they register.
+ *
+ * The employee number is the roster's matching key (a code resolves to exactly one row), so it can
+ * be typed when adding and is read-only afterwards — silently rewriting it would point an already
+ * printed code at a different person.
+ */
+function RosterEntryModal({ entry, projectId, onClose, onCreated, t }: {
+  entry: RosterEntry | null;
+  projectId: string;
+  onClose: () => void;
+  /**
+   * Called with the employee number after a NEW row is written, never on an edit.
+   *
+   * The caller that opened this through 「등록 코드로 추가」 uses it to mint the code in the same
+   * act — see PortalUsersPage. A callback rather than doing it here, because this panel is also
+   * the row editor, where issuing a code would be a side effect nobody asked for.
+   */
+  onCreated?: (employeeId: string) => void;
+  t: RosterTranslations;
+}) {
+  const [lang] = usePortalLanguage();
+  const addRosterEntry = useVcaStore(s => s.addRosterEntry);
+  const updateRosterEntry = useVcaStore(s => s.updateRosterEntry);
+  const { showToast } = useToast();
+  const editing = !!entry;
+
+  const [name, setName] = useState(entry?.name ?? "");
+  const [employeeId, setEmployeeId] = useState(entry?.employeeId ?? "");
+  const [department, setDepartment] = useState(entry?.department ?? "");
+  const [email, setEmail] = useState(entry?.email ?? "");
+  const [duplicate, setDuplicate] = useState(false);
+
+  /*
+   * THE SAME FOUR ANSWERS THE MAIL DOOR COLLECTS (owner, 2026-09-28: 메일로 초대할 때처럼
+   * 프로젝트, 로그인 범위, 권한, 팀 선택이 모두 동일하게 들어가야 할 것 같은데?).
+   *
+   * This panel used to ask one two-way question — 앱 사용자 / Portal 관리자 — which answers only
+   * where somebody signs in. Nothing here said WHAT they may do in the app, so the account minted
+   * on sign-up held the app door open with no screens behind it and the app turned them away.
+   *
+   * Same controls as the invite form, in the same order, reading the same copy: a select for the
+   * scope, a select for the console role when the scope reaches Portal, and the shared GrantPicker
+   * with 세부 설정 behind it. Two doors that ask the same question have to ask it the same way, or
+   * an administrator learns the answer twice.
+   */
+  const ut = T[lang];
+  const allProjects = useVcaStore(s2 => s2.projects);
+  const teams = useVcaStore(s2 => s2.teams);
+  const allPresets = useVcaStore(s2 => s2.accessPresets);
+  /* The row's project decides the team unless somebody says otherwise, which is the same rule
+     activateRosterEntry applies when the field is absent. */
+  const [pickedProject, setPickedProject] = useState(entry?.projectId ?? projectId);
+  const projectTeam = allProjects.find(pr => pr.id === pickedProject)?.teamId ?? teams[0]?.id ?? "";
+  const [teamId, setTeamId] = useState(entry?.teamId ?? projectTeam);
+  const [accessMode, setAccessMode] = useState<AccessMode>(
+    entry?.accessMode ?? (entry?.permission === "admin" ? "both" : "appOnly"));
+  const [portalRole, setPortalRole] = useState<PortalPermission>(
+    entry?.portalRole ?? (entry?.permission === "admin" ? "admin" : "admin"));
+  const [grantChoice, setGrantChoice] = useState<string | null>(
+    entry?.grantMode === "custom" ? "custom" : entry?.presetId ?? null);
+  const [customActions, setCustomActions] = useState<AppAction[]>(entry?.appActions ?? []);
+  const [grantEditor, setGrantEditor] = useState<GrantDraft | null>(null);
+  const presets = useMemo(() => presetsForTeam(allPresets, teamId), [allPresets, teamId]);
+  const chosenPreset = presets.find(pr => pr.id === grantChoice) ?? null;
+  const shownActions = grantChoice === "custom" ? customActions : chosenPreset ? chosenPreset.actions : [];
+  /* Portal-only rows grant no screens, so the question does not apply and cannot block the save. */
+  const grantsNeeded = accessMode !== "portalOnly";
+  const grantsChosen = !grantsNeeded || (grantChoice !== null && shownActions.length > 0);
+
+  const canSubmit = name.trim().length > 0 && employeeId.trim().length > 0 && !!pickedProject && grantsChosen;
+
+  /* PRESSING 커스텀 OPENS THE DETAILS PANEL, exactly as the invite form does — a press that
+     visibly does nothing reads as the eight rows having gone missing. It carries the set that was
+     on screen so switching from a preset starts there rather than at zero. */
+  const chooseGrant = (id: string) => {
+    setGrantChoice(id);
+    if (id !== "custom") return;
+    setGrantEditor({ choice: "custom", actions: shownActions });
+  };
+
+  /*
+   * ONE SHAPE FOR BOTH WRITES, and `permission` DERIVED rather than asked.
+   *
+   * The two-value field is what the Excel import writes and what /register reads back, so it has
+   * to keep meaning something — but this panel now knows the exact answer, so deriving it here is
+   * what stops the coarse field and the exact fields from ever disagreeing. See RosterEntry.
+   */
+  const answers = () => ({
+    projectId: pickedProject,
+    teamId,
+    accessMode,
+    portalRole: accessMode === "appOnly" ? undefined : portalRole,
+    permission: (accessMode !== "appOnly" && portalRole === "admin" ? "admin" : "operator") as "admin" | "operator",
+    appActions: grantsNeeded ? shownActions : undefined,
+    grantMode: (grantsNeeded ? (grantChoice === "custom" ? "custom" : "preset") : undefined) as "preset" | "custom" | undefined,
+    presetId: grantsNeeded && grantChoice !== "custom" ? grantChoice ?? undefined : undefined,
+  });
+
+  const submit = () => {
+    if (!canSubmit) return;
+    if (editing) {
+      updateRosterEntry(entry.employeeId, {
+        name: name.trim(),
+        department: department.trim() || undefined,
+        email: email.trim() || undefined,
+        ...answers(),
+      });
+      showToast({ variant: "success", title: t.toastUpdatedTitle, desc: name.trim() });
+      onClose();
+      return;
+    }
+    const ok = addRosterEntry({
+      name: name.trim(),
+      employeeId: employeeId.trim(),
+      department: department.trim() || undefined,
+      email: email.trim() || undefined,
+      ...answers(),
+    });
+    if (!ok) { setDuplicate(true); return; }
+    showToast({ variant: "success", title: t.toastAddedTitle, desc: `${name.trim()} (${employeeId.trim()})` });
+    onCreated?.(employeeId.trim());
+    onClose();
+  };
+
+  /*
+   * THE FORM MARKS WHAT IS REQUIRED, NOT WHAT IS OPTIONAL (owner, 2026-09-23: 다른 거에는 필수
+   * 별표로 넣어 두는데 왜 여기만 선택 항목이라고 알려주고 있어? 공통으로 바꿔줘).
+   *
+   * This panel was the last one saying 「선택」 beside 부서 and 이메일 while every other panel in
+   * Portal puts a red star on the fields that block the button. Two conventions in one console
+   * means a reader has to work out which one a panel is using before they can read it — and the
+   * two disagree about the same blank field, one calling it allowed and the other saying nothing.
+   *
+   * Required here is exactly what canSubmit tests: 이름 and 사번. 권한 gets no star either, because
+   * it is two buttons with one already chosen — a star on a field that cannot be empty marks
+   * nothing.
+   */
+  /* A BLOCK LABEL WITH THE MARK ADJACENT, like every other one in Portal (owner, 2026-09-23:
+     이름 옆에 별표 사이 간격이 너무 넓어). It was a flex row with `gap: 4px` left over from the
+     days when it also carried a 「선택」 hint, and the gap ADDED to RequiredMark's own 3px
+     marginLeft — 7px where the rest of the console has 3. The mark is part of the label's text,
+     not a second item beside it, so it sits in the text flow. */
+  const label = (text: string, required?: boolean) => (
+    <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
+      {text}{required && <RequiredMark />}
+    </label>
+  );
+  const inputStyle = FIELD_STYLE;
+
+  return (
+    <>
+    <Drawer
+      title={editing ? t.modalEditTitle : t.modalAddTitle}
+      onClose={onClose}
+      width="520px"
+      /* While the details panel is up, Escape belongs to IT — the same arrangement the invite
+         form uses. Two listeners would close this one out from under the editor. */
+      escapeEnabled={grantEditor === null}
+      footer={
+        <>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            {t.cancel}
+          </button>
+          <button className="portal-btn-primary" onClick={submit} disabled={!canSubmit}
+            style={{
+              padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)",
+              fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed",
+            }}>
+            {t.save}
+          </button>
+        </>
+      }
+    >
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div>
+          {label(t.fieldName, true)}
+          <TextField value={name} onChange={setName} placeholder={t.fieldNamePlaceholder} autoFocus />
+        </div>
+        <div>
+          {label(t.fieldEmployeeId, true)}
+          <input
+            value={employeeId}
+            onChange={e => { setEmployeeId(e.target.value); setDuplicate(false); }}
+            placeholder={t.fieldEmployeeIdPlaceholder}
+            disabled={editing}
+            style={{ ...inputStyle, backgroundColor: editing ? "var(--gray-50)" : "white", color: editing ? "var(--gray-500)" : "var(--gray-900)" }}
+          />
+          {editing && <p style={{ margin: "6px 0 0", fontSize: "11px", color: "var(--gray-400)" }}>{t.fieldEmployeeIdLocked}</p>}
+          {duplicate && <p style={{ margin: "6px 0 0", fontSize: "11px", fontWeight: 700, color: "var(--danger-400)" }}>{t.duplicateId}</p>}
+        </div>
+        <div>
+          {label(t.fieldDepartment)}
+          <TextField value={department} onChange={setDepartment} placeholder={t.fieldDepartmentPlaceholder} />
+        </div>
+        <div>
+          {label(t.fieldEmail)}
+          <TextField value={email} onChange={setEmail} placeholder={t.fieldEmailPlaceholder} />
+        </div>
+        {/* WHERE THEY WORK. One project per roster row — the row IS the enrolment onto one site,
+            and a code that let somebody into two sites would be a different object. Chips rather
+            than a select so the count is visible: an installation with one project shows one chip
+            and the answer is already made. */}
+        <div>
+          {label(ut.projectsLabel, true)}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+            {allProjects.filter(pr => pr.teamId === teamId).map(pr => {
+              const active = pr.id === pickedProject;
+              return (
+                <button key={pr.id} type="button" onClick={() => setPickedProject(pr.id)}
+                  style={{
+                    padding: "8px 12px", borderRadius: "999px", cursor: "pointer",
+                    border: active ? PICKED_LINE : BORDER,
+                    backgroundColor: active ? PICKED_FILL : "white",
+                    color: active ? "var(--gray-900)" : "var(--gray-600)",
+                    fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
+                  }}>
+                  {pr.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {/* HOW THEY GET IN. The same three the invite offers, read from the same copy — two doors
+            asking one question have to offer the same answers. */}
+        <div>
+          {label(ut.accessLabel)}
+          <FilterSelect
+            value={accessMode}
+            onChange={v => setAccessMode(v as AccessMode)}
+            options={(["both", "appOnly", "portalOnly"] as AccessMode[]).map(m => ({ value: m, label: accessLabel(ut, m) }))}
+          />
+        </div>
+        {accessMode !== "appOnly" && (
+          <div>
+            {label(ut.permissionLabel)}
+            <FilterSelect value={portalRole} onChange={v => setPortalRole(v as PortalPermission)} options={consoleRoleOptions(ut)} />
+          </div>
+        )}
+        {/* WHAT THEY MAY DO, after where and how — the invite's order, for the same reason: the two
+            answers above decide this one. A Portal-only row has no app to grant screens in. */}
+        <div>
+          {label(ut.foldGrant, grantsNeeded)}
+          {grantsNeeded ? (
+            <GrantPicker
+              presets={presets} choice={grantChoice} onChoice={chooseGrant}
+              actions={shownActions}
+              onToggleAction={aq => setCustomActions(prev => withAppActionDeps(prev.includes(aq) ? prev.filter(x => x !== aq) : [...prev, aq]))}
+              compact={{ onOpenDetails: () => setGrantEditor({ choice: grantChoice, actions: shownActions }) }}
+              hideTitle t={ut} />
+          ) : (
+            <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.6 }}>{ut.grantsPortalOnly}</p>
+          )}
+        </div>
+        {/* LAST, LIKE THE INVITE. An account CAN be filed under another team, and a form that never
+            shows the team would put somebody in the wrong one silently. */}
+        <div>
+          {label(ut.foldTeam)}
+          <FilterSelect
+            value={teamId}
+            onChange={v => { setTeamId(v); if (allProjects.find(pr => pr.id === pickedProject)?.teamId !== v) { const first = allProjects.find(pr => pr.teamId === v); if (first) setPickedProject(first.id); } }}
+            options={teams.map(o => ({ value: o.id, label: o.name }))} />
+        </div>
+        {!editing && <p style={{ margin: 0, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.addNote}</p>}
+      </div>
+    </Drawer>
+    {/* OVER THIS PANEL, NOT INSTEAD OF IT — the same editor the invite form and the account card
+        open, so the four answers come out in one order at one width wherever they are asked. */}
+    {grantEditor && (
+      <AppGrantEditor
+        nested
+        presets={presets}
+        initial={grantEditor}
+        onClose={() => setGrantEditor(null)}
+        onApply={d => {
+          setGrantChoice(d.choice);
+          if (d.choice === "custom") setCustomActions(d.actions);
+          setGrantEditor(null);
+        }}
+      />
+    )}
+    </>
+  );
+}
+
 function AppGrantModal({ user, onClose }: { user: PortalUser; onClose: () => void }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -4513,9 +4806,43 @@ export default function PortalUsersPage({ projectId, onGoToCameras }: PortalUser
                 <p title={entry.name} style={{ flexShrink: 0, maxWidth: "58%", fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.name}</p>
                 <p title={entry.email || entry.employeeId} style={{ minWidth: 0, fontSize: "12px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.email || entry.employeeId}</p>
               </div>
-                  <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>
-                    {entry.permission === "admin" ? rt.admin : rt.operator}
-                  </span>
+                  {/*
+                    WHAT THEY ACTUALLY ARRIVE WITH (2026-09-28).
+
+                    This cell said 「앱 사용자」 for every row that was not a Portal admin, which is
+                    the sign-in scope, not a permission — and it was the only thing on screen
+                    describing what the person gets. Meanwhile the account minted on sign-up held
+                    the app door open with NO screens behind it, so the row promised an app user
+                    and delivered one the app turns away at the door.
+
+                    Now it names the grant group the row carries, because that is the answer to
+                    「가입 시 권한」. A row from the Excel import carries none — the spreadsheet has
+                    no column for it — and that says so in red rather than pretending: the code can
+                    still be handed over, and the administrator can see, before it is used, that
+                    this person will arrive at nothing.
+                  */}
+                  {(() => {
+                    /* The two facts the cell has to carry on ONE line: what they may do in the app,
+                       and whether Portal opens for them at all. Two lines was tried and undone —
+                       every row went to 59px for a single word (see the note on the name cell). */
+                    const mode = entry.accessMode ?? (entry.permission === "admin" ? "both" : "appOnly");
+                    const pr = entry.presetId ? pagePresets.find(x => x.id === entry.presetId) ?? null : null;
+                    const grants = mode === "portalOnly" ? null
+                      : entry.grantMode === "custom" ? t.grantCustom
+                      : pr ? presetLabel(pr, lang)
+                      : null;
+                    /* Red only where the app door opens onto nothing. A Portal-only row has no app
+                       grants BY DESIGN and must not be marked as a mistake. */
+                    const missing = mode !== "portalOnly" && !grants;
+                    const portalPart = mode === "appOnly" ? null : rt.admin;
+                    const text = [mode === "portalOnly" ? null : (grants ?? t.plannedNoGrants), portalPart]
+                      .filter(Boolean).join(" \u00b7 ");
+                    return (
+                      <span title={text} style={{ fontSize: "12px", fontWeight: missing ? 700 : 400, color: missing ? "var(--danger-500)" : "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", minWidth: 0 }}>
+                        {text}
+                      </span>
+                    );
+                  })()}
                   <div style={{ minWidth: 0 }}>
                     {/* 「방금 발급」 MOVED HERE FROM THE NAME (owner: 이름 아래 방금 발급이
                         추가되니까 얘만 높이가 너무 두꺼워져서 어색해 보여 · 방금 발급 태그를
