@@ -393,12 +393,13 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
     const state = on === 0 ? "none" : on === owned.length ? "all" : "some";
     /* The band's own cell wears the same pill — see the note on the row cell. 「일부」 is filled
        too but in the lighter ground, so a tab that is half given does not read as a whole one. */
+    const boxed = !editing || gone;
     const body = (
       <span style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        minWidth: state === "none" ? undefined : "26px",
-        height: "22px", padding: state === "none" ? "0 2px" : "0 8px", borderRadius: "6px",
-        backgroundColor: state === "all" ? "var(--gray-200)" : state === "some" ? "var(--gray-100)" : "transparent",
+        minWidth: boxed && state !== "none" ? "26px" : undefined,
+        height: "22px", padding: boxed && state !== "none" ? "0 8px" : "0 2px", borderRadius: "6px",
+        backgroundColor: !boxed ? "transparent" : state === "all" ? "var(--gray-200)" : state === "some" ? "var(--gray-100)" : "transparent",
         fontSize: "11.5px", fontWeight: state === "none" ? 500 : 700,
         color: state === "none" ? "var(--gray-300)" : "var(--gray-900)", whiteSpace: "nowrap",
       }}>{state === "none" ? "\u2014" : state === "all" ? t.presetGroupAll : t.presetGroupSome}</span>
@@ -445,12 +446,17 @@ function PresetMatrix({ presets, lang, header, editing, draft, removed, onSetAct
      * colour over most of the table, and this console keeps purple for what one person just
      * chose. The edit-mode chip stays purple for exactly that reason.
      */
+    /* THE PILL IS THE READING SHAPE ONLY (owner, 2026-09-28: 보라색 박스 안에 회색 버튼이
+       그대로 있는 게 어색해 보여). While editing the cell is already a chip with its own ground,
+       so the grey pill inside it was a second box saying the same thing. Editing gets bare text
+       in the chip; reading gets the pill. */
+    const boxed = !editing || gone;
     const body = (
       <span style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        minWidth: cur.on ? "26px" : undefined,
-        height: "22px", padding: cur.on ? "0 8px" : "0 2px", borderRadius: "6px",
-        backgroundColor: cur.on ? "var(--gray-100)" : "transparent",
+        minWidth: boxed && cur.on ? "26px" : undefined,
+        height: "22px", padding: boxed && cur.on ? "0 8px" : "0 2px", borderRadius: "6px",
+        backgroundColor: boxed && cur.on ? "var(--gray-100)" : "transparent",
         fontSize: "11.5px", fontWeight: cur.on ? 700 : 500,
         color: cur.on ? "var(--gray-900)" : "var(--gray-300)",
         whiteSpace: "nowrap",
