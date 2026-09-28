@@ -113,7 +113,10 @@ const T = {
     noMatch: "조건에 맞는 기록이 없습니다.",
     colAt: "시각", colActor: "담당자", colTarget: "대상", colArea: "화면", colMessage: "변경 내용",
     searchPlaceholder: "변경 내용 검색",
-    filterAllActors: "전체",
+    /* 「전체」 alone said nothing about what it narrowed — the control beside it reads 「전체 화면」
+       and the one in the tab next door reads 「전체 조회자」, so this was the only filter on the
+       screen that made the reader open it to find out. Named after the column it filters. */
+    filterAllActors: "전체 담당자",
     filterAllAreas: "전체 화면",
     range7: "최근 7일", range30: "최근 30일", range90: "최근 90일", rangeAll: "보관분 전체",
     filtersActive: (n: number) => `필터 ${n}`,
