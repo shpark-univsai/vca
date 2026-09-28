@@ -2333,7 +2333,7 @@ export const SUPPORT_CONTACT: SupportContact = {
  */
 export const SIGNED_IN_USER: SignedInUser = {
   name: "Grace Tan",
-  email: "grace.tan@univs.ai",
+  email: "grace.tan@smartcity.gov.sg",
   accountId: "VCA-ADMIN-8821",
   role: "Smart City Operations Manager",
   team: "Operational Control Team Alpha",
@@ -3192,15 +3192,15 @@ export interface AccessRequest {
 }
 
 const PORTAL_USERS: PortalUser[] = [
-  { id: "user-1", name: "Grace Tan", email: "grace.tan@univs.ai", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-25 09:14" },
-  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@univs.ai", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
+  { id: "user-1", name: "Grace Tan", email: "grace.tan@smartcity.gov.sg", employeeId: "EMP-2041", teamId: "team-univs", projectIds: ["proj-sg", "proj-riverside"], permission: "owner", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-25 09:14" },
+  { id: "user-2", name: "Marcus Lee", email: "marcus.lee@smartcity.gov.sg", employeeId: "EMP-2042", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-investigator", status: "active", lastLoginAt: "2026-08-24 18:02" },
   // Admin who also works the app — the combination the single-field model could not hold.
-  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@univs.ai", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
-  { id: "user-4", name: "Wei Chen", email: "wei.chen@univs.ai", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "invited" },
-  { id: "user-5", name: "David Ong", email: "david.ong@univs.ai", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "suspended", lastLoginAt: "2026-06-02 08:30" },
+  { id: "user-3", name: "Nadia Rahman", email: "nadia.rahman@smartcity.gov.sg", employeeId: "EMP-2043", teamId: "team-univs", projectIds: ["proj-riverside"], permission: "admin", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], grantMode: "preset", presetId: "preset-operator", status: "active", lastLoginAt: "2026-08-20 11:47" },
+  { id: "user-4", name: "Wei Chen", email: "wei.chen@smartcity.gov.sg", employeeId: "EMP-2044", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "invited" },
+  { id: "user-5", name: "David Ong", email: "david.ong@smartcity.gov.sg", employeeId: "EMP-2045", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, status: "suspended", lastLoginAt: "2026-06-02 08:30" },
   // The customer's security officer: reads Portal for the audit trail, has no business in the
   // monitoring app. The other new combination.
-  { id: "user-6", name: "Aaron Sim", email: "aaron.sim@univs.ai", employeeId: "EMP-2046", teamId: "team-univs", projectIds: ["proj-sg"], permission: "auditor", appAccess: false, status: "active", lastLoginAt: "2026-08-22 16:05" },
+  { id: "user-6", name: "Aaron Sim", email: "aaron.sim@smartcity.gov.sg", employeeId: "EMP-2046", teamId: "team-univs", projectIds: ["proj-sg"], permission: "auditor", appAccess: false, status: "active", lastLoginAt: "2026-08-22 16:05" },
 ];
 
 // Empty on purpose. Three sample requests used to sit here, and no path in the app could produce

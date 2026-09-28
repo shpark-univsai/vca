@@ -26,7 +26,7 @@ const T = {
       emailLabel: "Email Address (Login ID)",
       // Placeholders carry no example prefix ("e.g." / "예:") anywhere in the portal: grey text in
       // an empty field already reads as an example, the prefix eats width, and people type it in.
-      emailPlaceholder: "hyejin@univs.ai",
+      emailPlaceholder: "name@example.com",
       checkAvailability: "Check Availability",
       taken: "✗ Taken",
       available: "✓ Available",
@@ -87,7 +87,7 @@ const T = {
       title: "1 / 2단계 — 관리자 계정 생성",
       subtitle: "이 계정이 로그인 ID이자 시스템 알림을 받는 마스터 관리자가 됩니다.",
       emailLabel: "이메일 주소 (로그인 ID)",
-      emailPlaceholder: "hyejin@univs.ai",
+      emailPlaceholder: "name@example.com",
       checkAvailability: "중복 확인",
       taken: "✗ 사용 불가",
       available: "✓ 사용 가능",

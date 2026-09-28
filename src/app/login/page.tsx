@@ -117,8 +117,8 @@ const REMEMBERED_ID_KEY = "vca.rememberedId";
  *   /login?demo=signedOut        signed out deliberately
  *
  * All seven are demo-only, and that is now true of every state except badCredentials. Two of them
- * used to happen for real against the seeded accounts — wei.chen@univs.ai (EMP-2044) is "invited"
- * and david.ong@univs.ai (EMP-2045) is "suspended" — and that check was removed: answering an
+ * used to happen for real against the seeded accounts — wei.chen@smartcity.gov.sg (EMP-2044) is "invited"
+ * and david.ong@smartcity.gov.sg (EMP-2045) is "suspended" — and that check was removed: answering an
  * account's state from the typed identifier, before any password, is the enumeration oracle
  * HANDOFF.md contract 13 forbids. See the note in handleSubmit. Either identifier still reaches
  * the branch below — EMP-2041 is Grace Tan, an admin, so it lands in Portal; EMP-2042 is an

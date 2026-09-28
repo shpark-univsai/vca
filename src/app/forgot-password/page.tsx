@@ -211,7 +211,7 @@ function fieldBorder(active: boolean) {
  *
  * Delete this parameter once the endpoints are real.
  */
-const DEMO_EMAIL = "grace.tan@univs.ai";
+const DEMO_EMAIL = "grace.tan@smartcity.gov.sg";
 
 export default function ForgotPasswordPage() {
   return (

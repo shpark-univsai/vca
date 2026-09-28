@@ -31,15 +31,15 @@ const DEMO_DENIALS: GateDenial[] = ["appNotGranted", "portalNotGranted", "notAct
  * console lists with app access appeared here with none.
  */
 const DEMO_USERS: Record<GateDenial, GateUser> = {
-  appNotGranted: { name: "Aaron Sim", email: "aaron.sim@univs.ai", permission: "auditor", appAccess: false, status: "active" },
-  portalNotGranted: { name: "Marcus Lee", email: "marcus.lee@univs.ai", permission: "none", appAccess: true, status: "active" },
-  notActivated: { name: "Wei Chen", email: "wei.chen@univs.ai", permission: "none", appAccess: true, status: "invited" },
-  suspended: { name: "David Ong", email: "david.ong@univs.ai", permission: "none", appAccess: true, status: "suspended" },
-  noDoor: { name: "(no roster entry)", email: "unknown@univs.ai", permission: "none", appAccess: false, status: "active" },
+  appNotGranted: { name: "Aaron Sim", email: "aaron.sim@smartcity.gov.sg", permission: "auditor", appAccess: false, status: "active" },
+  portalNotGranted: { name: "Marcus Lee", email: "marcus.lee@smartcity.gov.sg", permission: "none", appAccess: true, status: "active" },
+  notActivated: { name: "Wei Chen", email: "wei.chen@smartcity.gov.sg", permission: "none", appAccess: true, status: "invited" },
+  suspended: { name: "David Ong", email: "david.ong@smartcity.gov.sg", permission: "none", appAccess: true, status: "suspended" },
+  noDoor: { name: "(no roster entry)", email: "unknown@smartcity.gov.sg", permission: "none", appAccess: false, status: "active" },
   // Synthetic for the same reason noDoor is, though not for the same reason: the store can create
   // this state — a bulk CSV invitation does — but no seeded account is in it, and putting a real
   // person here would contradict what Users & Permissions says about them.
-  noScreens: { name: "(bulk-invited account)", email: "newcomer@univs.ai", permission: "none", appAccess: true, status: "active", appActions: [] },
+  noScreens: { name: "(bulk-invited account)", email: "newcomer@smartcity.gov.sg", permission: "none", appAccess: true, status: "active", appActions: [] },
 };
 
 function GateBody() {
