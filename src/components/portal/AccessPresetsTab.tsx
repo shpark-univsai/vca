@@ -37,7 +37,16 @@ import { APP_GRANT_LABELS } from "@/lib/appGrants";
 const T = {
   en: {
     presetTitle: "App access presets",
-    presetIntro: "Named sets of app grants, so the same job can be given the same screens twice. Editing one reaches every account following it — accounts set individually are not touched.",
+    /*
+     * ONE FACT, THE ONE YOU CANNOT SEE (owner, 2026-09-28: 이거 너무 어려워, 설명이).
+     *
+     * It said three things. Two of them are now on the screen: the table underneath is a set of
+     * named bundles, and each column already prints how many accounts follow it. Only the third —
+     * that editing a preset changes those accounts where they stand — is invisible, and it is the
+     * one that can surprise somebody. Its counterpart is invisible too and matters as much: an
+     * account whose grants were set by hand does NOT move when a preset does.
+     */
+    presetIntro: "Editing a preset changes every account that follows it. Accounts whose permissions were set individually stay as they are.",
     presetEmpty: "No presets yet. Until one exists, every invitation has to pick screens one by one.",
     presetNew: "New preset",
     presetLabelField: "Name",
@@ -66,7 +75,7 @@ const T = {
   },
   ko: {
     presetTitle: "앱 권한 프리셋",
-    presetIntro: "앱 권한을 이름으로 묶어 둔 것입니다. 같은 직무에 같은 화면을 두 번 줄 수 있게 합니다. 하나를 고치면 그것을 따르는 계정 전부에 닿고, 따로 지정한 계정은 건드리지 않습니다.",
+    presetIntro: "프리셋을 고치면 그걸 따르는 계정이 모두 같이 바뀝니다. 권한을 직접 지정한 계정은 그대로입니다.",
     presetEmpty: "아직 프리셋이 없습니다. 하나도 없으면 초대할 때마다 화면을 하나씩 골라야 합니다.",
     presetNew: "프리셋 만들기",
     presetLabelField: "이름",
