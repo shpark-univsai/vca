@@ -5309,8 +5309,11 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                         onClick={a.disabled ? undefined : a.onClick} disabled={a.disabled}
                         title={a.disabled ? a.reason : undefined}
                         style={{
-                          ...SECONDARY_BTN, height: CONTROL_HEIGHT, padding: "0 12px", marginTop: "2px",
-                          color: a.disabled ? "var(--gray-300)" : "var(--gray-700)",
+                          display: "inline-flex", alignItems: "center", gap: "6px", alignSelf: "flex-start",
+                          height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
+                          backgroundColor: "white", fontFamily: "inherit", fontSize: "12px",
+                          marginTop: "6px", marginLeft: "12px",
+                          color: a.disabled ? "var(--gray-300)" : "var(--gray-600)",
                           fontWeight: 700, cursor: a.disabled ? "default" : "pointer",
                         }}>
                         {a.icon}{a.label}
@@ -5323,22 +5326,28 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
               </div>
 
               {/*
-                VERBS, NOT BOXES (same owner note as PANEL_GROUP).
+                BOXES AGAIN, AND THAT IS NOT A LOOP (owner, 2026-09-28: 비밀번호 재설정도 아래
+                정지, 제거처럼 버튼이라고 느껴지게 라인을 그려줘).
 
-                Five bordered pills under two bordered groups were twenty of the thirty-one border
-                edges an invited account's card drew, and the loudest thing on it was a row of
-                things you rarely do.
-                They are the row of five that SECONDARY_BTN was written for and the only row on
-                this page that was not using it — the class's own note lists "on the Users page
-                nothing at all" as one of the three ways this treatment got left out. So the card
-                now has two registers: what is true about the account sits in tinted cards above,
-                what you can do to it is bare text that tints under the pointer.
+                They WERE boxes, and the boxes came off on 2026-09-22 for a measured reason: five
+                bordered pills under two bordered GROUPS were twenty of the thirty-one border edges
+                the card drew, and the loudest thing on it was a row of things you rarely do.
+
+                What changed since is the other half of that count. The groups lost their boxes,
+                and then the rows above became label-over-value pairs — so a bare tinting phrase
+                sitting in that rhythm reads as one more ANSWER rather than as a verb. The borders
+                are no longer competing with anything: they are now the only boxes in the card, and
+                they mark exactly the things you press.
+
+                One treatment for all four (인물 검색 차단 · 비밀번호 재설정 · 정지 · 제거), measured
+                identical at 36px tall and 8px radius. 제거 keeps its red-on-pointing class as the
+                one that cannot be undone.
               */}
               <div style={{ padding: "14px 20px 22px" }}>
                 <p style={PANEL_CAPTION}>{t.panelAccountSection}</p>
                 {/* Pulled left by the button's own 10px padding, so the first label starts on the
                     same x as the caption over it and the section reads as one block. */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "2px", margin: "0 -10px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                   {[
                     /* The two mail-less ways back in, kept apart for the reason the menu gave: a
                        person who never arrived needs the invitation again, a person who is locked
@@ -5368,12 +5377,19 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                       onClick: () => { close(); setViewingCodeFor(mu); },
                     }] : []),
                   ].map(a => (
-                    <button key={a.key} type="button" className={a.disabled ? undefined : "portal-btn-quiet"}
+                    /* THE SAME BOX 정지 AND 제거 WEAR (owner, 2026-09-28: 비밀번호 재설정도 아래
+                       정지, 제거처럼 버튼이라고 느껴지게 라인을 그려줘). Bare text under a caption
+                       reads as a value — the card's other sections are label-over-value, so a lone
+                       tinting phrase in that rhythm looked like one more answer rather than a verb.
+                       Every control in this card now looks like a control. */
+                    <button key={a.key} type="button" className={a.disabled ? undefined : "portal-btn-outline"}
                       onClick={a.disabled ? undefined : a.onClick} disabled={a.disabled}
                       title={a.disabled ? a.reason : undefined}
                       style={{
-                        ...SECONDARY_BTN, height: CONTROL_HEIGHT, padding: "0 10px",
-                        color: a.disabled ? "var(--gray-300)" : "var(--gray-700)",
+                        display: "inline-flex", alignItems: "center", gap: "6px",
+                        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
+                        backgroundColor: "white", fontFamily: "inherit", fontSize: "12px",
+                        color: a.disabled ? "var(--gray-300)" : "var(--gray-600)",
                         fontWeight: 700, cursor: a.disabled ? "default" : "pointer",
                       }}>
                       {/*
