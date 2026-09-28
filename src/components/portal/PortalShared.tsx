@@ -2265,7 +2265,7 @@ export type GrantRowDef = {
    * 이벤트 the pair was invisible; printed as two rows without a heading they looked like two
    * panels. So the heading is drawn and the rows under it are indented.
    */
-  subhead?: "events" | "subjects";
+  subhead?: "events";
   /** Sits under the nearest `subhead` above it. Presentation only — the store's parent rule is
    *  APP_ACTION_PARENT and it is unchanged. */
   indent?: boolean;
@@ -2326,11 +2326,14 @@ export const GRANT_TREE: GrantGroupDef[] = [
     rows: [
       { action: "liveWall" },
       { action: "history" },
-      /* The three subjects sit under a heading rather than under either row: the screen's own
-         filter covers both the tiles and the records, so neither one owns them. */
-      { action: "bestframeVip", subhead: "subjects", indent: true },
-      { action: "bestframeVehicle", indent: true },
-      { action: "bestframeUnknown", indent: true },
+      /* NO HEADING OVER THE THREE (owner, 2026-09-28: 볼 수 있는 대상이라는 줄은 없애도 되지
+         않을까? 아래 모니터링에는 없는데). It was there because they belong to the tab rather
+         than to either row above — but 모니터링's two subjects carry no heading either, and one
+         screen explaining its subjects while the other just lists them is the inconsistency the
+         heading was supposed to cure. The names say what they are. */
+      { action: "bestframeVip" },
+      { action: "bestframeVehicle" },
+      { action: "bestframeUnknown" },
     ],
   },
   {

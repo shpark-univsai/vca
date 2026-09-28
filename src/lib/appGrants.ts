@@ -135,7 +135,7 @@ export const APP_GRANT_LABELS = {
        thing from its own peers. Korean has one form, which is why only English differs. */
     groupName: { dashboard: "Dashboard", bestframe: "Best Frame", data: "Data", redmap: "Redmap" },
     /** A heading inside a tab — see GrantRowDef.subhead. */
-    subName: { events: "Events", subjects: "Who may be shown" },
+    subName: { events: "Events" },
     actionDesc: {
       systemStatus: "Whether the cameras and servers are up. No personal data",
       liveView: "A registered person, as they walk past. Strangers do not appear",
@@ -203,7 +203,7 @@ export const APP_GRANT_LABELS = {
     stage: { view: "보기", viewSearch: "보기 \u00b7 검색", searchOnly: "검색" },
     groupCaption: { dashboard: "대시보드", bestframe: "베스트 프레임", data: "데이터", redmap: "레드맵" },
     groupName: { dashboard: "대시보드", bestframe: "베스트 프레임", data: "데이터", redmap: "레드맵" },
-    subName: { events: "이벤트", subjects: "볼 수 있는 대상" },
+    subName: { events: "이벤트" },
     actionDesc: {
       systemStatus: "카메라와 서버가 살아 있는지 봅니다. 개인정보는 없습니다",
       liveView: "등록된 사람이 지나갈 때만 올라옵니다",
