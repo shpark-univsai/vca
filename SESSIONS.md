@@ -392,3 +392,12 @@ git diff <파일> | grep '^[+-]'     # 내용까지 본다
 
 **에이전트는 SESSIONS.md를 쓸 수 없습니다** (자기 파일만 소유). 조정 세션이 대신 적습니다 —
 B가 규칙 0대로 이 항목이 있어야 한다고 보고했고, 그게 맞습니다.
+
+### 2026-09-28 저녁 — 병렬 작업 배정
+
+- **조정 세션(나)**: 플로우 점검(빠진 화면 찾기), `complianceConfig.ts`, `HANDOFF-SERVER.md`,
+  `src/app/**`. 목록 탭 파일은 건드리지 않습니다.
+- **스켈레톤 에이전트**: 목록 탭들에 `TableSkeleton`/`TableLoadFailed` 배선 —
+  `ProjectCamerasTab.tsx` · `ProjectVipTab.tsx` · `ProjectServerTab.tsx` ·
+  `ProjectActivityTab.tsx` · `ProjectSearchLogTab.tsx` · `PortalUsersPage.tsx`.
+  `PortalShared.tsx`는 이미 컴포넌트가 들어가 있으니 **읽기만** 합니다.
