@@ -44,6 +44,9 @@ const T = {
     connectedSuffix: (n: number) => `/ ${n} connected`,
     online: "Online",
     offline: "Offline",
+    /* Verbatim from Input Sources, which is where a reader goes next. See the three-state note on
+       the status cell. */
+    refusing: "Refusing the connection",
     licenseSubscription: "License subscription",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit} channels used`,
     vipTargetDb: "VIP / target database",
@@ -146,6 +149,7 @@ const T = {
     connectedSuffix: (n: number) => `/ ${n}대 연결됨`,
     online: "온라인",
     offline: "오프라인",
+    refusing: "연결 거부",
     licenseSubscription: "라이선스 구독",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit}채널 사용`,
     vipTargetDb: "VIP DB",
@@ -726,7 +730,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
    * It comes back when a camera genuinely cannot be processed without an assignment, and the
    * thing to surface then is that fact, not the empty field.
    */
-  const mailMissing = resolveMailConfig(projectId, projects, teams).mailDomain === null;
+  /*
+   * THE RELAY, WHICH IS WHAT THE SENTENCE SAYS.
+   *
+   * This read `mailDomain === null` while the line it raises reads 「메일 서버가 설정되지
+   * 않았습니다 — 아무도 초대할 수 없습니다」. A domain is the rule for what an address may be; the
+   * relay is the thing that carries the invitation. A team can have one and not the other, and the
+   * seeded Northgate is exactly that shape — northgate.edu.sg with no smtp — so the project where
+   * nobody can actually be invited was the one project that never said so, and its own mail
+   * settings page said it plainly two clicks away.
+   */
+  const mailMissing = resolveMailConfig(projectId, projects, teams).smtp === null;
   // Scoped to the team, which is the boundary an owner grants across. Counted through
   // canManageAccess for the same reason the Users page's banner is — the power at stake is
   // granting, and that is the owner's.
@@ -1697,9 +1711,23 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                               the reader had to stop and work out which of them was the state. The
                               flaky-but-currently-up camera loses its flag here; that belongs on
                               the Input Sources page, where the fleet's health is the subject. */}
+                          {/*
+                            THREE STATES, because the store has three and this cell had two.
+                            
+                            `CameraStatus` is online · offline · error, and a camera refusing the
+                            connection was printed here as 「오프라인」 — on a screen whose own
+                            attention strip, four rows above, reads 「접속을 거부하는 카메라 1대」.
+                            Input Sources calls the same camera 「연결 거부」. So the one screen said
+                            two things about one camera, and the engineer sent to check a dead link
+                            went looking for a power cut instead of a credential.
+                            
+                            Refusing keeps the dark ink and the red dot — it is an exception like
+                            offline — and takes the wording from Input Sources so the two screens
+                            cannot drift.
+                          */}
                           <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0, fontSize: "12px", fontWeight: 600, color: online ? "var(--gray-500)" : "var(--gray-900)" }}>
                             <span style={{ width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0, backgroundColor: online ? "var(--gray-300)" : "var(--danger-400)" }} />
-                            <span style={{ flexShrink: 0 }}>{online ? t.online : t.offline}</span>
+                            <span style={{ flexShrink: 0 }}>{online ? t.online : c.status === "error" ? t.refusing : t.offline}</span>
                             {!online && (dropsByCamera.get(c.id) ?? 0) > 0 && (
                               <span
                                 title={t.dropNoteFull(dropsByCamera.get(c.id) as number)}

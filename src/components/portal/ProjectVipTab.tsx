@@ -127,7 +127,7 @@ interface VipDict {
   healthDuplicatesWhy: string;
   healthShowOnly: string;
   healthClear: string;
-  healthPeopleUnit: string;
+  healthPeopleUnit: (n: number) => string;
   healthOfTotal: (total: number) => string;
   colLastDetected: string;
   categoryLabel: string;
@@ -325,7 +325,9 @@ const T: Record<"en" | "ko", VipDict> = {
     healthDuplicatesWhy: "Two or more records that share a name. Usually the same person enrolled twice; the VIP list counts them twice either way.",
     healthShowOnly: "Show only these",
     healthClear: "Show everyone again",
-    healthPeopleUnit: "people",
+    /* A function, because at one it read 「1 people」. Korean has no plural, so only the English
+       side branches — the shape every other counter on this screen already uses. */
+    healthPeopleUnit: (n: number) => (n === 1 ? "person" : "people"),
     healthOfTotal: (total: number) => `of ${total}`,
     colLastDetected: "Last detected",
     categoryLabel: "Category",
@@ -515,7 +517,7 @@ const T: Record<"en" | "ko", VipDict> = {
     healthDuplicatesWhy: "이름이 같은 기록이 둘 이상입니다. 대개 같은 사람을 두 번 등록한 경우이고, 어느 쪽이든 목록에서는 두 명으로 셉니다.",
     healthShowOnly: "이 항목만 보기",
     healthClear: "전체 다시 보기",
-    healthPeopleUnit: "명",
+    healthPeopleUnit: () => "명",
     healthOfTotal: (total: number) => `/ ${total}명`,
     colLastDetected: "마지막 탐지",
     categoryLabel: "분류",
@@ -2115,7 +2117,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           key: "registered",
           icon: <Users size={14} strokeWidth={2.4} />,
           figure: activePersons.length,
-          unit: t.healthPeopleUnit,
+          unit: t.healthPeopleUnit(activePersons.length),
           label: t.healthRegistered,
           explanation: t.healthRegisteredWhy,
           tone: "neutral" as const,
@@ -2178,7 +2180,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           key: item.key,
           icon: item.icon,
           figure: item.count,
-          unit: t.healthPeopleUnit,
+          unit: t.healthPeopleUnit(item.count),
           label: item.label,
           explanation: item.why,
           tone: ("neutral" in item && item.neutral ? "neutral" : "warning") as "neutral" | "warning",
