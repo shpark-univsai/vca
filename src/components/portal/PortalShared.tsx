@@ -2140,9 +2140,12 @@ export function FacePhoto({ src, alt = "", size, radius, style, hiddenStyle }: {
  * form in Portal was otherwise going to keep its own useState for it — which is how three
  * different treatments got here in the first place.
  */
-export function TextField({ value, onChange, placeholder, type, inputMode, autoComplete, autoFocus, disabled, readOnly, style }: {
+export function TextField({ value, onChange, onKeyDown, placeholder, type, inputMode, autoComplete, autoFocus, disabled, readOnly, style }: {
   value: string;
   onChange?: (value: string) => void;
+  /** For the fields whose form is submitted with Enter — this console is used at a desk, and a
+   *  one-field step that makes you reach for the mouse is a step that reads as unfinished. */
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
   /** Drawn by globals.css's input::placeholder — light, heavy, and gone on focus. That rule is on
    *  the element, not on this component, because half of Portal's fields are bare <input>s. */
   placeholder?: string;
@@ -2161,6 +2164,7 @@ export function TextField({ value, onChange, placeholder, type, inputMode, autoC
     <input
       value={value}
       onChange={e => onChange?.(e.target.value)}
+      onKeyDown={onKeyDown}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       placeholder={placeholder}

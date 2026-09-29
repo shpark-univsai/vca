@@ -124,7 +124,6 @@ const MAIL_T = {
     fromAddressError: (domain: string) => `Must be an address on ${domain}.`,
     fromAddressHint: "The From: address recipients will see.",
     useTls: "Use TLS", save: "Save", saveProject: "Save for this project",
-    saveNoChanges: "Nothing changed yet",
     saveFixFields: "Fix the fields marked above",
     toastUsingTeam: "Using team mail settings",
     toastSaved: "Mail settings saved",
@@ -159,7 +158,6 @@ const MAIL_T = {
     fromAddressError: (domain: string) => `${domain} 주소여야 합니다.`,
     fromAddressHint: "수신자에게 표시될 발신(From) 주소입니다.",
     useTls: "TLS 사용", save: "저장", saveProject: "이 프로젝트만 저장",
-    saveNoChanges: "아직 바꾼 것이 없습니다",
     saveFixFields: "위에 표시된 항목을 고쳐주세요",
     toastUsingTeam: "팀 메일 설정 사용 중",
     toastSaved: "메일 설정 저장됨",
@@ -244,8 +242,8 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
      the team's — so it counts even though no field was touched. */
   const changed = override !== overridden || (override && fieldsChanged);
   const canSave = mayEdit && changed && formValid;
+  /* See PortalSettingsPage's twin: a reason only where looking at the screen does not give it. */
   const saveBlockedReason = !mayEdit ? readOnlyReason
-    : !changed ? t.saveNoChanges
     : !formValid ? t.saveFixFields
     : null;
 

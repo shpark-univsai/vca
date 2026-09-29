@@ -65,9 +65,6 @@ const T = {
     // preset. A category is something an institution writes, not a device somebody adds.
     categoryAdd: "New category",
     projectTitle: "Project",
-    projectApplyRule: "Each value here takes effect as you set it, and is written to the activity log.",
-    mailApplyRule: "The mail server fields are saved with the button under them. The network status beside them takes effect as you set it.",
-    saveNoChanges: "Nothing changed yet",
     saveFixFields: "Fix the fields marked above",
     projectName: "Name",
     rename: "Rename",
@@ -205,9 +202,6 @@ const T = {
     categoryNone: "아직 만든 분류가 없습니다.",
     categoryAdd: "분류 만들기",
     projectTitle: "프로젝트",
-    projectApplyRule: "이 탭의 값은 고르는 즉시 적용되고 변경 기록에 남습니다.",
-    mailApplyRule: "메일 서버 항목은 아래 저장 버튼을 눌러야 적용됩니다. 옆의 네트워크 상태는 누르는 즉시 적용됩니다.",
-    saveNoChanges: "아직 바꾼 것이 없습니다",
     saveFixFields: "위에 표시된 항목을 고쳐주세요",
     projectName: "이름",
     rename: "이름 변경",
@@ -487,8 +481,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   /* Which of the three it is, in the reader's words. `liveMail === null` is already "nothing has
      been typed for this team" — the draft is only created by an edit — so it is the no-change
      case rather than a separate one. Same three reasons, same order, as the project block below. */
+  /* Only what the screen cannot already show (owner, 2026-09-29: 설명이 너무 투머치해서
+     지저분해보이는뎅). A grey save button next to fields you have not touched says "nothing
+     changed" by itself, and a line repeating it was a caption on an obvious thing. What stays is
+     what you cannot see: that this account may not edit, and that a field above is refusing. */
   const teamMailBlockedReason = !mayEdit ? readOnlyReason
-    : liveMail === null ? t.saveNoChanges
     : (mailFromMismatch || !mailPortValid) ? t.saveFixFields
     : null;
   const saveTeamMail = () => {
@@ -718,7 +715,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         that. It is also the one thing here a reader cannot learn by looking.
       */}
       {active === "project" && project && (
-        <CardSection heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />} desc={t.projectApplyRule}>
+        <CardSection heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />}>
           <PairGrid>
             {/* Editable, at last. Every handover starts with a test project and a typo, and
                 there was no renameProject anywhere in the codebase — the first name a project
@@ -989,7 +986,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         is why it sits here beside the other two team policies.
       */}
       {active === "mail" && myTeam && (
-        <CardSection heading={t.mailRailLabel} icon={<Mail size={15} strokeWidth={2.2} />} subheading={`${t.teamMailTitle} · ${myTeam.name}`} hint={t.teamMailIntro} desc={t.mailApplyRule}>
+        <CardSection heading={t.mailRailLabel} icon={<Mail size={15} strokeWidth={2.2} />} subheading={`${t.teamMailTitle} · ${myTeam.name}`} hint={t.teamMailIntro}>
           {/* No maxWidth of its own any more — the section's content column is the cap, and two
               of these grids with two different ones is how columns stop lining up between
               sections. */}
@@ -1211,10 +1208,33 @@ function ChangePasswordModal({ t, lang, onClose }: {
     showToast({ variant: "info", title: t.passwordNotSaved, desc: t.passwordNotSavedBody });
   };
 
-  const field = (label: string, value: string, onChange: (v: string) => void, autoComplete: string, hint?: React.ReactNode) => (
+  /*
+   * Enter submits, on both steps (owner, 2026-09-29: 엔터키로도 확인버튼 눌리게 해주면 좋겠어
+   * 이게 다 pc(데스크톱)기반일거라서).
+   *
+   * Hands stay on the keyboard through a password form — you type it, and on a one-field step
+   * reaching for the mouse to press the only button on screen is the kind of thing that reads as
+   * a form that has not finished loading. Guarded by the same `canVerify`/`canSubmit` the buttons
+   * use, so Enter can never do what the button would refuse to do.
+   */
+  const onEnter = (run: () => void) => (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); run(); }
+  };
+
+  /** `trailing` puts a control on the field's own line — see the verify step. */
+  const field = (label: string, value: string, onChange: (v: string) => void, autoComplete: string, hint?: React.ReactNode, onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>, trailing?: React.ReactNode) => (
     <div>
       <label style={{ display: "block", marginBottom: "6px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{label}</label>
-      <TextField value={value} onChange={onChange} type="password" autoComplete={autoComplete} />
+      {trailing ? (
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TextField value={value} onChange={onChange} onKeyDown={onKeyDown} type="password" autoComplete={autoComplete} autoFocus />
+          </div>
+          {trailing}
+        </div>
+      ) : (
+        <TextField value={value} onChange={onChange} onKeyDown={onKeyDown} type="password" autoComplete={autoComplete} />
+      )}
       {hint}
     </div>
   );
@@ -1227,11 +1247,11 @@ function ChangePasswordModal({ t, lang, onClose }: {
        why there is none to put back. Both steps are exactly the steps that were here before: the
        container moved, the form did not. */
     <Drawer title={t.changePassword} onClose={onClose} dirty={dirty}
+      /* The verify step's button is NOT here any more — it sits against the field it acts on, so
+         the footer carries the way out alone. Moved rather than duplicated: two buttons doing one
+         thing on a two-line panel was the thing this console already decided against. */
       footer={step === "verify" ? (
-        <>
-          <PanelCancel onClick={onClose} label={t.cancel} />
-          <PanelPrimary onClick={verify} label={t.verify} disabled={!canVerify} />
-        </>
+        <PanelCancel onClick={onClose} label={t.cancel} />
       ) : (
         <>
           <PanelCancel onClick={onClose} label={t.cancel} />
@@ -1255,8 +1275,13 @@ function ChangePasswordModal({ t, lang, onClose }: {
           </p>
         </div>
         {step === "verify" ? (
+          /* THE BUTTON AGAINST THE FIELD (owner, 2026-09-29: 확인버튼이 인풋창 바로옆에 붙어서
+             클릭하기 쉽게해줬으면 좋겠어). One field and one answer: the button was at the far
+             bottom of a full-height panel, so confirming a password you had just typed meant
+             crossing the whole panel to reach the only thing that could act on it. */
           <div style={{ padding: "16px 20px 20px" }}>
-            {field(t.currentPassword, current, setCurrent, "current-password")}
+            {field(t.currentPassword, current, setCurrent, "current-password", undefined, onEnter(verify),
+              <PanelPrimary onClick={verify} label={t.verify} disabled={!canVerify} />)}
           </div>
         ) : (
           /* Nothing here restates step 1.
@@ -1273,9 +1298,9 @@ function ChangePasswordModal({ t, lang, onClose }: {
                  broken rather than after. Amber only once what is typed breaks it. */
               <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.45, color: next.length > 0 && !formatValid ? "var(--warning-500)" : "var(--gray-400)" }}>
                 {PASSWORD_RULE_TEXT[lang]}
-              </p>)}
+              </p>, onEnter(submit))}
             {field(t.confirmPassword, confirm, setConfirm, "new-password",
-              mismatch ? <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.45, color: "var(--warning-500)" }}>{t.mismatch}</p> : undefined)}
+              mismatch ? <p style={{ marginTop: "6px", fontSize: "11px", lineHeight: 1.45, color: "var(--warning-500)" }}>{t.mismatch}</p> : undefined, onEnter(submit))}
           </div>
         )}
       </>
