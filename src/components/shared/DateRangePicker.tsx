@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useState, useRef } from "react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 /**
@@ -122,10 +122,12 @@ function DateMonthCalendar({ lang, year, month, tempStart, tempEnd, onPick, onPr
   );
 }
 
-function DateRangePopover({ lang, anchorRef, value, onApply, onClose }: {
+function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single }: {
   lang: PickerLanguage;
   anchorRef: React.RefObject<HTMLElement | null>; value: DateRangeValue;
   onApply: (v: DateRangeValue) => void; onClose: () => void;
+  /** One day, not a span: the quick ranges go away and a click closes the answer. */
+  single?: boolean;
 }) {
   const t = T[lang];
   const base = value.start ?? new Date();
@@ -134,6 +136,7 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose }: {
   const [tempStart, setTempStart] = useState<Date|null>(value.start);
   const [tempEnd, setTempEnd] = useState<Date|null>(value.end);
   const [pos, setPos] = useState<{ top:number; left:number } | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   useEscapeKey(onClose);
 
   useEffect(() => {
@@ -142,7 +145,28 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose }: {
     setPos({ top: rect.bottom + 8, left: rect.left });
   }, [anchorRef]);
 
+  /*
+   * Below the trigger is only the DEFAULT. Measured in the browser: opened from the VIP registry's
+   * bulk bar — which is pinned to the bottom of the window — the calendar ran off the bottom edge
+   * and the days could not be clicked at all. So once it has painted, measure it: if it does not
+   * fit below, flip it above the trigger, and keep it inside the right edge either way.
+   */
+  useLayoutEffect(() => {
+    if (!pos || !boxRef.current || !anchorRef.current) return;
+    const box = boxRef.current.getBoundingClientRect();
+    const anchor = anchorRef.current.getBoundingClientRect();
+    const GAP = 8, EDGE = 8;
+    let top = pos.top, left = pos.left;
+    if (anchor.bottom + GAP + box.height > window.innerHeight - EDGE) {
+      // Above, unless there is even less room up there — then pin it to the top edge.
+      top = Math.max(EDGE, anchor.top - GAP - box.height);
+    }
+    left = Math.max(EDGE, Math.min(left, window.innerWidth - box.width - EDGE));
+    if (Math.abs(top - pos.top) > 0.5 || Math.abs(left - pos.left) > 0.5) setPos({ top, left });
+  }, [pos, anchorRef]);
+
   const pick = (d: Date) => {
+    if (single) { setTempStart(d); setTempEnd(d); return; }
     if (!tempStart || tempEnd) { setTempStart(d); setTempEnd(null); }
     else if (d < tempStart) { setTempStart(d); setTempEnd(null); }
     else { setTempEnd(d); }
@@ -158,10 +182,10 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose }: {
   return (
     <>
       <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:999 }} />
-      <div style={{ position:"fixed", top:pos.top, left:pos.left, zIndex:1000, backgroundColor:"white",
+      <div ref={boxRef} style={{ position:"fixed", top:pos.top, left:pos.left, zIndex:1000, backgroundColor:"white",
         border:BORDER, borderRadius:"12px", boxShadow:"0 8px 24px rgba(24, 17, 39,0.16)",
         padding:"12px", display:"flex", gap:"16px" }}>
-        <div style={{ display:"flex", flexDirection:"column", gap:"4px", width:"140px", borderRight:BORDER, paddingRight:"12px" }}>
+        {!single && <div style={{ display:"flex", flexDirection:"column", gap:"4px", width:"140px", borderRight:BORDER, paddingRight:"12px" }}>
           {/* Shared by every date filter in the app (Live Monitoring, Re-ID Analysis, RedFace) —
               this popover is the one place they all render QUICK_RANGES from, so a hover state
               added here shows up everywhere at once instead of needing to be repeated per screen. */}
@@ -176,7 +200,7 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose }: {
               {q.label[lang]}
             </button>
           ))}
-        </div>
+        </div>}
         <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
           <div style={{ display:"flex", gap:"24px" }}>
             <DateMonthCalendar lang={lang} year={viewYear} month={viewMonth} tempStart={tempStart} tempEnd={tempEnd} onPick={pick}
@@ -198,12 +222,13 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose }: {
 
 export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size = "md", emptyText, showIcon = true }: {
   lang: PickerLanguage;
-  value: DateRangeValue; onApply: (v: DateRangeValue) => void; mode?: "split"|"merged"; size?: "md"|"sm"; emptyText?: string; showIcon?: boolean;
+  value: DateRangeValue; onApply: (v: DateRangeValue) => void; mode?: "split"|"merged"|"single"; size?: "md"|"sm"; emptyText?: string; showIcon?: boolean;
 }) {
   const t = T[lang];
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const compact = size === "sm";
+  const single = mode === "single";
   const isEmpty = !value.start && !value.end;
   // The "All time" preset resolves to a real (non-null) sentinel range now, not {null,null} — see
   // the comment on QUICK_RANGES — so it needs its own check here to still collapse to a plain
@@ -231,7 +256,19 @@ export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size =
 
   return (
     <div ref={ref} style={{ position:"relative", display:"flex", gap:"8px", width:"100%" }}>
-      {(isEmpty && emptyText) || isAllTime ? (
+      {single ? (
+        // One day. The box holds one date and the popover applies it on the first click, so there
+        // is no half-picked state to explain — see DateRangePopover's `single`.
+        <div onClick={toggle} style={{ ...boxStyle, justifyContent:"space-between" }}>
+          <span style={{ display:"flex", alignItems:"center", gap: compact ? "6px" : "8px" }}>
+            {showIcon && <CalendarIconSm size={compact ? 12 : 14} />}
+            <span style={value.start ? textStyle(true) : { ...textStyle(false), color:"var(--gray-500)" }}>
+              {value.start ? fmtDate(value.start) : (emptyText ?? t.endDate)}
+            </span>
+          </span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="var(--gray-600)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
+      ) : (isEmpty && emptyText) || isAllTime ? (
         // Collapses to one box regardless of split/merged — always show the chevron here, since
         // without it this reads as a plain label instead of something clickable.
         <div onClick={toggle} style={{ ...boxStyle, justifyContent:"space-between" }}>
@@ -257,7 +294,7 @@ export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size =
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="var(--gray-600)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
       )}
-      {open && <DateRangePopover lang={lang} anchorRef={ref} value={value} onApply={(v) => { onApply(v); setOpen(false); }} onClose={() => setOpen(false)} />}
+      {open && <DateRangePopover lang={lang} anchorRef={ref} value={value} single={single} onApply={(v) => { onApply(v); setOpen(false); }} onClose={() => setOpen(false)} />}
     </div>
   );
 }

@@ -508,7 +508,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
   // Compared during render rather than reset from an effect: an effect paints the stale page once
   // before correcting it, and react-hooks flags the synchronous setState as cascading renders.
   // Same idiom DataPage.tsx uses for its own nav/seed resets.
-  const filterKey = `${search}|${typeFilter}|${gapFilter ?? ""}|${rowsPerPage}`;
+  const filterKey = `${search}|${typeFilter}|${gapFilter ?? ""}|${rowsPerPage}|${sort.key}|${sort.direction}`;
   const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
   if (filterKey !== prevFilterKey) {
     setPrevFilterKey(filterKey);

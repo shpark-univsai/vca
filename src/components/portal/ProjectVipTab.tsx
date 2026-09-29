@@ -12,6 +12,7 @@ import { useToast } from "../Toast";
 import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, TableSkeleton, TableLoadFailed, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 import VipImportModal from "./VipImportModal";
+import { DateRangeTrigger, dateKeyOf } from "../shared/DateRangePicker";
 
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
 
@@ -157,6 +158,7 @@ interface VipDict {
   selectAllLabel: string;
   selectedCount: (n: number) => string;
   bulkExpiryLabel: string;
+  bulkExpiryPick: string;
   bulkExpiryApply: string;
   bulkExpiryNone: string;
   bulkGroupLabel: string;
@@ -357,6 +359,7 @@ const T: Record<"en" | "ko", VipDict> = {
     selectAllLabel: "Select all rows shown",
     selectedCount: (n: number) => `${n} selected`,
     bulkExpiryLabel: "Change end date",
+    bulkExpiryPick: "Pick a date",
     bulkExpiryApply: "Apply",
     bulkExpiryNone: "No end date",
     bulkGroupLabel: "Group",
@@ -547,6 +550,7 @@ const T: Record<"en" | "ko", VipDict> = {
     selectAllLabel: "보이는 행 전체 선택",
     selectedCount: (n: number) => `${n}명 선택됨`,
     bulkExpiryLabel: "만료일 변경",
+    bulkExpiryPick: "날짜 선택",
     bulkExpiryApply: "적용",
     bulkExpiryNone: "무기한으로",
     bulkGroupLabel: "그룹",
@@ -1772,7 +1776,9 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   const { listRef, rowsPerPage, setRowsPerPage, perPageOptions } = useFitRowsPerPage(69);
   // Any narrowing changes what page 1 even means, so a filter or a tab switch goes back to it —
   // otherwise searching from page 5 answers with an empty table.
-  const pagingKey = `${vipTab}|${q}|${groupFilter ?? ""}|${priorityFilter}|${healthFilter ?? ""}|${view}`;
+  // Sort belongs in this key too: re-sorting while on page 3 keeps the offset and shows a slice
+  // out of the middle of the new order, which reads as "the sort did nothing".
+  const pagingKey = `${vipTab}|${q}|${groupFilter ?? ""}|${priorityFilter}|${healthFilter ?? ""}|${view}|${sort.key}|${sort.direction}`;
   const [lastPagingKey, setLastPagingKey] = useState(pagingKey);
   if (lastPagingKey !== pagingKey) { setLastPagingKey(pagingKey); setPage(1); }
   const totalPages = Math.max(1, Math.ceil(sortedPersons.length / rowsPerPage));
@@ -2438,12 +2444,20 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     fitContent
                   />
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0 }}>{t.bulkExpiryLabel}</span>
-                  <input
-                    type="date"
-                    value={bulkExpiry}
-                    onChange={e => setBulkExpiry(e.target.value)}
-                    style={{ height: CONTROL_HEIGHT, padding: "0 8px", borderRadius: "8px", border: "none", fontSize: "12px", fontFamily: "inherit", flexShrink: 0 }}
-                  />
+                  {/* The app's own picker, not `<input type="date">` — that drew the BROWSER's
+                      control, the one white box on this bar that came from somewhere else and
+                      looked different in every browser. `single` because an end date is one day,
+                      not a span; it hands back {start,end} set to the same day and we keep start. */}
+                  <div style={{ width: "150px", flexShrink: 0 }}>
+                    <DateRangeTrigger
+                      lang={lang}
+                      mode="single"
+                      size="sm"
+                      value={{ start: bulkExpiry ? new Date(bulkExpiry + "T00:00:00") : null, end: null }}
+                      onApply={v => setBulkExpiry(v.start ? dateKeyOf(v.start) : "")}
+                      emptyText={t.bulkExpiryPick}
+                    />
+                  </div>
                   <button
                     onClick={() => bulkExpiry && applyBulkExpiry(bulkExpiry)}
                     disabled={!bulkExpiry}

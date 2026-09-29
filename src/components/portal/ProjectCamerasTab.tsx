@@ -190,7 +190,7 @@ const T = {
     // colAddress and the row that fills it), so a heading naming the stream URL was both unused
     // and untrue. One column, one name.
     colStatus: "Status",
-    emptyFiltered: "No cameras match these filters.",
+    emptyFiltered: "Nothing matches these filters.",
     previewAction: "Preview stream",
     editAction: "Edit",
     removeAction: "Remove",
@@ -385,7 +385,7 @@ const T = {
     colServer: "서버",
     colZone: "구역",
     colStatus: "상태",
-    emptyFiltered: "이 필터와 일치하는 카메라가 없습니다.",
+    emptyFiltered: "이 필터와 일치하는 항목이 없습니다.",
     previewAction: "스트림 미리보기",
     editAction: "수정",
     removeAction: "삭제",
@@ -1296,7 +1296,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * skip.
    */
 
-  const activeFilterCount = [zoneFilter, statusFilter].filter(v => v !== "ALL").length + (gapFilter === null ? 0 : 1);
+  /* Zone, status and the gap chips are camera questions: a file has no zone, no connection and no
+     coordinates. On a file-only tab they are hidden — and therefore must not act either, or the
+     tab would open empty with nothing on screen explaining why. They stay in state, so returning
+     to Cameras or All brings them back set, with the controls visible again. */
+  const fileOnlyTab = kindTab === "video" || kindTab === "image" || kindTab === "deepfake";
+  const activeFilterCount = fileOnlyTab ? 0
+    : [zoneFilter, statusFilter].filter(v => v !== "ALL").length + (gapFilter === null ? 0 : 1);
   // Selected camera ids. Held as a Set of ids rather than of rows so a selection survives the list
   // being re-sorted or re-filtered underneath it.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1329,7 +1335,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       : c.status === statusFilter;
     const matchesGap = gapFilter === null
       || (gapFilter === "noPosition" ? !hasPosition(c) : !c.serverId);
-    return matchesSearch && matchesZone && matchesStatus && matchesGap;
+    return matchesSearch && (fileOnlyTab || (matchesZone && matchesStatus && matchesGap));
   });
   const matchingUploads = projectUploads.filter(u => {
     const matchesSearch = !q || u.fileName.toLowerCase().includes(q);
@@ -1338,10 +1344,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     // honest answer, not showing them as if they had passed a filter they cannot be judged by.
     // A gap filter is a camera question too — a file has no engine, no server and no coordinates,
     // and showing files while one is on would be showing rows that cannot be judged by it.
-    const cameraOnlyFilterSet = zoneFilter !== "ALL" || gapFilter !== null;
+    // On a file-only tab those controls are not on screen, so there is nothing for a file to fail.
+    const cameraOnlyFilterSet = !fileOnlyTab && (zoneFilter !== "ALL" || gapFilter !== null);
     // Status filter is shared but its values are not: "online"/"offline" describe a connection and
     // a file has none, so the same reasoning applies.
-    return matchesSearch && !cameraOnlyFilterSet && statusFilter === "ALL";
+    return matchesSearch && !cameraOnlyFilterSet && (fileOnlyTab || statusFilter === "ALL");
   });
 
   // Cameras and uploads become one row list before sorting, so a sort is a sort of the table and
@@ -1389,7 +1396,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
      it is the registry's too — the two tables now show the same 48px tile (owner's note,
      2026-09-18: "vip 화면 테이블 높이로 맞춰줘"). */
   const { listRef, rowsPerPage, setRowsPerPage, perPageOptions } = useFitRowsPerPage(69);
-  const pagingKey = `${kindTab}|${search}|${statusFilter}|${zoneFilter}`;
+  const pagingKey = `${kindTab}|${search}|${statusFilter}|${zoneFilter}|${sort.key}|${sort.direction}`;
   const [lastPagingKey, setLastPagingKey] = useState(pagingKey);
   if (lastPagingKey !== pagingKey) { setLastPagingKey(pagingKey); setPage(1); }
   const totalPages = Math.max(1, Math.ceil(visibleRows.length / rowsPerPage));
@@ -2052,7 +2059,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           third of a line above the Delete button beside it. */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
         <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
-        <FilterSelect
+        {!fileOnlyTab && <><FilterSelect
           value={zoneFilter}
           onChange={setZoneFilter}
           options={[{ value: "ALL", label: t.filterAllZones }, ...zones.map(z => ({ value: z, label: z }))]}
@@ -2072,7 +2079,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             ...(errorCount > 0 ? [{ value: "error", label: `${t.statusError} (${errorCount})` }] : []),
           ]}
         />
-        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
+        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} /></>}
         {/*
           The tools, at the right end of the toolbar.
 
