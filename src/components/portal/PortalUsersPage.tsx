@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, StatusBadge, type StatusTone, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL, ActiveFilterCount } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, StatusBadge, type StatusTone, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL, ActiveFilterCount } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -4789,7 +4789,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             cell with a hand's width of nothing to its right. Narrowing those three moves Status
             right, up against the actions menu where it belongs, and gives the names their room
             back. */}
-        <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: TABLE_RULE, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
           {/* Projects and MFA carry no sortKey: a user belongs to several projects, so there is no
               single value to order by, and MFA is display-only mock data it would be misleading to
               let anyone rank people with. */}
@@ -4881,7 +4881,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             aria-label={t.manageAccount}
             style={{
             display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
-            borderBottom: isLast ? "none" : BORDER,
+            borderBottom: isLast ? "none" : TABLE_RULE,
             borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
             cursor: "pointer", backgroundColor: hoverRow === u.id ? "var(--gray-50)" : "transparent",
           }}>
@@ -5127,7 +5127,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           return (
             <div key={entry.employeeId} style={{
               display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
-              borderBottom: isLast ? "none" : BORDER,
+              borderBottom: isLast ? "none" : TABLE_RULE,
               borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
             }}>
               {/*

@@ -96,9 +96,19 @@ export const BORDER = "1px solid var(--line)";
  */
 export const CONTROL_BORDER = "1px solid var(--line-control)";
 /** A card's edge is the same hairline as everything else. One line colour, one weight. */
-/* The panel's own edge — darker than the rules inside it. See --line-card in globals.css for the
-   measurements and for why this is a border and not a shadow. */
+/* The panel's own edge. See --line-card in globals.css for the measurements and for why this is a
+   border and not a shadow. */
 export const CARD_BORDER = "1px solid var(--line-card)";
+/**
+ * A rule INSIDE a bordered table — a row divider, the line under a header row.
+ *
+ * The same colour as the frame around it, not the lighter hairline (owner, 2026-09-29: 여기 라인이
+ * 분리되서 다른색이야). A table is a grid of lines and its outer edge is simply the outermost of
+ * them, so a lighter rule running into a darker frame breaks at every row: measured, the dividers
+ * reach the card's inner edge on both sides, which put a colour step at each end of each row.
+ * A card WRAPPING content is a different thing — there the hairline stays for what is inside it.
+ */
+export const TABLE_RULE = CARD_BORDER;
 /**
  * A card's corner. One number, because two was the whole problem.
  *

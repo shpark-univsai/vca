@@ -9,7 +9,7 @@ import { getComplianceConfig } from "@/lib/complianceConfig";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, TableSkeleton, TableLoadFailed, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
+import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, TableSkeleton, TableLoadFailed, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 import VipImportModal from "./VipImportModal";
 import { DateRangeTrigger, dateKeyOf } from "../shared/DateRangePicker";
@@ -2456,7 +2456,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           </div>
         ) : (
           <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
-            <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
+            <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: TABLE_RULE, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
               {[t.colGroup, t.colMembers, t.colPriority, t.colNote, ""].map((h, i) => (
                 <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
               ))}
@@ -2467,7 +2467,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               return (
                 <div key={group.id} style={{
                   display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
-                  borderBottom: isLast ? "none" : BORDER,
+                  borderBottom: isLast ? "none" : TABLE_RULE,
                 }}>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</p>
@@ -2607,7 +2607,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               Not drawn over an empty register: the select-all ticks nothing and each heading sorts
               nothing, and a heading strip is what makes a reader expect rows under it. The card
               itself (this div's parent) still draws the box the empty state sits in. */}
-          {!nothingRegistered && <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: personGrid, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
+          {!nothingRegistered && <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: personGrid, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: TABLE_RULE, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
             {/* No minHeight on the HEADER's box. The row version sets one because a row is tall
                 enough to spare it; here it made the heading strip 49px for a 15px checkbox, which
                 reads as a heavier band than the rows under it (owner's note: "테이블 헤더 높이가
@@ -2689,7 +2689,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailFor(person); } }}
                 style={{
                 display: "grid", gridTemplateColumns: personGrid, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
-                borderBottom: isLast ? "none" : BORDER,
+                borderBottom: isLast ? "none" : TABLE_RULE,
                 borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
                 cursor: "pointer",
               }}>

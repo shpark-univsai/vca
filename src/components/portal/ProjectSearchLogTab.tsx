@@ -8,7 +8,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { DateRangeTrigger, dateKeyOf, type DateRangeValue } from "../shared/DateRangePicker";
 import {
-  BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
+  BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
   ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TableSkeleton, TableLoadFailed, sortRows, useTableSort} from "./PortalShared";
 import { Eye, FileOutput, ShieldAlert } from "lucide-react";
 
@@ -427,7 +427,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
         <div style={{
           position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: grid,
           columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)",
-          borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS,
+          borderBottom: TABLE_RULE, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS,
           color: TABLE_HEADER_COLOR,
         }}>
           {(columns.map(c => ({
@@ -468,7 +468,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           <div key={r.id} style={{
             display: "grid", gridTemplateColumns: grid, columnGap: TABLE_COLUMN_GAP,
             padding: "10px 16px", alignItems: "center",
-            borderBottom: i === visible.length - 1 ? "none" : BORDER,
+            borderBottom: i === visible.length - 1 ? "none" : TABLE_RULE,
           }}>
             {/* The instant, in the project's own zone — a look-up is filed under the day it
                 happened at the site, not the day it was at the reviewer's desk. This said exactly

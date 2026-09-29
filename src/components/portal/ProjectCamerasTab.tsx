@@ -13,7 +13,7 @@ import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, CARD_BORDER, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, TABLE_RULE, CARD_BORDER, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -2393,7 +2393,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
              takes no top edge. In map view there are no headings above it and it is the whole
              card. */
           border: view === "map" ? BORDER : undefined,
-          borderLeft: BORDER, borderRight: BORDER, borderBottom: BORDER,
+          borderLeft: TABLE_RULE, borderRight: TABLE_RULE, borderBottom: TABLE_RULE,
           borderTopLeftRadius: view === "map" ? CARD_RADIUS : undefined,
           borderTopRightRadius: view === "map" ? CARD_RADIUS : undefined,
           borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS,
@@ -2422,7 +2422,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           backgroundColor: "white", boxShadow: PANEL_SHADOW,
           // The bottom half of the card the column headings above opened, so it takes no top
           // border and only the bottom corners — the same edges the rows draw.
-          borderLeft: BORDER, borderRight: BORDER, borderBottom: BORDER,
+          borderLeft: TABLE_RULE, borderRight: TABLE_RULE, borderBottom: TABLE_RULE,
           borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS,
         }}>
           <TableEmpty text={projectCameras.length + projectUploads.length === 0 ? t.emptyNoSources : t.emptyFiltered} />
@@ -2432,12 +2432,12 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         // past the bottom edge (the last row's menu becomes invisible, not just cut off).
         // Header/last-row corners are radiused directly instead. Top border/radius omitted — the
         // fixed column-header block above already draws that edge, and the two must read as one card.
-        <div style={{ backgroundColor: "white", borderLeft: BORDER, borderRight: BORDER, borderBottom: BORDER, boxShadow: PANEL_SHADOW }}>
+        <div style={{ backgroundColor: "white", borderLeft: TABLE_RULE, borderRight: TABLE_RULE, borderBottom: TABLE_RULE, boxShadow: PANEL_SHADOW }}>
           {pageRows.map((row, i) => {
             const isLast = i === pageRows.length - 1;
             const rowStyle: React.CSSProperties = {
               display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", alignItems: "center",
-              borderBottom: isLast ? "none" : BORDER,
+              borderBottom: isLast ? "none" : TABLE_RULE,
               borderBottomLeftRadius: isLast ? CARD_RADIUS : undefined, borderBottomRightRadius: isLast ? CARD_RADIUS : undefined,
             };
             /**
