@@ -315,7 +315,10 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
   };
 
   const exportCsv = () => {
-    const header = [t.csvAt, t.csvActor, t.csvTarget, t.csvArea, t.csvMessage, t.csvRecordedBy];
+    /* Same order as the table, and the header now matches what the body actually writes — it read
+       「대상, 화면」 over cells that were area-then-target, so a spreadsheet had the two columns
+       swapped under their own names. */
+    const header = [t.csvActor, t.csvArea, t.csvTarget, t.csvMessage, t.csvAt, t.csvRecordedBy];
     // The column goes out with the file. A row pulled into a spreadsheet loses the screen's
     // second line, and what gets quoted in a review is the spreadsheet.
     //
@@ -324,9 +327,10 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
     // sentence across three cells by guessing is the parser this change exists to avoid. Empty
     // beats a cell that says something the row never claimed.
     const body = visible.map((a: AuditEvent) => [
-      stamp(a.at), a.actor,
+      a.actor,
       a.area ? areaLabel(a.area) : "", a.target ?? "",
       a.area ? (a.action ?? a.message) : a.message,
+      stamp(a.at),
       a.recordedBy === "client" ? t.csvClient : t.csvServer,
     ]);
     const csv = [header, ...body].map(row => row.map(csvEscape).join(",")).join("\n");
@@ -419,8 +423,11 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
         }}>
           {([
             { label: t.colActor, key: "actor" as ActivitySortKey },
-            { label: t.colTarget, key: "target" as ActivitySortKey },
+            /* 화면 before 대상 (owner, 2026-09-29): the row then reads 누가 · 어디서 · 무엇을 ·
+               어떻게 · 언제, which narrows from the place to the thing instead of naming a
+               camera code before saying which screen it was touched on. */
             { label: t.colArea, key: "area" as ActivitySortKey },
+            { label: t.colTarget, key: "target" as ActivitySortKey },
             /* Not sortable, and the only one of the five that is not. Sorting by the predicate
                groups "Removed" beside "Renamed" — an alphabet, not a subject. The two columns
                beside it are the ones a reader groups by, and they sort. */
@@ -496,13 +503,6 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
               </>
             ) : (
               <>
-                {/* The thing that changed, in the weight a name gets everywhere else in Portal.
-                    Ellipsised, not wrapped: it is a name, and a name broken over two lines makes
-                    the row taller without making it clearer. */}
-                <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                  title={a.target}>
-                  {a.target}
-                </span>
                 {/* The screen, one step quieter than the two beside it: on a list filtered to one
                     screen it repeats down the column, and it is the column a reader scans rather
                     than reads. */}
@@ -515,6 +515,13 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
                   <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {areaLabel(a.area)}
                   </span>
+                </span>
+                {/* The thing that changed, in the weight a name gets everywhere else in Portal.
+                    Ellipsised, not wrapped: it is a name, and a name broken over two lines makes
+                    the row taller without making it clearer. */}
+                <span style={{ fontSize: "12px", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  title={a.target}>
+                  {a.target}
                 </span>
                 {/* What was done to it wraps rather than truncating. It is the column the screen
                     exists for, and an entry cut off at the ellipsis is an entry nobody can act
