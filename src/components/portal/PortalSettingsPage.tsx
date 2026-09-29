@@ -27,6 +27,38 @@ import { PROJECT_TIME_ZONE } from "@/lib/time";
  * choose to go rather than somewhere scrolling takes you.
  */
 
+/* The settings label, as PairShared's PairItem draws it (11px / 600 / 0.2px).
+ *
+ * The team-mail fields were hand-rolled `<label>`s at 12px/400 while every other label in the same
+ * card came from PairItem — measured in the browser after the owner asked (인터넷 연결 이거랑 발신
+ * 주소 폰트가 다른거 맞지?): 12px weight 400 against 11px weight 600, letter-spacing 0 against
+ * 0.2px. One card, two label vocabularies. These fields need their own grid, so they cannot simply
+ * become PairItems — they borrow its type instead, and the two halves read as one form. */
+const PAIR_LABEL: React.CSSProperties = { fontSize: "11px", fontWeight: 600, letterSpacing: "0.2px", lineHeight: "15px", color: "var(--gray-500)" };
+
+/**
+ * When this setting was last changed, beside the control that changes it.
+ *
+ * The Project tab applies every value the moment you pick it (owner, 2026-09-29: 이부분도 변경하면
+ * 뭐 그냥 자동 저장되는건가? / 변경되었다는게 안보여서) — a form with no save button and no
+ * acknowledgement, so picking a new retention looked exactly like picking the wrong one by
+ * accident. A toast says it happened; this line says it is still true tomorrow.
+ *
+ * READ FROM THE AUDIT LOG, not from a new field per setting. Every one of these writes a row
+ * there already, keyed by the same `target` string, so the log IS when it changed — a second copy
+ * on the project object could only ever drift from it. Nothing is drawn until there is a row.
+ */
+function LastChanged({ projectId, target, lang, t }: {
+  projectId: string; target: string; lang: "en" | "ko"; t: (typeof T)["en"] | (typeof T)["ko"];
+}) {
+  const auditLog = useVcaStore(s => s.auditLog);
+  const row = auditLog.find(a => a.projectId === projectId && a.area === "settings" && a.target === target);
+  if (!row) return null;
+  const when = new Date(row.at).toLocaleString(lang === "ko" ? "ko-KR" : "en-US",
+    { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return <span style={{ fontSize: "11px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.lastChanged(when)}</span>;
+}
+
 const T = {
   en: {
     accountTitle: "Account",
@@ -86,6 +118,8 @@ const T = {
     projectRegion: "Region",
     projectTimeZone: "Time zone",
     timeZoneNote: "Every screen uses this zone, whoever opens it and from where.",
+    settingSaved: "Saved",
+    lastChanged: (when: string) => `Changed ${when}`,
     retention: "Recording retention",
     retentionUnset: "Not decided",
     retentionDaysLabel: (n: number) => `${n} days`,
@@ -223,6 +257,8 @@ const T = {
     projectRegion: "지역",
     projectTimeZone: "시간대",
     timeZoneNote: "누가 어디서 열든 모든 화면이 이 시간대를 씁니다.",
+    settingSaved: "변경되었습니다",
+    lastChanged: (when: string) => `${when}에 변경`,
     retention: "영상 보관기간",
     retentionUnset: "미정",
     retentionDaysLabel: (n: number) => `${n}일`,
@@ -587,7 +623,8 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           filled with a disclaimer. */}
       {active === "account" && (
       <CardSection heading={t.accountTitle} icon={<User size={15} strokeWidth={2.2} />}>
-        <PairGrid>
+        {/* One rhythm across every Settings tab — see PairGrid's `spaced`. */}
+        <PairGrid spaced>
           {/*
             YOUR OWN NAME, AT LAST — AND STILL NOT YOUR OWN E-MAIL (policy settled 2026-09-29).
 
@@ -716,7 +753,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       */}
       {active === "project" && project && (
         <CardSection heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />}>
-          <PairGrid>
+          <PairGrid spaced>
             {/* Editable, at last. Every handover starts with a test project and a typo, and
                 there was no renameProject anywhere in the codebase — the first name a project
                 was given was the only one it would ever have. */}
@@ -774,12 +811,15 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 editable — the same rule the Users table's permission cell follows. */}
             <PairItem label={t.projectTimeZone} hint={t.timeZoneNote}>
               {mayEdit ? (
+                <span style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                 <FilterSelect
                   value={project.timeZone ?? PROJECT_TIME_ZONE}
-                  onChange={zone => setProjectTimeZone(project.id, zone)}
+                  onChange={zone => { setProjectTimeZone(project.id, zone); showToast({ variant: "success", title: t.settingSaved, desc: t.projectTimeZone }); }}
                   options={TIME_ZONE_OPTIONS}
                   fitContent
                 />
+                <LastChanged projectId={project.id} target="Time zone" lang={lang} t={t} />
+                </span>
               ) : (
                 TIME_ZONE_OPTIONS.find(o => o.value === (project.timeZone ?? PROJECT_TIME_ZONE))?.label
                   ?? (project.timeZone ?? PROJECT_TIME_ZONE)
@@ -810,12 +850,15 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 call exists, restore the second sentence and delete this paragraph. */}
             <PairItem label={t.retention} hint={t.retentionNote}>
               {maySetPolicy ? (
+                <span style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                 <FilterSelect
                   value={project.retentionDays === undefined ? "" : String(project.retentionDays)}
-                  onChange={v => setProjectRetention(project.id, v === "" ? null : Number(v))}
+                  onChange={v => { setProjectRetention(project.id, v === "" ? null : Number(v)); showToast({ variant: "success", title: t.settingSaved, desc: t.retention }); }}
                   options={RETENTION_OPTIONS(t)}
                   fitContent
                 />
+                <LastChanged projectId={project.id} target="Retention period" lang={lang} t={t} />
+                </span>
               ) : (
                 project.retentionDays === undefined ? t.retentionUnset : t.retentionDaysLabel(project.retentionDays)
               )}
@@ -843,12 +886,15 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 with the number it inherits, and reads as a fallback rather than a blank. */}
             <PairItem label={t.vipRetention} hint={t.vipRetentionNote}>
               {maySetPolicy ? (
+                <span style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                 <FilterSelect
                   value={project.vipRetentionDays === undefined ? "" : String(project.vipRetentionDays)}
-                  onChange={v => setProjectVipRetention(project.id, v === "" ? null : Number(v))}
+                  onChange={v => { setProjectVipRetention(project.id, v === "" ? null : Number(v)); showToast({ variant: "success", title: t.settingSaved, desc: t.vipRetention }); }}
                   options={VIP_RETENTION_OPTIONS(t)}
                   fitContent
                 />
+                <LastChanged projectId={project.id} target="VIP listing period" lang={lang} t={t} />
+                </span>
               ) : (
                 project.vipRetentionDays === undefined ? inheritedVipRetentionLabel : t.retentionDaysLabel(project.vipRetentionDays)
               )}
@@ -876,12 +922,13 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                     {/* Absent means on — see Project.evidenceWatermark. */}
                     <Switch
                       checked={project.evidenceWatermark !== false}
-                      onChange={on => setEvidenceWatermark(project.id, on)}
+                      onChange={on => { setEvidenceWatermark(project.id, on); showToast({ variant: "success", title: t.settingSaved, desc: t.watermark }); }}
                       label={t.watermark}
                     />
                     <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
                       {project.evidenceWatermark !== false ? t.watermarkOn : t.watermarkOff}
                     </span>
+                    <LastChanged projectId={project.id} target="Viewer watermark" lang={lang} t={t} />
                   </div>
                   {project.evidenceWatermark === false && (
                     <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.watermarkOffNote}</p>
@@ -990,48 +1037,63 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           {/* No maxWidth of its own any more — the section's content column is the cap, and two
               of these grids with two different ones is how columns stop lining up between
               sections. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
+          {/* Row gap 28, column gap 14 (owner, 2026-09-29: 위에도 동일하게 사이 공간 여백).
+              The project block below now separates its subjects at 28 and this half was still at
+              the form gap, so the same card read at two rhythms. The columns stay tight — a pair
+              side by side is one line of the form, and pushing those apart would separate the
+              wrong thing. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "28px 14px" }}>
             <div>
-              <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailDomain}</label>
+              <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.teamMailDomain}</label>
               <TextField value={mailDomain} onChange={setMailDomain} placeholder="company.local" />
               <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "6px" }}>{t.teamMailDomainHint}</p>
             </div>
             <div>
-              <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailHost}</label>
+              <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.teamMailHost}</label>
               <TextField value={mailHost} onChange={setMailHost} placeholder="mail.company.local" />
             </div>
             <div>
-              <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailPort}</label>
+              <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.teamMailPort}</label>
               <TextField value={mailPort} onChange={v => setMailPort(v.replace(/[^0-9]/g, ""))} placeholder="587" inputMode="numeric" />
               {/* Said, not merely enforced. The save button already greyed itself out for a bad
                   port and gave no reason anywhere on the screen. */}
               {mailPortIssue && <FieldError>{FIELD_CHECK_T[lang][mailPortIssue]}</FieldError>}
+              {/* TLS BELONGS TO THE PORT (owner, 2026-09-29: TLS 사용 체크는 포트에 붙여야하는
+                  내용이야? / 그럼 더 가까이 둬). It does: 587 is STARTTLS, 465 is implicit TLS,
+                  25 is plain, and the two answers are set together or one of them is wrong. It sat
+                  on its own line under the whole grid, which read as a fifth setting rather than
+                  as the other half of this one. Inside the port's cell the relationship is the
+                  layout, not a gap somebody has to read meaning into. */}
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "var(--gray-600)", marginTop: "8px" }}>
+                <input type="checkbox" checked={mailTls} onChange={e => setMailTls(e.target.checked)} disabled={!mayEdit} />
+                {t.teamMailTls}
+              </label>
             </div>
             <div>
-              <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.teamMailFrom}</label>
+              <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.teamMailFrom}</label>
               <TextField value={mailFrom} onChange={setMailFrom} placeholder="vca-noreply@company.local" />
               {mailFromMismatch && (
                 <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.45, marginTop: "6px" }}>{t.teamMailFromMismatch(mailDomain.trim())}</p>
               )}
             </div>
           </div>
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", color: "var(--gray-600)", marginTop: "14px" }}>
-            <input type="checkbox" checked={mailTls} onChange={e => setMailTls(e.target.checked)} disabled={!mayEdit} />
-            {t.teamMailTls}
-          </label>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px" }}>{t.teamMailUnverified}</p>
-          {/* THE DARK BUTTON SAYS WHY. It was already correct to be dark — nothing had been
-              edited — and it said so nowhere, so the half of the screen that behaved properly
-              read as the broken half. The reason sits beside it rather than in a `title`: a
-              disabled button gets no hover in some browsers and none at all on touch. */}
-          <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          {/* ONE LINE BESIDE THE BUTTON, never a paragraph of its own above it (owner,
+              2026-09-29: 이거는 버튼 옆에 놔도될것같은데).
+              
+              「저장만 할 뿐 연결을 시험하지는 않습니다」 is about what PRESSING SAVE does, so it
+              belongs where the pressing happens. And it takes turns with the blocked reason rather
+              than stacking under it: while saving is refused there is no save to qualify, so the
+              screen says why it is refused; once it is allowed, it says what saving will and will
+              not do. The reason sits beside the button rather than in a `title` because a disabled
+              button gets no hover in some browsers and none at all on touch. */}
+          <div style={{ marginTop: "28px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <button className="portal-btn-primary" onClick={saveTeamMail} disabled={!canSaveTeamMail}
               style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSaveTeamMail ? "var(--primary-400)" : "var(--gray-200)", color: canSaveTeamMail ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSaveTeamMail ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
               {t.teamMailSaveScoped}
             </button>
-            {teamMailBlockedReason && (
-              <span style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{teamMailBlockedReason}</span>
-            )}
+            <span style={{ flex: 1, minWidth: "200px", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>
+              {teamMailBlockedReason ?? t.teamMailUnverified}
+            </span>
           </div>
           {/*
             THE PROJECT'S EXCEPTION, IN THE SAME CARD.
@@ -1372,7 +1434,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
       ) : creating ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
           <div>
-            <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.purposeLabelField}</label>
+            <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.purposeLabelField}</label>
             <TextField value={label} onChange={setLabel} placeholder={t.purposeLabelPlaceholder} autoFocus />
           </div>
           {/* Off by default, unlike the VIP registry category's basis. A purpose is declared once a

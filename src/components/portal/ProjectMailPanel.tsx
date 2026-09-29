@@ -132,7 +132,12 @@ const MAIL_T = {
     toastUsingTeam: "Using team mail settings",
     toastSaved: "Mail settings saved",
     toastSavedDesc: (addr: string) => `Invites will be sent from ${addr}. Nothing has been sent through this relay yet — send one invite and confirm it arrives before you rely on it.`,
-    panelHeading: "This project",
+    /* Parallel to the team block's 「Team mail · <team>」 above the rule (owner, 2026-09-29: 이게
+       그아래 내용의 타이틀 의미를 담고있는건 아닌것같은뎅). 「This project」 alone named a SCOPE
+       and not a subject, so the line read as a divider label while everything under it — is there
+       internet, which server, what goes out — went unannounced. Same shape as the line above: what
+       it is, then whose. */
+    panelHeading: "Project mail",
     panelHint: "Where this project's invitations and password resets go out from.",
     networkLabel: "Internet",
     mailServerLabel: "Mail server",
@@ -166,7 +171,7 @@ const MAIL_T = {
     toastUsingTeam: "팀 메일 설정 사용 중",
     toastSaved: "메일 설정 저장됨",
     toastSavedDesc: (addr: string) => `초대장은 ${addr}에서 발송됩니다. 아직 이 릴레이로 보낸 적은 없습니다. 초대를 한 통 보내 도착하는지 확인한 뒤에 쓰세요.`,
-    panelHeading: "이 프로젝트",
+    panelHeading: "프로젝트 메일",
     panelHint: "이 프로젝트의 초대장과 비밀번호 재설정 메일이 어디에서 나가는지 정합니다.",
     networkLabel: "인터넷 연결",
     mailServerLabel: "메일 서버",
@@ -303,7 +308,9 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
         <p style={{ fontSize: "13px", fontWeight: 800, color: "var(--gray-900)" }}>{t.panelHeading}</p>
         <p style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{project.name}</p>
       </div>
-      <PairGrid>
+      {/* `spaced`: these rows are three subjects — is there internet, which mail server, what
+          goes out — not three fields of one form. */}
+      <PairGrid spaced>
         {/*
           A MEASUREMENT IS NOT A SETTING (2026-09-29).
 

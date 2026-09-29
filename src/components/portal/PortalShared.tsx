@@ -1389,7 +1389,19 @@ export function CardSection({ heading, icon, subheading, desc, hint, children }:
  * and on a 720px column the value ended up a hand's width from the word naming it. Stacking the
  * pair puts the two together, so the rules have nothing left to separate: whitespace does it.
  */
-export function PairGrid({ children }: { children: React.ReactNode }) {
+export function PairGrid({ children, spaced }: {
+  children: React.ReactNode;
+  /**
+   * Wider gaps, for a grid whose rows are separate SUBJECTS rather than fields of one form
+   * (owner, 2026-09-29: 인터넷 연결, 메일 서버, VCA가 발송하는 메일 사이간격 더 벌려서 구분을
+   * 지어주면 좋을것같아).
+   *
+   * At the form gap those three read as one run of six lines. A rule between them would be
+   * three boxes where there is one card, so the separation is space — the cheapest thing that
+   * says "new subject" without drawing anything.
+   */
+  spaced?: boolean;
+}) {
   return (
     /* One column (2026-09-11).
    
@@ -1401,7 +1413,7 @@ export function PairGrid({ children }: { children: React.ReactNode }) {
    
        One column gives it one: label, value, next. Height it costs is height the rail already
        made navigable. */
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "16px" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: spaced ? "28px" : "16px" }}>
       {children}
     </div>
   );
