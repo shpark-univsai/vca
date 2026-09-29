@@ -71,6 +71,7 @@ const T = {
     colTarget: "Searched for", colSurface: "Screen", colResults: "Results", colIp: "IP address",
     filterAllPurposes: "All purposes",
     filterFrom: "From", filterTo: "To",
+    filterAllSurfaces: "Every screen",
     filterAllActors: "Anyone",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     clearFilters: "Clear",
@@ -100,6 +101,7 @@ const T = {
     colTarget: "조회 대상", colSurface: "화면", colResults: "결과", colIp: "IP 주소",
     filterAllPurposes: "전체 목적",
     filterFrom: "시작일", filterTo: "종료일",
+    filterAllSurfaces: "전체 화면",
     filterAllActors: "조회한 사람 전체",
     filtersActive: (n: number) => `필터 ${n}`,
     clearFilters: "해제",
@@ -183,6 +185,14 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [actorFilter, setActorFilter] = useState("ALL");
+  /* 화면 필터 (owner, 2026-09-29: 조회기록 날짜 검색 옆에 사람으로 필터링할 일은 적을것
+     같은데, 화면으로 필터링할일이 더 많지않을까?).
+
+     The table has had a 「화면」 column since it was built and no way to narrow by it, while the
+     tab next door — the same screen's other half — has had a screen filter all along. And the
+     owner is right about the order: an auditor arrives asking 「모니터링에서 누가 뭘 찾았나」 far
+     more often than they arrive with one person's name. */
+  const [surfaceFilter, setSurfaceFilter] = useState("ALL");
 
   const projectRecords = useMemo(
     () => searchAccessLog.filter(r => r.projectId === projectId),
@@ -206,6 +216,14 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
     return [...seen].map(([value, name]) => ({ value, label: `${name} · ${value}` }));
   }, [projectRecords]);
 
+  /* Only the surfaces this project's log actually holds, and only once there is more than one —
+     the same rule the activity tab applies to its screen filter: a control with one real choice
+     narrows nothing. */
+  const surfaceOptions = useMemo(() => {
+    const seen = new Set(projectRecords.map(r => r.surface));
+    return [...seen].map(value => ({ value, label: t.surfaceName[value] ?? value }));
+  }, [projectRecords, t]);
+
   const showIp = projectRecords.some(r => r.ip);
   /* 시각이 맨 뒤 (owner, 2026-09-28: 변경기록도 조회기록도 시각이 맨 뒤로갔으면 해) — the two
      tabs of this screen keep the same column order as each other. */
@@ -220,6 +238,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
 
   const rows = projectRecords
     .filter(r => purposeFilter === "ALL" || r.purposeId === purposeFilter)
+    .filter(r => surfaceFilter === "ALL" || r.surface === surfaceFilter)
     .filter(r => actorFilter === "ALL" || r.actorEmail === actorFilter)
     // Compared in the project's own zone, the same one the rows print. A range picked as
     // "2026-09-15" means that day at the site, not a UTC slice of it that starts nine hours early.
@@ -240,9 +259,9 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
     }
   });
 
-  const activeFilterCount = [purposeFilter, actorFilter].filter(v => v !== "ALL").length
+  const activeFilterCount = [purposeFilter, surfaceFilter, actorFilter].filter(v => v !== "ALL").length
     + (fromDate ? 1 : 0) + (toDate ? 1 : 0);
-  const clearFilters = () => { setPurposeFilter("ALL"); setActorFilter("ALL"); setFromDate(""); setToDate(""); };
+  const clearFilters = () => { setPurposeFilter("ALL"); setSurfaceFilter("ALL"); setActorFilter("ALL"); setFromDate(""); setToDate(""); };
 
   /* A look-up with no reference is not a fault — most purposes do not require one — but it is the
      slice a reviewer samples first, so the strip counts it rather than making them filter for it. */
@@ -328,8 +347,19 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           <FilterSelect value={purposeFilter} onChange={setPurposeFilter}
             options={[{ value: "ALL", label: t.filterAllPurposes }, ...purposeOptions]} />
         )}
-        <FilterSelect value={actorFilter} onChange={setActorFilter}
-          options={[{ value: "ALL", label: t.filterAllActors }, ...actorOptions]} />
+        {/* Before the person, because it is the more common question — and after the date, which
+            is the one an auditor arrives with. */}
+        {surfaceOptions.length > 1 && (
+          <FilterSelect value={surfaceFilter} onChange={setSurfaceFilter}
+            options={[{ value: "ALL", label: t.filterAllSurfaces }, ...surfaceOptions]} />
+        )}
+        {/* Same rule as the screen filter beside it: on a log nobody has written to, this offered
+            「전체」 and nothing else — a control that narrows nothing, on the one screen where the
+            reader most needs to trust what the controls mean. */}
+        {actorOptions.length > 1 && (
+          <FilterSelect value={actorFilter} onChange={setActorFilter}
+            options={[{ value: "ALL", label: t.filterAllActors }, ...actorOptions]} />
+        )}
         <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
         <span style={{ flex: 1 }} />
         {/* WHY THE GREY BUTTON SAYS WHICH KIND OF NOTHING IT IS. "Nobody has looked anybody up
