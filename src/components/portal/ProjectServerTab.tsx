@@ -623,7 +623,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               label: t.gapLoadLabel,
               explanation: t.gapLoadWhy,
             },
-          ]} />
+          ]} state={listState} />
 
           {/* Centred for the same reason as the Input Sources toolbar: the controls carry their own
               height, so anything unstyled dropped in here would draw itself against the top edge. */}

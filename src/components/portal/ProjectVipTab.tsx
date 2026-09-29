@@ -2235,7 +2235,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           title: healthFilter === item.key ? t.healthClear : t.healthShowOnly,
           onClick: () => setHealthFilter(healthFilter === item.key ? null : item.key),
         }))),
-      ]} />}
+      ]} state={listState} />}
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: TOOLBAR_GAP }}>
       <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />

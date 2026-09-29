@@ -2051,7 +2051,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           title: gapFilter === "noPosition" ? t.healthClear : t.healthShowOnly,
           onClick: () => setGapFilter(gapFilter === "noPosition" ? null : "noPosition"),
         }] : []),
-      ]} />}
+      ]} state={listState} />}
       {/* Search & filters */}
       {/* alignItems center, not the default stretch: every control in this row sets its own height
           (CONTROL_HEIGHT), so stretch looked fine until a bare <span> joined them — the selection

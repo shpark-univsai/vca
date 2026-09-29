@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, StatusBadge, type StatusTone, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL } from "./PortalShared";
+import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, StatusBadge, type StatusTone, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL, ActiveFilterCount } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -26,6 +26,7 @@ const T = {
   en: {
     // Page header
     inviteUser: "Invite user",
+    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     searchPlaceholder: "Search by user name or email address",
     rosterSearchPlaceholder: "Search by name or employee ID",
     rosterFilterAll: "All states",
@@ -466,6 +467,7 @@ const T = {
   ko: {
     // Page header
     inviteUser: "사용자 초대",
+    filtersActive: (n: number) => `필터 ${n}개`,
     searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
     rosterSearchPlaceholder: "이름 또는 사번으로 검색",
     /* 「모든 코드 상태」였다 (사용자: 표현이 어색해 · 그냥 상태 전체 이런게 나을것같아). 필터의
@@ -3471,8 +3473,10 @@ type UserFilterKey = "invited" | "suspended" | "roster" | "dormant" | "noScreens
  * the weight a distribution needs.
  */
 function UserCountStrip({
-  users, onShowGuide, exceptions, statusFilter, onFilter,
+  users, onShowGuide, exceptions, statusFilter, onFilter, listState,
 }: {
+  /** Passed down so the figures follow the table under them — see SummaryStrip's `state`. */
+  listState: ListState;
   users: PortalUser[];
   /** The exception counts, drawn as cells beside the headcount. Empty on the other tabs. */
   exceptions: { key: UserFilterKey; count: number; label: string; hint: string; icon: React.ReactNode }[];
@@ -3540,7 +3544,7 @@ function UserCountStrip({
           active: statusFilter === item.key,
           onClick: () => onFilter(statusFilter === item.key ? null : item.key),
         })),
-      ]} />
+      ]} state={listState} />
       {/*
         THE BREAKDOWN GOES WITH THE FIGURE IT BREAKS DOWN (owner, 2026-09-22: 위치를 조금
         조정하는게 좋을것같아).
@@ -3563,10 +3567,13 @@ function UserCountStrip({
         {/* A REAL GAP, not three spaces — HTML folds those, and the line came out as
             "읽기 전용 1 로그인 앱 전용 3", which is the two groups run together and unreadable at
             exactly the place the split was supposed to be. inline-block so the margin applies. */}
+        {/* Same rule as the strip above it: these are counts of the list that has not arrived, so
+            while it is loading or failed the names stay and the figures go. The words are the part
+            that is true either way — they say what the page counts, not how many. */}
         {roleGroups.map((g, i) => (
           <span key={g.name} style={{ display: "inline-block", marginLeft: i > 0 ? "18px" : 0 }}>
             <span style={{ color: "var(--gray-400)" }}>{g.name}&nbsp;</span>
-            {g.counts.map(([label, count]) => `${label} ${count}`).join(" · ")}
+            {g.counts.map(([label, count]) => `${label} ${listState === "ready" ? count : "—"}`).join(" · ")}
           </span>
         ))}
         {/* The guide belongs to the whole line, not to the 로그인 group it used to sit behind a
@@ -3949,6 +3956,18 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
    * account, which is the other tab.
    */
   const [rosterFilter, setRosterFilter] = useState<"all" | "not-issued" | "unused" | "expired">("all");
+  /*
+   * The chip that says how many filters are on and clears them (2026-09-29).
+   *
+   * This page was the one Portal table without it, and it is the one where a filter is hardest to
+   * find again: `statusFilter` is set by pressing a CARD in the strip above, and the only way back
+   * was to remember which card and press it a second time. The other tables already carry this
+   * chip over the same kind of tile filter — the VIP registry's health cells, Input Sources' gap
+   * chips, Server & API's. Search is not counted, here or there: the box shows its own text.
+   */
+  const tabFilterOn = peopleTab === "roster" ? rosterFilter !== "all" : scopeFilter !== "all";
+  const activeFilterCount = (statusFilter ? 1 : 0) + (tabFilterOn ? 1 : 0);
+  const clearFilters = () => { setStatusFilter(null); setRosterFilter("all"); setScopeFilter("all"); };
   /** True when the list is empty only because something is filtering it. The two empty states
    *  send the reader to different places, and one message for both sends half of them wrong. */
   const narrowed = statusFilter !== null || search.trim() !== "";
@@ -4261,7 +4280,12 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                 borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
               }}>
               {x.label[lang]}
-              <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{count}</span>
+              {/* The two people tabs count the list this page loads, so they go quiet with it —
+                  same rule as the strip and the caption below. 프리셋 and 카메라 그룹 count their
+                  own store and are not part of that request, so their figures stay. */}
+              {(x.id === "accounts" || x.id === "roster") && listState !== "ready" ? null : (
+                <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{count}</span>
+              )}
             </button>
           );
         })}
@@ -4324,6 +4348,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           exceptions={exceptions}
           statusFilter={statusFilter}
           onFilter={onFilter}
+          listState={listState}
         />
       )}
 
@@ -4399,6 +4424,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           ]}
         />
       )}
+      <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
 
           {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
               lifecycle competing at once, and four of them could not act on what the reader was

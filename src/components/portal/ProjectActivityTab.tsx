@@ -369,7 +369,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
           figure: latest ? stamp(latest.at).slice(5, 10) : t.statLatestNone,
           label: t.statLatest,
         },
-      ]} />
+      ]} state={listState} />
 
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
         <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />

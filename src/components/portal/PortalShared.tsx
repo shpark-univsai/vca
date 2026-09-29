@@ -1151,8 +1151,21 @@ export interface SummaryCell {
   explanation?: string;
 }
 
-export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
+export function SummaryStrip({ cells, state = "ready" }: {
+  cells: SummaryCell[];
+  /**
+   * The state of the LIST under this strip (2026-09-29, owner decision).
+   *
+   * These figures come out of the same request as the rows — "18 accounts" is a count of the very
+   * list that failed to arrive. So a strip that keeps printing numbers over a failed table is
+   * stating something it cannot know, which is the exact shape of lie this repo keeps catching.
+   * Cards keep their frame and their label in both states so the page does not jump; only the
+   * figure changes, and a cell stops being a filter (there is nothing to filter).
+   */
+  state?: "ready" | "loading" | "failed";
+}) {
   if (cells.length === 0) return null;
+  const pending = state !== "ready";
   return (
     /*
       SEPARATE CARDS, not one slab with dividers between the cells.
@@ -1165,7 +1178,7 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
       No overflow:hidden anywhere. It used to clip the one thing that has to escape — the
       explanation tooltip, which hangs below its label.
     */
-    <div style={{
+    <div aria-busy={state === "loading" || undefined} style={{
       display: "flex", alignItems: "stretch", flexWrap: "wrap", gap: "10px",
       marginBottom: "20px",
     }}>
@@ -1175,14 +1188,23 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
         // stays grey — with a gray-900 figure next to it there is no risk of the cell reading as
         // switched off, which is what a grey figure did.
         const accent = cell.tone === "warning" ? "var(--warning-500)" : "var(--gray-900)";
-        const markColor = cell.tone === "warning" ? "var(--warning-500)" : "var(--gray-400)";
+        const markColor = cell.tone === "warning" && !pending ? "var(--warning-500)" : "var(--gray-400)";
         const body = (
           <>
             <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
               <span style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                <span style={{ fontSize: "24px", fontWeight: 800, color: accent, lineHeight: "26px", letterSpacing: "-0.5px" }}>{cell.figure}</span>
-                {cell.unit && <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{cell.unit}</span>}
-                {cell.trend && (
+                {state === "loading" ? (
+                  /* A bar where the figure goes, the height of the digits it replaces, so the card
+                     keeps its size. Same gray-100 as TableSkeleton's row bars — one vocabulary for
+                     "not here yet" across the page. */
+                  <span style={{ display: "block", width: "56px", height: "18px", margin: "4px 0", borderRadius: "5px", backgroundColor: "var(--gray-100)" }} />
+                ) : state === "failed" ? (
+                  <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-300)", lineHeight: "26px", letterSpacing: "-0.5px" }}>—</span>
+                ) : (
+                  <span style={{ fontSize: "24px", fontWeight: 800, color: accent, lineHeight: "26px", letterSpacing: "-0.5px" }}>{cell.figure}</span>
+                )}
+                {cell.unit && !pending && <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{cell.unit}</span>}
+                {cell.trend && !pending && (
                   /* alignItems center rather than the row's baseline: the arrow is a glyph-sized
                      box with no text baseline of its own, and on the baseline it hangs low. */
                   <span style={{ display: "flex", alignItems: "center", gap: "2px", fontSize: "11px", color: "var(--gray-500)", whiteSpace: "nowrap" }}>
@@ -1219,7 +1241,7 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
           <span style={{
             display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
             width: "30px", height: "30px", borderRadius: "9px", color: markColor,
-            backgroundColor: cell.tone === "warning" ? "var(--warning-100)" : "var(--gray-100)",
+            backgroundColor: cell.tone === "warning" && !pending ? "var(--warning-100)" : "var(--gray-100)",
           }}>{cell.icon}</span>
         );
         const shared: React.CSSProperties = {
@@ -1241,7 +1263,7 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
           // No dividers and no end-cap corners any more: the gap between the cards separates them,
           // and every card carries all four of its own corners.
         };
-        return cell.onClick ? (
+        return cell.onClick && !pending ? (
           <button
             key={cell.key}
             onClick={cell.onClick}
@@ -2809,7 +2831,10 @@ export function presetSummary(actions: AppAction[], lang: "en" | "ko"): string {
  * Four tones, and they answer "what kind of news is this":
  *
  *   normal   working as intended. Quiet on purpose — the ordinary case is most of the rows, and a
- *            column of lit pills is texture, not information.
+ *            column of lit pills is texture, not information. Asked and settled (2026-09-29):
+ *            NOT going back to green. Fifty-two of sixty-two cameras are connected, so green
+ *            would be the colour of most of the table and the nine that are down would have to
+ *            compete with it. Grey says "nothing to do here", which is what the tone means.
  *   waiting  waiting on a person, and nothing is wrong. An invitation sent, a code issued.
  *   fault    something stopped working and nobody chose it — a camera refusing, a server failing,
  *            a key that expired.

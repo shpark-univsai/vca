@@ -353,7 +353,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
             unit: t.statNoRefUnit, label: t.statNoRef, tone: "warning" as const,
           }] : []),
           { key: "operators", icon: <Eye size={14} strokeWidth={2.4} />, figure: operatorCount, unit: t.statOperators, label: t.statOperatorsLabel, tone: "neutral" },
-        ]} />
+        ]} state={listState} />
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: TOOLBAR_GAP }}>
