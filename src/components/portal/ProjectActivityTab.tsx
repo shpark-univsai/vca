@@ -118,7 +118,8 @@ const T = {
     // Said on the exception, not on the rule. Server rows are the ordinary case and badging all
     // of them would make the badge the background — which is how the offline camera ended up the
     // quietest thing on its own screen.
-    recordedClient: "Reported by this browser · not observed by the server",
+    recordedClient: "Not on the server",
+    recordedClientWhy: "This console wrote this row. The server has no record of it — the action it describes is not wired to the API yet.",
     csvRecordedBy: "Recorded by", csvServer: "server", csvClient: "browser",
   },
   ko: {
@@ -144,7 +145,8 @@ const T = {
     statActors: "명", statActorsLabel: "변경한 사람",
     statLatest: "마지막", statLatestNone: "—",
     csvAt: "시각", csvActor: "변경한 사람", csvTarget: "대상", csvArea: "화면", csvMessage: "변경 내용",
-    recordedClient: "브라우저 보고 · 서버 미관측",
+    recordedClient: "서버 미기록",
+    recordedClientWhy: "이 줄은 콘솔이 적었고 서버에는 없습니다. 여기 적힌 동작이 아직 API에 연결되지 않았습니다.",
     csvRecordedBy: "기록 주체", csvServer: "서버", csvClient: "브라우저",
   },
 } as const;
@@ -493,8 +495,12 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
              clientAudit() is the only way the front end writes one and it cannot say "server", so
              this label is exhaustive by construction — every row carrying it is an entry the API
              does not yet record. */
+          /* Inline, on the same line as the change it qualifies (owner, 2026-09-29: 그냥 한줄로
+             적어줘 / 공간도 있는뎅). It was a block under the text, which gave every client row two
+             lines and made the table look like it held two kinds of entry. This column wraps
+             anyway, so a long change simply carries the mark to the end of its last line. */
           const clientMark = a.recordedBy === "client" ? (
-            <span style={{ display: "block", fontSize: "11px", color: "var(--gray-400)", marginTop: "2px" }}>
+            <span title={t.recordedClientWhy} style={{ fontSize: "11px", color: "var(--gray-400)", marginLeft: "6px", whiteSpace: "nowrap", cursor: "help" }}>
               {t.recordedClient}
             </span>
           ) : null;
