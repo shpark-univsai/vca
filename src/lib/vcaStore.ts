@@ -4251,6 +4251,34 @@ export function isExpired(person: Person, todayKey: string | null): boolean {
   return person.expiresAt.slice(0, 10) < todayKey;
 }
 
+/**
+ * Why this registered person cannot be a search target, or null if they can be.
+ *
+ * WHO ASKS: the monitoring app's target pickers. RedFace takes a face out of the register and
+ * runs it against every camera, and a row whose photo the model never turned into features
+ * cannot be run against anything. Offering it anyway is how an operator waits on a search that
+ * was never possible — so the picker shows the row and says why it is not pickable, rather than
+ * dropping it and leaving somebody to conclude the person was never registered.
+ *
+ * The register itself keeps listing all of them: a defective listing is exactly what an
+ * administrator has to see. See registryHealth, which counts the same three states for Portal.
+ *
+ * Three answers, not one, because the next move differs each time: upload a photo, replace a bad
+ * one, or wait for the model to answer a replacement already submitted.
+ *
+ * HANDOFF NOTE: "unreadable"/"reenrolling" are this file's seeded stand-in for the model's own
+ * verdict — the same verdict registryHealth asks for at GET /projects/:id/registry-health. The
+ * server owns it. A browser only ever knows whether a photo file exists, never whether a face
+ * came out of it, so this must not be re-derived on the client once that call lands.
+ */
+export type PersonTargetBlock = "no-photo" | "unreadable" | "reenrolling";
+
+export function personTargetBlock(person: Person): PersonTargetBlock | null {
+  if (!person.photoUrl) return "no-photo";
+  if (!seededPhotoUnreadable(person.id)) return null;
+  return person.reenrolledAt ? "reenrolling" : "unreadable";
+}
+
 export interface RegistryHealth {
   missingPhoto: string[];
   /**

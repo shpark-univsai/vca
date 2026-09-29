@@ -5,7 +5,8 @@ import type { MatchItem, ReIDStatus } from "@/types/reid";
 import {
   CAMERA_CODES, canSearchIn, holdsAppAction, judgementFor, screensFor, type DetectionVerdict,
   useActiveProjectId, useProjectCameras, useVcaStore, getActiveProjectId, personsInProject, useRetentionFloor,
-  type AppScreen, type Camera, type Person,
+  watchedPersonsInProject, personTargetBlock,
+  type AppScreen, type Camera, type Person, type PersonTargetBlock,
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtClockTime, sgtDateKey } from "@/lib/time";
@@ -89,7 +90,7 @@ const T = {
     trackOnMap: "Track on map",
     clickCandidate: "Click a candidate below to select",
     setPrimaryTarget: "Set as primary target",
-    vipQuickSelect: "VIP quick select",
+    vipRegistry: "VIP register",
     selectedLabel: "Selected",
     targetNo: (id: string) => `Target #TS${id}`,
     todayAt: (time: string) => `today ${time}`,
@@ -135,7 +136,6 @@ const T = {
     removeFaceImage: "Remove face image",
     removeBodyImage: "Remove body image",
     removeImage: (what: string) => `Remove ${what} image`,
-    noCandidatesMatch: "No candidates match the current filters",
     chooseTargetOrFilter: "Choose a target or set a filter to see candidates",
     close: "Close",
     prevPage: "Previous page",
@@ -190,6 +190,34 @@ const T = {
     tabRedface: "RedFace",
     redfaceTooltip: "Finds who shares camera frames with a chosen person, across every camera",
     searchOnlyNotice: "This account may search here, but not watch the passers-by. Search for someone to see results.",
+    searchRunning: "Searching…",
+    cancelSearch: "Cancel search",
+    searchFailedTitle: "The search failed",
+    searchFailedBody: "The server did not answer. Nothing was searched — the query is still here.",
+    retrySearch: "Try again",
+    noQueryTitle: "Nothing has been asked yet",
+    noQueryBody: "Pick a target, or set at least one attribute, and search again.",
+    noQueryBodyVehicle: "Enter a license plate and search again.",
+    // Same three lines as Redmap's result panel, deliberately worded the same way: two screens
+    // answering "why is this empty" differently is what sent an operator back to change the one
+    // thing that was not the problem.
+    emptyNoCandidates: "No matching captures.",
+    emptyNoCandidatesBody: "Nothing on record matches this query.",
+    droppedBySimilarity: (n: number, pct: number) => `${n} scored below ${pct}%`,
+    droppedByDate: (n: number) => `${n} fall outside the date range`,
+    lowerToSee: "Lower the similarity threshold to include them.",
+    widenToSee: "Widen the date range to include them.",
+    // RedFace's registry picker.
+    searchRegistry: "Search by name",
+    registryEmpty: "No one is registered at this site yet.",
+    registryNoMatch: (q: string) => `No registered person matches “${q}”`,
+    registryTruncated: (shown: number, total: number) => `${shown} of ${total} shown — type a name to narrow`,
+    blockNoPhoto: "no photo",
+    blockUnreadable: "face not readable",
+    blockReenrolling: "re-enrolling",
+    blockNoPhotoWhy: "Registered without a face image, so no camera can match them.",
+    blockUnreadableWhy: "The model could not turn this photo into features, so it matches nothing.",
+    blockReenrollingWhy: "A replacement photo is waiting on the model's answer.",
   },
   ko: {
     scrollToTop: "맨 위로",
@@ -251,7 +279,7 @@ const T = {
     trackOnMap: "지도에서 추적",
     clickCandidate: "아래에서 후보를 눌러 고르세요",
     setPrimaryTarget: "이 대상으로 확정",
-    vipQuickSelect: "VIP 빠른 선택",
+    vipRegistry: "VIP 등록부",
     selectedLabel: "선택됨",
     targetNo: (id: string) => `대상 #TS${id}`,
     todayAt: (time: string) => `오늘 ${time}`,
@@ -297,7 +325,6 @@ const T = {
     removeFaceImage: "얼굴 이미지 삭제",
     removeBodyImage: "전신 이미지 삭제",
     removeImage: (what: string) => `${what} 이미지 삭제`,
-    noCandidatesMatch: "현재 조건에 맞는 후보가 없습니다",
     chooseTargetOrFilter: "대상을 고르거나 조건을 설정하면 후보가 나타납니다",
     close: "닫기",
     prevPage: "이전 페이지",
@@ -351,6 +378,30 @@ const T = {
     tabRedface: "RedFace",
     redfaceTooltip: "선택한 사람과 같은 프레임에 잡힌 사람을 모든 카메라에서 찾습니다",
     searchOnlyNotice: "이 계정은 여기서 검색만 할 수 있고, 지나가는 사람 목록은 보지 않습니다. 찾을 사람을 검색하세요.",
+    searchRunning: "검색 중…",
+    cancelSearch: "검색 취소",
+    searchFailedTitle: "검색에 실패했습니다",
+    searchFailedBody: "서버가 응답하지 않았습니다. 검색은 이뤄지지 않았고, 입력한 조건은 그대로 있습니다.",
+    retrySearch: "다시 시도",
+    noQueryTitle: "아직 아무것도 묻지 않았습니다",
+    noQueryBody: "대상을 고르거나 조건을 하나 이상 설정한 뒤 다시 검색하세요.",
+    noQueryBodyVehicle: "차량 번호를 입력한 뒤 다시 검색하세요.",
+    emptyNoCandidates: "일치하는 감지 기록이 없습니다.",
+    emptyNoCandidatesBody: "이 조건에 해당하는 기록이 없습니다.",
+    droppedBySimilarity: (n: number, pct: number) => `유사도 ${pct}% 미만 ${n}건`,
+    droppedByDate: (n: number) => `기간 밖 ${n}건`,
+    lowerToSee: "유사도 기준을 낮추면 포함됩니다.",
+    widenToSee: "기간을 넓히면 포함됩니다.",
+    searchRegistry: "이름으로 검색",
+    registryEmpty: "이 사이트에 등록된 사람이 없습니다.",
+    registryNoMatch: (q: string) => `“${q}”에 해당하는 등록 인물이 없습니다`,
+    registryTruncated: (shown: number, total: number) => `${total}명 중 ${shown}명 표시 — 이름을 입력해 좁히세요`,
+    blockNoPhoto: "사진 없음",
+    blockUnreadable: "얼굴 인식 불가",
+    blockReenrolling: "재등록 확인 중",
+    blockNoPhotoWhy: "얼굴 사진 없이 등록된 사람이라 어떤 카메라도 대조할 수 없습니다.",
+    blockUnreadableWhy: "모델이 이 사진에서 특징을 뽑지 못해 아무것과도 대조되지 않습니다.",
+    blockReenrollingWhy: "교체한 사진에 대한 모델의 판정을 기다리는 중입니다.",
   },
 } as const;
 
@@ -1242,6 +1293,205 @@ type LiveSearchTab = "Photo" | "Filter" | "VIP" | "Car";
 // This keeps the sidebar permanently mounted (so its state survives collapsing) and animates the
 // wrapper's width instead, revealing/hiding it like a drawer — the sidebar's own width never
 // changes, only how much of it the wrapper's overflow:hidden currently exposes.
+/**
+ * IS A SEARCH HERE A RESPONSE OR A JOB? THE SCREEN HAS TO SAY (2026-09-29).
+ *
+ * Every search on these screens painted its results in the frame the button was pressed in,
+ * because there is no server behind them. That is not a neutral placeholder. A backend engineer
+ * reading 모니터링 / Re-ID / RedFace could not tell which contract they are being asked to build —
+ * a synchronous POST that answers with rows, or a job that is started and polled — because the
+ * screens had no room for either answer. A search that is under way, a search the server refuses,
+ * and a search that came back with nothing all looked identical: a pane full of results, or a
+ * pane with none.
+ *
+ * So the three states are drawn, and drawing them IS the answer: a search on these screens is a
+ * request that takes time, can be refused, and can be given up on.
+ *
+ * HANDOFF NOTE — what replaces this hook:
+ *   POST /v1/search/{live|reid|redface}  → 202 {jobId}  (a job)   or  200 {rows}  (a response)
+ *   while it is outstanding the running pane is on screen. 취소 is DELETE /v1/search/{jobId}, and
+ *   the server has to honour it by stopping the work — a client that merely ignores the answer is
+ *   not a cancel, it is a lie about one. A refusal (5xx, timeout, model down) lands on "failed",
+ *   and 다시 시도 re-posts the SAME query: a failure never clears what the operator typed.
+ *
+ * The `?runState=` override is the only reason the two unreachable panes can be opened and
+ * reviewed with no server: `?runState=running` holds the request open, `?runState=failed` refuses
+ * it. Same shape as the Portal list screens' useListState (ProjectVipTab.tsx). Delete the two
+ * lines it touches when the fetch lands; the rest of the hook is the shape the fetch goes into.
+ */
+type SearchRunState = "idle" | "running" | "failed" | "done";
+
+/**
+ * WHICH SEARCHES GET A CANCEL, AND WHY IT IS NOT EVERY ONE.
+ *
+ * `slow` is the caller's claim that this particular query is model work over the archive — an
+ * image or a named target compared against stored faces and bodies, camera by camera. Those are
+ * the ones worth offering a way out of. A query that is only attributes, a plate or a camera and
+ * a date is an index lookup on the server's side; a 취소 button over something that answers in
+ * well under a second is a control nobody can press in time, and offering it would tell the
+ * backend that every one of these has to be cancellable.
+ */
+function useSearchRun(): {
+  state: SearchRunState; slow: boolean;
+  start: (slow: boolean) => void;
+  retry: () => void;
+  cancel: () => void;
+  clear: () => void;
+} {
+  const override = useSearchParams().get("runState");
+  const [state, setState] = useState<SearchRunState>("idle");
+  const [slow, setSlow] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSlow = useRef(false);
+  const stop = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
+  // Leaving the tab mid-search must not land a setState on an unmounted tree.
+  useEffect(() => stop, []);
+  const run = (isSlow: boolean) => {
+    stop();
+    lastSlow.current = isSlow;
+    setSlow(isSlow);
+    setState("running");
+    // ── the two lines the real request replaces ──────────────────────────────
+    if (override === "running") return;
+    timer.current = setTimeout(() => { timer.current = null; setState(override === "failed" ? "failed" : "done"); }, 450);
+    // ────────────────────────────────────────────────────────────────────────
+  };
+  return {
+    state, slow,
+    start: run,
+    retry: () => run(lastSlow.current),
+    cancel: () => { stop(); setState("idle"); },
+    clear: () => { stop(); setState("idle"); },
+  };
+}
+
+/**
+ * The result pane while a search is outstanding, and after one is refused.
+ *
+ * A refusal is NOT drawn as an empty result. "찾은 것이 없습니다" over a request the server never
+ * answered is a false statement about the site — it says the cameras saw nobody, when what
+ * happened is that nobody asked the cameras. The two states get different words and different
+ * next moves, and only the failed one offers 다시 시도.
+ */
+function SearchRunPane({ state, slow, onCancel, onRetry }:
+  { state: SearchRunState; slow: boolean; onCancel: () => void; onRetry: () => void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
+  const shell: React.CSSProperties = {
+    flex: 1, minHeight: "180px", display: "flex", flexDirection: "column",
+    alignItems: "center", justifyContent: "center", gap: "12px", padding: "32px 24px", textAlign: "center",
+  };
+  const quietButton: React.CSSProperties = {
+    padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--gray-300)",
+    backgroundColor: "white", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", cursor: "pointer",
+  };
+  if (state === "running") {
+    return (
+      <div style={shell}>
+        <div className="vca-skeleton-pulse" style={{ width: "28px", height: "28px", borderRadius: "999px", backgroundColor: "var(--primary-200)" }} />
+        <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-600)" }}>{t.searchRunning}</p>
+        {slow && <button onClick={onCancel} style={quietButton}>{t.cancelSearch}</button>}
+      </div>
+    );
+  }
+  return (
+    <div style={shell}>
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="11" stroke="var(--danger-200)" strokeWidth="2" />
+        <path d="M14 8v8" stroke="var(--danger-400)" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="14" cy="20" r="1.2" fill="var(--danger-400)" />
+      </svg>
+      <div>
+        <p style={{ margin: 0, fontSize: "13px", fontWeight: 800, color: "var(--gray-800)" }}>{t.searchFailedTitle}</p>
+        <p style={{ margin: "4px 0 0", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", lineHeight: 1.5, maxWidth: "320px" }}>{t.searchFailedBody}</p>
+      </div>
+      <button onClick={onRetry} style={quietButton}>{t.retrySearch}</button>
+    </div>
+  );
+}
+
+/**
+ * A search pressed with nothing in it.
+ *
+ * This is not a result and must never be drawn as one. With no target and no attribute the
+ * default seven-day window is the only thing narrowing anything, and on this mock's dates it
+ * removes everything — so an empty press answered 「현재 조건에 맞는 결과가 없습니다」, a claim
+ * about the site made on behalf of a question nobody asked.
+ */
+function NoQueryPane({ vehicle }: { vehicle: boolean }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
+  return (
+    <div style={{ flex: 1, minHeight: "180px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", padding: "32px 24px", textAlign: "center" }}>
+      <SearchIconSm size={24} />
+      <div>
+        <p style={{ margin: 0, fontSize: "13px", fontWeight: 800, color: "var(--gray-800)" }}>{t.noQueryTitle}</p>
+        <p style={{ margin: "4px 0 0", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>
+          {vehicle ? t.noQueryBodyVehicle : t.noQueryBody}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * WHAT FELL OUT, AND TO WHICH RULE — Redmap's answer, brought to the other three.
+ *
+ * Redmap already said "유사도 미만 n건 · 기간 밖 n건"; 모니터링, Re-ID and RedFace all said
+ * 「현재 조건에 맞는 결과가 없습니다」 and nothing else. Same question, two different answers, and
+ * two different response contracts underneath — which is the part that matters here: a server
+ * that only returns rows cannot produce this line, so asking for it is asking for per-reason
+ * counts on the wire.
+ *
+ * HANDOFF NOTE: the empty response has to carry them —
+ *   { rows: [], dropped: { bySimilarity: n, byDate: n }, candidates: n }
+ * `candidates` is how many the query matched before the threshold and the date window were
+ * applied at all. Zero means nothing resembled the query; the client cannot work that out from an
+ * empty array, and guessing it is how a screen tells somebody to change the one thing that was
+ * not the problem.
+ */
+interface SearchEmptyReason {
+  /** Matched the query itself, before the threshold and the dates. */
+  candidates: number;
+  bySimilarity: number;
+  byDate: number;
+}
+
+function EmptyReasonNote({ reason, threshold }: { reason: SearchEmptyReason | null; threshold: number }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
+  const counted = reason && reason.candidates > 0 && (reason.bySimilarity > 0 || reason.byDate > 0);
+  const dropped = counted
+    ? [reason.bySimilarity > 0 ? t.droppedBySimilarity(reason.bySimilarity, threshold) : null,
+       reason.byDate > 0 ? t.droppedByDate(reason.byDate) : null].filter(Boolean).join(" · ")
+    : null;
+  const advice = counted
+    ? [reason.bySimilarity > 0 ? t.lowerToSee : null, reason.byDate > 0 ? t.widenToSee : null].filter(Boolean)
+    : [];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", padding: "48px 24px", textAlign: "center" }}>
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="12" cy="12" r="8" stroke="var(--gray-200)" strokeWidth="2" />
+        <path d="M18 18L25 25" stroke="var(--gray-200)" strokeWidth="2" strokeLinecap="round" />
+        <path d="M9 9l6 6M15 9l-6 6" stroke="var(--danger-200)" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+      <div style={{ fontSize: "13px", lineHeight: 1.6 }}>
+        <p style={{ margin: 0, fontWeight: 800, color: "var(--gray-700)" }}>{dropped ?? t.emptyNoCandidates}</p>
+        {advice.length > 0
+          ? advice.map(line => <p key={line} style={{ margin: 0, fontWeight: 600, color: "var(--gray-400)" }}>{line}</p>)
+          : <p style={{ margin: 0, fontWeight: 600, color: "var(--gray-400)" }}>{t.emptyNoCandidatesBody}</p>}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Every date this mock holds, used to ask "would this have matched if the dates were not in the
+ * way?" — the only way to separate "scored too low" from "outside the window" without the server
+ * (see the HANDOFF note above, which is what removes this).
+ */
+const ANY_DATE_RANGE: DateRangeValue = { start: new Date("2000-01-01"), end: new Date("2100-01-01") };
+
 function SlidingSearchPanel({ expanded, onExpand, sidebar }: { expanded: boolean; onExpand: () => void; sidebar: React.ReactNode }) {
   const [lang] = useLanguage();
   return (
@@ -1755,6 +2005,36 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange: searchDateRange, threshold, licensePlate, camera: searchCamera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras });
   const searchResultDetailItem = searchDetailId !== null ? searchResults.find(p => p.id===searchDetailId) ?? null : null;
 
+  /**
+   * Whether this press carries a question at all.
+   *
+   * A camera or a date on their own DO count — "everyone camera 12 saw on Tuesday" is a real
+   * query an operator runs. What does not count is nothing: see NoQueryPane.
+   */
+  const hasQuery = searchType === "VEHICLE"
+    ? licensePlate.trim() !== ""
+    : !!searchTarget || !!gender || derivedApparel.length > 0 || derivedProps.length > 0
+      || topColors.length > 0 || bottomColors.length > 0 || shoesColors.length > 0
+      || !!emotion || !!ethnicGroup || !!searchCamera || !!searchDateRange.start || !!searchDateRange.end;
+
+  /** See SearchEmptyReason — the counts the server will owe, measured here meanwhile. */
+  const emptyReason = useMemo<SearchEmptyReason | null>(() => {
+    if (searchResults.length > 0) return null;
+    if (searchType === "PERSON" && searchTarget) {
+      // A target search never consults the dates (buildTargetResultRows does not read them), so
+      // the threshold is the only rule that can have dropped anything and saying otherwise would
+      // send somebody to widen a window that was never applied.
+      const pool = buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras);
+      return { candidates: pool.length, bySimilarity: pool.length, byDate: 0 };
+    }
+    const query = { searchType, gender, apparel: derivedApparel, props: derivedProps, licensePlate, camera: searchCamera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras };
+    const anyDate = filterReidData({ ...query, threshold: 0, dateRange: ANY_DATE_RANGE });
+    const inDate = filterReidData({ ...query, threshold: 0, dateRange: searchDateRange });
+    return { candidates: anyDate.length, bySimilarity: inDate.length, byDate: anyDate.length - inDate.length };
+  }, [searchResults.length, searchType, searchTarget, gender, derivedApparel, derivedProps, licensePlate, searchCamera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras, searchDateRange, threshold]);
+
+  const run = useSearchRun();
+
 
 
   useEffect(() => {
@@ -1860,6 +2140,11 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
             ethnicGroup={ethnicGroup} onEthnicGroupChange={setEthnicGroup}
             onSearch={() => {
               setSearched(true);
+              // An empty press is not a search and is not logged as one: the look-up log answers
+              // "who searched for what", and a row with no target in it answers nothing.
+              if (!hasQuery) { run.clear(); return; }
+              // `searchTarget` is the claim that this query is model work — see useSearchRun.
+              run.start(searchType === "PERSON" && !!searchTarget);
               // Recorded even though Live Monitoring was never the screen the purpose gate
               // stopped: recording costs the operator nothing, which is the whole argument for
               // keeping the log while leaving the gate off. No purpose — nobody was asked.
@@ -1872,7 +2157,11 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
           so it sat as a sharp-cornered block next to the sidebar's 12px-rounded card. */}
       <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", backgroundColor:"white", borderRadius:"12px" }}>
         {searched
-          ? <SmartSearchResults state={searchState} results={searchResults} onCardClick={setSearchDetailId}
+          ? !hasQuery
+            ? <NoQueryPane vehicle={searchType === "VEHICLE"} />
+            : run.state === "running" || run.state === "failed"
+            ? <SearchRunPane state={run.state} slow={run.slow} onCancel={() => { run.cancel(); setSearched(false); }} onRetry={run.retry} />
+            : <SmartSearchResults state={searchState} results={searchResults} emptyReason={emptyReason} onCardClick={setSearchDetailId}
               onRefine={() => setSearched(false)} onReset={searchReset}
               topColors={topColors} bottomColors={bottomColors} shoesColors={shoesColors}
               emotion={emotion} ethnicGroup={ethnicGroup} />
@@ -1905,55 +2194,21 @@ function RefreshIconSm() {
   );
 }
 
-function VipQuickSelectRow({ activeVIP, onSelect, compact = false }: { activeVIP:number; onSelect:(i:number)=>void; compact?:boolean }) {
+function VipQuickSelectRow({ activeVIP, onSelect }: { activeVIP:number; onSelect:(i:number)=>void }) {
   const [lang] = useLanguage();
   const t = T[lang];
-  const avatarSize = compact ? 28 : 24;
-  const fontSize = compact ? "11px" : "12px";
+  const avatarSize = 24;
+  const fontSize = "12px";
   // Search + sort so this stays usable once VIP_QUICK grows well past what fits on screen at
   // once — "registration" order is just VIP_QUICK's own original array order (the order each VIP
   // was added), so no extra data field is needed to support it.
+  //
+  // This is 모니터링 / Re-ID's sidebar picker, over the seeded VIP_QUICK targets. RedFace's own
+  // picker used to be a `compact` variant of this and is now RegistryVipPicker, over the site's
+  // actual register — these two ought to meet there in the end, once the register search call in
+  // that component's HANDOFF note exists and this list can be the same query.
   const [query, setQuery] = useState("");
   const [sortMode, setSortMode] = useState<"reg" | "abc">("reg");
-
-  // Two different shapes on purpose: in the Live Monitoring/Re-ID sidebar (not compact) this list
-  // IS the whole tab's content, so it's a fixed 3-column grid — chips stretch to fill the row
-  // (natural-width flex-wrap chips left a ragged, mostly-empty-looking 2-per-row layout with the
-  // sidebar's spare width unused) and the sidebar's own vertical scroll carries the rest. In
-  // RedFace's target picker (compact) it's one of many stacked fields in a fixed-height modal, so
-  // it keeps its original single-row horizontal scroll instead.
-  if (compact) {
-    // The picked chip is pulled to the front. This row scrolls horizontally in a fixed-width
-    // modal, so a selection made in the middle of the list scrolls out of sight the moment the
-    // panel narrows or the list is scrolled back — and then nothing on screen says which VIP is
-    // loaded. Leading with it means the answer is always at the row's start. Original indices
-    // ride along because onSelect and activeVIP are index-based.
-    // A-Z, then the picked chip lifted out of that order to the front. VIP_QUICK's own order is
-    // registration order, which tells you nothing when you are hunting for a name — the sidebar
-    // version of this list offers both orders behind a toggle, but this row has no room for one
-    // and scanning for a name is the only thing it is used for.
-    const compactOrder = VIP_QUICK.map((v, i) => ({ v, i }))
-      .sort((a, b) => NAME_COLLATOR.compare(a.v.name, b.v.name));
-    const activeAt = compactOrder.findIndex(o => o.i === activeVIP);
-    if (activeAt > 0) compactOrder.unshift(...compactOrder.splice(activeAt, 1));
-    return (
-      <div className="vca-thin-scrollbar" style={{ display:"flex", flexWrap:"nowrap", gap:"8px", width:"100%", overflowX:"auto", paddingBottom:"6px" }}>
-        {compactOrder.map(({ v, i }) => {
-          const active = activeVIP === i;
-          return (
-            <button key={v.name} onClick={() => onSelect(i)} title={v.name} style={{
-              display:"flex", alignItems:"center", gap:"6px", padding:"4px 12px 4px 4px", borderRadius:"999px",
-              backgroundColor: active ? "var(--primary-100)" : "white",
-              border: active ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)", cursor:"pointer", flexShrink:0,
-            }}>
-              <img src={v.face} alt="" style={{ width:avatarSize, height:avatarSize, borderRadius:"50%", objectFit:"cover" }} />
-              <span style={{ fontSize, fontWeight:600, color:"var(--gray-900)", whiteSpace:"nowrap" }}>{v.name}</span>
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
 
   const indexed = VIP_QUICK.map((v, i) => ({ v, i }))
     .filter(({ v }) => v.name.toLowerCase().includes(query.toLowerCase()));
@@ -2254,8 +2509,8 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
   );
 }
 
-function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, topColors, bottomColors, shoesColors, emotion, ethnicGroup }:
-  { state: SearchFilterState; results:(typeof REID_DATA); onCardClick:(id:number)=>void; onRefine:()=>void; onReset:()=>void;
+function SmartSearchResults({ state, results, emptyReason, onCardClick, onRefine, onReset, topColors, bottomColors, shoesColors, emotion, ethnicGroup }:
+  { state: SearchFilterState; results:(typeof REID_DATA); emptyReason: SearchEmptyReason | null; onCardClick:(id:number)=>void; onRefine:()=>void; onReset:()=>void;
     topColors: string[]; bottomColors: string[]; shoesColors: string[]; emotion: string; ethnicGroup: string }) {
   const [lang] = useLanguage();
   const t = T[lang];
@@ -2339,9 +2594,7 @@ function SmartSearchResults({ state, results, onCardClick, onRefine, onReset, to
           </div>
         </div>
         {results.length === 0 ? (
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:"64px 0", color:"var(--gray-400)", fontSize:"13px", fontWeight:600 }}>
-            {t.noMatches}
-          </div>
+          <EmptyReasonNote reason={emptyReason} threshold={threshold} />
         ) : (
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(133px, 1fr))", gap:"16px", paddingBottom:"24px" }}>
             {results.map(p => <SearchResultCard key={p.id} p={p} onClick={() => onCardClick(p.id)} matchReasons={matchReasons} />)}
@@ -2714,6 +2967,34 @@ const SUSPECT_2 = REID_DATA[1]; // gender M, matches REID_GENDER_CYCLE[1]
  * at module load they named cameras from whichever site happened to come first in the register,
  * and switching site in the header left them on screen unchanged.
  */
+/**
+ * A CARD MUST NOT CONTRADICT ITS OWN PHOTOGRAPH (2026-09-29).
+ *
+ * The two landing cards stated their attributes as literal strings — TS017323 read
+ * `Gender: F · Age: 20s · Apparel: Skirts` while its thumbnail, and all twenty of its matches,
+ * were the same man in a white T-shirt; TS015942 read `M · 30s · Backpack` over a woman in red
+ * carrying nothing. The photo came from SUSPECT_1/SUSPECT_2 and the words came from a list
+ * written beside them, so the two were free to say different things about one person, and did.
+ *
+ * The mock photographs are NOT the thing being fixed here — the owner has said not to perfect
+ * mock data. What is fixed is that there is now one source: the subject the thumbnail is taken
+ * from is the subject these fields are read off, so when the server sends real attributes the
+ * card cannot disagree with its own picture. Whatever the mock's cycles happen to say, both
+ * halves of the card now say it together.
+ *
+ * WHAT THE SUBJECT DOES NOT CARRY: nothing beyond these four. A REID_DATA row has gender, age,
+ * apparel and one prop, and that is the whole of it — no build, no hair, no colour of bag. Fields
+ * the row does not have are not invented here.
+ */
+function metaFromSubject(subject: (typeof REID_DATA)[number]): { label: string; value: string }[] {
+  return [
+    { label: "Gender", value: subject.gender },
+    { label: "Age", value: subject.age },
+    ...(subject.apparel ? [{ label: "Apparel", value: subject.apparel }] : []),
+    { label: "Props", value: subject.prop ?? "None" },
+  ];
+}
+
 function buildSeedClusters(cams: string[]): ReidCluster[] {
   // A site with no cameras registered has nothing to have recognized anyone with. Returning the
   // two shells anyway put a card on screen with another site's face as its thumbnail, hardcoded
@@ -2725,12 +3006,7 @@ function buildSeedClusters(cams: string[]): ReidCluster[] {
     thumbnail: SUSPECT_1.url,
     subject: SUSPECT_1,
     title: "TS017323",
-    meta: [
-      { label:"Gender", value:"F" },
-      { label:"Age", value:"20s" },
-      { label:"Apparel", value:"Skirts" },
-      { label:"Props", value:"None" },
-    ],
+    meta: metaFromSubject(SUSPECT_1),
     action: "RedFace",
     matches: buildSuspectMatches(SUSPECT_1, 20, cams),
   },
@@ -2739,12 +3015,7 @@ function buildSeedClusters(cams: string[]): ReidCluster[] {
     thumbnail: SUSPECT_2.url,
     subject: SUSPECT_2,
     title: "TS015942",
-    meta: [
-      { label:"Gender", value:"M" },
-      { label:"Age", value:"30s" },
-      { label:"Apparel", value:"Short Sleeve" },
-      { label:"Props", value:"Backpack/Bag" },
-    ],
+    meta: metaFromSubject(SUSPECT_2),
     action: "RedFace",
     matches: buildSuspectMatches(SUSPECT_2, 20, cams),
   },
@@ -2890,7 +3161,8 @@ function generateNewRecognition(existingClusters: ReidCluster[], cams: string[] 
       // status forced to VIP: the generator marks its rows Unknown, but this cluster IS a
       // registered VIP and RedFace reads the status to label the primary target.
       subject: { ...historyRows[0], status: "VIP" as ReIDStatus },
-      meta: [{ label:"Gender", value:genderAbbrev }],
+      // Read off the same row the thumbnail and every match come from — see metaFromSubject.
+      meta: metaFromSubject({ ...historyRows[0], gender: genderAbbrev }),
       action: "RedFace", matches: [newMatch, ...historyRows.map(reidToMatchItem)], isVip: true,
     };
     return [fresh, ...existingClusters];
@@ -2904,7 +3176,7 @@ function generateNewRecognition(existingClusters: ReidCluster[], cams: string[] 
   const fresh: ReidCluster = {
     id: `unk-${matchId}`, thumbnail: photo.face, title: randomTargetName(),
     subject: historyRows[0],
-    meta: [{ label:"Gender", value:genderAbbrev }, { label:"Age", value:age }],
+    meta: metaFromSubject({ ...historyRows[0], gender: genderAbbrev, age }),
     action: "RedFace", matches: [newMatch, ...historyRows.map(reidToMatchItem)], isVip: false,
   };
   return [fresh, ...existingClusters];
@@ -3319,6 +3591,14 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     return { kept: pool.filter(r => r.similarity >= threshold).length, total: pool.length };
   }, [searchType, searchTarget, gender, derivedApparel, derivedProps, topColors, bottomColors, shoesColors, emotion, ethnicGroup, dateRange, threshold, siteCameras]);
 
+  /** Same rule as Live Monitoring's — see the note there. A seeded crop counts: it IS the query. */
+  const hasQuery = searchType === "VEHICLE"
+    ? licensePlate.trim() !== ""
+    : !!searchTarget || !!gender || derivedApparel.length > 0 || derivedProps.length > 0
+      || topColors.length > 0 || bottomColors.length > 0 || shoesColors.length > 0
+      || !!emotion || !!ethnicGroup || !!camera || !!dateRange.start || !!dateRange.end;
+  const run = useSearchRun();
+
   const state: SearchFilterState = {
     searchType, setSearchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP,
     threshold, setThreshold, gender, setGender,
@@ -3367,6 +3647,18 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     ? null
     : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange, threshold, licensePlate, camera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras }).slice(0, 20);
   const subject = targetRows?.[0] ?? attributeRows?.[0] ?? null;
+  /** See SearchEmptyReason. Same staging as Live Monitoring's, over this tab's own query. */
+  const emptyReason = useMemo<SearchEmptyReason | null>(() => {
+    if (subject) return null;
+    if (searchType === "PERSON" && searchTarget) {
+      const pool = buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras);
+      return { candidates: pool.length, bySimilarity: pool.length, byDate: 0 };
+    }
+    const query = { searchType, gender, apparel: derivedApparel, props: derivedProps, licensePlate, camera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras };
+    const anyDate = filterReidData({ ...query, threshold: 0, dateRange: ANY_DATE_RANGE });
+    const inDate = filterReidData({ ...query, threshold: 0, dateRange });
+    return { candidates: anyDate.length, bySimilarity: inDate.length, byDate: anyDate.length - inDate.length };
+  }, [subject, searchType, searchTarget, gender, derivedApparel, derivedProps, licensePlate, camera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras, dateRange, threshold]);
   const searchResultCluster: ReidCluster | null = hasSearched && subject ? {
     id: "search-result",
     // Top row of the same generated set, so this cluster's RedFace button hands over the person
@@ -3455,6 +3747,11 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
             ethnicGroup={ethnicGroup} onEthnicGroupChange={setEthnicGroup}
             onSearch={() => {
               setHasSearched(true);
+              // Not a search, so neither a run nor a log line — see NoQueryPane.
+              if (!hasQuery) { run.clear(); return; }
+              // A named target or a crop off the wall is a face compared against the archive; an
+              // attribute-only query is an index lookup. Only the first gets 취소 — see useSearchRun.
+              run.start(searchType === "PERSON" && !!searchTarget);
               recordSearchAccess({ projectId: siteProjectId, target: t.logTarget[searchTab], surface: "reid" });
             }} onCollapse={() => setExpanded(false)}
           />
@@ -3466,8 +3763,14 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
       </div>
       <div style={{ position:"relative", flex:1, overflow:"hidden" }}>
       <div ref={scrollRef} className="vca-hide-scrollbar" style={{ position:"absolute", inset:0, overflowY:"auto", display:"flex", flexDirection:"column", gap:"16px" }}>
-        {clusters.length > 0
+        {hasSearched && searchAllowed && !hasQuery
+          ? <NoQueryPane vehicle={searchType === "VEHICLE"} />
+          : hasSearched && searchAllowed && (run.state === "running" || run.state === "failed")
+          ? <SearchRunPane state={run.state} slow={run.slow} onCancel={() => { run.cancel(); setHasSearched(false); }} onRetry={run.retry} />
+          : clusters.length > 0
           ? clusters.map(c => <ClusterCard key={c.id} cluster={c} onNavigateTab={onNavigateTab} onMatchClick={setDetailId} />)
+          : hasSearched && searchAllowed
+          ? <EmptyReasonNote reason={emptyReason} threshold={threshold} />
           : (
             <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--gray-400)", fontSize:"13px", fontWeight:600 }}>
               {t.noMatches}
@@ -3593,6 +3896,121 @@ function TableIconSm() {
   );
 }
 
+/**
+ * REDFACE'S TARGET PICKER, OVER THE SITE'S OWN REGISTER (2026-09-29).
+ *
+ * This was VIP_QUICK: fifteen people written into this file, in a naming style the register does
+ * not use (Areum, Chaewon, Yejun — against the dashboard's Wei Ling Koh and Rachel Ong), and its
+ * search box searched only those fifteen. The project has 122 registered people. There was no way
+ * to run RedFace against the other 107 at all, and the operator had no way to find that out
+ * except by typing a colleague's name and being told nobody matched.
+ *
+ * WHAT A PERSON WITHOUT A USABLE FACE GETS: a row saying so, not silence. A registered person
+ * whose photo the model could not read cannot be a target — but leaving them out of this list
+ * would mean an operator who registered somebody this morning searches for them, finds nothing,
+ * and concludes the picker is broken. The row is shown, unpickable, with the reason on it, so the
+ * answer is on screen where the question was asked. See personTargetBlock in vcaStore for the
+ * three states and why they are three.
+ *
+ * WHOSE PEOPLE: watchedPersonsInProject, not personsInProject. Released listings belong on
+ * Portal's register, which has to keep showing them; a released person is not somebody this
+ * console should be offering to hunt for.
+ *
+ * HANDOFF NOTE: this reads the whole register out of the store because the store is the mock. On
+ * the wire it is a SEARCH CALL, not a download — a console at a site with thousands of listings
+ * cannot pull the register to filter it in a text input:
+ *   GET /v1/projects/:id/persons?q=<name>&limit=50
+ *     → { id, name, photoUrl, targetable: bool, blocked: "no-photo"|"unreadable"|"reenrolling"|null }
+ * `targetable` has to come from the server. Whether a face enrolled is the model's answer, and a
+ * browser only ever knows whether a photo file exists.
+ */
+const REGISTRY_PICKER_LIMIT = 40;
+
+function RegistryVipPicker({ selected, onSelect }: { selected: Person | null; onSelect: (p: Person) => void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
+  const persons = useVcaStore(state => state.persons);
+  const projectId = useActiveProjectId();
+  const [query, setQuery] = useState("");
+  const registry = useMemo(() => watchedPersonsInProject(persons, projectId), [persons, projectId]);
+  const q = query.trim().toLowerCase();
+  const matched = useMemo(() => {
+    const rows = q ? registry.filter(person => person.name.toLowerCase().includes(q)) : registry;
+    return [...rows].sort((a, b) => NAME_COLLATOR.compare(a.name, b.name));
+  }, [registry, q]);
+  // The pick is lifted to the front for the same reason it always was: this row scrolls
+  // horizontally, and a choice made further along leaves the screen with nothing saying which
+  // person is loaded.
+  const shown = matched.slice(0, REGISTRY_PICKER_LIMIT);
+  const ordered = selected && !shown.some(person => person.id === selected.id) && matched.some(person => person.id === selected.id)
+    ? [selected, ...shown.slice(0, REGISTRY_PICKER_LIMIT - 1)]
+    : [...shown].sort((a, b) => (a.id === selected?.id ? -1 : b.id === selected?.id ? 1 : 0));
+  const blockLabel: Record<PersonTargetBlock, string> = {
+    "no-photo": t.blockNoPhoto, unreadable: t.blockUnreadable, reenrolling: t.blockReenrolling,
+  };
+  const blockWhy: Record<PersonTargetBlock, string> = {
+    "no-photo": t.blockNoPhotoWhy, unreadable: t.blockUnreadableWhy, reenrolling: t.blockReenrollingWhy,
+  };
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"8px", width:"100%" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:"6px", height:"30px", padding:"0 8px", borderRadius:"6px", border:BORDER, backgroundColor:"white" }}>
+        <SearchIconSm />
+        <input
+          value={query} onChange={e => setQuery(e.target.value)} placeholder={t.searchRegistry}
+          style={{ flex:1, border:"none", outline:"none", background:"none", fontSize:"12px", fontWeight:500, color:"var(--gray-900)", minWidth:0 }}
+        />
+        {query && (
+          <button onClick={() => setQuery("")} aria-label={t.clearSearch} style={{
+            display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+            width:"16px", height:"16px", borderRadius:"999px", border:"none", backgroundColor:"var(--gray-300)", cursor:"pointer", padding:0,
+          }}>
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path d="M1 1L7 7M7 1L1 7" stroke="white" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {registry.length === 0 ? (
+        <div style={{ padding:"12px 0", color:"var(--gray-400)", fontSize:"12px" }}>{t.registryEmpty}</div>
+      ) : matched.length === 0 ? (
+        <div style={{ padding:"12px 0", color:"var(--gray-400)", fontSize:"12px" }}>{t.registryNoMatch(query)}</div>
+      ) : (
+        <>
+          <div className="vca-thin-scrollbar" style={{ display:"flex", flexWrap:"nowrap", gap:"8px", width:"100%", overflowX:"auto", paddingBottom:"6px" }}>
+            {ordered.map(person => {
+              const block = personTargetBlock(person);
+              const active = selected?.id === person.id;
+              return (
+                <button key={person.id} onClick={() => { if (!block) onSelect(person); }}
+                  aria-disabled={!!block}
+                  title={block ? `${person.name} — ${blockWhy[block]}` : person.name}
+                  style={{
+                    display:"flex", alignItems:"center", gap:"6px", padding:"4px 12px 4px 4px", borderRadius:"999px",
+                    backgroundColor: active ? "var(--primary-100)" : block ? "var(--gray-100)" : "white",
+                    border: active ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
+                    cursor: block ? "default" : "pointer", flexShrink:0,
+                  }}>
+                  {person.photoUrl
+                    ? <img src={person.photoUrl} alt="" style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", opacity: block ? 0.45 : 1 }} />
+                    : <span style={{ width:"28px", height:"28px", borderRadius:"50%", backgroundColor:"var(--gray-200)", flexShrink:0 }} />}
+                  <span style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
+                    <span style={{ fontSize:"11px", fontWeight:600, color: block ? "var(--gray-500)" : "var(--gray-900)", whiteSpace:"nowrap" }}>{person.name}</span>
+                    {block && <span style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-400)", whiteSpace:"nowrap" }}>{blockLabel[block]}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {matched.length > shown.length && (
+            <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>{t.registryTruncated(shown.length, matched.length)}</span>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   // onCancel is absent on the very first open, when RedFace has no target yet. That is not a
   // style choice — the landing state behind this picker renders no "switch target" button (that
@@ -3614,7 +4032,8 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   const siteCameras = useSiteCameraCodes();
   const [searchType, setSearchType]         = useState<"PERSON"|"VEHICLE">("PERSON");
   const [selectedTarget, setSelectedTarget] = useState(-1);
-  const [activeVIP, setActiveVIP]           = useState(-1);
+  // A registered person, not an index into a list written in this file — see RegistryVipPicker.
+  const [vipPerson, setVipPerson]           = useState<Person | null>(null);
   const [threshold, setThreshold]           = useState(70);
   const [gender, setGender]                 = useState("");
   const [apparel, setApparel]               = useState<string[]>([]);
@@ -3673,18 +4092,31 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
     // top row and leave the grid selecting someone unrelated.
     setSelectedCandidate(null);
     if (selectedTarget === i) { setSelectedTarget(-1); setGender(""); setApparel([]); setProps([]); return; }
-    setSelectedTarget(i); setActiveVIP(-1);
+    setSelectedTarget(i); setVipPerson(null);
     const t = RECENT_TARGETS_EN[i];
     setGender(t.gender); setApparel([t.apparel]); setProps(t.props);
   };
-  const selectVIP = (i: number) => {
+  const selectVIP = (person: Person) => {
     setFaceCleared(false); setBodyCleared(false);
     setSelectedCandidate(null);
-    if (activeVIP === i) { setActiveVIP(-1); return; }
-    setActiveVIP(i); setSelectedTarget(-1);
+    if (vipPerson?.id === person.id) { setVipPerson(null); return; }
+    setVipPerson(person); setSelectedTarget(-1);
   };
 
-  const target = selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget] : activeVIP >= 0 ? VIP_QUICK[activeVIP] : null;
+  /*
+   * The two shapes a target can arrive in, and what the register does NOT carry.
+   *
+   * A recent target is a crop off the wall: it brings a face, a body and the profile that picking
+   * it cascades onto the filters. A registered person brings a name and the one enrolled face —
+   * `photoUrl`, which is what the operator uploaded to enrol them. There is no full-body enrolment
+   * photo and no recorded gender on a registry row, so neither is claimed: the body slot stays
+   * empty and open to an upload, and the gender the query runs with is whatever the Gender filter
+   * says, not a guess made from a name.
+   */
+  const target: { name?: string; label?: string; face: string; body?: string; gender?: string } | null =
+    selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget]
+    : vipPerson?.photoUrl ? { name: vipPerson.name, face: vipPerson.photoUrl }
+    : null;
   // faceCleared/bodyCleared are consulted here, which is the whole point of them: the ✕ on one
   // preview sets the flag, and without reading it back the image never went away — the control
   // looked functional and did nothing. An upload still wins over a cleared target photo, since
@@ -3707,7 +4139,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   const reset = () => {
     setSearchType("PERSON"); setThreshold(70); setGender(""); setApparel([]); setProps([]);
     setTopColors([]); setBottomColors([]); setShoesColors([]);
-    setSelectedTarget(-1); setActiveVIP(-1); setUploadedFace(null); setUploadedBody(null);
+    setSelectedTarget(-1); setVipPerson(null); setUploadedFace(null); setUploadedBody(null);
     setFaceCleared(false); setBodyCleared(false);
     setDateRange({ start:null, end:null }); setLicensePlate("");
   };
@@ -3755,9 +4187,26 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   // The picked target's own name rides along, so confirming keeps "Mina" or "Target #1024" rather
   // than falling back to the row's object id.
   const selectedObj: RedfaceCandidate | null = selectedRow && selectedRow.id === autoSelectId && target
-    ? { ...selectedRow, label: "label" in target ? target.label : target.name }
+    ? { ...selectedRow, label: target.label ?? target.name }
     : selectedRow;
   const isVehicle = searchType === "VEHICLE";
+  /**
+   * See SearchEmptyReason. Same staging as 모니터링 and Re-ID, so the three screens answer
+   * "why is this empty" the same way and ask the server for the same counts.
+   */
+  const emptyReason = useMemo<SearchEmptyReason | null>(() => {
+    if (candidates.length > 0) return null;
+    if (targetCandidates) {
+      // A target search never reads the dates — buildTargetResultRows does not look at them — so
+      // the threshold is the only rule that can have dropped anything here.
+      const pool = buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, target?.gender === "Male" ? "M" : gender === "Male" ? "M" : "F", 20, siteCameras);
+      return { candidates: pool.length, bySimilarity: pool.length, byDate: 0 };
+    }
+    const query = { searchType, gender, apparel, props, licensePlate, topColors, bottomColors, shoesColors, siteCameras };
+    const anyDate = filterReidData({ ...query, threshold: 0, dateRange: ANY_DATE_RANGE });
+    const inDate = filterReidData({ ...query, threshold: 0, dateRange });
+    return { candidates: anyDate.length, bySimilarity: inDate.length, byDate: anyDate.length - inDate.length };
+  }, [candidates.length, targetCandidates, faceSrc, bodySrc, target, gender, searchType, apparel, props, licensePlate, topColors, bottomColors, shoesColors, siteCameras, dateRange, threshold]);
   // Distinguishes a genuinely blank slate (nothing chosen yet) from an active search that
   // happens to match nothing — the two deserve different empty-state wording.
   const hasAnyFilter = !!target || !!uploadedFace || !!uploadedBody || gender !== "" || apparel.length > 0 || props.length > 0
@@ -3866,9 +4315,9 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
               <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:"4px", color:"var(--gray-700)" }}>
                   <StarIconSm />
-                  <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.vipQuickSelect}</span>
+                  <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.vipRegistry}</span>
                 </div>
-                <VipQuickSelectRow activeVIP={activeVIP} onSelect={selectVIP} compact />
+                <RegistryVipPicker selected={vipPerson} onSelect={selectVIP} />
               </div>
 
               <div style={{ height:"1px", backgroundColor:"var(--gray-200)" }} />
@@ -4044,6 +4493,14 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
           </div>
           <div className="vca-hide-scrollbar" style={{ flex:1, overflowY:"auto" }}>
             {candidates.length === 0 ? (
+              hasAnyFilter ? (
+                /* Which rule emptied it, and what to move — the same three lines Redmap gives.
+                   「현재 조건에 맞는 후보가 없습니다」 was true of every cause at once and useful
+                   for none of them. */
+                <div style={{ height:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <EmptyReasonNote reason={emptyReason} threshold={threshold} />
+                </div>
+              ) : (
               <div style={{ height:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"8px", color:"var(--gray-400)" }}>
                 {/* One glyph, not two. The line used to open with a literal "←" pointing at the
                     left panel, which sat directly under the magnifier and read as a second icon
@@ -4051,9 +4508,10 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                     screen, so naming the action is enough. */}
                 <SearchIconSm />
                 <span style={{ fontSize:"13px", fontWeight:600 }}>
-                  {hasAnyFilter ? t.noCandidatesMatch : t.chooseTargetOrFilter}
+                  {t.chooseTargetOrFilter}
                 </span>
               </div>
+              )
             ) : (
               <div style={{ display:"flex", flexWrap:"wrap", gap:"16px" }}>
                 {candidates.map(c => (
@@ -5528,9 +5986,23 @@ function RedFaceContent({ seedCard, seedLabel, onSeedConsumed, onGoAnalyzeFrame 
   // chosen from the candidate grid is called by its object id. Every primary target used to be
   // labelled "Suspect #1" regardless — a designation nothing in the app supports, applied to
   // whoever happened to be searched for.
+  /**
+   * Confirming the target IS RedFace's search.
+   *
+   * What it asks for is every frame this face shares with anyone, across every camera, tiered by
+   * how often — the heaviest question any screen in this console asks, and the one that painted
+   * itself instantly. So it always gets 취소 (`slow`): if any search here is a job rather than a
+   * response, it is this one.
+   *
+   * Cancelling puts the target back down and reopens the picker rather than showing the graph. A
+   * cancelled build has no graph, and drawing one anyway would be the screen claiming an analysis
+   * that was never run.
+   */
+  const run = useSearchRun();
   const handleConfirm = (c: RedfaceCandidate) => {
     setPrimaryTarget({ name: c.label ?? `TS${String(c.id).padStart(6, "0")}`, face:c.url });
     setPickerOpen(false);
+    run.start(true);
   };
 
   // "Make primary" from the Joint Evidence panel — promotes the associate node itself into the
@@ -5574,8 +6046,11 @@ function RedFaceContent({ seedCard, seedLabel, onSeedConsumed, onGoAnalyzeFrame 
       {/* Renders even before a target is picked — this is the "before search" landing state
           (empty zone bands, filter sidebar, no primary-target header) that sits behind the blur
           while the picker is open, instead of a bare empty page. */}
-      <AssociateGraphView primaryTarget={primaryTarget} onSwitchTarget={() => setPickerOpen(true)}
-        onGoAnalyzeFrame={onGoAnalyzeFrame} />
+      {run.state === "running" || run.state === "failed"
+        ? <SearchRunPane state={run.state} slow={run.slow} onRetry={run.retry}
+            onCancel={() => { run.cancel(); setPrimaryTarget(null); setPickerOpen(true); }} />
+        : <AssociateGraphView primaryTarget={primaryTarget} onSwitchTarget={() => setPickerOpen(true)}
+            onGoAnalyzeFrame={onGoAnalyzeFrame} />}
       {pickerOpen && (
         // backdropFilter/backgroundColor live on the scrolling container itself now, not on a
         // separate inset:0 sibling sized to just one screen's height — that sibling stayed pinned

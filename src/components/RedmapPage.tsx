@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import RedmapMap from "./RedmapMap";
 import type { RedmapMode as Mode, SimilarityLimit, HitResult, DateRange } from "@/types/redmap";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -65,6 +66,10 @@ const T = {
     similarity: "Similarity",
     bodyOnlyHint: "Body-only search: matching on build and clothing alone is looser than a face match, so a low threshold here returns many false positives.",
     searching: "Searching…",
+    cancelSearch: "Cancel search",
+    searchFailedTitle: "The search failed",
+    searchFailedBody: "The server did not answer. Nothing was searched — the query is still here.",
+    retrySearch: "Try again",
     searchVehicle: "Search vehicle",
     searchPersons: "Search persons",
     clickToUpload: "Click to upload",
@@ -149,6 +154,10 @@ const T = {
     similarity: "유사도",
     bodyOnlyHint: "전신만으로 검색하면 체형과 옷차림만 비교하므로 얼굴 대조보다 느슨합니다. 기준을 낮추면 다른 사람이 많이 섞입니다.",
     searching: "검색 중…",
+    cancelSearch: "검색 취소",
+    searchFailedTitle: "검색에 실패했습니다",
+    searchFailedBody: "서버가 응답하지 않았습니다. 검색은 이뤄지지 않았고, 입력한 조건은 그대로 있습니다.",
+    retrySearch: "다시 시도",
     searchVehicle: "차량 검색",
     searchPersons: "인물 검색",
     clickToUpload: "눌러서 업로드",
@@ -913,7 +922,31 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
   // Pressing Search has to visibly do something even when the outcome is identical to last time.
   // Two searches that both come back empty used to leave the screen byte-for-byte unchanged, so
   // there was no way to tell "no matches" from "the button didn't register".
-  const [searching, setSearching] = useState(false);
+  /**
+   * The same seam the other three screens now carry — see useSearchRun in DataPage.tsx for the
+   * full note and the HANDOFF contract. This screen already held the results area in a busy state
+   * for 450ms; what it had no room for was the other outcome, a search the server refuses. An
+   * empty result and a refused request used to be the same blank pane, and they are opposite
+   * facts: one says the cameras saw nobody, the other says nobody asked the cameras.
+   *
+   * `?runState=running` holds the request open and `?runState=failed` refuses it, so both panes
+   * can be opened and reviewed with no server behind them. Deleted when the fetch lands.
+   */
+  const runOverride = useSearchParams().get("runState");
+  const [runState, setRunState] = useState<"idle" | "running" | "failed">("idle");
+  const runTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopRun = () => { if (runTimer.current) { clearTimeout(runTimer.current); runTimer.current = null; } };
+  useEffect(() => stopRun, []);
+  const startRun = () => {
+    stopRun();
+    setRunState("running");
+    if (runOverride === "running") return;
+    runTimer.current = window.setTimeout(() => {
+      runTimer.current = null;
+      setRunState(runOverride === "failed" ? "failed" : "idle");
+    }, 450) as unknown as ReturnType<typeof setTimeout>;
+  };
+  const searching = runState === "running";
   // WHY a search came back with nothing, so the panel can say something the user can act on
   // instead of one catch-all line. Three different causes, three different next moves.
   const [emptyReason, setEmptyReason] = useState<
@@ -1213,8 +1246,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
     // results area in a "searching" state long enough to be seen, so pressing the button always
     // reads as having done something — including the case where the outcome is byte-for-byte
     // identical to the previous search.
-    setSearching(true);
-    window.setTimeout(() => setSearching(false), 450);
+    startRun();
   };
 
   // Everything describing the OUTCOME of a search, as opposed to the query settings
@@ -1788,6 +1820,31 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                 <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.5, color: "var(--gray-500)", fontWeight: 700 }}>
                   {t.searching}
                 </p>
+                {/* A plate is a lookup on an index; an uploaded face or body is the model working
+                    through the archive camera by camera. Only the second is worth a way out —
+                    see useSearchRun in DataPage.tsx. */}
+                {mode === "person" && (
+                  <button onClick={() => { stopRun(); setRunState("idle"); clearSearchOutcome(); }} style={{
+                    padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--gray-300)",
+                    backgroundColor: "white", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", cursor: "pointer",
+                  }}>{t.cancelSearch}</button>
+                )}
+              </div>
+            ) : runState === "failed" ? (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "24px 0" }}>
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                  <circle cx="14" cy="14" r="11" stroke="var(--danger-200)" strokeWidth="2" />
+                  <path d="M14 8v8" stroke="var(--danger-400)" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="14" cy="20" r="1.2" fill="var(--danger-400)" />
+                </svg>
+                <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.5, color: "var(--gray-500)", margin: 0 }}>
+                  <strong style={{ color: "var(--gray-700)" }}>{t.searchFailedTitle}</strong><br />
+                  {t.searchFailedBody}
+                </p>
+                <button onClick={startRun} style={{
+                  padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--gray-300)",
+                  backgroundColor: "white", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", cursor: "pointer",
+                }}>{t.retrySearch}</button>
               </div>
             ) : results.length === 0 ? (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "24px 0" }}>
