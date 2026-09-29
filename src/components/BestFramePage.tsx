@@ -698,11 +698,19 @@ function CameraCard({
                 <PinIcon active={pinned} />
               </button>
             )}
+            {/* THE COUNT IS OF WHAT THIS CARD SHOWS, not of what the camera caught.
+            
+                It read `data.detections.length` — before the account's grant and before the
+                reader's type filter — so turning on VIP left two cards saying 「1 target」 over a
+                body reading 「No detections」. Measured: Serangoon and Bishan, VIP filter on.
+                A head that counts rows the body is not allowed to draw is the same shape of lie
+                as a tab badge disagreeing with its pager. `dets` is that list, filtered both
+                ways, and the arrow follows it too — an arrow that opens a detail for nothing. */}
             <div
-              onClick={data.detections.length > 0 ? onHeaderArrowClick : undefined}
-              style={{ display:"flex", alignItems:"center", gap:"4px", cursor: data.detections.length > 0 ? "pointer" : "default" }}
+              onClick={dets.length > 0 ? onHeaderArrowClick : undefined}
+              style={{ display:"flex", alignItems:"center", gap:"4px", cursor: dets.length > 0 ? "pointer" : "default" }}
             >
-            <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{data.detections.length} target</span>
+            <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{dets.length} target</span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M10.5 6.5V9.5C10.5 9.76522 10.3946 10.0196 10.2071 10.2071C10.0196 10.3946 9.76522 10.5 9.5 10.5H2.5C2.23478 10.5 1.98043 10.3946 1.79289 10.2071C1.60536 10.0196 1.5 9.76522 1.5 9.5V2.5C1.5 2.23478 1.60536 1.98043 1.79289 1.79289C1.98043 1.60536 2.23478 1.5 2.5 1.5H5.5" stroke="var(--gray-700)" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M10.5 1.5L6 6" stroke="var(--gray-700)" strokeLinecap="round" strokeLinejoin="round"/>

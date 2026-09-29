@@ -1825,8 +1825,19 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
    */
   const monMayBrowse = holdsAppAction(monPortalUsers, "liveMonitoring");
   const allowedHere = (p: { status: ReIDStatus }) => (p.status === "VIP" ? monMayVip : monMayUnknown);
+  /* ALL CAMERAS IS ONE FEED IN TIME ORDER, not fifty-two feeds stacked (2026-09-29).
+  
+     flatMap alone concatenated the cameras in registry order, so the wall read camera by camera:
+     measured, 6,266 cards in runs of ~120, CAM-NOV-001 first and the fifty-second camera's newest
+     capture about six thousand cards down. Each camera's own run was newest-first, which is what
+     made it look right at the top of the page — the whole point of a live wall is that the newest
+     thing anywhere is the first thing you see, and this one could only ever show you the newest
+     thing on ONE camera. Sorted across all of them by the instant of capture.
+  
+     A single camera's own view is already in order and is not re-sorted. */
   const camDetailItems = (openCam === ALL_CAMERAS_ID
     ? onlineCameraCodes.flatMap(code => feed[code] ?? [])
+        .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))
     : feed[openCam] ?? []).filter(allowedHere);
 
   return (
