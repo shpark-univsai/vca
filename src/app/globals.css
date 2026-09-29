@@ -105,8 +105,18 @@
      it back by accident. If it is ever revisited, the three states have to move together — rest,
      hover, focus — not this one alone. It stays a token of its own so the decision has one place
      to live.
+
+     AND IT IS THE PURPLE-LEANING NEUTRAL, NOT THE SLATE ONE (owner, 2026-09-29: 배경은 보라빛인데
+     테두리는 너무 차가운 파란색 계열의 회색이라서). It was gray-200 straight off the ramp, and
+     measured that is hue 214° — the slate half of the grey ramp — sitting on a page ground, a
+     hairline and a card edge that are all 240°. One line in the cold family among three in the
+     warm one reads as a different product's rule laid over the surface. Same lightness as
+     gray-200 (91%) and the same R=G, B-above shape as --line, so only the hue moved: 1.28:1 on a
+     white field, a shade above the hairline and still far under the hover state.
+     NOTE: the hover and focus borders (gray-400, 215°) are still slate, because they are ramp
+     steps the whole product shares — moving those is a bigger call than this token.
      Figma: 「Line/control」 (added 2026-09-29). */
-  --line-control: #e2e8f0;
+  --line-control: #e2e2f0;
 
   /* A CARD'S OUTER EDGE — the one line that separates a white panel from the page.
      Defined 2026-09-29 (owner: 카드들이나 아래 테이블에 테두리가 너무 연해서 배경 보랏빛이랑
