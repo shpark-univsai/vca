@@ -130,7 +130,10 @@ const T = {
   },
 } as const;
 
-const FIELD_BORDER = "1px solid var(--gray-300)";
+/* The same token every other field in the product uses — see --line-control in globals.css.
+   It was gray-300, which is hue 214 (the cold slate half of the grey ramp) against a page
+   ground and a line family at 240. */
+const FIELD_BORDER = "1px solid var(--line-control)";
 /** Seconds before "Resend" becomes available again — stops a stuck user from mailing themselves ten
  *  codes, each of which invalidates the last. */
 const RESEND_COOLDOWN_SEC = 30;

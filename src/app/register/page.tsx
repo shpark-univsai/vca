@@ -147,7 +147,10 @@ const CODE_ERRORS: Record<"unknown" | "used" | "expired", Record<AppLanguage, st
 const MAX_CODE_ATTEMPTS = 5;
 
 function fieldBorder(active: boolean) {
-  return active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)";
+  /* Resting on --line-control, the token every field in the product uses; gray-900 stays for the
+     focused one. It was gray-300 at rest — hue 214, the cold slate half of the ramp, against a
+     page ground and a line family at 240. */
+  return active ? "1px solid var(--gray-900)" : "1px solid var(--line-control)";
 }
 
 /**

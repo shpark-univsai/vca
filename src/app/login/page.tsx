@@ -90,7 +90,10 @@ const T = {
   },
 } as const;
 
-const FIELD_BORDER = "1px solid var(--gray-300)";
+/* The same token every other field in the product uses — see --line-control in globals.css.
+   It was gray-300, which is hue 214 (the cold slate half of the grey ramp) against a page
+   ground and a line family at 240. */
+const FIELD_BORDER = "1px solid var(--line-control)";
 /** One icon per figure. Named in the dictionary and resolved here, so the copy stays copy and the
  *  components stay out of the translation table. */
 const FACT_ICONS = {
