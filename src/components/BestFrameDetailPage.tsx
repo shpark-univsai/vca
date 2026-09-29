@@ -184,8 +184,10 @@ const SELECTED = "var(--gray-900)";
 const FRAME_ASPECT = 16 / 9;
 /** The picture area's own width/height. Keep in step with its `aspectRatio` in ReelCard. */
 const CROP_WINDOW_ASPECT = 1;
-/** How much of its limiting axis the reported box takes up, leaving real frame as a margin around
- *  it. At 1.0 the drawn box sits flush against the card's edge with its border half-clipped. */
+/** How much of its limiting axis the reported region takes up, leaving real frame as a margin
+ *  around it. At 1.0 the region runs edge to edge and the card loses that surrounding context.
+ *  Since the card no longer draws the rectangle, this margin is the whole of what says "the thing
+ *  this card is about is the one in the middle" — do not raise it to 1. */
 const CROP_FIT = 0.86;
 
 function pctOf(value: string): number | null {
@@ -226,8 +228,8 @@ function cropFrameStyle(det: Detection, windowAspect: number): CSSProperties | n
 }
 
 /**
- * The box the detector drew, in the line style the feed draws it in — one function, so a card's
- * copy of a box and the box on the feed itself cannot drift apart.
+ * The box the detector drew, in the line style the feed draws it in. Only the big analysis frame
+ * calls this now — the reel cards stopped drawing their copy on 2026-09-29 (see ReelCard).
  *
  * Every box stays clearly visible (not just the focused one) — focus is a separate ring, not a
  * second colour. VIP always renders in the primary purple: a VIP hit is an identity signal, not a
@@ -558,7 +560,7 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
         {/* A face crop sat on top of a full-body capture here — the same stock portrait twice, the
             top one scaled 1.8x to fake a face zoom, both dealt out by the card's position in the
             list. What draws now is neither: it is this frame at this detection's own coordinates,
-            with the detector's box on it. See cropFrameStyle. */}
+            with no box drawn on it. See cropFrameStyle. */}
         <div style={{
           position:"relative", width:"100%", aspectRatio:"1/1", overflow:"hidden", boxSizing:"border-box",
           ...(crop
@@ -567,12 +569,16 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
         }}>
           {crop && (
             <div style={crop}>
+              {/* NO BOX ON THE CARD (owner, 2026-09-29). The card used to redraw the detector's
+                  rectangle from det.top/left/width/height on top of this crop, the same four
+                  percentages the feed uses. It is not what makes the card legible: cropFrameStyle
+                  already puts that exact region in the middle at CROP_FIT (86%) of the limiting
+                  axis, so the crop itself is the pointer and the line only repeated it — in the
+                  measured data a 12%x36% box means the frame is blown up to ~425%, i.e. the card
+                  is that person, not a frame with that person somewhere in it. The big analysis
+                  frame on the left still draws every box (detBoxBorder, below): there one image
+                  holds all the detections and a box is the only way to say which is which. */}
               <img src={frameUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-              {/* The same four percentages the feed positions this detection's box with, against
-                  a reconstruction of the same frame — so the card says which box it is, in a
-                  crop that can hold whoever else was standing nearby. */}
-              <div style={{ position:"absolute", top:det.top, left:det.left, width:det.width, height:det.height,
-                border: detBoxBorder(det), borderRadius:"3px", boxSizing:"border-box" }} />
             </div>
           )}
           {/* Which box on the feed this card belongs to. On imagery it takes the plate treatment
