@@ -6,9 +6,10 @@ import { useVcaStore, type SearchAccessRecord } from "@/lib/vcaStore";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
+import { DateRangeTrigger, dateKeyOf, type DateRangeValue } from "../shared/DateRangePicker";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
-  ActiveFilterCount, FilterSelect, FIELD_STYLE, SortableHeader, SummaryStrip, TableEmpty, TableSkeleton, TableLoadFailed, sortRows, useTableSort, MEASURE } from "./PortalShared";
+  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TableSkeleton, TableLoadFailed, sortRows, useTableSort, MEASURE } from "./PortalShared";
 import { Eye, FileOutput, ShieldAlert } from "lucide-react";
 
 /**
@@ -70,7 +71,7 @@ const T = {
        the two sides end up saying different things. */
     colTarget: "Searched for", colSurface: "Screen", colResults: "Results", colIp: "IP address",
     filterAllPurposes: "All purposes",
-    filterFrom: "From", filterTo: "To",
+    filterAllDates: "Any date",
     filterAllSurfaces: "Every screen",
     filterAllActors: "Anyone",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
@@ -100,7 +101,7 @@ const T = {
     colAt: "시각", colActor: "조회한 사람", colPurpose: "목적", colReference: "참조번호",
     colTarget: "조회 대상", colSurface: "화면", colResults: "결과", colIp: "IP 주소",
     filterAllPurposes: "전체 목적",
-    filterFrom: "시작일", filterTo: "종료일",
+    filterAllDates: "전체 기간",
     filterAllSurfaces: "전체 화면",
     filterAllActors: "조회한 사람 전체",
     filtersActive: (n: number) => `필터 ${n}`,
@@ -182,8 +183,23 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
    * Empty means unbounded on that side, so one field alone is a useful question ("anything since
    * Monday").
    */
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  /*
+   * THE APP'S OWN PICKER (owner, 2026-09-29: 이 컴포넌트는 너무 작아 — 앱에서 쓰이는 날짜 피커
+   * 컴포넌트 갖다가 써줘).
+   *
+   * These were two bare `<input type="date">`, which draw the BROWSER's control — the only place
+   * in Portal where that happened, and in an English console it still printed 「연도. 월. 일.」
+   * because the picker follows the operating system rather than the page. The monitoring app has
+   * carried a proper range picker since it was built; it now lives in components/shared so both
+   * halves use it.
+   *
+   * The range is held as Dates for the picker and read back as calendar-day strings for the
+   * filter, which is unchanged: it compares the day in the PROJECT's zone, not a UTC slice of it.
+   * `dateKeyOf` rather than toISOString for exactly that reason.
+   */
+  const [range, setRange] = useState<DateRangeValue>({ start: null, end: null });
+  const fromDate = range.start ? dateKeyOf(range.start) : "";
+  const toDate = range.end ? dateKeyOf(range.end) : "";
   const [actorFilter, setActorFilter] = useState("ALL");
   /* 화면 필터 (owner, 2026-09-29: 조회기록 날짜 검색 옆에 사람으로 필터링할 일은 적을것
      같은데, 화면으로 필터링할일이 더 많지않을까?).
@@ -261,7 +277,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
 
   const activeFilterCount = [purposeFilter, surfaceFilter, actorFilter].filter(v => v !== "ALL").length
     + (fromDate ? 1 : 0) + (toDate ? 1 : 0);
-  const clearFilters = () => { setPurposeFilter("ALL"); setSurfaceFilter("ALL"); setActorFilter("ALL"); setFromDate(""); setToDate(""); };
+  const clearFilters = () => { setPurposeFilter("ALL"); setSurfaceFilter("ALL"); setActorFilter("ALL"); setRange({ start: null, end: null }); };
 
   /* A look-up with no reference is not a fault — most purposes do not require one — but it is the
      slice a reviewer samples first, so the strip counts it rather than making them filter for it. */
@@ -334,14 +350,8 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: TOOLBAR_GAP }}>
         {/* Gone with the columns: a filter whose only option is "all" narrows nothing. */}
         {/* First in the row, because it is the question an auditor arrives with. */}
-        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <input type="date" value={fromDate} max={toDate || undefined} onChange={e => setFromDate(e.target.value)}
-            aria-label={t.filterFrom} title={t.filterFrom}
-            style={{ ...FIELD_STYLE, height: CONTROL_HEIGHT, width: "150px", padding: "0 10px", fontSize: "12px" }} />
-          <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>—</span>
-          <input type="date" value={toDate} min={fromDate || undefined} onChange={e => setToDate(e.target.value)}
-            aria-label={t.filterTo} title={t.filterTo}
-            style={{ ...FIELD_STYLE, height: CONTROL_HEIGHT, width: "150px", padding: "0 10px", fontSize: "12px" }} />
+        <span style={{ display: "flex", alignItems: "center", width: "260px", flexShrink: 0 }}>
+          <DateRangeTrigger lang={lang} value={range} onApply={setRange} emptyText={t.filterAllDates} />
         </span>
         {purposeAsked && (
           <FilterSelect value={purposeFilter} onChange={setPurposeFilter}
