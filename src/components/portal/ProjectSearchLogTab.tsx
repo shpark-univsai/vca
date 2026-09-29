@@ -9,7 +9,7 @@ import { getComplianceConfig } from "@/lib/complianceConfig";
 import { DateRangeTrigger, dateKeyOf, type DateRangeValue } from "../shared/DateRangePicker";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
-  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TableSkeleton, TableLoadFailed, sortRows, useTableSort, MEASURE } from "./PortalShared";
+  ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TableSkeleton, TableLoadFailed, sortRows, useTableSort} from "./PortalShared";
 import { Eye, FileOutput, ShieldAlert } from "lucide-react";
 
 /**
@@ -497,8 +497,12 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           The second is not a permission notice — an auditor reading it has every right to be here —
           it is the answer to "is anybody actually looking at this", which is the question that
           decides whether the purpose field does any work at all. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px", maxWidth: MEASURE }}>{purposeAsked ? t.introWithPurpose : t.intro}</p>
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "4px" }}>{t.ownerOnly}</p>
+      {/* One line (owner, 2026-09-29: 이거는 한줄로 표기해줘). Two stacked greys under a table
+          read as a paragraph somebody has to decide whether to read; joined, it is one fact about
+          this log — what it holds and who sees it. */}
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px" }}>
+        {(purposeAsked ? t.introWithPurpose : t.intro)} {t.ownerOnly}
+      </p>
     </div>
   );
 }
