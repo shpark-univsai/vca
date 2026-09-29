@@ -401,3 +401,11 @@ B가 규칙 0대로 이 항목이 있어야 한다고 보고했고, 그게 맞�
   `ProjectCamerasTab.tsx` · `ProjectVipTab.tsx` · `ProjectServerTab.tsx` ·
   `ProjectActivityTab.tsx` · `ProjectSearchLogTab.tsx` · `PortalUsersPage.tsx`.
   `PortalShared.tsx`는 이미 컴포넌트가 들어가 있으니 **읽기만** 합니다.
+
+### 2026-09-29 — 병렬 2차
+
+- **에이전트**: 앱의 날짜 범위 피커를 공용으로 추출 —
+  `src/components/shared/DateRangePicker.tsx`(새 파일) + `src/components/DataPage.tsx` 재배선.
+  언어는 훅 대신 `lang` prop으로. 포털 파일은 건드리지 않습니다.
+- **조정 세션(나)**: `src/components/portal/ProjectSearchLogTab.tsx` — 화면 필터 추가,
+  그리고 위 컴포넌트가 들어오면 네이티브 date 입력 두 개를 그것으로 교체.
