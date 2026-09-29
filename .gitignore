@@ -43,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 세션 조정용 — 병렬 작업 배정 기록. 전달물이 아니라 과정 산출물이라 추적하지 않는다.
+SESSIONS.md
