@@ -3762,7 +3762,12 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
 
   return (
     <div style={{ backgroundColor:"white", border:BORDER, borderRadius:"16px", boxShadow:"var(--shadow-modal)",
-      width:"1092px", maxWidth:"100%", display:"flex", flexDirection:"column", maxHeight:"92vh", overflow:"hidden" }}>
+      /* 100%, not 92vh. The card does not start at the top of the window — it sits under the
+         navbar and the tab strip, about 145px down — so 92vh of card from there ran off the
+         bottom: measured, 21px and one button out of reach at 1440x900, and 96px with SEVEN
+         buttons out (「기준 대상으로 지정」 among them) at 1440x620. Its own wrapper is the
+         height that is actually free, so filling that is the honest cap. */
+      width:"1092px", maxWidth:"100%", display:"flex", flexDirection:"column", maxHeight:"100%", overflow:"hidden" }}>
 
       <div style={{ padding:"16px 24px", borderBottom:BORDER, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
@@ -5578,7 +5583,9 @@ function RedFaceContent({ seedCard, seedLabel, onSeedConsumed, onGoAnalyzeFrame 
           style={{ position:"absolute", inset:0, zIndex:50, overflow:"auto",
             backdropFilter:"blur(9px)", backgroundColor:"var(--scrim)" }}
         >
-          <div style={{ minHeight:"100%", boxSizing:"border-box", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"24px", paddingTop:"6vh" }}>
+          {/* Centred with an even 24px, instead of 6vh from the top: 6vh + 92vh + 24px is more
+              than a window, which is what pushed the footer past the bottom edge. */}
+          <div style={{ minHeight:"100%", boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"center", padding:"24px" }}>
             <PrimaryTargetPickerModal onConfirm={handleConfirm}
               onCancel={primaryTarget ? () => setPickerOpen(false) : undefined} />
           </div>

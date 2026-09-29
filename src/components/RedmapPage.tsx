@@ -1391,7 +1391,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           they did in less width, and the % readout beside it says where you are. Past that, the
           vca-tb-* rules in globals.css drop the "Search by image" hints (the dashed pill and its
           icon already say "attach an image"), then the word "Similarity". */}
-      <div style={{
+      <div className="vca-redmap-toolbar" style={{
         backgroundColor: "white", borderBottom: BORDER,
         padding: "0 24px", height: "52px",
         display: "flex", alignItems: "center", flexWrap: "nowrap",
@@ -1425,7 +1425,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                 {m === "person"
                   ? <PersonIcon color={active ? "var(--primary-400)" : "var(--gray-400)"} size={18} />
                   : <VehicleIcon color={active ? "var(--primary-400)" : "var(--gray-400)"} size={18} />}
-                {m === "person" ? t.modePerson : t.modeVehicle}
+                <span className="vca-tb-mode">{m === "person" ? t.modePerson : t.modeVehicle}</span>
               </button>
             );
           })}
@@ -1436,7 +1436,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           <>
             <DateRangePicker value={dateRange} onChange={setDateRange} />
 
-            <div style={{ width: "1px", height: "24px", flexShrink: 0, backgroundColor: "var(--gray-200)" }} />
+            <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, backgroundColor: "var(--gray-200)" }} />
 
             {/* License plate */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
@@ -1470,7 +1470,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           <>
             <DateRangePicker value={dateRange} onChange={setDateRange} />
 
-            <div style={{ width: "1px", height: "24px", flexShrink: 0, backgroundColor: "var(--gray-200)" }} />
+            <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, backgroundColor: "var(--gray-200)" }} />
 
             {/* Search by image chips */}
             <div style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
@@ -1546,7 +1546,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
               })}
             </div>
 
-            <div style={{ width: "1px", height: "24px", flexShrink: 0, backgroundColor: "var(--gray-200)" }} />
+            <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, backgroundColor: "var(--gray-200)" }} />
 
             {/* Similarity — the slider alone. It used to sit beside 60/70/80/90 preset chips, but
                 the two controls set the same one number and the chips cost ~190px in a toolbar that

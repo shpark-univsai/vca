@@ -2645,14 +2645,23 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     )
                     : (
                       <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px", minWidth: 0 }}>
+                        {/* SHRINKS INSIDE ITS CELL. flexShrink 0 made it refuse to narrow, so
+                            below about 1360px it grew past the column and sat on the zone value
+                            in the next one — measured: the chip's box overlapped 「Marina Bay」 by
+                            15px at 1280 and 48px at 1024. A chip that will not yield is a chip
+                            that lands on its neighbour. */}
                         <span style={{
-                          display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0,
+                          display: "inline-flex", alignItems: "center", gap: "4px",
+                          flexShrink: 1, minWidth: 0, maxWidth: "100%", overflow: "hidden",
                           height: "18px", padding: "0 8px", borderRadius: "999px",
                           backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
                           fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap",
                         }}>
-                          <ServerOff size={11} strokeWidth={2.6} />
-                          {t.healthNoServer}
+                          <ServerOff size={11} strokeWidth={2.6} style={{ flexShrink: 0 }} />
+                          {/* The label ellipsizes; the icon never does. Without this the chip cut
+                              mid-word at the column edge, which reads as a rendering fault rather
+                              than as a name too long for its column. */}
+                          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{t.healthNoServer}</span>
                         </span>
                         {/* The repair, where the problem is. stopRowClick because the row itself
                             opens the preview, and this is not that. Behind the edit gate: a

@@ -2335,7 +2335,11 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
         }))),
       ]} state={listState} />}
 
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: TOOLBAR_GAP }}>
+      {/* WRAPS, like Input Sources' toolbar already does. Without it the row kept one line and
+          pushed its own primary action off the right edge — measured at 1024: 「VIP 등록」 at
+          left 1032, and in grid view 「Export CSV」 too. A toolbar that puts its main button
+          off-screen at a size the product is used at is not a toolbar. */}
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", rowGap: "8px", gap: "8px", marginBottom: TOOLBAR_GAP }}>
       {/* Gone while the tab holds nothing — see nothingRegistered. There is no list to search. */}
       {!nothingRegistered && <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />}
         {/* Next to the search box, the way Input Sources puts its zone / status / engine selects

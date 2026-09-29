@@ -412,7 +412,11 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
           axis `auto` too, so one row wider than 212px — a long team name, an English tab label —
           put a horizontal scrollbar under the whole rail. Nothing here should ever scroll
           sideways; what does not fit ellipsises. */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: "4px" }}>
+      {/* paddingBottom, so the last rail item clears the team block pinned under it. Measured at a
+          620px-high window: the list scrolled 420 inside 387, and 「기록」 — the last item — sat
+          under the organisation block with no sign there was anything below. A browser with its
+          dev tools docked is exactly that height. */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column", gap: "4px", paddingBottom: "12px" }}>
         {NAV_GROUPS.map((group, gi) => (
           <div key={group.id} style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: gi === 0 ? 0 : "18px" }}>
             {/* Collapsed, a heading has nowhere to go — 60px holds an icon and nothing else — so the

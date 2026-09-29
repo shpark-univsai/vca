@@ -880,6 +880,19 @@ body {
    slider and its % reading are the only thing beside it. */
 @media (max-width: 1600px) { .vca-tb-hint { display: none; } }
 @media (max-width: 1400px) { .vca-tb-label { display: none; } }
+/* Two more steps, measured 2026-09-29: the row's content is 1197px wide and the shell clips
+   rather than scrolls, so at 1152 it lost 45px and at 1024 it lost 173px — 「Search persons」, the
+   button the screen exists for, sat entirely off the right edge and 「Reset」 read "Rese". Same
+   priority order as above: the gaps and the hairlines first (they separate things that are
+   already separated by their own shapes), then the two mode WORDS, whose icons stay. ~180px. */
+@media (max-width: 1280px) {
+  .vca-redmap-toolbar { gap: 12px !important; padding: 0 16px !important; }
+  .vca-redmap-toolbar .vca-tb-rule { display: none; }
+}
+@media (max-width: 1200px) { .vca-tb-mode { display: none; } }
+/* The app navbar's wordmark, cut back to its square mark so the SITE NAME keeps its width —
+   measured at 1024 the name was 43px ("Mari…") while the wordmark held its full 173. */
+@media (max-width: 1200px) { .navbar-mark { width: 44px; } }
 
 /* Option rows in the three pickers that share this class — Live Monitoring's camera dropdown,
    Re-ID's camera dropdown, and Best Frame's hour/minute list. The resting and selected fills live
