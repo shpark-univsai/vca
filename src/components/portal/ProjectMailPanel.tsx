@@ -76,7 +76,7 @@ const NETWORK_T = {
     noResponse: "No response (isolated)", reachable: "Reachable",
     measured: "Measured",
     recheck: "Recheck",
-    recheckAsked: (when: string) => `Recheck requested ${when}. The figure above is still the last reading the server reported — this console cannot measure a network itself.`,
+    recheckAsked: (when: string) => `Asked ${when}. The figure above is still the server's last reading.`,
     inForce: "In force",
     overrideBy: (who: string, when: string) => `Overridden by ${who} on ${when}`,
     /* Short forms, used only in the override button: the status words above are the value's own
@@ -84,7 +84,9 @@ const NETWORK_T = {
     overrideTo: (state: string) => `Override the measurement — treat as ${state}`,
     isolatedShort: "isolated", connectedShort: "connected",
     revertToDetection: "Use the measurement",
-    overrideWhy: "The ping check can be wrong behind a firewall or a security policy, so the measurement can be overridden — and the override says who set it, because an invitation that never arrives is traced back through this line.",
+    setByHand: "Set by hand",
+    handCancel: "Cancel",
+    overrideWhy: "A firewall can make the ping wrong. Setting it by hand records who did.",
   },
   ko: {
     heading: "네트워크 연결 상태",
@@ -94,13 +96,15 @@ const NETWORK_T = {
     noResponse: "응답 없음(격리됨)", reachable: "연결 가능",
     measured: "측정값",
     recheck: "다시 확인",
-    recheckAsked: (when: string) => `${when}에 다시 확인을 요청했습니다. 위 값은 여전히 서버가 마지막으로 보고한 측정값입니다 — 이 콘솔은 네트워크를 직접 측정하지 못합니다.`,
+    recheckAsked: (when: string) => `${when}에 요청했습니다. 위 값은 서버가 마지막으로 보고한 측정값입니다.`,
     inForce: "적용 중",
     overrideBy: (who: string, when: string) => `${who}이(가) ${when}에 측정값을 무시하고 지정`,
     overrideTo: (state: string) => `측정값을 무시하고 ${state}로 지정`,
     isolatedShort: "격리", connectedShort: "연결",
     revertToDetection: "측정값 사용",
-    overrideWhy: "방화벽이나 보안 정책 때문에 핑 확인이 틀릴 수 있어 측정값을 무시할 수 있습니다. 대신 누가 지정했는지를 함께 남깁니다 — 초대장이 도착하지 않을 때 이 줄을 거슬러 올라가 원인을 찾습니다.",
+    setByHand: "직접 지정",
+    handCancel: "취소",
+    overrideWhy: "방화벽 뒤에서는 핑이 틀릴 수 있습니다. 직접 지정하면 누가 했는지 남습니다.",
   },
 } as const;
 const MAIL_T = {
@@ -199,6 +203,12 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
   const overridden = !!project?.mailDomain || !!project?.smtp;
 
   const [override, setOverride] = useState(overridden);
+  /* The override is a rare correction, so it is REACHABLE rather than OFFERED (owner, 2026-09-29:
+     격리로 지정 버튼이 항상 있는게 맞아?). A standing button to contradict a correct reading is an
+     invitation to contradict it, and on almost every site the reading is right. At rest the row is
+     the measurement and 「다시 확인」; 「직접 지정」 opens the rest. An override already in force is
+     never hidden — see hasOverride below. */
+  const [handOpen, setHandOpen] = useState(false);
   const [domain, setDomain] = useState(project?.mailDomain ?? "");
   const [host, setHost] = useState(project?.smtp?.host ?? "");
   const [port, setPort] = useState(String(project?.smtp?.port ?? 587));
@@ -331,6 +341,15 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
                   {n.recheck}
                 </button>
               )}
+              {/* Quiet text, not a bordered button: this is the way to a rare correction, not one
+                  of two things to do here. Hidden once the override is in force, because the block
+                  below is then already open and carries its own way back. */}
+              {mayEdit && !hasOverride && !handOpen && (
+                <button onClick={() => setHandOpen(true)}
+                  style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 600, color: "var(--gray-500)", borderBottom: "1px dotted var(--gray-300)" }}>
+                  {n.setByHand}
+                </button>
+              )}
             </div>
             {/* Only after somebody asks, and it reports the asking rather than an outcome. */}
             {project.networkCheckRequestedAt && (
@@ -341,7 +360,7 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
             {/* SUBORDINATE, AND INDENTED TO SAY SO. Below the measurement, in the lighter tone,
                 behind a rule: the reader meets the measured fact first and the disagreement
                 second. */}
-            {mayEdit && (
+            {mayEdit && (hasOverride || handOpen) && (
               <div style={{ borderTop: BORDER, paddingTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
                 {hasOverride ? (
                   <>
@@ -364,10 +383,18 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
                   /* Pinning the value the ping already reports would be a no-op dressed as a
                      decision, so the one button offered is the disagreement: treat this site as
                      the opposite of what was measured. */
-                  <button className="portal-btn-outline" onClick={() => setNetworkIsolationOverride(projectId, !detected)}
-                    style={{ alignSelf: "flex-start", height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-500)", fontSize: "11px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                    {n.overrideTo(detected ? n.connectedShort : n.isolatedShort)}
-                  </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <button className="portal-btn-outline" onClick={() => setNetworkIsolationOverride(projectId, !detected)}
+                      style={{ height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-500)", fontSize: "11px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                      {n.overrideTo(detected ? n.connectedShort : n.isolatedShort)}
+                    </button>
+                    {/* Opened and not wanted after all — the way back out, so the row can return
+                        to being one measured value. */}
+                    <button onClick={() => setHandOpen(false)}
+                      style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 600, color: "var(--gray-500)" }}>
+                      {n.handCancel}
+                    </button>
+                  </div>
                 )}
               </div>
             )}
