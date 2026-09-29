@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MatchItem, ReIDStatus } from "@/types/reid";
 import {
   CAMERA_CODES, canSearchIn, holdsAppAction, judgementFor, screensFor, type DetectionVerdict,
-  useActiveProjectId, useProjectCameras, useVcaStore, getActiveProjectId, personsInProject,
+  useActiveProjectId, useProjectCameras, useVcaStore, getActiveProjectId, personsInProject, useRetentionFloor,
   type AppScreen, type Camera, type Person,
 } from "@/lib/vcaStore";
 import { useCameraStatus, getCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
@@ -1311,6 +1311,8 @@ function LiveSearchSidebar({
   const portalUsers = useVcaStore(state => state.portalUsers);
   const searchAllowed = canSearchIn(portalUsers, searchScreen);
   const [lang] = useLanguage();
+  /* How far back this site's calendar may open — see retentionFloor() in vcaStore. */
+  const retentionFloor = useRetentionFloor();
   const t = T[lang];
   const {
     setSearchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP,
@@ -1429,7 +1431,7 @@ function LiveSearchSidebar({
             <CalendarIconSm size={12} color="var(--gray-700)" />
             <span style={{ fontSize:"12px", fontWeight:700 }}>{t.dateRange}</span>
           </div>
-          <DateRangeTrigger lang={lang} value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText={t.last7days} showIcon={false} />
+          <DateRangeTrigger lang={lang} minDate={retentionFloor} value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText={t.last7days} showIcon={false} />
         </div>
 
         {tab === "Photo" && (
@@ -3605,6 +3607,8 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   // Absence of the prop now means absence of the button, so the two cannot disagree again.
   { onConfirm:(c:RedfaceCandidate)=>void; onCancel?:()=>void }) {
   const [lang] = useLanguage();
+  /* How far back this site's calendar may open — see retentionFloor() in vcaStore. */
+  const retentionFloor = useRetentionFloor();
   const t = T[lang];
   useEscapeKey(onCancel ?? (() => {}), !!onCancel);
   const siteCameras = useSiteCameraCodes();
@@ -3944,7 +3948,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
             <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.dateRange}</span>
             {/* The same default this component is given everywhere else, from T — spelled out
                 as a literal here it stayed English under a Korean label. */}
-            <DateRangeTrigger lang={lang} value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText={t.last7days} />
+            <DateRangeTrigger lang={lang} minDate={retentionFloor} value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText={t.last7days} />
           </div>
 
           {isVehicle && (
@@ -5297,6 +5301,8 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
   onGoAnalyzeFrame?: (location: string, at?: { date: string; time: string }) => void;
 }) {
   const [lang] = useLanguage();
+  /* How far back this site's calendar may open — see retentionFloor() in vcaStore. */
+  const retentionFloor = useRetentionFloor();
   const t = T[lang];
   const cooccurCams = useCooccurCameras();
   const [tier1On, setTier1On] = useState(true);
@@ -5433,7 +5439,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
                 fits a full "2026.09.29 – 2026.10.19" — at 172px the text ran past the box and over
                 the reset button beside it. */}
             <div style={{ width:"212px", display:"flex", flexShrink:0 }}>
-              <DateRangeTrigger lang={lang} value={dateRange} onApply={setDateRange} mode="merged" size="sm" emptyText={t.allDates} />
+              <DateRangeTrigger lang={lang} minDate={retentionFloor} value={dateRange} onApply={setDateRange} mode="merged" size="sm" emptyText={t.allDates} />
             </div>
             <button onClick={reset} title={t.resetFilters} style={{ display:"flex", alignItems:"center", gap:"6px",
               height:"30px", padding:"0 10px", borderRadius:"6px", border:BORDER, backgroundColor:"white", cursor:"pointer",

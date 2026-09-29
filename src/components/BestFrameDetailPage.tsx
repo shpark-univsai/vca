@@ -6,7 +6,7 @@ import type { DetType, Detection, CamData } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { sgtDateKey } from "@/lib/time";
 import ViewerWatermark from "./ViewerWatermark";
-import { useVcaStore, holdsAppAction } from "@/lib/vcaStore";
+import { useVcaStore, holdsAppAction, useRetentionFloor } from "@/lib/vcaStore";
 
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
@@ -847,11 +847,19 @@ function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (da
   const t = T[lang];
   const [selYear, selMonth] = selected.split("-").map(Number);
   const todayKey = sgtDateKey(new Date());
+  /* The other end of the same rule this calendar already applies to the future. A day the
+     recorder no longer holds is not a day with nothing in it, and until now both produced the
+     same empty reel — see retentionFloor() in vcaStore. Null where the site has not set a
+     retention, and then nothing is barred. */
+  const floor = useRetentionFloor();
+  const floorKey = floor ? dateKey(floor.getFullYear(), floor.getMonth(), floor.getDate()) : null;
   const [viewYear, setViewYear] = useState(selYear);
   const [viewMonth, setViewMonth] = useState(selMonth - 1);
   const cells = buildMonthGrid(viewYear, viewMonth);
   const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString(lang === "ko" ? "ko-KR" : "en-US", { month: "short", year: "numeric" });
   const isCurrentMonth = dateKey(viewYear, viewMonth, 1).slice(0, 7) === todayKey.slice(0, 7);
+  /* The back arrow stops at the floor's month, the way the forward one stops at this one. */
+  const atFloorMonth = !!floorKey && dateKey(viewYear, viewMonth, 1).slice(0, 7) <= floorKey.slice(0, 7);
 
   const prevMonth = () => { if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); } else setViewMonth(m => m - 1); };
   const nextMonth = () => { if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); } else setViewMonth(m => m + 1); };
@@ -859,7 +867,7 @@ function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (da
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"8px", width:"224px", padding:"12px" }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", height:"24px" }}>
-        <button onClick={prevMonth} style={{ width:"24px", height:"24px", display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor:"pointer", color:"var(--gray-700)" }}>
+        <button onClick={prevMonth} disabled={atFloorMonth} style={{ width:"24px", height:"24px", display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor: atFloorMonth ? "default" : "pointer", visibility: atFloorMonth ? "hidden" : "visible", color:"var(--gray-700)" }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{monthLabel}</span>
@@ -877,14 +885,16 @@ function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (da
           const isSelected = key === selected;
           const isToday = key === todayKey;
           const isFuture = key > todayKey;
+          const gone = !!floorKey && key < floorKey;
+          const barred = isFuture || gone;
           return (
-            <button key={i} disabled={isFuture} onClick={() => onPick(key)} style={{
+            <button key={i} disabled={barred} onClick={() => onPick(key)} style={{
               // Both marks are positional — the day you picked, and where today is — so both are
               // SELECTED. Purple here would be the third thing on this screen wearing the VIP colour.
               width:"28px", height:"28px", borderRadius:"50%", border: isToday && !isSelected ? `1px solid ${SELECTED}` : "none",
               backgroundColor: isSelected ? SELECTED : "transparent",
-              color: isSelected ? "white" : isFuture ? "var(--gray-300)" : "var(--gray-900)",
-              fontSize:"12px", fontWeight: isSelected ? 700 : 500, cursor: isFuture ? "default" : "pointer",
+              color: isSelected ? "white" : barred ? "var(--gray-300)" : "var(--gray-900)",
+              fontSize:"12px", fontWeight: isSelected ? 700 : 500, cursor: barred ? "default" : "pointer",
             }}>{day}</button>
           );
         })}

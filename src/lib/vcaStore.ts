@@ -1935,6 +1935,39 @@ export function vipRetentionDays(project: Project | undefined): number | null {
   return project?.vipRetentionDays ?? getComplianceConfig().vipDefaultValidDays;
 }
 
+/**
+ * The oldest day this site still holds footage for, or null when nobody has said.
+ *
+ * WHY THE APP NEEDS IT (2026-09-29). `retentionDays` was written on one Portal screen and read
+ * nowhere else, so every date control in the app opened backwards forever — and a day past the
+ * retention window and a day when nobody walked past produced the SAME empty screen. One of those
+ * means "look somewhere else", the other means "nothing happened", and an operator could not tell
+ * them apart.
+ *
+ * Null when the site has not set a number, and then nothing is barred: this console does not know
+ * what the recorder keeps, and inventing a floor would be the same kind of guess in the other
+ * direction. See `retentionDays` — recording the policy is not enforcing it, and the same caution
+ * applies to reading it back.
+ *
+ * Midnight local, so a day is either wholly in or wholly out.
+ */
+export function retentionFloor(project: Project | undefined): Date | null {
+  const days = project?.retentionDays;
+  if (days === undefined) return null;
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - days);
+  return d;
+}
+
+/** retentionFloor for the site the app is currently showing. One hook so four screens cannot
+ *  disagree about how far back their calendars open. */
+export function useRetentionFloor(): Date | null {
+  const projectId = useActiveProjectId();
+  const projects = useVcaStore(s => s.projects);
+  return useMemo(() => retentionFloor(projects.find(p => p.id === projectId)), [projects, projectId]);
+}
+
 export function defaultVipExpiry(days: number | null): string | undefined {
   return days === null ? undefined : new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 }

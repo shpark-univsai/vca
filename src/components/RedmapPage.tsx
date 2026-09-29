@@ -7,7 +7,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
 import { useToast } from "./Toast";
 import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/time";
-import { camerasInProject, hasPosition, canSearchIn, judgementFor, SIGNED_IN_USER, useActiveProjectId, useProjectCameras, useVcaStore, type Camera } from "@/lib/vcaStore";
+import { camerasInProject, hasPosition, canSearchIn, judgementFor, SIGNED_IN_USER, useActiveProjectId, useProjectCameras, useRetentionFloor, useVcaStore, type Camera } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { siteTimeZone } from "@/lib/time";
 import RemoveImageButton from "./RemoveImageButton";
@@ -657,6 +657,14 @@ function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const toDateStr = (day: number) => `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+  /* The oldest day this site still holds. Redmap draws its own calendar rather than the shared
+     one, so the floor has to be honoured here too — otherwise this screen opens backwards forever
+     while the other three stop, and the same date is offered on one and refused on the next. */
+  const floor = useRetentionFloor();
+  const floorKey = floor
+    ? `${floor.getFullYear()}-${String(floor.getMonth()+1).padStart(2,"0")}-${String(floor.getDate()).padStart(2,"0")}`
+    : null;
+  const isGone = (day: number) => !!floorKey && toDateStr(day) < floorKey;
 
   const formatDisplay = (d: string | null) => {
     if (!d) return null;
@@ -667,6 +675,7 @@ function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: 
   };
 
   const handleDayClick = (day: number) => {
+    if (isGone(day)) return;
     const ds = toDateStr(day);
     if (step === "start") {
       onChange({ start: ds, end: null });
@@ -790,17 +799,18 @@ function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: 
               {Array.from({ length: daysInMonth }, (_, i) => {
                 const day = i + 1;
                 const ds = dayState(day);
+                const gone = isGone(day);
                 return (
                   <div
                     key={day}
                     onClick={() => handleDayClick(day)}
-                    onMouseEnter={e => { if (ds === "none") e.currentTarget.style.backgroundColor = "var(--gray-100)"; }}
-                    onMouseLeave={e => { if (ds === "none") e.currentTarget.style.backgroundColor = "transparent"; }}
+                    onMouseEnter={e => { if (ds === "none" && !gone) e.currentTarget.style.backgroundColor = "var(--gray-100)"; }}
+                    onMouseLeave={e => { if (ds === "none" && !gone) e.currentTarget.style.backgroundColor = "transparent"; }}
                     style={{
                       height: "34px", display: "flex", alignItems: "center", justifyContent: "center",
                       fontSize: "13px", fontWeight: ds === "start" || ds === "end" ? 700 : 400,
-                      cursor: "pointer", borderRadius: ds === "start" || ds === "end" ? "50%" : "4px",
-                      color: ds === "start" || ds === "end" ? "white" : ds === "range" ? "var(--primary-400)" : "var(--gray-900)",
+                      cursor: gone ? "not-allowed" : "pointer", borderRadius: ds === "start" || ds === "end" ? "50%" : "4px",
+                      color: gone ? "var(--gray-300)" : ds === "start" || ds === "end" ? "white" : ds === "range" ? "var(--primary-400)" : "var(--gray-900)",
                       backgroundColor: ds === "start" || ds === "end" ? "var(--primary-400)" : ds === "range" ? "var(--primary-100)" : "transparent",
                       transition: "background 0.1s",
                     }}

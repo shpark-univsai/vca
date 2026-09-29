@@ -19,9 +19,11 @@ const BORDER = "1px solid var(--line)";
    globals.css. The popover it opens is a surface and keeps the hairline above. */
 const CONTROL_BORDER = "1px solid var(--line-control)";
 
-const T: Record<PickerLanguage, { apply: string; cancel: string; startDate: string; endDate: string; allDates: string }> = {
-  en: { apply: "Apply", cancel: "Cancel", startDate: "Start date", endDate: "End date", allDates: "All dates" },
-  ko: { apply: "적용", cancel: "취소", startDate: "시작일", endDate: "종료일", allDates: "전체 기간" },
+const T: Record<PickerLanguage, { apply: string; cancel: string; startDate: string; endDate: string; allDates: string; kept: (d: string) => string }> = {
+  en: { apply: "Apply", cancel: "Cancel", startDate: "Start date", endDate: "End date", allDates: "All dates",
+        kept: (d: string) => `This site keeps footage back to ${d}. Earlier days are gone, not empty.` },
+  ko: { apply: "적용", cancel: "취소", startDate: "시작일", endDate: "종료일", allDates: "전체 기간",
+        kept: (d: string) => `이 현장은 ${d}까지 보관합니다. 그 이전은 없는 것이 아니라 지워진 것입니다.` },
 };
 
 export type DateRangeValue = { start: Date | null; end: Date | null };
@@ -76,7 +78,8 @@ const WEEKDAY_LABELS: Record<PickerLanguage, string[]> = {
   ko: ["일","월","화","수","목","금","토"],
 };
 
-function DateMonthCalendar({ lang, year, month, tempStart, tempEnd, onPick, onPrev, onNext, showPrev, showNext }: {
+function DateMonthCalendar({ lang, year, month, tempStart, tempEnd, onPick, onPrev, onNext, showPrev, showNext, minDate }: {
+  minDate?: Date | null;
   lang: PickerLanguage;
   year: number; month: number; tempStart: Date|null; tempEnd: Date|null;
   onPick: (d: Date) => void; onPrev?: () => void; onNext?: () => void; showPrev: boolean; showNext: boolean;
@@ -110,12 +113,16 @@ function DateMonthCalendar({ lang, year, month, tempStart, tempEnd, onPick, onPr
           const isEnd = !!tempEnd && isSameDay(d, tempEnd);
           const inRange = !!tempStart && !!tempEnd && d > tempStart && d < tempEnd;
           const today = isSameDay(d, new Date());
+          /* Past the retention window: not clickable, and visibly so. A day the recorder no longer
+             holds has to look different from a day with nothing in it — otherwise "look somewhere
+             else" and "nothing happened" are the same empty result. */
+          const gone = !!minDate && d < minDate;
           return (
-            <button key={i} onClick={() => onPick(d)} className="vca-daterange-day" style={{
+            <button key={i} onClick={() => { if (!gone) onPick(d); }} disabled={gone} className={gone ? undefined : "vca-daterange-day"} style={{
               width:"28px", height:"28px", borderRadius:"50%", border: today && !isStart && !isEnd ? "1px solid var(--primary-400)" : "none",
               backgroundColor: isStart || isEnd ? "var(--primary-400)" : inRange ? "var(--primary-100)" : "transparent",
-              color: isStart || isEnd ? "white" : "var(--gray-900)",
-              fontSize:"12px", fontWeight: isStart || isEnd ? 700 : 500, cursor:"pointer",
+              color: gone ? "var(--gray-300)" : isStart || isEnd ? "white" : "var(--gray-900)",
+              fontSize:"12px", fontWeight: isStart || isEnd ? 700 : 500, cursor: gone ? "not-allowed" : "pointer",
               boxSizing:"border-box",
             }}>{d.getDate()}</button>
           );
@@ -125,10 +132,12 @@ function DateMonthCalendar({ lang, year, month, tempStart, tempEnd, onPick, onPr
   );
 }
 
-function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single }: {
+function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single, minDate }: {
   lang: PickerLanguage;
   anchorRef: React.RefObject<HTMLElement | null>; value: DateRangeValue;
   onApply: (v: DateRangeValue) => void; onClose: () => void;
+  /** The oldest day still held — see retentionFloor() in vcaStore. */
+  minDate?: Date | null;
   /** One day, not a span: the quick ranges go away and a click closes the answer. */
   single?: boolean;
 }) {
@@ -196,8 +205,11 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single }: 
           {QUICK_RANGES.map(q => (
             <button key={q.label.en} className="vca-daterange-preset" onClick={() => {
               const r = q.range();
-              setTempStart(r.start); setTempEnd(r.end);
-              if (r.start) { setViewYear(r.start.getFullYear()); setViewMonth(r.start.getMonth()); }
+              /* A preset that reaches past the floor is clamped rather than hidden: 「최근 6개월」
+                 on a 30-day site still means "as far back as there is". */
+              const start = minDate && r.start && r.start < minDate ? minDate : r.start;
+              setTempStart(start); setTempEnd(r.end);
+              if (start) { setViewYear(start.getFullYear()); setViewMonth(start.getMonth()); }
             }} style={{ textAlign:"left", padding:"8px", borderRadius:"8px", border:"none", backgroundColor:"transparent", cursor:"pointer",
               fontSize:"13px", color:"var(--gray-900)", fontWeight:600, transition:"background-color 0.15s" }}>
               {q.label[lang]}
@@ -206,16 +218,28 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single }: 
         </div>}
         <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
           <div style={{ display:"flex", gap:"24px" }}>
+            {/* The back arrow stops at the floor's month — walking further shows only dead days. */}
             <DateMonthCalendar lang={lang} year={viewYear} month={viewMonth} tempStart={tempStart} tempEnd={tempEnd} onPick={pick}
-              showPrev={true} showNext={false} onPrev={prevMonth} />
+              minDate={minDate}
+              showPrev={!minDate || new Date(viewYear, viewMonth, 1) > minDate} showNext={false} onPrev={prevMonth} />
             <DateMonthCalendar lang={lang} year={secondYear} month={secondMonth} tempStart={tempStart} tempEnd={tempEnd} onPick={pick}
+              minDate={minDate}
               showPrev={false} showNext={true} onNext={nextMonth} />
           </div>
-          <div style={{ display:"flex", justifyContent:"flex-end", gap:"8px" }}>
+          {/* WHY the greyed days are greyed. Without it a calendar that refuses half its months
+              reads as broken; with it, it reads as a site that keeps N days. */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent: minDate ? "space-between" : "flex-end", gap:"12px" }}>
+            {minDate && (
+              <p style={{ margin:0, fontSize:"11px", lineHeight:1.45, color:"var(--gray-500)", maxWidth:"330px" }}>
+                {t.kept(fmtDate(minDate))}
+              </p>
+            )}
+            <span style={{ display:"flex", gap:"8px", flexShrink:0 }}>
             <button onClick={onClose} style={{ padding:"8px 16px", borderRadius:"8px", border:BORDER,
               backgroundColor:"white", color:"var(--gray-900)", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>{t.cancel}</button>
             <button onClick={() => onApply({ start: tempStart, end: tempEnd })} style={{ padding:"8px 16px", borderRadius:"8px", border:"none",
               backgroundColor:"var(--primary-400)", color:"white", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>{t.apply}</button>
+            </span>
           </div>
         </div>
       </div>
@@ -223,9 +247,14 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single }: 
   );
 }
 
-export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size = "md", emptyText, showIcon = true }: {
+export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size = "md", emptyText, showIcon = true, minDate }: {
   lang: PickerLanguage;
   value: DateRangeValue; onApply: (v: DateRangeValue) => void; mode?: "split"|"merged"|"single"; size?: "md"|"sm"; emptyText?: string; showIcon?: boolean;
+  /**
+   * The oldest day still held at this site — `retentionFloor(project)` in vcaStore, or null where
+   * the site has not said. Days before it cannot be picked and the popover says why.
+   */
+  minDate?: Date | null;
 }) {
   const t = T[lang];
   const [open, setOpen] = useState(false);
@@ -297,7 +326,7 @@ export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size =
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="var(--gray-600)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
       )}
-      {open && <DateRangePopover lang={lang} anchorRef={ref} value={value} single={single} onApply={(v) => { onApply(v); setOpen(false); }} onClose={() => setOpen(false)} />}
+      {open && <DateRangePopover lang={lang} anchorRef={ref} value={value} single={single} minDate={minDate} onApply={(v) => { onApply(v); setOpen(false); }} onClose={() => setOpen(false)} />}
     </div>
   );
 }
