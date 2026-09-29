@@ -232,13 +232,22 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
     return [...seen].map(([value, name]) => ({ value, label: `${name} · ${value}` }));
   }, [projectRecords]);
 
-  /* Only the surfaces this project's log actually holds, and only once there is more than one —
-     the same rule the activity tab applies to its screen filter: a control with one real choice
-     narrows nothing. */
-  const surfaceOptions = useMemo(() => {
-    const seen = new Set(projectRecords.map(r => r.surface));
-    return [...seen].map(value => ({ value, label: t.surfaceName[value] ?? value }));
-  }, [projectRecords, t]);
+  /*
+   * THE FOUR SCREENS A SEARCH CAN COME FROM, always — not the ones this log happens to hold.
+   *
+   * It was derived from the rows at first, following the rule the actor filter uses. Wrong here,
+   * and for two reasons. The surfaces are a CLOSED set (the app has four places to search from,
+   * and `recordSearchAccess` writes one of them), unlike operators, who are whoever happens to
+   * have looked. And filtering to a screen with no rows is a real question with a real answer:
+   * 「RedFace에서는 아무도 찾지 않았다」 is what a reviewer comes to confirm — deriving the options
+   * from the data removes that question exactly when the answer is 「없음」.
+   *
+   * It is also why the control is drawn on an empty log: the screen says what it can be asked.
+   */
+  const surfaceOptions = useMemo(
+    () => (["live", "reid", "redmap", "redface"] as const).map(value => ({ value, label: t.surfaceName[value] ?? value })),
+    [t],
+  );
 
   const showIp = projectRecords.some(r => r.ip);
   /* 시각이 맨 뒤 (owner, 2026-09-28: 변경기록도 조회기록도 시각이 맨 뒤로갔으면 해) — the two
@@ -359,10 +368,8 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
         )}
         {/* Before the person, because it is the more common question — and after the date, which
             is the one an auditor arrives with. */}
-        {surfaceOptions.length > 1 && (
-          <FilterSelect value={surfaceFilter} onChange={setSurfaceFilter}
-            options={[{ value: "ALL", label: t.filterAllSurfaces }, ...surfaceOptions]} />
-        )}
+        <FilterSelect value={surfaceFilter} onChange={setSurfaceFilter}
+          options={[{ value: "ALL", label: t.filterAllSurfaces }, ...surfaceOptions]} />
         {/* Same rule as the screen filter beside it: on a log nobody has written to, this offered
             「전체」 and nothing else — a control that narrows nothing, on the one screen where the
             reader most needs to trust what the controls mean. */}
