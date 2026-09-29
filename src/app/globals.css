@@ -80,7 +80,7 @@
      Not a step of the grey ramp and not one of the primary ramp: a grey carrying a little of the
      primary so a line reads as part of this product's surface rather than as a neutral rule laid
      over it. One value for every line in the console; the ramps stay for fills and text.
-     HANDOFF: add this to the Figma variables next to the two ramps it sits between. */
+     Figma: 「Line/hairline」 in 변수 컬렉션 (added 2026-09-29). */
   --line: #e7e7f1;
 
   /* The boundary of something you OPERATE — a field, a select, a date trigger.
@@ -105,7 +105,7 @@
      it back by accident. If it is ever revisited, the three states have to move together — rest,
      hover, focus — not this one alone. It stays a token of its own so the decision has one place
      to live.
-     HANDOFF: add beside --line in the Figma variables. */
+     Figma: 「Line/control」 (added 2026-09-29). */
   --line-control: #e2e8f0;
 
   /* A CARD'S OUTER EDGE — the one line that separates a white panel from the page.
@@ -124,7 +124,7 @@
      edge says where the panel stops, the rules only keep rows apart, and in those same references
      the row dividers are lighter than the frame around them. Same purple-leaning neutral as
      --line, walked darker: 1.41:1 on the page ground, about three times the edge there was.
-     HANDOFF: add beside --line in the Figma variables. */
+     Figma: 「Line/card」 (added 2026-09-29). */
   --line-card: #d4d4e4;
 
   /* Primary */
