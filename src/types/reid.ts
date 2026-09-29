@@ -11,7 +11,16 @@ export interface MatchItem {
   date: string;
   time: string;
   similarity: number;
-  gender: "M" | "F";
+  /**
+   * What the model read off the frame, or absent.
+   *
+   * OPTIONAL as of 2026-09-29. A row synthesized from a VIP register entry has no gender to
+   * report — the register records a name and an enrolled face and nothing else about the person —
+   * and this field being required meant the one caller that produces those rows had to default it,
+   * which put an invented "F" on 122 people's search results. A required field holding a value
+   * nobody supplied is worse than an absent one.
+   */
+  gender?: "M" | "F";
   age: string;
   plate?: string | null;
   status: ReIDStatus;

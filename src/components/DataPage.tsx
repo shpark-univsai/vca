@@ -46,6 +46,7 @@ const T = {
     body: "Body",
     similarity: "Similarity",
     labelGender: "Gender",
+    labelAge: "Age",
     labelHat: "Hat",
     labelSleeve: "Sleeve length",
     labelBottoms: "Bottoms",
@@ -236,6 +237,7 @@ const T = {
     body: "전신",
     similarity: "유사도",
     labelGender: "성별",
+    labelAge: "나이",
     labelHat: "모자",
     labelSleeve: "소매 길이",
     labelBottoms: "하의",
@@ -593,7 +595,14 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
                 it is given and grows again when real attributes arrive. */}
             <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
               {([
-                [T[lang].genderAge, `${attr(item.gender==="F"?"Female":"Male", lang)} | ${item.age}`, "var(--gray-700)"],
+                // Only what was actually reported. This read `gender==="F" ? Female : Male`, so a
+                // row that carries no gender — a search run from a register entry, which records
+                // none — printed "Male" on the strength of nothing.
+                ...(item.gender
+                  ? [[T[lang].genderAge, `${attr(item.gender==="F"?"Female":"Male", lang)} | ${item.age}`, "var(--gray-700)"]]
+                  : item.age && item.age !== "--"
+                    ? [[T[lang].labelAge, item.age, "var(--gray-700)"]]
+                    : []),
                 ...(item.apparel ? [[T[lang].labelApparel, attr(item.apparel, lang), "var(--gray-700)"]] : []),
                 ...(item.prop ? [[T[lang].labelProps, attr(item.prop, lang), "var(--gray-700)"]] : []),
                 ...(item.topColor ? [[T[lang].topColor, attr(item.topColor, lang), "var(--gray-700)"]] : []),
@@ -775,7 +784,7 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
           overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flexShrink:0 }}>
           {p.personName
             ? <span style={{ fontWeight:700 }}>{p.personName}</span>
-            : <><span>{p.gender}</span><span>{p.age}</span></>}
+            : <>{p.gender && <span>{p.gender}</span>}<span>{p.age}</span></>}
         </div>
         {/* Anchored to the bottom of the block rather than following the line above it, so the
             timestamp sits on the same baseline on every card whether or not the identity line
@@ -984,7 +993,7 @@ function reidToMatchItem(p: (typeof REID_DATA)[number]): MatchItem {
   // actually carry — the same two the grid's filters read at :2718, so the modal now agrees with
   // whatever the operator narrowed by. NOT topColor/bottomColor/shoesColor: REID_DATA never sets
   // those, so reading them typechecks and yields undefined forever. See MatchItem in types/reid.ts.
-  return { id:p.id, face:p.url, body:p.url, cam:p.cam, date:p.date, time:p.time, similarity:p.similarity, gender:p.gender as "M"|"F", age:p.age, plate:p.plate, status:p.status,
+  return { id:p.id, face:p.url, body:p.url, cam:p.cam, date:p.date, time:p.time, similarity:p.similarity, gender:p.gender as "M"|"F"|undefined, age:p.age, plate:p.plate, status:p.status,
     apparel:p.apparel, prop:p.prop };
 }
 
@@ -1565,13 +1574,13 @@ function LiveSearchSidebar({
   const retentionFloor = useRetentionFloor();
   const t = T[lang];
   const {
-    setSearchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP,
+    setSearchType, selectedTarget, selectRecentTarget, vipPerson, selectVIP,
     threshold, setThreshold, gender, setGender,
     topColors, toggleTopColor, bottomColors, toggleBottomColor, shoesColors, toggleShoesColor,
     dateRange, setDateRange, licensePlate, setLicensePlate, reset,
   } = state;
   const target = selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget] : null;
-  const vipName = activeVIP >= 0 ? VIP_QUICK[activeVIP].name : null;
+  const vipName = vipPerson?.name ?? null;
   // Selected target first, same as RedFace's picker and the compact VIP row: this list scrolls
   // horizontally, so a pick made further along leaves the viewport and then nothing on screen
   // says which target the search is loaded with. Recency order is kept for the rest — original
@@ -1618,7 +1627,7 @@ function LiveSearchSidebar({
   // person, not keep showing the stale upload underneath it. Compared during render rather than
   // reset from an effect — compare during render instead. An effect would paint one
   // frame with the new selection and the old upload still on top of it, then paint again.
-  const targetKey = `${selectedTarget}|${activeVIP}`;
+  const targetKey = `${selectedTarget}|${vipPerson?.id ?? ""}`;
   const [prevTargetKey, setPrevTargetKey] = useState(targetKey);
   if (targetKey !== prevTargetKey) {
     setPrevTargetKey(targetKey);
@@ -1781,7 +1790,7 @@ function LiveSearchSidebar({
             <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>
               {vipName ? t.selectedVip(vipName) : t.chooseVip}
             </span>
-            <VipQuickSelectRow activeVIP={activeVIP} onSelect={selectVIP} />
+            <RegistryVipPicker selected={vipPerson} onSelect={selectVIP} layout="grid" />
           </div>
         )}
 
@@ -1864,7 +1873,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   const [searchDetailId, setSearchDetailId]     = useState<number|null>(null);
   const [searchType, setSearchType]             = useState<"PERSON"|"VEHICLE">("PERSON");
   const [selectedTarget, setSelectedTarget]     = useState(-1);
-  const [activeVIP, setActiveVIP]               = useState(-1);
+  const [vipPerson, setVipPerson]               = useState<Person | null>(null);
   // The specific REID_DATA row a camera card's "Search" button was clicked on — its own face/
   // body photos become the search target, same as picking a Recent target or VIP, rather than
   // landing on a blank Photo tab that only filters by camera/gender/date.
@@ -1912,12 +1921,12 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   const searchReset = () => {
     setSearchType("PERSON"); setThreshold(70); setGender(""); clearAttrFilters();
     setTopColors([]); setBottomColors([]); setShoesColors([]);
-    setSelectedTarget(-1); setActiveVIP(-1); setSearchDateRange({ start:null, end:null });
+    setSelectedTarget(-1); setVipPerson(null); setSearchDateRange({ start:null, end:null });
     setLicensePlate(""); setSearchCamera(""); setSearched(false); setSearchTab("Photo");
   };
   const selectRecentTarget = (i: number) => {
     if (selectedTarget === i) { setSelectedTarget(-1); setGender(""); clearAttrFilters(); return; }
-    setSelectedTarget(i); setActiveVIP(-1);
+    setSelectedTarget(i); setVipPerson(null);
     const t = RECENT_TARGETS_EN[i];
     setGender(t.gender);
     if (t.apparel === "Short Sleeve" || t.apparel === "Long Sleeve") {
@@ -1930,9 +1939,9 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     setHatFilter(t.props.includes("Hat") ? "Hat" : "");
     setBackpackFilter(t.props.includes("Backpack/Bag") ? "Exists" : "");
   };
-  const selectVIP = (i: number) => {
-    if (activeVIP === i) { setActiveVIP(-1); return; }
-    setActiveVIP(i); setSelectedTarget(-1);
+  const selectVIP = (person: Person) => {
+    if (vipPerson?.id === person.id) { setVipPerson(null); return; }
+    setVipPerson(person); setSelectedTarget(-1);
   };
   const handleNavigate = (tab: DataTab, card: (typeof REID_DATA)[number]) => {
     onNavigateTab?.(tab, card);
@@ -1955,19 +1964,26 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   // Who these results are about — see SearchFilterState.activeTarget. This panel has the two
   // pickers; a crop off the wall goes to Re-ID, which is the screen for "where else has this
   // person been".
-  const activeTarget = activeVIP >= 0
-    ? { face: VIP_QUICK[activeVIP].face, label: VIP_QUICK[activeVIP].name }
+  const activeTarget = vipPerson?.photoUrl
+    ? { face: vipPerson.photoUrl, label: vipPerson.name }
     : selectedTarget >= 0
       ? { face: RECENT_TARGETS_EN[selectedTarget].face, label: RECENT_TARGETS_EN[selectedTarget].label }
       : null;
   const clearActiveTarget = () => {
-    if (activeVIP >= 0) selectVIP(activeVIP);
+    if (vipPerson) selectVIP(vipPerson);
     else if (selectedTarget >= 0) selectRecentTarget(selectedTarget);
   };
-  const searchTarget = activeVIP >= 0 ? VIP_QUICK[activeVIP]
+  /*
+   * The two shapes a target arrives in, and what each one actually carries.
+   *
+   * A recent target is a crop off the wall: a face, a body crop and the profile picking it
+   * cascades onto the filters. A registered person is a name and the one enrolled portrait —
+   * no full-body enrolment photo, and no recorded gender. Both absences are left absent; see
+   * genderAbbrevOf and buildTargetResultRows.
+   */
+  const searchTarget: SearchTargetShape | null = vipPerson?.photoUrl
+    ? { face: vipPerson.photoUrl, name: vipPerson.name }
     : selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget]
-    // REID_DATA's own gender is "M"/"F"; buildTargetResultRows and the rest of this shape expect
-    // "Male"/"Female", the same format VIP_QUICK/RECENT_TARGETS_EN already use.
     : null;
 
   /**
@@ -1982,14 +1998,14 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
       || !!emotion || !!ethnicGroup;
     if (!searchTarget && !hasAttributeQuery) return null;
     const pool = searchTarget
-      ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras)
+      ? buildTargetResultRows(searchTarget.face, searchTarget.body, genderAbbrevOf(searchTarget.gender), 20, siteCameras)
       : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange: searchDateRange, threshold: 0, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras });
     if (!pool.length) return null;
     return { kept: pool.filter(r => r.similarity >= threshold).length, total: pool.length };
   }, [searchType, searchTarget, gender, derivedApparel, derivedProps, topColors, bottomColors, shoesColors, emotion, ethnicGroup, searchDateRange, threshold, siteCameras]);
 
   const searchState: SearchFilterState = {
-    searchType, setSearchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP,
+    searchType, setSearchType, selectedTarget, selectRecentTarget, vipPerson, selectVIP,
     threshold, setThreshold, gender, setGender,
     apparel: derivedApparel, toggleApparel: () => {}, props: derivedProps, toggleProps: () => {},
     topColors, toggleTopColor, bottomColors, toggleBottomColor, shoesColors, toggleShoesColor,
@@ -2000,7 +2016,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   };
 
   const searchResults = searchType === "PERSON" && searchTarget
-    ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras)
+    ? buildTargetResultRows(searchTarget.face, searchTarget.body, genderAbbrevOf(searchTarget.gender), 20, siteCameras)
         .filter(r => r.similarity >= threshold)
     : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange: searchDateRange, threshold, licensePlate, camera: searchCamera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras });
   const searchResultDetailItem = searchDetailId !== null ? searchResults.find(p => p.id===searchDetailId) ?? null : null;
@@ -2024,7 +2040,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
       // A target search never consults the dates (buildTargetResultRows does not read them), so
       // the threshold is the only rule that can have dropped anything and saying otherwise would
       // send somebody to widen a window that was never applied.
-      const pool = buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras);
+      const pool = buildTargetResultRows(searchTarget.face, searchTarget.body, genderAbbrevOf(searchTarget.gender), 20, siteCameras);
       return { candidates: pool.length, bySimilarity: pool.length, byDate: 0 };
     }
     const query = { searchType, gender, apparel: derivedApparel, props: derivedProps, licensePlate, camera: searchCamera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras };
@@ -2191,85 +2207,6 @@ function RefreshIconSm() {
       <path d="M13.5 8A5.5 5.5 0 1 1 11.6 3.9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
       <path d="M13.5 3.5v3.5H10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
-  );
-}
-
-function VipQuickSelectRow({ activeVIP, onSelect }: { activeVIP:number; onSelect:(i:number)=>void }) {
-  const [lang] = useLanguage();
-  const t = T[lang];
-  const avatarSize = 24;
-  const fontSize = "12px";
-  // Search + sort so this stays usable once VIP_QUICK grows well past what fits on screen at
-  // once — "registration" order is just VIP_QUICK's own original array order (the order each VIP
-  // was added), so no extra data field is needed to support it.
-  //
-  // This is 모니터링 / Re-ID's sidebar picker, over the seeded VIP_QUICK targets. RedFace's own
-  // picker used to be a `compact` variant of this and is now RegistryVipPicker, over the site's
-  // actual register — these two ought to meet there in the end, once the register search call in
-  // that component's HANDOFF note exists and this list can be the same query.
-  const [query, setQuery] = useState("");
-  const [sortMode, setSortMode] = useState<"reg" | "abc">("reg");
-
-  const indexed = VIP_QUICK.map((v, i) => ({ v, i }))
-    .filter(({ v }) => v.name.toLowerCase().includes(query.toLowerCase()));
-  if (sortMode === "abc") indexed.sort((a, b) => NAME_COLLATOR.compare(a.v.name, b.v.name));
-
-  return (
-    <div style={{ display:"flex", flexDirection:"column", gap:"8px", width:"100%" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-        <div style={{ flex:1, display:"flex", alignItems:"center", gap:"6px", height:"30px", padding:"0 8px", borderRadius:"6px", border:BORDER, backgroundColor:"white" }}>
-          <SearchIconSm />
-          <input
-            value={query} onChange={e => setQuery(e.target.value)} placeholder={t.searchVips}
-            style={{ flex:1, border:"none", outline:"none", background:"none", fontSize:"12px", fontWeight:500, color:"var(--gray-900)", minWidth:0 }}
-          />
-          {/* Picking a VIP doesn't clear this on its own — without a quick way to blank it out,
-              searching for someone else means selecting the old query and retyping over it. */}
-          {query && (
-            <button onClick={() => setQuery("")} aria-label={t.clearSearch} style={{
-              display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
-              width:"16px", height:"16px", borderRadius:"999px", border:"none", backgroundColor:"var(--gray-300)", cursor:"pointer", padding:0,
-            }}>
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                <path d="M1 1L7 7M7 1L1 7" stroke="white" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-            </button>
-          )}
-        </div>
-        <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:"999px", padding:"2px", flexShrink:0 }}>
-          {([["reg", t.sortRegistered], ["abc", t.sortAbc]] as const).map(([id, label]) => {
-            const active = sortMode === id;
-            return (
-              <button key={id} onClick={() => setSortMode(id)} style={{
-                padding:"4px 8px", borderRadius:"999px", border:"none", cursor:"pointer",
-                backgroundColor: active ? "white" : "transparent",
-                color: active ? "var(--gray-900)" : "var(--gray-400)", fontWeight: active ? 700 : 600, fontSize:"10px",
-                boxShadow: active ? "var(--shadow-raised)" : "none",
-              }}>{label}</button>
-            );
-          })}
-        </div>
-      </div>
-      {indexed.length === 0 ? (
-        <div style={{ padding:"16px 0", textAlign:"center", color:"var(--gray-400)", fontSize:"12px" }}>{T[lang].noVipMatch(query)}</div>
-      ) : (
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(90px, 1fr))", gap:"8px", width:"100%" }}>
-          {indexed.map(({ v, i }) => {
-            const active = activeVIP === i;
-            return (
-              <button key={v.name} onClick={() => onSelect(i)} title={v.name} style={{
-                display:"flex", alignItems:"center", gap:"6px", padding:"5px 8px", borderRadius:"999px",
-                backgroundColor: active ? "var(--primary-100)" : "white", minWidth:0, boxSizing:"border-box",
-                border: active ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)", cursor:"pointer",
-              }}>
-                <img src={v.face} alt="" style={{ width:avatarSize, height:avatarSize, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
-                <span style={{ fontSize, fontWeight:600, color:"var(--gray-900)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", minWidth:0 }}>{v.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -2609,11 +2546,12 @@ function SmartSearchResults({ state, results, emptyReason, onCardClick, onRefine
 
 interface SearchFilterState {
   searchType: "PERSON"|"VEHICLE"; setSearchType:(v:"PERSON"|"VEHICLE")=>void;
-  // selectedTarget/activeVIP are read-only here (for active-state styling) — selection always
+  // selectedTarget/vipPerson are read-only here (for active-state styling) — selection always
   // goes through selectRecentTarget/selectVIP so the gender/apparel/props cascade and the
   // mutual-exclusivity between the two pickers stay consistent everywhere they're used.
   selectedTarget: number; selectRecentTarget:(i:number)=>void;
-  activeVIP: number; selectVIP:(i:number)=>void;
+  /** A row out of the site's VIP register, not an index into a list written in this file. */
+  vipPerson: Person | null; selectVIP:(p: Person)=>void;
   threshold: number; setThreshold:(v:number)=>void;
   gender: string; setGender:(v:string)=>void;
   apparel: string[]; toggleApparel:(v:string)=>void;
@@ -2733,7 +2671,14 @@ export const REID_DATA = PERSONS.map((p, i) => ({
    */
   subjectKey:  undefined as string | undefined,
   status:      REID_STATUS_CYCLE[i % REID_STATUS_CYCLE.length] as ReIDStatus,
-  gender:      REID_GENDER_CYCLE[i % REID_GENDER_CYCLE.length],
+  /**
+   * What the model reported, or absent.
+   *
+   * A capture has a gender because a detector read one off the frame. A row synthesized from a
+   * register entry has none, because the register never recorded one — see buildTargetResultRows.
+   * Optional so that second case can be told the truth instead of defaulting to "F".
+   */
+  gender:      REID_GENDER_CYCLE[i % REID_GENDER_CYCLE.length] as string | undefined,
   age:         REID_AGE_CYCLE[i % REID_AGE_CYCLE.length],
   score:       REID_SCORE_CYCLE[i % REID_SCORE_CYCLE.length],
   // Cycled over the whole register, which spans every site — each site then gets the rows its
@@ -2921,7 +2866,7 @@ function buildSuspectMatches(person: (typeof REID_DATA)[number], count: number, 
 // independent of what a named target's profile actually is, so a specific gender+apparel+props+
 // date combination can easily have no real overlap at all — the target is a person we already
 // have a photo of, not a filter that might come up empty.
-function buildTargetResultRows(face: string, body: string, genderAbbrev: "M" | "F", count: number, cams: string[] = CAMERA_CODES): typeof REID_DATA {
+function buildTargetResultRows(face: string, body: string | undefined, genderAbbrev: "M" | "F" | undefined, count: number, cams: string[] = CAMERA_CODES): typeof REID_DATA {
   // Same rule as buildSuspectMatches: the site's own cameras, and nothing at all from a site with
   // none registered.
   if (cams.length === 0) return [];
@@ -2935,13 +2880,22 @@ function buildTargetResultRows(face: string, body: string, genderAbbrev: "M" | "
     // and no tracker subject either: these are separate sightings, not frames of one passage.
     personName: undefined as string | undefined,
     subjectKey: undefined as string | undefined,
-    url: withMatchVariation(body, i),
+    // The body crop falls back to the face when the query had only a face — a registered person
+    // has one enrolled portrait and no full-body enrolment shot. This is the same convention
+    // buildSuspectMatches documents above (one photo of the target reused across cameras, because
+    // the mock pool has no second angle of anybody), NOT a claim that a full-body photo of this
+    // person exists. The form says so where it matters: the 전신 slot stays empty and open to an
+    // upload rather than being filled in with the portrait.
+    url: withMatchVariation(body ?? face, i),
     face: withMatchVariation(face, i),
     time: TIMES_P[i % TIMES_P.length],
     badge: null as number | null,
     status: "Unknown" as ReIDStatus,
     cam: cams[i % cams.length],
     similarity: Math.round((97 - i * step) * 10) / 10,
+    // Undefined when the register does not say — see genderAbbrevOf. A row that carries no
+    // gender matches no gender filter, which is the correct answer, and draws no gender on the
+    // card rather than a guessed one.
     gender: genderAbbrev,
     age: "--",
     score: null as number | null,
@@ -2955,6 +2909,27 @@ function buildTargetResultRows(face: string, body: string, genderAbbrev: "M" | "
     ethnicGroup: REID_ETHNIC_GROUP_CYCLE[i % REID_ETHNIC_GROUP_CYCLE.length],
     plate: null as string | null,
   }));
+}
+
+/**
+ * "Male"/"Female" down to the abbreviation the generator wants — or nothing, when nobody said.
+ *
+ * A VIP register row carries a name and an enrolled face. It does NOT carry a gender, and a name
+ * is not evidence of one. This used to read `=== "Male" ? "M" : "F"`, which turned every silence
+ * into "F": search for 122 registered people and the result rows would all have claimed a gender
+ * the console was never told. Absence is returned as absence.
+ */
+/**
+ * Whoever the search is for, in the one shape the generator takes.
+ *
+ * `body` and `gender` are optional because one of the two sources genuinely has neither: the VIP
+ * register holds a name and an enrolled portrait, and nothing else about the person. A recent
+ * target, being a capture, has both.
+ */
+type SearchTargetShape = { face: string; body?: string; gender?: string; label?: string; name?: string };
+
+function genderAbbrevOf(gender?: string): "M" | "F" | undefined {
+  return gender === "Male" ? "M" : gender === "Female" ? "F" : undefined;
 }
 
 const SUSPECT_1 = REID_DATA[0]; // gender F, matches REID_GENDER_CYCLE[0]
@@ -2988,7 +2963,10 @@ const SUSPECT_2 = REID_DATA[1]; // gender M, matches REID_GENDER_CYCLE[1]
  */
 function metaFromSubject(subject: (typeof REID_DATA)[number]): { label: string; value: string }[] {
   return [
-    { label: "Gender", value: subject.gender },
+    // Gender only when the subject has one: a row synthesized from a register entry does not,
+    // and "Gender: undefined" — or worse, a filled-in guess — is the failure this function exists
+    // to close.
+    ...(subject.gender ? [{ label: "Gender", value: subject.gender }] : []),
     { label: "Age", value: subject.age },
     ...(subject.apparel ? [{ label: "Apparel", value: subject.apparel }] : []),
     { label: "Props", value: subject.prop ?? "None" },
@@ -3104,23 +3082,6 @@ function ClusterCard({ cluster, onNavigateTab, onMatchClick }: { cluster: ReidCl
  */
 const NAME_COLLATOR = new Intl.Collator("ko", { numeric: true, sensitivity: "base" });
 
-export const VIP_QUICK = [
-  { name:"Mina", face: MATCH_DATA[0].face, body: MATCH_DATA[0].body, gender:"Female" },
-  { name:"Joon", face: MATCH_DATA[1].face, body: MATCH_DATA[1].body, gender:"Male" },
-  { name:"Taeho", face: MATCH_DATA[3].face, body: MATCH_DATA[3].body, gender:"Male" },
-  { name:"Yuna", face: MATCH_DATA[2].face, body: MATCH_DATA[2].body, gender:"Female" },
-  { name:"Minho", face: MATCH_DATA[4].face, body: MATCH_DATA[4].body, gender:"Male" },
-  { name:"Seoyeon", face: MATCH_DATA[5].face, body: MATCH_DATA[5].body, gender:"Female" },
-  { name:"Jihoon", face: MATCH_DATA[6].face, body: MATCH_DATA[6].body, gender:"Male" },
-  { name:"Areum", face: MATCH_DATA[7].face, body: MATCH_DATA[7].body, gender:"Female" },
-  { name:"Doyoon", face: MATCH_DATA[0].face, body: MATCH_DATA[0].body, gender:"Male" },
-  { name:"Haeun", face: MATCH_DATA[1].face, body: MATCH_DATA[1].body, gender:"Female" },
-  { name:"Junseo", face: MATCH_DATA[2].face, body: MATCH_DATA[2].body, gender:"Male" },
-  { name:"Somin", face: MATCH_DATA[3].face, body: MATCH_DATA[3].body, gender:"Female" },
-  { name:"Yejun", face: MATCH_DATA[4].face, body: MATCH_DATA[4].body, gender:"Male" },
-  { name:"Chaewon", face: MATCH_DATA[5].face, body: MATCH_DATA[5].body, gender:"Female" },
-  { name:"Hyunwoo", face: MATCH_DATA[6].face, body: MATCH_DATA[6].body, gender:"Male" },
-];
 
 // The Re-ID Analysis landing view used to be two permanently-fixed example clusters — this
 // simulates Live Monitoring actually recognizing someone: most sightings (~70%) are an unnamed
@@ -3132,7 +3093,7 @@ export const VIP_QUICK = [
 function randomTargetName(): string {
   return `Target #${Math.floor(1000 + Math.random() * 9000)}`;
 }
-function generateNewRecognition(existingClusters: ReidCluster[], cams: string[] = CAMERA_CODES): ReidCluster[] {
+function generateNewRecognition(existingClusters: ReidCluster[], cams: string[] = CAMERA_CODES, vipRegistry: Person[] = []): ReidCluster[] {
   // Nothing is recognized at a site with no cameras registered.
   if (cams.length === 0) return existingClusters;
   const now = new Date();
@@ -3142,10 +3103,16 @@ function generateNewRecognition(existingClusters: ReidCluster[], cams: string[] 
   const similarity = Math.round((80 + Math.random() * 18) * 10) / 10;
   const matchId = Date.now() + Math.floor(Math.random() * 1000);
 
-  if (Math.random() < 0.3) {
-    const vip = VIP_QUICK[Math.floor(Math.random() * VIP_QUICK.length)];
-    const genderAbbrev = vip.gender === "Male" ? "M" : "F";
-    const newMatch: MatchItem = { id:matchId, face:vip.face, body:vip.body, cam, date, time, similarity, gender:genderAbbrev, age:"--", plate:null, status:"VIP" };
+  // A recognised VIP is somebody on THIS site's register with a face the model can match — the
+  // same population the search pickers offer. It used to be VIP_QUICK, fifteen names written into
+  // this file, so the screen kept announcing that it had recognised people nobody had registered.
+  const matchable = vipRegistry.filter(person => person.photoUrl && !personTargetBlock(person));
+  if (matchable.length > 0 && Math.random() < 0.3) {
+    const person = matchable[Math.floor(Math.random() * matchable.length)];
+    const vip = { name: person.name, face: person.photoUrl!, body: undefined as string | undefined };
+    // The register records no gender, so the recognition reports none. See genderAbbrevOf.
+    const genderAbbrev = undefined;
+    const newMatch: MatchItem = { id:matchId, face:vip.face, body:vip.body ?? vip.face, cam, date, time, similarity, gender:genderAbbrev, age:"--", plate:null, status:"VIP" };
     const existing = existingClusters.find(c => c.id === `vip-${vip.name}`);
     if (existing) {
       const bumped: ReidCluster = { ...existing, matches: [newMatch, ...existing.matches] };
@@ -3440,7 +3407,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   const [detailId, setDetailId]         = useState<number | null>(null);
   const [searchType, setSearchType]     = useState<"PERSON"|"VEHICLE">("PERSON");
   const [selectedTarget, setSelectedTarget] = useState(-1);
-  const [activeVIP, setActiveVIP]       = useState(-1);
+  const [vipPerson, setVipPerson]       = useState<Person | null>(null);
   // A crop handed over from a camera card — the third way a person becomes the subject here, and
   // the one an operator reaches for most: they are looking at the person already.
   const [cardTarget, setCardTarget] = useState<(typeof REID_DATA)[number] | null>(null);
@@ -3480,7 +3447,10 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     const scheduleNext = () => {
       const delay = 15000 + Math.random() * 15000;
       timer = setTimeout(() => {
-        setLiveClusters(prev => generateNewRecognition(prev, siteCameras).slice(0, LIVE_RECOGNITION_FEED_CAP));
+        setLiveClusters(prev => generateNewRecognition(
+          prev, siteCameras,
+          watchedPersonsInProject(useVcaStore.getState().persons, getActiveProjectId()),
+        ).slice(0, LIVE_RECOGNITION_FEED_CAP));
         scheduleNext();
       }, delay);
     };
@@ -3498,7 +3468,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   const reset = () => {
     setSearchType("PERSON"); setThreshold(70); setGender(""); clearAttrFilters();
     setTopColors([]); setBottomColors([]); setShoesColors([]);
-    setSelectedTarget(-1); setActiveVIP(-1); setDateRange({ start:null, end:null });
+    setSelectedTarget(-1); setVipPerson(null); setDateRange({ start:null, end:null });
     setLicensePlate(""); onCameraChange(""); setHasSearched(false); setSearchTab("Photo");
   };
 
@@ -3517,7 +3487,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     setPrevSeedCard(seedCard);
     if (seedCard) {
       setExpanded(true); setSearchTab("Photo");
-      setSelectedTarget(-1); setActiveVIP(-1);
+      setSelectedTarget(-1); setVipPerson(null);
       setCardTarget(seedCard);
       setHasSearched(true);
     }
@@ -3528,7 +3498,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
 
   const selectRecentTarget = (i: number) => {
     if (selectedTarget === i) { setSelectedTarget(-1); setGender(""); clearAttrFilters(); return; }
-    setSelectedTarget(i); setActiveVIP(-1);
+    setSelectedTarget(i); setVipPerson(null);
     const t = RECENT_TARGETS_EN[i];
     setGender(t.gender);
     if (t.apparel === "Short Sleeve" || t.apparel === "Long Sleeve") {
@@ -3541,9 +3511,9 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     setHatFilter(t.props.includes("Hat") ? "Hat" : "");
     setBackpackFilter(t.props.includes("Backpack/Bag") ? "Exists" : "");
   };
-  const selectVIP = (i: number) => {
-    if (activeVIP === i) { setActiveVIP(-1); return; }
-    setActiveVIP(i); setSelectedTarget(-1); setCardTarget(null);
+  const selectVIP = (person: Person) => {
+    if (vipPerson?.id === person.id) { setVipPerson(null); return; }
+    setVipPerson(person); setSelectedTarget(-1); setCardTarget(null);
   };
 
   // Resolved down into the same apparel/props shape filterReidData/the results cluster expect —
@@ -3568,10 +3538,13 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   // RECENT_TARGETS_EN already use. `url` is the body crop, `face` the face crop.
   // Memoised because the card branch builds an object: a new one every render would make the
   // threshold-cost memo below recompute on every render.
-  const searchTarget = useMemo(() => activeVIP >= 0 ? VIP_QUICK[activeVIP]
+  const searchTarget = useMemo<SearchTargetShape | null>(() => vipPerson?.photoUrl
+    ? { face: vipPerson.photoUrl, name: vipPerson.name }
     : selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget]
-    : cardTarget ? { face: cardTarget.face, body: cardTarget.url, gender: cardTarget.gender === "M" ? "Male" : "Female" }
-    : null, [activeVIP, selectedTarget, cardTarget]);
+    // A crop off the wall keeps the gender the detector read off that frame — that one WAS
+    // reported, unlike a register entry's, so it is carried rather than dropped.
+    : cardTarget ? { face: cardTarget.face, body: cardTarget.url, gender: cardTarget.gender === "M" ? "Male" : cardTarget.gender === "F" ? "Female" : undefined }
+    : null, [vipPerson, selectedTarget, cardTarget]);
 
   /**
    * What this threshold costs, counted against the pool this query actually has — see
@@ -3585,7 +3558,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
       || !!emotion || !!ethnicGroup;
     if (!searchTarget && !hasAttributeQuery) return null;
     const pool = searchTarget
-      ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras)
+      ? buildTargetResultRows(searchTarget.face, searchTarget.body, genderAbbrevOf(searchTarget.gender), 20, siteCameras)
       : filterReidData({ searchType, gender, apparel: derivedApparel, props: derivedProps, dateRange: dateRange, threshold: 0, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras });
     if (!pool.length) return null;
     return { kept: pool.filter(r => r.similarity >= threshold).length, total: pool.length };
@@ -3600,15 +3573,15 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   const run = useSearchRun();
 
   const state: SearchFilterState = {
-    searchType, setSearchType, selectedTarget, selectRecentTarget, activeVIP, selectVIP,
+    searchType, setSearchType, selectedTarget, selectRecentTarget, vipPerson, selectVIP,
     threshold, setThreshold, gender, setGender,
     apparel: derivedApparel, toggleApparel: () => {}, props: derivedProps, toggleProps: () => {},
     topColors, toggleTopColor, bottomColors, toggleBottomColor, shoesColors, toggleShoesColor,
     dateRange, setDateRange, licensePlate, setLicensePlate, camera, setCamera: onCameraChange,
     // This tab has only the two pickers; a seeded card becomes the RedFace primary target rather
     // than this panel's subject.
-    activeTarget: activeVIP >= 0
-      ? { face: VIP_QUICK[activeVIP].face, label: VIP_QUICK[activeVIP].name }
+    activeTarget: vipPerson?.photoUrl
+      ? { face: vipPerson.photoUrl, label: vipPerson.name }
       : selectedTarget >= 0
         ? { face: RECENT_TARGETS_EN[selectedTarget].face, label: RECENT_TARGETS_EN[selectedTarget].label }
         : cardTarget
@@ -3617,7 +3590,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
           ? { face: cardTarget.face, label: t.targetNo(String(cardTarget.id).padStart(6, "0")) }
           : null,
     clearActiveTarget: () => {
-      if (activeVIP >= 0) selectVIP(activeVIP);
+      if (vipPerson) selectVIP(vipPerson);
       else if (selectedTarget >= 0) selectRecentTarget(selectedTarget);
       else setCardTarget(null);
     },
@@ -3634,7 +3607,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   // a target's picked those stop being real filters — the meta line below only lists what's
   // actually driving the results, same reasoning as Smart Search's results-bar chips.
   const targetRows = searchType === "PERSON" && searchTarget
-    ? buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras)
+    ? buildTargetResultRows(searchTarget.face, searchTarget.body, genderAbbrevOf(searchTarget.gender), 20, siteCameras)
         .filter(r => r.similarity >= threshold)
     : null;
   const targetMatches = targetRows?.map(reidToMatchItem) ?? null;
@@ -3651,7 +3624,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
   const emptyReason = useMemo<SearchEmptyReason | null>(() => {
     if (subject) return null;
     if (searchType === "PERSON" && searchTarget) {
-      const pool = buildTargetResultRows(searchTarget.face, searchTarget.body, searchTarget.gender === "Male" ? "M" : "F", 20, siteCameras);
+      const pool = buildTargetResultRows(searchTarget.face, searchTarget.body, genderAbbrevOf(searchTarget.gender), 20, siteCameras);
       return { candidates: pool.length, bySimilarity: pool.length, byDate: 0 };
     }
     const query = { searchType, gender, apparel: derivedApparel, props: derivedProps, licensePlate, camera, topColors, bottomColors, shoesColors, emotion, ethnicGroup, siteCameras };
@@ -3669,10 +3642,8 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     // Whichever way the subject was picked, it is named by what we actually know it as: a VIP's
     // name, a recent target's label, or — for a crop off the wall — its object id.
     title: searchType === "VEHICLE" ? t.vehicleSearchResult
-      : searchTarget && "label" in searchTarget ? searchTarget.label
-      : searchTarget && "name" in searchTarget ? searchTarget.name
-      : cardTarget ? t.targetNo(String(cardTarget.id).padStart(6, "0"))
-      : t.searchResultTitle,
+      : searchTarget?.label ?? searchTarget?.name
+      ?? (cardTarget ? t.targetNo(String(cardTarget.id).padStart(6, "0")) : t.searchResultTitle),
     // Labels are wording and go through T; the values are what the model reports and what the
     // filter state holds, so they translate only where they are drawn (attr()) — see the note at
     // the top of this file.
@@ -3926,18 +3897,33 @@ function TableIconSm() {
  */
 const REGISTRY_PICKER_LIMIT = 40;
 
-function RegistryVipPicker({ selected, onSelect }: { selected: Person | null; onSelect: (p: Person) => void }) {
+/**
+ * Two shapes over one list, and why the sort toggle only exists on one of them.
+ *
+ * "row" is RedFace's: one horizontally scrolling line inside a fixed-height modal, with no room
+ * for a second control. "grid" is 모니터링 / Re-ID's search rail, where this list IS the whole
+ * tab, so it fills the column and keeps the 등록순 / 이름순 toggle the seeded picker had. The
+ * toggle now means what it says: 등록순 reads Person.registeredAt, rather than "the order fifteen
+ * names happened to be written into this file in".
+ */
+function RegistryVipPicker({ selected, onSelect, layout = "row" }:
+  { selected: Person | null; onSelect: (p: Person) => void; layout?: "row" | "grid" }) {
   const [lang] = useLanguage();
   const t = T[lang];
   const persons = useVcaStore(state => state.persons);
   const projectId = useActiveProjectId();
   const [query, setQuery] = useState("");
+  const [sortMode, setSortMode] = useState<"reg" | "abc">("abc");
   const registry = useMemo(() => watchedPersonsInProject(persons, projectId), [persons, projectId]);
   const q = query.trim().toLowerCase();
   const matched = useMemo(() => {
     const rows = q ? registry.filter(person => person.name.toLowerCase().includes(q)) : registry;
-    return [...rows].sort((a, b) => NAME_COLLATOR.compare(a.name, b.name));
-  }, [registry, q]);
+    return layout === "grid" && sortMode === "reg"
+      // Newest registration first: the person somebody enrolled this morning is the one they are
+      // most likely to be here to look for.
+      ? [...rows].sort((a, b) => (b.registeredAt ?? "").localeCompare(a.registeredAt ?? ""))
+      : [...rows].sort((a, b) => NAME_COLLATOR.compare(a.name, b.name));
+  }, [registry, q, layout, sortMode]);
   // The pick is lifted to the front for the same reason it always was: this row scrolls
   // horizontally, and a choice made further along leaves the screen with nothing saying which
   // person is loaded.
@@ -3954,7 +3940,8 @@ function RegistryVipPicker({ selected, onSelect }: { selected: Person | null; on
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"8px", width:"100%" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:"6px", height:"30px", padding:"0 8px", borderRadius:"6px", border:BORDER, backgroundColor:"white" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+      <div style={{ flex:1, display:"flex", alignItems:"center", gap:"6px", height:"30px", padding:"0 8px", borderRadius:"6px", border:BORDER, backgroundColor:"white", minWidth:0 }}>
         <SearchIconSm />
         <input
           value={query} onChange={e => setQuery(e.target.value)} placeholder={t.searchRegistry}
@@ -3971,13 +3958,31 @@ function RegistryVipPicker({ selected, onSelect }: { selected: Person | null; on
           </button>
         )}
       </div>
+        {layout === "grid" && (
+          <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:"999px", padding:"2px", flexShrink:0 }}>
+            {([["reg", t.sortRegistered], ["abc", t.sortAbc]] as const).map(([id, label]) => {
+              const active = sortMode === id;
+              return (
+                <button key={id} onClick={() => setSortMode(id)} style={{
+                  padding:"4px 8px", borderRadius:"999px", border:"none", cursor:"pointer",
+                  backgroundColor: active ? "white" : "transparent",
+                  color: active ? "var(--gray-900)" : "var(--gray-400)", fontWeight: active ? 700 : 600, fontSize:"10px",
+                  boxShadow: active ? "var(--shadow-raised)" : "none",
+                }}>{label}</button>
+              );
+            })}
+          </div>
+        )}
+      </div>
       {registry.length === 0 ? (
         <div style={{ padding:"12px 0", color:"var(--gray-400)", fontSize:"12px" }}>{t.registryEmpty}</div>
       ) : matched.length === 0 ? (
         <div style={{ padding:"12px 0", color:"var(--gray-400)", fontSize:"12px" }}>{t.registryNoMatch(query)}</div>
       ) : (
         <>
-          <div className="vca-thin-scrollbar" style={{ display:"flex", flexWrap:"nowrap", gap:"8px", width:"100%", overflowX:"auto", paddingBottom:"6px" }}>
+          <div className={layout === "row" ? "vca-thin-scrollbar" : undefined} style={layout === "row"
+            ? { display:"flex", flexWrap:"nowrap", gap:"8px", width:"100%", overflowX:"auto", paddingBottom:"6px" }
+            : { display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(112px, 1fr))", gap:"8px", width:"100%" }}>
             {ordered.map(person => {
               const block = personTargetBlock(person);
               const active = selected?.id === person.id;
@@ -4150,7 +4155,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   // fall back to uploadedFace/uploadedBody, so uploading a photo drives results the same way
   // picking a Recent target or VIP does, instead of the upload being purely cosmetic.
   const targetCandidates: RedfaceCandidate[] | null = searchType === "PERSON" && (faceSrc || bodySrc)
-    ? buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, target?.gender === "Male" ? "M" : gender === "Male" ? "M" : "F", 20, siteCameras)
+    ? buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, genderAbbrevOf(target?.gender ?? gender), 20, siteCameras)
         .filter(r => r.similarity >= threshold)
         .map(p => ({ id: p.id, url: p.url, cam: p.cam, time: p.time, similarity: p.similarity, plate: p.plate }))
     : null;
@@ -4171,7 +4176,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
       || topColors.length > 0 || bottomColors.length > 0 || shoesColors.length > 0;
     if (!hasQuery) return null;
     const pool = (faceSrc || bodySrc)
-      ? buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, target?.gender === "Male" ? "M" : gender === "Male" ? "M" : "F", 20, siteCameras)
+      ? buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, genderAbbrevOf(target?.gender ?? gender), 20, siteCameras)
       : filterReidData({ searchType, gender, apparel, props, dateRange, threshold: 0, licensePlate, topColors, bottomColors, shoesColors, siteCameras });
     if (!pool.length) return null;
     return { kept: pool.filter(r => r.similarity >= threshold).length, total: pool.length };
@@ -4199,7 +4204,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
     if (targetCandidates) {
       // A target search never reads the dates — buildTargetResultRows does not look at them — so
       // the threshold is the only rule that can have dropped anything here.
-      const pool = buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, target?.gender === "Male" ? "M" : gender === "Male" ? "M" : "F", 20, siteCameras);
+      const pool = buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, genderAbbrevOf(target?.gender ?? gender), 20, siteCameras);
       return { candidates: pool.length, bySimilarity: pool.length, byDate: 0 };
     }
     const query = { searchType, gender, apparel, props, licensePlate, topColors, bottomColors, shoesColors, siteCameras };
