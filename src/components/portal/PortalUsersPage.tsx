@@ -4396,7 +4396,17 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
         The counts come with the labels, where they were before the rail took them.
       */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: "0" }}>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+      {/* STUCK TO THE TOP WHILE THE LIST SCROLLS (owner, 2026-09-29: 표 머리를 스크롤에 붙여두는
+          쪽이 맞습니다 / 카메라그룹에서도 동일하게 스크롤에 붙여줘).
+          
+          This line carries the tab's ACTIONS as well as its names — 편집 and 프리셋 만들기 on one
+          tab, 새 그룹 on the other — and both act on the whole list under it. Reading the bottom of
+          a long preset table and then having to scroll back up to press 편집 is the complaint; the
+          answer is not to move the button into the table (inside it, a control that edits every
+          column would read as editing one) but to keep the line it lives on in reach.
+          
+          The background is opaque on purpose: rows pass underneath it. */}
+      <div style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "white", display: "flex", alignItems: "flex-end", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
         {PEOPLE_TABS.filter(x => x.half === half).map(x => {
           const active = peopleTab === x.id;
           const count = x.id === "accounts" ? projectUsers.length

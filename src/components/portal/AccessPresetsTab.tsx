@@ -806,7 +806,18 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
   return (
     /* Scrolls sideways rather than squeezing: a customer can make more presets than fit, and a
        column narrower than its own name is worse than a scrollbar. */
-    <div style={{ overflowX: "auto" }}>
+    /* The vertical scroll lives HERE, not on the page, because the preset names have to stay on
+       screen while you read down the rows (owner, 2026-09-29: 표 머리를 스크롤에 붙여두는 쪽).
+       
+       It cannot be done the usual way — `position: sticky` against the page — because this element
+       already sets `overflow-x: auto`, and a box that scrolls in one axis is a scroll container in
+       BOTH (the spec computes the visible other axis to auto). A header inside it would stick to
+       this box rather than to the page, and this box never scrolled vertically. So the box takes
+       the vertical scroll too, and the header sticks to the top of it.
+       
+       maxHeight, not height: a short table still ends where its rows end and no scrollbar appears.
+       The value leaves room for the shell's own chrome above it, measured at a 913px window. */
+    <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "calc(100vh - 210px)" }}>
       <div style={{ minWidth: `${tableMinWidth(presets.length)}px` }}>
         {/*
           A HEADER ROW, NOT THREE FLOATING NAMES (owner, 2026-09-28: 프리셋 디자인이 약간
@@ -819,7 +830,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
           first cell (Vanta 「ACTIONS」, StackAI 「Permission」, Workable 「Hiring team role」).
           The label is what says the left column holds the questions and the right ones the answers.
         */}
-        <div style={{ display: "grid", gridTemplateColumns: COLS, columnGap: "12px", alignItems: "end", padding: "10px 12px 10px", borderBottom: BORDER }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 3, backgroundColor: "white", display: "grid", gridTemplateColumns: COLS, columnGap: "12px", alignItems: "end", padding: "10px 12px 10px", borderBottom: BORDER }}>
           <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
             {t.presetColHead}
           </span>
