@@ -8,7 +8,7 @@ import ProjectApiPanel from "./ProjectApiPanel";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { TablePagination, SummaryStrip, CARD_RADIUS, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError, StatusBadge, ActiveFilterCount, Drawer } from "./PortalShared";
+import { TablePagination, SummaryStrip, CARD_RADIUS, CARD_BORDER, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError, StatusBadge, ActiveFilterCount, Drawer } from "./PortalShared";
 
 /* The table's columns, in one place. There were two copies of this string — the heading row and
    the data row — and the skeleton would have made a third; a grid that is written out per user is
@@ -661,7 +661,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               No overflow:hidden on the container — it would clip a RowActionsMenu dropdown that
               opens past the bottom edge (the last row's menu becomes invisible, not just cut
               off). Header/last-row corners are radiused directly instead. */}
-          <div style={{ backgroundColor: "white", border: BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
+          <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
             <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: SERVER_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
               {([
                 { label: t.colStatus, key: "status" },

@@ -4781,7 +4781,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           card's rounded ones, but that also clips any row's RowActionsMenu dropdown that opens
           past the container's bottom edge (invisible, not just cut off). Radius the header row
           itself instead. */}
-      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
+      <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
         {/* Column widths, and why they are these: the two columns that are usually "—" (Person
             Search, MFA) and Status, whose badge is a word, were each wider than their content, and
             the width had to come from somewhere — it came from Team and Projects, which are the

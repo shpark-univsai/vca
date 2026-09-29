@@ -13,7 +13,7 @@ import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, CARD_BORDER, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -2329,7 +2329,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           the card; the data rows below are the bottom half, in normal flow, meeting it with no
           border between them so the two halves read as one continuous card. */}
       {view === "table" && (
-      <div ref={listRef} style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
+      <div ref={listRef} style={{ backgroundColor: "white", border: CARD_BORDER, borderBottom: "none", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
           {/* The headings go when there is nothing registered — the select-all ticks nothing and
               each heading sorts nothing, and a heading strip is what makes a reader expect rows
               under it. The wrapper stays, ref and all: it draws the card's top edge above the
