@@ -653,7 +653,13 @@ export default function ClientLayout() {
               onEventSelect={setSelectedEvent}
               selectedEventId={selectedEvent?.id}
               locationFilter={locationFilter}
-              onLocationClear={() => setLocationFilter(null)}
+              /* Clears the DISTRICT too (2026-09-29). Picking a zone pin on the map narrows this
+                 list, and 「All locations」 in the picker was the only thing that looked like a way
+                 back — but it only dropped the camera filter, so the list stayed at the zone's rows
+                 and the one control offering escape did nothing. The way out was zooming the map
+                 out six steps and pressing the same pin again, which nobody would find. Both
+                 filters narrow the same list, so the one item named "all" clears both. */
+              onLocationClear={() => { setLocationFilter(null); setDistrictFilter(null); }}
               onLocationSelect={(loc) => { setLocationFilter(loc); setDistrictFilter(null); }}
               districtFilter={districtFilter}
               onPinDevice={setPinnedDevice}

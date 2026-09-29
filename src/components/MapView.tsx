@@ -461,7 +461,10 @@ const OVERVIEW_ZOOM = 12;
 function districtPillHtml(
   label: string,
   count: number,
-  cameraCount: number,
+  // null = this pill may not make a camera claim at all. See sayableCameraCount at the call
+  // sites: under a district name the list holds more than once, "no camera" and "6 cams" are
+  // both assertions the app cannot stand behind.
+  cameraCount: number | null,
   hasOnlineCamera: boolean,
   alertThreshold: number,
   moderateThreshold: number,
@@ -469,10 +472,12 @@ function districtPillHtml(
 ): string {
   const isAlert = count >= alertThreshold;
   const isDark = !isAlert && count >= moderateThreshold;
-  // No camera registered here at all — a coverage gap, not a quiet district.
+  // No camera registered here at all — a coverage gap, not a quiet district. An unsayable count
+  // (null) is NOT this: it is "we cannot tell", and drawing it as a coverage gap is the false
+  // claim this parameter exists to stop.
   const isUncovered = cameraCount === 0;
   // Dashed = this district's camera(s) are offline, not "no camera was ever installed here".
-  const isDashed = !isUncovered && !hasOnlineCamera;
+  const isDashed = cameraCount !== null && !isUncovered && !hasOnlineCamera;
   let bg: string, textColor: string, border: string;
   if (isAlert)      { bg = "var(--danger-400)"; textColor = "white";   border = ""; }
   else if (isDark)  { bg = "var(--gray-900)"; textColor = "white";   border = ""; }
@@ -502,41 +507,64 @@ function districtPillHtml(
   //
   // Same two-line shape in all three states, so a map of these reads as one kind of object. Only
   // the second line changes — figures, "all down", or "no camera".
-  const secondLine = isUncovered
-    ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;opacity:0.85">${camSvg}${t.noCamera}</span>`
-    : isDashed
-      ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;opacity:0.85">${camSvg}${t.camerasDown}</span>`
-      // Named, and no longer a fraction. It used to read "1 / 5 cams", which says neither what
-      // the 1 is nor what it is 1 of — and a slash between two figures reads as "1 OF 5 cameras",
-      // a different and wrong claim. So: the word VIP in front, the unit behind the number, and a
-      // middot instead of the slash, because the camera count sits beside this figure rather than
-      // under it. The figure stays the biggest thing on the pill — you find a district by
-      // position and then read its number.
-      // The mark reads with the figure rather than as a separate word, so it stays close — but
-      // not touching. Set flush it collided with the number: a 10px × has almost no side bearing
-      // and the 14px 800-weight digit starts immediately, so the two glyphs ran together. 2px is
-      // the smallest gap that separates them without turning the mark into its own token.
-      //
-      // cameraCount IS THE INSTALLED COUNT, DELIBERATELY. It was nearly changed to "cameras that
-      // actually caught someone", which is a different and much worse pill. Two reasons, both
-      // load-bearing: 29 hits from 3 cameras and 29 from 40 are opposite findings, and this
-      // figure is what a customer takes upstairs to argue for more cameras (see
-      // project_vca_district_vip_count) — that comparison only holds if the denominator is what
-      // is installed. And `isUncovered` is `cameraCount === 0`: fed a detecting count, a district
-      // with six working cameras and a quiet morning would draw itself as "no camera", turning a
-      // coverage gap into something indistinguishable from silence. The people-and-cameras figure
-      // the operator asked for lives on the line below, in the picked-district pill, where there
-      // is room to label both.
-      : `<span style="font-size:10px;font-weight:700;opacity:0.82;letter-spacing:0.2px;margin-right:3px">VIP</span>` +
-        (t.hitsMark() ? `<span style="font-size:10px;font-weight:600;opacity:0.62;margin-right:2px">${t.hitsMark()}</span>` : "") +
-        `<span style="font-size:14px;font-weight:800;letter-spacing:-0.3px">${count}</span>` +
-        // The unit gets its own 2px, for the same reason the mark in front of the figure does: a
-        // 14px 800-weight digit carrying -0.3px tracking runs straight into an 11px glyph set
-        // flush against it, and "3건" came out as one crowded shape. Split from the separator so
-        // only the languages that HAVE a unit pay for it — English's is empty, and a margin there
-        // would push the middot instead.
-        (t.hitsUnit() ? `<span style="font-size:11px;font-weight:500;opacity:0.62;margin-left:2px">${t.hitsUnit()}</span>` : "") +
-        `<span style="font-size:11px;font-weight:500;opacity:0.62">&nbsp;·&nbsp;${t.camerasShort(cameraCount)}</span>`;
+  // TWO HALVES, EACH DRAWN ONLY WHEN IT CAN BE SAID.
+  //
+  // This used to be a three-way choice — "no camera", OR "all down", OR the figures — and the
+  // first two branches replaced the detection count rather than sitting beside it. So the one
+  // pill a coverage decision is looking for was the one pill with no number on it: an uncovered
+  // district is only ever DRAWN because count > 0 (see the skip rules at the call site), which
+  // means "no camera" always covered up a real, nonzero figure. Measured 2026-09-29 on the
+  // running dashboard: the Geylang pill read "no camera" and nothing else while clicking it
+  // filtered the events list from 80 rows to 15.
+  //
+  // So: the figure when there is one, the camera note when there is one, and a middot only when
+  // both are there. The figure is still withheld at zero — a dashed "all down" pill draws
+  // whatever its count, and "VIP ×0" reads as "nothing happens here" when it means "nothing
+  // could be seen here", which is the sentence this pill exists to avoid.
+  const sep = `<span style="font-size:11px;font-weight:500;opacity:0.62">&nbsp;·&nbsp;</span>`;
+  // Named, and no longer a fraction. It used to read "1 / 5 cams", which says neither what
+  // the 1 is nor what it is 1 of — and a slash between two figures reads as "1 OF 5 cameras",
+  // a different and wrong claim. So: the word VIP in front, the unit behind the number, and a
+  // middot instead of the slash, because the camera count sits beside this figure rather than
+  // under it. The figure stays the biggest thing on the pill — you find a district by
+  // position and then read its number.
+  // The mark reads with the figure rather than as a separate word, so it stays close — but
+  // not touching. Set flush it collided with the number: a 10px × has almost no side bearing
+  // and the 14px 800-weight digit starts immediately, so the two glyphs ran together. 2px is
+  // the smallest gap that separates them without turning the mark into its own token.
+  const vipFigure = count > 0
+    ? `<span style="font-size:10px;font-weight:700;opacity:0.82;letter-spacing:0.2px;margin-right:3px">VIP</span>` +
+      (t.hitsMark() ? `<span style="font-size:10px;font-weight:600;opacity:0.62;margin-right:2px">${t.hitsMark()}</span>` : "") +
+      `<span style="font-size:14px;font-weight:800;letter-spacing:-0.3px">${count}</span>` +
+      // The unit gets its own 2px, for the same reason the mark in front of the figure does: a
+      // 14px 800-weight digit carrying -0.3px tracking runs straight into an 11px glyph set
+      // flush against it, and "3건" came out as one crowded shape. Split from the separator so
+      // only the languages that HAVE a unit pay for it — English's is empty, and a margin there
+      // would push the middot instead.
+      (t.hitsUnit() ? `<span style="font-size:11px;font-weight:500;opacity:0.62;margin-left:2px">${t.hitsUnit()}</span>` : "")
+    : "";
+
+  // cameraCount IS THE INSTALLED COUNT, DELIBERATELY. It was nearly changed to "cameras that
+  // actually caught someone", which is a different and much worse pill. Two reasons, both
+  // load-bearing: 29 hits from 3 cameras and 29 from 40 are opposite findings, and this
+  // figure is what a customer takes upstairs to argue for more cameras (see
+  // project_vca_district_vip_count) — that comparison only holds if the denominator is what
+  // is installed. And `isUncovered` is `cameraCount === 0`: fed a detecting count, a district
+  // with six working cameras and a quiet morning would draw itself as "no camera", turning a
+  // coverage gap into something indistinguishable from silence. The people-and-cameras figure
+  // the operator asked for lives on the line below, in the picked-district pill, where there
+  // is room to label both.
+  //
+  // NOTHING AT ALL when the count is null. Silence is the whole point: see sayableCameraCount.
+  const cameraNote = cameraCount === null
+    ? ""
+    : isUncovered
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;opacity:0.85">${camSvg}${t.noCamera}</span>`
+      : isDashed
+        ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;opacity:0.85">${camSvg}${t.camerasDown}</span>`
+        : `<span style="font-size:11px;font-weight:500;opacity:0.62">${t.camerasShort(cameraCount)}</span>`;
+
+  const secondLine = [vipFigure, cameraNote].filter(Boolean).join(sep);
 
   const shadow = isDark || isAlert ? "0 2px 10px rgba(24, 17, 39,0.2)" : "0 2px 6px rgba(24, 17, 39,0.08)";
   return `<div style="transform:translateX(-50%) translateY(-50%);display:inline-flex;flex-direction:column;
@@ -1075,6 +1103,35 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       if (cancelled || !mapInstanceRef.current) return;
       const group = L.layerGroup();
 
+      /**
+       * A district's camera figure, or null when this pill must not print one.
+       *
+       * DISTRICTS holds seventeen points under fourteen names — "Geylang" three times, "Kallang"
+       * twice. A camera's district comes from the register's `zone` (districtIdForCameraZone),
+       * and a zone of "Geylang" names all three points, so geometry picks which one: the
+       * register's Geylang NC1 lands on one of them, NC2 on another, and the third is left
+       * holding zero cameras. Measured 2026-09-29 on the running dashboard — that third pill
+       * read "Geylang · no camera" while the same screen's list showed Ryan Ng at Geylang NC1
+       * and James Wilson at Geylang NC2, and clicking the pill filtered the list from 80 rows
+       * to 15. The screen contradicted itself inside one glance.
+       *
+       * "no camera" is this pill's strongest claim — it is the one a customer takes upstairs to
+       * argue for cameras — and under a duplicated name the app cannot make it. What it knows is
+       * "three cameras are zoned Geylang"; which of three Geylangs each sits in is a coordinate
+       * guess, and re-guessing camera attribution from coordinates is the wrong turn this file
+       * already refuses (see districtIdForCameraZone, and project_vca_district_vip_count).
+       * Printing "3 cams" on all three pills instead would count three cameras nine times.
+       *
+       * So the pill drops the camera half and keeps the detections, which is the half it can
+       * stand behind. SAYING LESS, NOT SAYING SOMETHING ELSE: no "unknown" badge, no dashed
+       * border, no zero. Five of the seventeen points are affected (three Geylang, two Kallang).
+       *
+       * The repair is not a better guess here. It is one district list in the register's own
+       * zone namespace, delivered by the server — contract sentence 8.
+       */
+      const sayableCameraCount = (label: string, installed: number): number | null =>
+        districts.filter(d => d.label === label).length > 1 ? null : installed;
+
       if (districtFilter && zoom <= CLUSTER_ZOOM_BREAKPOINT) {
         // ── A district is picked, but the map is pulled back out ──
         //
@@ -1096,7 +1153,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           const count = todaysHits.filter(h => districtIdAt(h.lat, h.lng) === home.id).length;
           const icon = L.divIcon({
             html: districtPillHtml(
-              home.label, count, camerasHere.length,
+              home.label, count, sayableCameraCount(home.label, camerasHere.length),
               camerasHere.some(c => cameraStatus.byId(c.id) === "running"),
               alertThreshold, moderateThreshold, t,
             ),
@@ -1413,10 +1470,16 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // coverage to expect, and the one district actually covered was the only pin missing.
           if (camerasInDistrict.length === 0 && count === 0) return;
           if (hasOnlineCamera && count === 0) return;
+          // And a third way to have nothing to report. Under a duplicated district name the pill
+          // prints no camera note at all (sayableCameraCount), and it withholds the figure at
+          // zero — so a quiet one of those would draw a box with a name and an empty line under
+          // it. An empty line is not a smaller claim, it is a broken pill.
+          const cameraCount = sayableCameraCount(district.label, camerasInDistrict.length);
+          if (cameraCount === null && count === 0) return;
 
           const icon = L.divIcon({
             html: districtPillHtml(
-              district.label, count, camerasInDistrict.length, hasOnlineCamera,
+              district.label, count, cameraCount, hasOnlineCamera,
               alertThreshold, moderateThreshold, t,
             ),
             iconSize: [1, 1],

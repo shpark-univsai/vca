@@ -1061,6 +1061,27 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
   // insertion order alone could show an older hit above a newer one from someone else.
   const filtered = [...unsorted].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
+  /*
+   * THE PLACE CONTROL NAMES THE FILTER ON THE LIST BELOW — ALL OF IT, NOT HALF.
+   *
+   * It read `locationFilter || t.all` and nothing else, so a district picked from the map left it
+   * reading "All" over a list that was anything but. Measured 2026-09-29 by clicking the Geylang
+   * pill on the running dashboard: the pagination went from "1 – 12 of 80" to "1 – 12 of 15" and
+   * this control said "All" on both sides of the click. The note further down says this was left
+   * as it is on purpose; what it was defending is that the two filters are mutually exclusive and
+   * this line reads only one of them, which explains the behaviour without excusing it. A control
+   * that reads "All" beside a filtered list is not a small inaccuracy — it is the one thing on
+   * the panel that could tell you why the list is short, saying there is no reason.
+   *
+   * The district id is the fallback because a name is what the reader can act on and the id is
+   * not — but an id is still true, and it only shows in the brief window before getDistricts()
+   * resolves.
+   */
+  const districtLabel = districtFilter
+    ? (districts?.find(d => d.id === districtFilter)?.label ?? districtFilter)
+    : null;
+  const placeLabel = districtLabel || locationFilter || t.all;
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage   = Math.min(page, totalPages);
   const paginated  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
@@ -1082,7 +1103,7 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
               <path d="M8 8.66602C9.10457 8.66602 10 7.77059 10 6.66602C10 5.56145 9.10457 4.66602 8 4.66602C6.89543 4.66602 6 5.56145 6 6.66602C6 7.77059 6.89543 8.66602 8 8.66602Z" stroke="var(--primary-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <span style={{ fontSize:"13px", fontWeight:700, color:"var(--primary-400)", letterSpacing:"-0.26px" }}>
-              {locationFilter || t.all}
+              {placeLabel}
             </span>
           </button>
         </div>
@@ -1113,6 +1134,12 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
             3. The row above still reads "All" while a district filter is active, because it reads
                `locationFilter` only and the two filters are mutually exclusive. That was the
                original complaint about this area and it was deliberately left as it is.
+               NO LONGER TRUE (2026-09-29): it reads the district's name now — see placeLabel
+               above. (2) still stands, and it is now the only half left: the panel names the
+               district it is filtered to and still cannot let go of it. The one line that would
+               finish it is in ClientLayout, where `onLocationClear` is `setLocationFilter(null)`
+               and would have to clear `districtFilter` too; the "All locations" row in the picker
+               below already calls it, so that one line is the whole clear affordance.
 
             `onDistrictClear` went too, all the way back to ClientLayout: with no consumer it was
             a prop chain across two files that lint flagged and that the next reader would have
@@ -1189,7 +1216,12 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
 
       {showLocationPicker && (
         <LocationPickerModal
-          current={locationFilter ?? null}
+          /* A district filter is a place filter, so "All locations" must not sit here looking
+             chosen. Passing the district's name means no row in this list matches it and none is
+             marked — which is the truth: the list is narrowed, and not by anything on this menu.
+             Picking a camera here still swaps the district out (ClientLayout's onLocationSelect
+             clears it); "All locations" still does not — see the note beside the deleted chip. */
+          current={districtLabel || locationFilter || null}
           onSelect={(loc) => {
             if (loc) onLocationSelect?.(loc);
             else onLocationClear?.();
