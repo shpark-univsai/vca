@@ -2543,6 +2543,17 @@ export type AppAction =
   | "bestframeUnknown"
   | "history"
   /**
+   * 베스트 프레임 → 상세의 「등록 DB」 — the enrolled photo shown beside the capture.
+   *
+   * A SECOND STEP ON 지난 기록, not a screen (2026-09-29, owner: 2번3번은 분리 의미가 있는것
+   * 같아). Opening a detection's detail and looking at the REGISTRY PHOTO of the person it was
+   * matched against are two different sights: the first is what a camera saw in public, the
+   * second is an enrolment photograph the customer holds, and the Portal already treats the
+   * registry's photos as their own decision (감사자 사진 열람). Without it the detail opens with
+   * the capture and the match, and the enrolled panel is absent — not blanked, absent.
+   */
+  | "bestframeEnrolled"
+  /**
    * 데이터 → Re-ID 분석. Split from `trail` (2026-09-23, owner: 레드맵이랑 Re-ID 분석은 별개
    * 메뉴야 · 둘로 쪼개줘). One grant used to open both: a table of where one person appeared, and
    * a map drawing their route. They are separate menus in the app and separate jobs — an
@@ -2616,7 +2627,7 @@ export type AppAction =
  */
 export const APP_ACTIONS: AppAction[] = [
   "liveView", "dashboardTrail", "systemStatus",
-  "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown",
+  "liveWall", "history", "bestframeEnrolled", "bestframeVip", "bestframeVehicle", "bestframeUnknown",
   "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch",
   "reid", "reidSearch",
   "redface",
@@ -2634,6 +2645,8 @@ export const APP_ACTION_PARENT: Partial<Record<AppAction, AppAction>> = {
   dashboardTrail: "liveView",
   monitoringVip: "liveMonitoring",
   monitoringUnknown: "liveMonitoring",
+  /* Nothing to compare against without the record it sits in. */
+  bestframeEnrolled: "history",
   /* `liveMonitoringSearch` and `reidSearch` USED TO HANG OFF THEIR SCREEN and no longer do.
      While they did, 「검색만」 was not expressible: dropping the browse grant dropped the search
      with it. The two are now siblings — one opens the unsearched pane, the other opens the search

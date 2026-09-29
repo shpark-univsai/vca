@@ -6,6 +6,7 @@ import type { DetType, Detection, CamData } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { sgtDateKey } from "@/lib/time";
 import ViewerWatermark from "./ViewerWatermark";
+import { useVcaStore, holdsAppAction } from "@/lib/vcaStore";
 
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
@@ -686,6 +687,8 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
   const [lang] = useLanguage();
   const t = T[lang];
   const c = DET_COLOR[det.type];
+  const portalUsers = useVcaStore(s => s.portalUsers);
+  const maySeeEnrolled = holdsAppAction(portalUsers, "bestframeEnrolled");
 
   return (
     <div style={{ width:"380px", flexShrink:0, backgroundColor:"white", borderLeft:BORDER, display:"flex", flexDirection:"column", overflow:"hidden" }}>
@@ -729,12 +732,19 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
             </svg>
             <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{det.confidence || 0}%</span>
           </div>
+          {/* ABSENT WITHOUT THE GRANT, not blanked (see AppAction "bestframeEnrolled"). The box
+              beside it is the capture — what a camera saw in public — and this one is the
+              customer's enrolment photograph, which is a separate thing to be allowed to look at.
+              An account without it sees the capture and the match score and nothing where this
+              stood; a greyed panel would advertise a photo it may not show. */}
+          {maySeeEnrolled && (
           <div style={{ flex:"0 0 176px", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
             <div style={{ width:"176px", height:"177px", borderRadius:"10px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", display:"flex", alignItems:"center", justifyContent:"center", padding:"12px" }}>
               <p style={{ fontSize:"11px", color:"var(--gray-400)", textAlign:"center", lineHeight:1.5, margin:0 }}>{t.photosNotWired}</p>
             </div>
             <p title={t.enrolledDbHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)", letterSpacing:"-0.2px", cursor:"help" }}>{t.enrolledDb}</p>
           </div>
+          )}
         </div>
 
         {/* Name */}

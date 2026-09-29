@@ -108,6 +108,25 @@
      HANDOFF: add beside --line in the Figma variables. */
   --line-control: #e2e8f0;
 
+  /* A CARD'S OUTER EDGE — the one line that separates a white panel from the page.
+     Defined 2026-09-29 (owner: 카드들이나 아래 테이블에 테두리가 너무 연해서 배경 보랏빛이랑
+     대비가 안돼보이는거 아닌가). It was: card fill vs the ground measures 1.04:1, so the fill does
+     nothing at all and the edge carried it alone at 1.18:1.
+
+     A BORDER, NOT A SHADOW. Eight light-mode consoles on Mobbin (Squarespace, Laravel Cloud,
+     Sentry, Gorgias, Shop, Toggl) separate their cards with a VISIBLE border and no fill
+     difference — several sit on a white ground, where the border is the only thing there is.
+     None used a shadow for a resting card: the shadowed things in that set were modals, which
+     actually float. This console spends shadow the same way (--shadow-modal, --shadow-popover),
+     so a shadow here would say "above the page" about something that is not.
+
+     Separate from --line because a card's edge and the rules INSIDE it are not the same job: the
+     edge says where the panel stops, the rules only keep rows apart, and in those same references
+     the row dividers are lighter than the frame around them. Same purple-leaning neutral as
+     --line, walked darker: 1.41:1 on the page ground, about three times the edge there was.
+     HANDOFF: add beside --line in the Figma variables. */
+  --line-card: #d4d4e4;
+
   /* Primary */
   --primary-50: #fafaff;
   --primary-100: #f0f0ff;

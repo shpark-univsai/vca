@@ -96,7 +96,9 @@ export const BORDER = "1px solid var(--line)";
  */
 export const CONTROL_BORDER = "1px solid var(--line-control)";
 /** A card's edge is the same hairline as everything else. One line colour, one weight. */
-export const CARD_BORDER = BORDER;
+/* The panel's own edge — darker than the rules inside it. See --line-card in globals.css for the
+   measurements and for why this is a border and not a shadow. */
+export const CARD_BORDER = "1px solid var(--line-card)";
 /**
  * A card's corner. One number, because two was the whole problem.
  *
@@ -2438,6 +2440,11 @@ export const GRANT_TREE: GrantGroupDef[] = [
     rows: [
       { action: "liveWall" },
       { action: "history" },
+      /* A second step ON 지난 기록, indented under it — the same shape 모니터링's subjects use.
+         Looking at a past capture and looking at the REGISTRY PHOTO it was matched against are
+         two sights, and the second is the customer's enrolment photograph rather than anything a
+         camera saw in public. */
+      { action: "bestframeEnrolled", indent: true },
       /* NO HEADING OVER THE THREE (owner, 2026-09-28: 볼 수 있는 대상이라는 줄은 없애도 되지
          않을까? 아래 모니터링에는 없는데). It was there because they belong to the tab rather
          than to either row above — but 모니터링's two subjects carry no heading either, and one
