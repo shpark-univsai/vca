@@ -61,7 +61,7 @@ const T = {
     // The app's own names for its screens. An unknown code is printed as-is rather than guessed
     // at — a wrong screen name in an audit row is worse than a code the reader can look up.
     surfaceName: { live: "Live monitoring", reid: "Re-ID", redmap: "Redmap", redface: "RedFace" } as Record<string, string>,
-    colAt: "When", colActor: "Operator", colPurpose: "Purpose", colReference: "Reference",
+    colAt: "When", colActor: "Searched by", colPurpose: "Purpose", colReference: "Reference",
     /* The last column holds SearchAccessRecord.ip, an address string the server writes. It was
        headed "From" / "위치" — the Korean said "location", which an IP is not: it names a machine
        on a network, and reading a place out of it is an inference somebody else has to make. On a
@@ -71,7 +71,7 @@ const T = {
     colTarget: "Searched for", colSurface: "Screen", colResults: "Results", colIp: "IP address",
     filterAllPurposes: "All purposes",
     filterFrom: "From", filterTo: "To",
-    filterAllActors: "All operators",
+    filterAllActors: "Anyone",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     clearFilters: "Clear",
     export: "Export CSV",
@@ -83,7 +83,7 @@ const T = {
     statNoRef: "no reference", statNoRefUnit: "look-ups",
     statOperators: "operators", statOperatorsLabel: "searched",
     ownerOnly: "Only the owner and auditors read this log.",
-    csvAt: "When", csvActor: "Operator", csvPurpose: "Purpose", csvReference: "Reference",
+    csvAt: "When", csvActor: "Searched by", csvPurpose: "Purpose", csvReference: "Reference",
     csvActorEmail: "Operator address",
     csvTarget: "Searched for", csvSurface: "Screen", csvResults: "Results", csvIp: "IP address",
     none: "—",
@@ -96,11 +96,11 @@ const T = {
     retry: "다시 시도",
     noMatch: "조건에 맞는 조회 기록이 없습니다.",
     surfaceName: { live: "모니터링", reid: "Re-ID", redmap: "레드맵", redface: "RedFace" } as Record<string, string>,
-    colAt: "시각", colActor: "조회자", colPurpose: "목적", colReference: "참조번호",
+    colAt: "시각", colActor: "조회한 사람", colPurpose: "목적", colReference: "참조번호",
     colTarget: "조회 대상", colSurface: "화면", colResults: "결과", colIp: "IP 주소",
     filterAllPurposes: "전체 목적",
     filterFrom: "시작일", filterTo: "종료일",
-    filterAllActors: "전체 조회자",
+    filterAllActors: "조회한 사람 전체",
     filtersActive: (n: number) => `필터 ${n}`,
     clearFilters: "해제",
     export: "CSV 내보내기",
@@ -110,7 +110,7 @@ const T = {
     statNoRef: "참조번호 없음", statNoRefUnit: "건",
     statOperators: "명", statOperatorsLabel: "조회한 사람",
     ownerOnly: "이 기록은 최고관리자와 읽기 전용 관리자가 읽습니다.",
-    csvAt: "시각", csvActor: "조회자", csvPurpose: "목적", csvReference: "참조번호",
+    csvAt: "시각", csvActor: "조회한 사람", csvPurpose: "목적", csvReference: "참조번호",
     csvActorEmail: "조회자 주소",
     csvTarget: "조회 대상", csvSurface: "화면", csvResults: "결과", csvIp: "IP 주소",
     none: "—",

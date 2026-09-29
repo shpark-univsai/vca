@@ -91,9 +91,17 @@ const T = {
     /* 「대상」 is "Target", not "What": with "What" the table had two columns opening on the same
        word (What · What changed) and the one holding 「CAM-NOV-001」 read as "what happened" rather
        than "what was acted on". The Korean was never wrong — this was a translation collision. */
-    colAt: "When", colActor: "Who", colTarget: "Target", colArea: "Screen", colMessage: "What changed",
+    /* 「Changed by」/「Searched by」 — the two tabs of this screen name the same column two
+       different ways otherwise (Who · Operator, 담당자 · 조회자), and a reader moving between
+       them has to work out whether they mean different people. They do not: both are the account
+       that did the thing this table records. Parallel construction says that, and each tab still
+       names its own act.
+
+       「담당자」 also meant somebody else already — the vendor's contact person, in the empty
+       state and on the licence screen. */
+    colAt: "When", colActor: "Changed by", colTarget: "Target", colArea: "Screen", colMessage: "What changed",
     searchPlaceholder: "Search what changed",
-    filterAllActors: "Everyone",
+    filterAllActors: "Anyone",
     filterAllAreas: "Every screen",
     range7: "Last 7 days", range30: "Last 30 days", range90: "Last 90 days", rangeAll: "All held",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
@@ -106,7 +114,7 @@ const T = {
     statTotal: "changes", statTotalLabel: "in range",
     statActors: "people", statActorsLabel: "made them",
     statLatest: "latest", statLatestNone: "—",
-    csvAt: "When", csvActor: "Who", csvTarget: "What", csvArea: "Screen", csvMessage: "What changed",
+    csvAt: "When", csvActor: "Changed by", csvTarget: "Target", csvArea: "Screen", csvMessage: "What changed",
     // Said on the exception, not on the rule. Server rows are the ordinary case and badging all
     // of them would make the badge the background — which is how the offline camera ended up the
     // quietest thing on its own screen.
@@ -119,12 +127,12 @@ const T = {
     loadFailed: "변경 기록을 불러오지 못했습니다.",
     retry: "다시 시도",
     noMatch: "조건에 맞는 기록이 없습니다.",
-    colAt: "시각", colActor: "담당자", colTarget: "대상", colArea: "화면", colMessage: "변경 내용",
+    colAt: "시각", colActor: "변경한 사람", colTarget: "대상", colArea: "화면", colMessage: "변경 내용",
     searchPlaceholder: "변경 내용 검색",
     /* 「전체」 alone said nothing about what it narrowed — the control beside it reads 「전체 화면」
        and the one in the tab next door reads 「전체 조회자」, so this was the only filter on the
        screen that made the reader open it to find out. Named after the column it filters. */
-    filterAllActors: "전체 담당자",
+    filterAllActors: "변경한 사람 전체",
     filterAllAreas: "전체 화면",
     range7: "최근 7일", range30: "최근 30일", range90: "최근 90일", rangeAll: "보관분 전체",
     filtersActive: (n: number) => `필터 ${n}`,
@@ -135,7 +143,7 @@ const T = {
     statTotal: "건", statTotalLabel: "기간 내 변경",
     statActors: "명", statActorsLabel: "변경한 사람",
     statLatest: "마지막", statLatestNone: "—",
-    csvAt: "시각", csvActor: "담당자", csvTarget: "대상", csvArea: "화면", csvMessage: "변경 내용",
+    csvAt: "시각", csvActor: "변경한 사람", csvTarget: "대상", csvArea: "화면", csvMessage: "변경 내용",
     recordedClient: "브라우저 보고 · 서버 미관측",
     csvRecordedBy: "기록 주체", csvServer: "서버", csvClient: "브라우저",
   },
