@@ -83,6 +83,31 @@
      HANDOFF: add this to the Figma variables next to the two ramps it sits between. */
   --line: #e7e7f1;
 
+  /* The boundary of something you OPERATE — a field, a select, a date trigger.
+     Defined 2026-09-29 (owner: 라인에 새로 정의해줘), because --line is not enough for these.
+     Measured: --line reads 1.23:1 against a white field and 1.17:1 against the page, and WCAG
+     1.4.11 asks 3:1 of a UI COMPONENT's boundary — a card edge is grouping and may stay soft,
+     but the edge that says "you can type here" is the component itself. This value is --line
+     walked darker along its own shape (R=G, B ten steps up, so it stays the same slightly
+     purple neutral rather than turning into a grey rule laid over the surface).
+     
+     THE CEILING IS THE HOVER COLOUR, NOT THE CONTRAST RULE (owner, 2026-09-29: 클릭해서
+     활성화한것처럼 보여 / 200으로 낮춰줘 — and they were right).
+     
+     This console already spends a darker border on MEANING: gray-400 (#94a3b8, 2.56:1) says the
+     pointer is on it, and primary-300 says it is focused or open. The value that clears WCAG
+     1.4.11 is #90909a at 3.16:1 — DARKER THAN THE HOVER STATE — so every resting field looked
+     more active than a hovered one, and the whole toolbar read as clicked. A resting border that
+     outranks the states above it has broken something worse than a contrast ratio.
+     
+     So the resting edge stays under hover, at #e2e8f0 (1.23:1 on white), and the console does NOT
+     meet 3:1 on control boundaries. That is the deliberate call, recorded here so nobody "fixes"
+     it back by accident. If it is ever revisited, the three states have to move together — rest,
+     hover, focus — not this one alone. It stays a token of its own so the decision has one place
+     to live.
+     HANDOFF: add beside --line in the Figma variables. */
+  --line-control: #e2e8f0;
+
   /* Primary */
   --primary-50: #fafaff;
   --primary-100: #f0f0ff;
@@ -310,7 +335,12 @@ textarea:focus::placeholder {
    every button in Portal, so it needs no flag and cannot lie about a button's state. */
 .portal-btn-primary:hover:not(:disabled) { filter: brightness(.92); }
 
-.portal-btn-outline { transition: background-color .12s ease, border-color .12s ease; }
+/* The outline button's edge is a CONTROL boundary, so it takes --line-control (owner,
+   2026-09-29, after the fields went up: 웅 반영시켜줘). Done here rather than in the 63 inline
+   styles that carry it: every one of them already has this class, and the file's hover rule
+   below already establishes !important as how this class overrides them. A borderless secondary
+   is unaffected — it has no border for a colour to apply to. */
+.portal-btn-outline { transition: background-color .12s ease, border-color .12s ease; border-color: var(--line-control) !important; }
 .portal-btn-outline:hover:not(:disabled) {
   background-color: var(--gray-50) !important;
   border-color: var(--gray-400) !important;

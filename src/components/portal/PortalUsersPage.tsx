@@ -4407,9 +4407,11 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           
           The background is opaque on purpose — rows pass underneath it — and it is the PAGE's
           ground, not white (owner, 2026-09-29: 여기 갑자기 배경에 흰색이 깔렸어). White drew a
-          band across a page whose ground is gray-50, so making the line sticky also made it
-          visible, which it never should have been. */}
-      <div style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "var(--gray-50)", display: "flex", alignItems: "flex-end", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+          band across the page, so making the line sticky also made it visible, which it never
+          should have been. MEASURED TWICE: the ground here is --primary-50 (#fafaff), not the
+          body's gray-50 — a gray-50 band read as a grey stripe against it (owner: 여기 배경
+          회색이 살짝 보이는데?). Sampled with elementFromPoint just above the line. */}
+      <div style={{ position: "sticky", top: 0, zIndex: 20, backgroundColor: "var(--primary-50)", display: "flex", alignItems: "flex-end", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
         {PEOPLE_TABS.filter(x => x.half === half).map(x => {
           const active = peopleTab === x.id;
           const count = x.id === "accounts" ? projectUsers.length

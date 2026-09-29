@@ -86,6 +86,15 @@ const OWNER_ONLY_REASON = {
  * primary-50 with white cards on it.
  */
 export const BORDER = "1px solid var(--line)";
+/**
+ * The border of something you OPERATE — a field, a select, a date trigger.
+ *
+ * NOT for table rules, dividers or card edges (owner, 2026-09-29: 겉 테두리만 더 진하게 바꾸는
+ * 거지? 안에 라인은 안바꾸는거잖아— yes). Those group things and stay on `--line`. This is only
+ * the outline of a box you click into, which is what WCAG 1.4.11 measures at 3:1 and what --line
+ * missed at 1.23:1. See --line-control in globals.css for the value and the measurements.
+ */
+export const CONTROL_BORDER = "1px solid var(--line-control)";
 /** A card's edge is the same hairline as everything else. One line colour, one weight. */
 export const CARD_BORDER = BORDER;
 /**
@@ -269,7 +278,7 @@ export function SearchInput({ value, onChange, placeholder, style }: {
 export const FIELD_STYLE: React.CSSProperties = {
   width: "100%", boxSizing: "border-box",
   height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "10px",
-  border: BORDER, backgroundColor: "white",
+  border: CONTROL_BORDER, backgroundColor: "white",
   fontSize: "13px", fontFamily: "inherit",
 };
 
@@ -875,7 +884,9 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
                the table is narrowed without reading every label. Hover still lightens on top. */
             : active
             ? { border: PICKED_LINE, backgroundColor: PICKED_FILL }
-            : { border: hovered ? "1px solid var(--gray-400)" : BORDER }),
+            /* The trigger is a control, so its resting edge is CONTROL_BORDER; the list that
+               opens below is a surface and keeps the hairline. */
+            : { border: hovered ? "1px solid var(--gray-400)" : CONTROL_BORDER }),
         }}
       >
         {/* 12px, the size the action buttons in the same toolbar use, and the size of the options

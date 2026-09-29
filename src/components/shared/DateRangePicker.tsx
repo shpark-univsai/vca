@@ -15,6 +15,9 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 export type PickerLanguage = "en" | "ko";
 
 const BORDER = "1px solid var(--line)";
+/* The date trigger is a control, so its edge is the control token — see --line-control in
+   globals.css. The popover it opens is a surface and keeps the hairline above. */
+const CONTROL_BORDER = "1px solid var(--line-control)";
 
 const T: Record<PickerLanguage, { apply: string; cancel: string; startDate: string; endDate: string; allDates: string }> = {
   en: { apply: "Apply", cancel: "Cancel", startDate: "Start date", endDate: "End date", allDates: "All dates" },
@@ -240,8 +243,8 @@ export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size =
   // sit as one consistent "filter control" language instead of two different-looking pickers
   // side by side in the same form.
   const boxStyle: React.CSSProperties = compact
-    ? { flex:1, display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 8px", border: open ? "1px solid var(--primary-300)" : BORDER, borderRadius:"6px", backgroundColor:"white", cursor:"pointer" }
-    : { flex:1, display:"flex", alignItems:"center", gap:"8px", height:"36px", padding:"0 12px", border: open ? "1px solid var(--primary-300)" : BORDER, borderRadius:"8px", backgroundColor:"white", cursor:"pointer" };
+    ? { flex:1, display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 8px", border: open ? "1px solid var(--primary-300)" : CONTROL_BORDER, borderRadius:"6px", backgroundColor:"white", cursor:"pointer" }
+    : { flex:1, display:"flex", alignItems:"center", gap:"8px", height:"36px", padding:"0 12px", border: open ? "1px solid var(--primary-300)" : CONTROL_BORDER, borderRadius:"8px", backgroundColor:"white", cursor:"pointer" };
   const textStyle = (has: boolean): React.CSSProperties => ({
     fontSize: compact ? "12px" : "13px", fontWeight:600, color: has ? "var(--primary-400)" : "var(--gray-400)",
   });
