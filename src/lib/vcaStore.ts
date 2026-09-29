@@ -195,6 +195,34 @@ export interface Project {
   networkIsolatedDetected?: boolean;
   networkIsolatedOverride?: boolean | null;
   /**
+   * WHO OVERRODE THE MEASUREMENT, AND WHEN.
+   *
+   * The detected value is a fact the server measured; the override is a person disagreeing with
+   * it. A disagreement with no name on it cannot be read back later — an isolated site whose
+   * invitations never arrive needs to know whether the ping said so or somebody typed it, and
+   * which somebody. The audit log carries the same line, and these two keep it on the screen that
+   * shows the value, because that is where the question is asked.
+   *
+   * Absent whenever `networkIsolatedOverride` is null: clearing the override clears its author
+   * too, or the panel would print a name beside a value that person no longer sets.
+   */
+  networkIsolatedOverrideBy?: string;
+  networkIsolatedOverrideAt?: string;
+  /**
+   * When somebody last asked for the reachability to be measured again.
+   *
+   * A REQUEST, NOT A RESULT. Nothing in a browser can ping a site's gateway, so pressing 다시
+   * 확인 cannot produce a reachability answer and this console must not write one — the same rule
+   * the manual camera-status override follows: an operator can ask for a recheck, they cannot
+   * confirm one. So the timestamp says when the ask happened and `networkIsolatedDetected` is
+   * left exactly as the server last reported it.
+   *
+   * HANDOFF: POST /api/portal/projects/{id}/network/recheck, whose response replaces
+   * networkIsolatedDetected. Until it exists the panel says out loud that the figure beside it is
+   * still the last server reading.
+   */
+  networkCheckRequestedAt?: string;
+  /**
    * Overrides the team's mail settings for this one project. Optional because the normal
    * case is a company running a single mail server: filling this per project would mean retyping
    * the same host ten times for ten projects. But network isolation is resolved PER PROJECT, not
@@ -1070,6 +1098,9 @@ interface VcaStoreState {
   setProjectVipRetention: (projectId: string, days: number | null) => void;
   // null clears the override and falls back to the auto-detected value; true/false pins it.
   setNetworkIsolationOverride: (projectId: string, override: boolean | null) => void;
+  /** Ask for the reachability to be measured again. Records the ASK — see
+   *  Project.networkCheckRequestedAt for why it cannot record a result. */
+  requestNetworkRecheck: (projectId: string) => void;
   /**
    * Make a key, or say why not.
    *
@@ -1205,6 +1236,26 @@ interface VcaStoreState {
   addEvent: (event: Omit<VcaEvent, "id">) => void;
   markNotificationsRead: () => void;
   addPortalUser: (user: Omit<PortalUser, "id">) => string;
+  /**
+   * The person's display name. Changed by that person in Settings → 계정, and by an owner from
+   * the Users screen — it names nothing the system keys on, so correcting a typo costs nothing.
+   *
+   * The audit row it writes carries `actor` as a NAME STRING, like every other row here, so the
+   * rows this person wrote before the rename stay under the old name. That is right for an audit
+   * record — it says what was true then — and is not to be "fixed" by rewriting history.
+   * HANDOFF: for the server to join one person's whole history it needs `actor` to carry a user
+   * id alongside the name; the name stays as the label, the id becomes the join key.
+   */
+  renamePortalUser: (userId: string, name: string) => void;
+  /**
+   * The login ID, and the address a password reset goes to. OWNER ONLY, and never self-service —
+   * see the Users panel for the reasoning that decided it.
+   *
+   * Returns "duplicate" when another account already holds the address, "unchanged" when it is
+   * the same address, null on success. A failure is returned rather than swallowed because the
+   * caller is the only thing that can tell the person why nothing happened.
+   */
+  changePortalUserEmail: (userId: string, email: string) => "duplicate" | "unchanged" | null;
   updatePortalUserPermission: (userId: string, permission: PortalPermission) => void;
   /** Portal role and app access together — the access select moves both, and one call is one audit
    *  line. Refuses a combination that leaves the account unable to reach anything. */
@@ -5107,17 +5158,43 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     })),
   // This flips which mailbox invites/resets go through, same audit-worthy weight as updateProjectMail.
   setNetworkIsolationOverride: (projectId, override) =>
-    set(state => ({
-      projects: state.projects.map(p => (p.id === projectId ? { ...p, networkIsolatedOverride: override } : p)),
-      auditLog: [clientAudit({
-        projectId,
-        area: "settings",
-        target: "Network reachability",
-        action: override === null ? "Reset to auto-detection" : `Manually set to ${override ? "internet-isolated" : "internet-connected"}`,
-        message: override === null ? "Network reachability reset to auto-detection" : `Network reachability manually set to ${override ? "internet-isolated" : "internet-connected"}`,
-        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
-      }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
-    })),
+    set(state => {
+      const at = new Date().toISOString();
+      return {
+        projects: state.projects.map(p => (p.id === projectId ? {
+          ...p,
+          networkIsolatedOverride: override,
+          /* The author travels with the value. Cleared together with it, so the panel can never
+             print "set by Grace Tan" beside a figure the ping is supplying again. */
+          networkIsolatedOverrideBy: override === null ? undefined : SIGNED_IN_USER.name,
+          networkIsolatedOverrideAt: override === null ? undefined : at,
+        } : p)),
+        auditLog: [clientAudit({
+          projectId,
+          area: "settings",
+          target: "Network reachability",
+          action: override === null ? "Reset to auto-detection" : `Manually set to ${override ? "internet-isolated" : "internet-connected"}`,
+          message: override === null ? "Network reachability reset to auto-detection" : `Network reachability manually set to ${override ? "internet-isolated" : "internet-connected"}`,
+          actor: SIGNED_IN_USER.name, at,
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  /* WRITES THE ASK, NOT AN ANSWER. `networkIsolatedDetected` is deliberately untouched here: the
+     measurement belongs to the server, and a console that quietly re-wrote it would be inventing
+     the one value on this screen that is supposed to be measured. See
+     Project.networkCheckRequestedAt for the endpoint that will supply the answer. */
+  requestNetworkRecheck: (projectId) =>
+    set(state => {
+      const at = new Date().toISOString();
+      return {
+        projects: state.projects.map(p => (p.id === projectId ? { ...p, networkCheckRequestedAt: at } : p)),
+        auditLog: [clientAudit({
+          projectId, area: "settings", target: "Network reachability",
+          action: "Recheck requested", message: "Network reachability recheck requested",
+          actor: SIGNED_IN_USER.name, at,
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
   addCameraGroup: (projectId, label, cameraIds, description) => {
     const trimmed = label.trim();
     const state = get();
@@ -5683,6 +5760,62 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     const id = `user-${++portalUserSeq}`;
     set(state => ({ portalUsers: [...state.portalUsers, { ...user, id }] }));
     return id;
+  },
+  renamePortalUser: (userId, name) =>
+    set(state => {
+      const trimmed = name.trim();
+      const user = state.portalUsers.find(u => u.id === userId);
+      if (!user || trimmed === "" || trimmed === user.name) return state;
+      /*
+       * THE STAND-IN SESSION FOLLOWS THE RENAME.
+       *
+       * SIGNED_IN_USER is the login response we do not have yet, and every audit row in this file
+       * stamps `actor` from it. Leave it alone and the moment after somebody corrects their own
+       * name, the console goes on signing their next change with the name they just corrected —
+       * which is a wrong claim about a row written afterwards, not a true one about a row written
+       * before. The rows already in the log keep the old name on purpose; only new ones move.
+       * With a real session the server reissues it and this line goes.
+       */
+      /* Read before the line below moves it: on a self-rename the person who made this change was
+         still called the old name when they made it, and that is what the row has to say. */
+      const actor = SIGNED_IN_USER.name;
+      if (user.email.toLowerCase() === SIGNED_IN_USER.email.toLowerCase()) SIGNED_IN_USER.name = trimmed;
+      return {
+        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, name: trimmed } : u)),
+        auditLog: [clientAudit({
+          projectId: user.projectIds[0], area: "accounts", target: user.name,
+          action: `Renamed to ${trimmed}`, message: `Account ${user.email} renamed from ${user.name} to ${trimmed}`,
+          actor, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  changePortalUserEmail: (userId, email) => {
+    const trimmed = email.trim();
+    const state = get();
+    const user = state.portalUsers.find(u => u.id === userId);
+    if (!user || trimmed === "") return "unchanged";
+    if (trimmed.toLowerCase() === user.email.toLowerCase()) return "unchanged";
+    /* One address, one account. Two accounts sharing a login ID is an installation where nobody
+       can say which of them the 조회 기록 rows belong to. */
+    if (state.portalUsers.some(u => u.id !== userId && u.email.toLowerCase() === trimmed.toLowerCase())) return "duplicate";
+    const before = user.email;
+    /* Same reason as the rename: currentPortalUser() finds the session's account BY EMAIL, so
+       changing your own address without moving the stand-in leaves the console unable to find you
+       at all — Settings would fall back to printing the old address it no longer holds. */
+    if (before.toLowerCase() === SIGNED_IN_USER.email.toLowerCase()) SIGNED_IN_USER.email = trimmed;
+    set(st => ({
+      portalUsers: st.portalUsers.map(u => (u.id === userId ? { ...u, email: trimmed } : u)),
+      auditLog: [clientAudit({
+        projectId: user.projectIds[0], area: "accounts", target: user.name,
+        action: `Login address changed to ${trimmed}`,
+        /* BOTH ADDRESSES IN THE LINE. The old one is the only thing that ties this account's
+           earlier 조회 기록 rows (keyed on actorEmail) to the account it is now, and it stops
+           existing on the account the instant this runs. */
+        message: `Login address for ${user.name} changed from ${before} to ${trimmed}`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+    return null;
   },
   updatePortalUserPermission: (userId, permission) =>
     set(state => {

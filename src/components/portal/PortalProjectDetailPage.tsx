@@ -481,6 +481,9 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
   const [cameraGapFocus, setCameraGapFocus] = useState(false);
   /** Which day of the detections chart the pointer is over, by daysAgo. */
   const [hoverDay, setHoverDay] = useState<number | null>(null);
+  /** Which Camera status row the pointer is over — the same lit-row feedback the Users table
+   *  gives, and the only way a row that is now clickable can say so before it is clicked. */
+  const [hoverCameraRow, setHoverCameraRow] = useState<string | null>(null);
   /** The full admin-activity log, in a modal — Portal has no page for it (see the note on the
    *  panel's footer). */
   // Session-only, deliberately: see the banner's note. Nothing here is resolved by closing it.
@@ -1664,8 +1667,39 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                     <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
                     {visibleCameraRows.map((c, i) => {
                       const online = c.status === "online";
+                      const openCamera = () => { setInspectCameraId(c.id); onTabChange("cameras"); };
                       return (
-                        <div key={c.id} style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr 1.2fr 0.8fr 1.2fr 44px", padding: "8px 20px", alignItems: "center", gap: "8px", borderTop: i > 0 ? BORDER : "none" }}>
+                        /*
+                          THE WHOLE ROW OPENS THE CAMERA, not just the chevron at its end.
+
+                          Measured before this change: the row is 718x39 and inert — no role, no
+                          tabIndex, cursor `auto` — and the only live target in it was the 23px
+                          chevron, 3% of the row's width. Clicking the camera's NAME, which is what
+                          a reader aims at, did nothing at all: elementFromPoint at the name's
+                          centre returned the <p> carrying「Phone test」and the click landed on
+                          dead text.
+
+                          The console already answered this on the Users table — a row of the same
+                          shape, openable from anywhere in its body with the ⋯ left to do its own
+                          job — and the note there has the research: of twelve products whose rows
+                          carry a trailing control, not one opens the detail with it. Two lists
+                          that look alike answering a click differently is the part that costs.
+
+                          Same construction as that row, for the same reason: a div with a role
+                          rather than a <button>, because the row holds its own button and a button
+                          inside a button is not valid HTML — and the closest("button,a") guard so
+                          the chevron (and anything put in the row later) keeps its own click.
+                        */
+                        /* aria-label, no title: a tooltip on a 718px row follows the pointer across
+                           the whole panel and would cover the drop-count note two cells along. The
+                           chevron keeps its own title, which is where a reader hovers to ask. */
+                        <div key={c.id} role="button" tabIndex={0}
+                          aria-label={t.openCamera}
+                          onClick={e => { if (!(e.target as HTMLElement).closest("button,a")) openCamera(); }}
+                          onKeyDown={e => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); openCamera(); } }}
+                          onMouseEnter={() => setHoverCameraRow(c.id)}
+                          onMouseLeave={() => setHoverCameraRow(null)}
+                          style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr 1.2fr 0.8fr 1.2fr 44px", padding: "8px 20px", alignItems: "center", gap: "8px", borderTop: i > 0 ? BORDER : "none", cursor: "pointer", backgroundColor: hoverCameraRow === c.id ? "var(--gray-50)" : "transparent" }}>
                           {/* No dot before the name. The row already ends in a Online / Offline
                               chip, and a coloured dot at the other end of the same row said the
                               same thing a second time — with eight offline rows on top, the list
@@ -1746,9 +1780,12 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                               itself — the Input Sources tab with that camera's detail already up —
                               rather than dropping you at the top of a list of fifty-nine to find
                               the row you just clicked. */}
+                          {/* Kept, and it is now the affordance rather than the mechanism: the arrow
+                              is what tells a reader the row leads somewhere, and the row is what
+                              they press. */}
                           <button
                             title={t.openCamera}
-                            onClick={() => { setInspectCameraId(c.id); onTabChange("cameras"); }}
+                            onClick={openCamera}
                             className="portal-icon-btn"
                             style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", padding: "4px", borderRadius: "6px", cursor: "pointer", color: "var(--gray-400)", justifySelf: "end" }}
                           >

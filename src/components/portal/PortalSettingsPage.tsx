@@ -31,7 +31,12 @@ const T = {
   en: {
     accountTitle: "Account",
     name: "Name",
+    nameEdit: "Change",
+    nameSave: "Save",
+    nameCancel: "Cancel",
+    nameSavedToast: "Name changed",
     email: "Email address",
+    emailElsewhere: "Changed by an owner from Users · the account's panel.",
     portalRole: "Portal role",
     appAccess: "App access",
     appYes: "Has the monitoring app",
@@ -60,6 +65,10 @@ const T = {
     // preset. A category is something an institution writes, not a device somebody adds.
     categoryAdd: "New category",
     projectTitle: "Project",
+    projectApplyRule: "Each value here takes effect as you set it, and is written to the activity log.",
+    mailApplyRule: "The mail server fields are saved with the button under them. The network status beside them takes effect as you set it.",
+    saveNoChanges: "Nothing changed yet",
+    saveFixFields: "Fix the fields marked above",
     projectName: "Name",
     rename: "Rename",
     renameSave: "Save",
@@ -165,7 +174,12 @@ const T = {
   ko: {
     accountTitle: "계정",
     name: "이름",
+    nameEdit: "변경",
+    nameSave: "저장",
+    nameCancel: "취소",
+    nameSavedToast: "이름이 바뀌었습니다",
     email: "이메일",
+    emailElsewhere: "사용자 화면에서 계정을 열면 최고관리자가 바꿉니다.",
     portalRole: "Portal 역할",
     appAccess: "앱 접근",
     appYes: "모니터링 앱 사용",
@@ -191,6 +205,10 @@ const T = {
     categoryNone: "아직 만든 분류가 없습니다.",
     categoryAdd: "분류 만들기",
     projectTitle: "프로젝트",
+    projectApplyRule: "이 탭의 값은 고르는 즉시 적용되고 변경 기록에 남습니다.",
+    mailApplyRule: "메일 서버 항목은 아래 저장 버튼을 눌러야 적용됩니다. 옆의 네트워크 상태는 누르는 즉시 적용됩니다.",
+    saveNoChanges: "아직 바꾼 것이 없습니다",
+    saveFixFields: "위에 표시된 항목을 고쳐주세요",
     projectName: "이름",
     rename: "이름 변경",
     renameSave: "저장",
@@ -359,6 +377,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const [lang, setLang] = usePortalLanguage();
   const [section, setSection] = useState("account");
   const [changingPassword, setChangingPassword] = useState(false);
+  /* The name being typed, or null when nothing is being edited. Not keyed to anything the way the
+     rename and mail drafts are — this one belongs to the signed-in person, who does not change
+     while the page is open. */
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const renamePortalUser = useVcaStore(s => s.renamePortalUser);
   const searchPurposes = useVcaStore(s => s.searchPurposes);
   const requirePurpose = getComplianceConfig().requireSearchPurpose;
   const t = T[lang];
@@ -401,7 +424,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   // The project card's one editable pair. Account and display settings below belong to whoever
   // is signed in and stay open to every role — an auditor still sets their own password and
   // their own interface language.
-  const { mayEdit } = usePortalEditAccess();
+  const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   const typeLabel = useTypeLabel();
   const vipCategories = useVcaStore(s => s.vipCategories);
   const [managingCategories, setManagingCategories] = useState(false);
@@ -461,6 +484,13 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const mailPortIssue = portProblem(mailPort);
   const mailPortValid = mailPortIssue === null;
   const canSaveTeamMail = mayEdit && liveMail !== null && !mailFromMismatch && mailPortValid;
+  /* Which of the three it is, in the reader's words. `liveMail === null` is already "nothing has
+     been typed for this team" — the draft is only created by an edit — so it is the no-change
+     case rather than a separate one. Same three reasons, same order, as the project block below. */
+  const teamMailBlockedReason = !mayEdit ? readOnlyReason
+    : liveMail === null ? t.saveNoChanges
+    : (mailFromMismatch || !mailPortValid) ? t.saveFixFields
+    : null;
   const saveTeamMail = () => {
     if (!canSaveTeamMail || !myTeam) return;
     updateTeamMail(myTeam.id, {
@@ -488,9 +518,9 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   // the owner it stands in for, the same assumption the rest of Portal makes about it.
   const maySetPolicy = me ? canSetPolicy(me.permission) : true;
 
+  /* Name and e-mail are drawn by hand below now — one is editable here and the other says where
+     it is edited — so the list starts at the role. */
   const accountPairs: { label: string; value: string }[] = [
-    { label: t.name, value: me?.name ?? SIGNED_IN_USER.name },
-    { label: t.email, value: me?.email ?? SIGNED_IN_USER.email },
     ...(me ? [
       { label: t.portalRole, value: t.roles[me.permission] ?? me.permission },
       { label: t.appAccess, value: canEnterApp(me) ? t.appYes : t.appNo },
@@ -561,6 +591,79 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       {active === "account" && (
       <CardSection heading={t.accountTitle} icon={<User size={15} strokeWidth={2.2} />}>
         <PairGrid>
+          {/*
+            YOUR OWN NAME, AT LAST — AND STILL NOT YOUR OWN E-MAIL (policy settled 2026-09-29).
+
+            The only button this panel had was 비밀번호 변경. Nobody could correct a misspelt name
+            anywhere in Portal, and nobody could change an e-mail address anywhere at all — so a
+            typo in the name a customer was invited under was permanent, and a person whose
+            department renamed its domain had to be given a second account.
+
+            The two fields got different answers on purpose, and the reasons are the whole point:
+
+              NAME is a display value. It keys nothing, and the audit rows it already appears in
+              keep the name that was true when they were written (see renamePortalUser). Getting
+              it wrong costs a wrong label; making somebody file a ticket to fix their own label
+              costs more. So the person changes it, here.
+
+              E-MAIL is the login ID and the address a password reset is sent to. Self-service on
+              that field is precisely the move somebody who has taken over an account makes to
+              lock the real owner out: change the address, ask for a reset, and the recovery mail
+              goes to the attacker. It is also the key 조회 기록 identifies a searcher by
+              (actorEmail), so the person an audit is about must not be the one who can move it.
+              Owner only, from 사용자 → the account's panel — which is where this row points
+              rather than staying silent, because a field with no control and no explanation reads
+              as a product that forgot it.
+          */}
+          <PairItem label={t.name}>
+            {me && nameDraft !== null ? (
+              /* The same inline shape as the project rename two tabs over: a field where the
+                 value was, and the two buttons beside it. A second pattern for the same move
+                 would be this screen inventing a third way to save something. */
+              <span style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                <span style={{ minWidth: "180px", flex: 1 }}>
+                  <TextField value={nameDraft} onChange={setNameDraft} autoFocus />
+                </span>
+                <button className="portal-btn-primary" disabled={!nameDraft.trim() || nameDraft.trim() === me.name}
+                  onClick={() => {
+                    const next = nameDraft.trim();
+                    if (!next || next === me.name) return;
+                    renamePortalUser(me.id, next);
+                    setNameDraft(null);
+                    showToast({ variant: "success", title: t.nameSavedToast, desc: next });
+                  }}
+                  style={{ height: "30px", padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: (nameDraft.trim() && nameDraft.trim() !== me.name) ? "var(--primary-400)" : "var(--gray-200)", color: (nameDraft.trim() && nameDraft.trim() !== me.name) ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: (nameDraft.trim() && nameDraft.trim() !== me.name) ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+                  {t.nameSave}
+                </button>
+                <button className="portal-btn-quiet" onClick={() => setNameDraft(null)}
+                  style={{ height: "30px", padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t.nameCancel}
+                </button>
+              </span>
+            ) : (
+              <span style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--gray-900)", wordBreak: "break-word" }}>{me?.name ?? SIGNED_IN_USER.name}</span>
+                {/* Only when the signed-in address matches a real account. With no match there is
+                    no record to write to, and a button that edits nothing is worse than none. */}
+                {me && (
+                  <button className="portal-btn-outline" onClick={() => setNameDraft(me.name)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: "5px", flexShrink: 0, height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                    <Pencil size={11} strokeWidth={2.2} />
+                    {t.nameEdit}
+                  </button>
+                )}
+              </span>
+            )}
+          </PairItem>
+          <PairItem label={t.email}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--gray-900)", wordBreak: "break-word" }}>{me?.email ?? SIGNED_IN_USER.email}</span>
+              {/* One line, and only the half a reader cannot see: that it changes somewhere, and
+                  where. Not a paragraph about why — the reasoning belongs in the comment above
+                  and in the panel that does the changing. */}
+              <span style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{t.emailElsewhere}</span>
+            </div>
+          </PairItem>
           {accountPairs.map(r => <PairItem key={r.label} label={r.label}>{r.value}</PairItem>)}
           {/* A pair like the others, whose value is a button rather than a fact: the sentence
               under "Password" is the only thing this page can honestly say about one — never the
@@ -594,8 +697,28 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         HANDOFF: when a project-settings screen exists (its natural home, alongside retention and
         the licence), this card moves there whole and Settings goes back to being the account only.
       */}
+      {/*
+        WHEN A CHANGE TAKES EFFECT, SAID ONCE PER TAB (2026-09-29).
+
+        One Settings screen was teaching three rules: this tab applied every dropdown and switch
+        the moment it moved and said nothing; the Mail tab had 「팀 기본값 저장」 dark from the
+        start with no reason given, beside 「이 프로젝트만 저장」 lit before a single field had
+        been touched. Three behaviours, none of them stated.
+
+        The rule settled on is one rule with two shapes, which is what the controls themselves
+        already are: A SINGLE VALUE APPLIES AS YOU SET IT, A FORM OF SEVERAL FIELDS IS SAVED. A
+        timezone, a retention, a watermark and the network override are each one decision with one
+        answer and nothing to review before committing; an SMTP relay is five fields that are wrong
+        in every intermediate state, so saving it half-typed would break invitations. What is gone
+        is the third behaviour: no button on this screen is lit before something has changed, and
+        no dark button is silent about why.
+
+        `desc` rather than `hint`, deliberately — CardSection's own note reserves desc for what has
+        to be read without asking, and whether a screen has already saved your change is exactly
+        that. It is also the one thing here a reader cannot learn by looking.
+      */}
       {active === "project" && project && (
-        <CardSection heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />}>
+        <CardSection heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />} desc={t.projectApplyRule}>
           <PairGrid>
             {/* Editable, at last. Every handover starts with a test project and a typo, and
                 there was no renameProject anywhere in the codebase — the first name a project
@@ -866,7 +989,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         is why it sits here beside the other two team policies.
       */}
       {active === "mail" && myTeam && (
-        <CardSection heading={t.mailRailLabel} icon={<Mail size={15} strokeWidth={2.2} />} subheading={`${t.teamMailTitle} · ${myTeam.name}`} hint={t.teamMailIntro}>
+        <CardSection heading={t.mailRailLabel} icon={<Mail size={15} strokeWidth={2.2} />} subheading={`${t.teamMailTitle} · ${myTeam.name}`} hint={t.teamMailIntro} desc={t.mailApplyRule}>
           {/* No maxWidth of its own any more — the section's content column is the cap, and two
               of these grids with two different ones is how columns stop lining up between
               sections. */}
@@ -900,11 +1023,18 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             {t.teamMailTls}
           </label>
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px" }}>{t.teamMailUnverified}</p>
-          <div style={{ marginTop: "14px" }}>
+          {/* THE DARK BUTTON SAYS WHY. It was already correct to be dark — nothing had been
+              edited — and it said so nowhere, so the half of the screen that behaved properly
+              read as the broken half. The reason sits beside it rather than in a `title`: a
+              disabled button gets no hover in some browsers and none at all on touch. */}
+          <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <button className="portal-btn-primary" onClick={saveTeamMail} disabled={!canSaveTeamMail}
               style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSaveTeamMail ? "var(--primary-400)" : "var(--gray-200)", color: canSaveTeamMail ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSaveTeamMail ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
               {t.teamMailSaveScoped}
             </button>
+            {teamMailBlockedReason && (
+              <span style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{teamMailBlockedReason}</span>
+            )}
           </div>
           {/*
             THE PROJECT'S EXCEPTION, IN THE SAME CARD.

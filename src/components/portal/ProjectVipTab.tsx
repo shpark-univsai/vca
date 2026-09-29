@@ -84,6 +84,16 @@ interface VipDict {
   allPriorities: string;
   noGroup: string;
   filtersActive: (n: number) => string;
+  /* The chip NAMES the one filter that is on, because "1 filter" left the reader hunting the
+     toolbar for which control was set (measured: on 우선순위=Very High the chip read 「1 filter」
+     and nothing else on screen said "priority"). Two or more go back to the count — the chip sits
+     in a toolbar row that already wraps at 1280px, and three names side by side would push the
+     add button onto its own line. The health cells are their own sentence already (「만료일 지남」),
+     so they go in unprefixed. */
+  filterChipGroup: (name: string) => string;
+  filterChipPriority: (label: string) => string;
+  /** Under the tab badge when it reads 「6/62」 — what the two numbers are. */
+  tabCountNarrowed: (shown: number, total: number) => string;
   noSearchResults: string;
   noVips: string;
   loadFailed: string;
@@ -278,6 +288,9 @@ const T: Record<"en" | "ko", VipDict> = {
     allPriorities: "All priorities",
     noGroup: "No group",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
+    filterChipGroup: (name: string) => `Group: ${name}`,
+    filterChipPriority: (label: string) => `Priority: ${label}`,
+    tabCountNarrowed: (shown: number, total: number) => `${shown} of ${total} shown — the search box or a filter is narrowing this tab.`,
     noSearchResults: "No VIPs match these conditions.",
     noVips: "No VIPs registered for this project yet.",
     loadFailed: "Could not load the VIP registry.",
@@ -485,6 +498,9 @@ const T: Record<"en" | "ko", VipDict> = {
     allPriorities: "전체 우선순위",
     noGroup: "그룹 없음",
     filtersActive: (n: number) => `필터 ${n}개`,
+    filterChipGroup: (name: string) => `그룹: ${name}`,
+    filterChipPriority: (label: string) => `우선순위: ${label}`,
+    tabCountNarrowed: (shown: number, total: number) => `전체 ${total} 중 ${shown}만 보이는 중 — 검색어나 필터가 걸려 있습니다.`,
     noSearchResults: "조건에 맞는 VIP가 없습니다.",
     noVips: "이 프로젝트에 등록된 VIP가 아직 없습니다.",
     loadFailed: "VIP 명부를 불러오지 못했습니다.",
@@ -1722,8 +1738,51 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   // Unset counts as "normal", both here and in the select's counts: the store leaves the field off
   // for anyone registered before priorities existed, and filing them under their own bucket would
   // invent a distinction the registry does not make.
-  const activeFilterCount = (groupFilter ? 1 : 0) + (priorityFilter === "ALL" ? 0 : 1) + (healthFilter ? 1 : 0);
+  /*
+   * WHAT IS ON, IN WORDS — the chip is built here because ActiveFilterCount only draws the label
+   * it is handed (see PortalShared). It used to say 「1 filter」, which names nothing: with
+   * 우선순위=Very High set, the only way to find out which of the two selects was holding the
+   * list at 11 rows was to read both of them.
+   *
+   * The health cells carry their own sentence (「만료일 지남」, 「사진 없음」) and get no prefix —
+   * a 「필터: 만료일 지남」 would be a label on a label. 그룹 없음 likewise: prefixing it reads
+   * 「그룹: 그룹 없음」.
+   */
+  const healthFilterLabel: Record<VipHealthFilter, string> = {
+    expired: t.healthExpired,
+    expiryUnanswered: t.healthExpiryUnanswered,
+    missingPhoto: t.healthMissingPhoto,
+    embeddingFailed: t.healthEmbeddingFailed,
+    reenrolling: t.healthReenrolling,
+    duplicates: t.healthDuplicates,
+    detected: t.healthReachLabel,
+    importErrors: t.healthImportErrors,
+  };
+  const activeFilterLabels = [
+    groupFilter === null ? null
+      : groupFilter === "__none" ? t.noGroup
+      : t.filterChipGroup(groupById.get(groupFilter)?.name ?? groupFilter),
+    priorityFilter === "ALL" ? null
+      : t.filterChipPriority(t.priorityText[priorityFilter as NonNullable<Person["priorityLabel"]>]),
+    healthFilter === null ? null : healthFilterLabel[healthFilter],
+  ].filter((label): label is string => label !== null);
+  const activeFilterCount = activeFilterLabels.length;
+  /* One filter names itself; two or more go back to a count, because the row wraps. */
+  const filterChipLabel = activeFilterLabels.length === 1 ? activeFilterLabels[0] : t.filtersActive(activeFilterCount);
   const clearFilters = () => { setGroupFilter(null); setPriorityFilter("ALL"); setHealthFilter(null); };
+  /*
+   * A DIFFERENT TAB IS A DIFFERENT LIST, so nothing carries over — filters AND the search box.
+   *
+   * The round trip 전체 → 그룹 → 전체 used to release the filters and keep the typed text: measured
+   * at 우선순위=Very High with "a" in the box, coming back showed 108 rows with the search still
+   * reading "a". Two controls in one strip behaving opposite ways on one gesture, and only one of
+   * them says on screen that it is still set.
+   */
+  const switchVipTab = (next: "all" | "groups" | "released") => {
+    setVipTab(next);
+    clearFilters();
+    setSearch("");
+  };
   /*
    * What the list says when it has nothing to show.
    *
@@ -1736,6 +1795,30 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
      chip above says a filter is on, and printing "no VIPs registered yet" over a register of 123
      was the defect this branch was written for. */
   const emptyText = q || activeFilterCount > 0 ? t.noSearchResults : t.noVips;
+  /* What the pager will say, for the tab badge above — the Groups tab is filtered by the search
+     box alone, since the two selects beside it narrow people and that tab lists parties. */
+  const tabMatchCount = vipTab === "groups" ? projectGroups.length : matchingPersons.length;
+  const tabNarrowed = vipTab === "groups" ? q !== "" : (q !== "" || activeFilterCount > 0);
+  /*
+   * NOTHING IS REGISTERED ON THIS TAB, and no filter did that.
+   *
+   * Measured on Northgate, whose lists are all empty: the toolbar still offered a search box, two
+   * filter selects, a select-all checkbox and four sort headings, all of them above zero rows and
+   * none of them able to change anything. A control that cannot act is a control that has to be
+   * ruled out by hand before the reader believes the screen.
+   *
+   * What stays is what still does something: the tabs, the summary strip (an empty register IS its
+   * shape), 일괄 업로드 and 서식 — the two doors out of an empty list — the disabled Export with
+   * its reason, and 「VIP 등록」. A screen with nothing but an empty state and no way forward would
+   * be the worse trade.
+   *
+   * Gated on listState so the controls do not blink away under a skeleton: a register still in the
+   * air is not an empty one, which is the same rule the empty text below already follows.
+   */
+  const tabPopulation = vipTab === "groups" ? projectGroupsAll.length
+    : vipTab === "released" ? releasedPersons.length
+    : activePersons.length;
+  const nothingRegistered = listState === "ready" && tabPopulation === 0;
   const sortValue = (person: Person, key: VipSortKey) => {
     switch (key) {
       case "name": return person.name.toLowerCase();
@@ -2091,9 +2174,22 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
             : []),
         ] as { id: "all" | "groups" | "released"; label: string; count: number; hint: string }[]).map(tab => {
           const active = vipTab === tab.id;
+          /*
+           * THE BADGE COUNTS WHAT EXISTS, and says so out loud the moment that stops being what
+           * the table shows.
+           *
+           * Measured on Input Sources: a zone filter left the tab reading 「Cameras 62」 over a
+           * pager reading "Showing 1–6 of 6" — two numbers in the same eyeful, both looking like
+           * the count of one table. The badge is the right number to keep: it is a fact about the
+           * tab, it is what lets you tell 그룹 4 from 전체 122 before clicking either, and an
+           * inactive tab cannot honestly be filtered by controls that belong to this one.
+           * So while something is narrowing the list the ACTIVE tab prints both, 「6/62」 — the
+           * pager's number over the tab's — and the rest keep their totals.
+           */
+          const narrowedHere = active && tabNarrowed && tabMatchCount !== tab.count;
           return (
-            <Tooltip key={tab.id} text={tab.hint}>
-              <button onClick={() => { setVipTab(tab.id); clearFilters(); }}
+            <Tooltip key={tab.id} text={narrowedHere ? `${tab.hint} ${t.tabCountNarrowed(tabMatchCount, tab.count)}` : tab.hint}>
+              <button onClick={() => switchVipTab(tab.id)}
                 style={{
                   display: "flex", alignItems: "center", gap: "6px",
                   background: "none", border: "none", cursor: "pointer",
@@ -2102,7 +2198,9 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                   borderBottom: active ? "2px solid var(--gray-900)" : "2px solid transparent",
                 }}>
                 {tab.label}
-                <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
+                <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>
+                  {narrowedHere ? `${tabMatchCount}/${tab.count}` : tab.count}
+                </span>
               </button>
             </Tooltip>
           );
@@ -2238,12 +2336,13 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
       ]} state={listState} />}
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: TOOLBAR_GAP }}>
-      <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
+      {/* Gone while the tab holds nothing — see nothingRegistered. There is no list to search. */}
+      {!nothingRegistered && <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />}
         {/* Next to the search box, the way Input Sources puts its zone / status / engine selects
             there. Not on the Groups tab: both of these narrow a list of people, and that tab lists
             parties. Each option carries its own count, so the reader knows whether a filter is
             worth applying before applying it. */}
-        {vipTab !== "groups" && (
+        {vipTab !== "groups" && !nothingRegistered && (
           <>
             <FilterSelect
               value={groupFilter ?? "ALL"}
@@ -2268,7 +2367,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               fitContent
             />
             {activeFilterCount > 0 && (
-              <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
+              <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={filterChipLabel} />
             )}
           </>
         )}
@@ -2499,8 +2598,12 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           {/* The column headings stay while the rows go under them. position:sticky against the
               shell's scroller, at top:0 — no measuring, no fixed positioning, and it works because
               nothing between here and that scroller clips its overflow. zIndex 2 so rows pass
-              beneath rather than over, and the gray-50 fill is what makes "beneath" invisible. */}
-          <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: personGrid, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
+              beneath rather than over, and the gray-50 fill is what makes "beneath" invisible.
+
+              Not drawn over an empty register: the select-all ticks nothing and each heading sorts
+              nothing, and a heading strip is what makes a reader expect rows under it. The card
+              itself (this div's parent) still draws the box the empty state sits in. */}
+          {!nothingRegistered && <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: personGrid, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: BORDER, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
             {/* No minHeight on the HEADER's box. The row version sets one because a row is tall
                 enough to spare it; here it made the heading strip 49px for a 15px checkbox, which
                 reads as a heavier band than the rows under it (owner's note: "테이블 헤더 높이가
@@ -2551,7 +2654,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 <SortableHeader label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
               </span>
             ))}
-          </div>
+          </div>}
           {/* Only the rows are replaced: the column headings above and the toolbar above them
               stay, because they are still true while the registry is on its way.
 

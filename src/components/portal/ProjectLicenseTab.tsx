@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, FileUp, Gem, Layers, Sprout } from "lucide-react";
-import { useVcaStore, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TYPE_META, useTypeLabel, usePortalPolicyAccess, MEASURE } from "./PortalShared";
+import { Check, FileUp, Gem, Layers, Mail, MessageSquare, Sprout } from "lucide-react";
+import { useVcaStore, isNetworkIsolated, UNLIMITED_EXPIRY } from "@/lib/vcaStore";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, TYPE_META, useTypeLabel, usePortalPolicyAccess, MEASURE,
+  Drawer, PanelCancel, PanelPrimary, StatusBadge, type StatusTone } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
@@ -110,6 +111,35 @@ const T = {
     clauseFees: "Fees",
     feesInContract: "Not carried by the licence file. The amount is in the signed agreement.",
     clauseParty: "Account manager",
+
+    // ── The way forward ────────────────────────────────────────
+    // Named after what the reader wants, not after the mechanism: nobody opens this screen
+    // wanting to "contact" anybody, they open it because the channels are nearly gone or the
+    // term is nearly up.
+    contactAction: "Ask about this licence",
+    contactTitle: "Ask about this licence",
+    contactTo: "Goes to",
+    contactTopic: "What this is about",
+    topicChannels: "More channels",
+    topicRenew: "Renew the term",
+    contactDraft: "The request",
+    contactCopy: "Copy the request",
+    contactClose: "Close",
+    contactOpenMail: "Open in your mail app",
+    contactCopied: "Request copied",
+    contactCopyFailed: "Could not copy — select the text and copy it by hand.",
+    /* The promise the screen can keep, and it is different at an isolated site. Portal sends
+       nothing either way: it writes the request and hands it to you. */
+    contactSendsNothing: "Portal does not send this. Copy it into your own mail, or open it in your mail app.",
+    contactIsolated: "This site has no route to the internet, so a mail app here cannot deliver it. Copy the request and send it from a machine that can reach outside, or read it over the phone.",
+    contactSubjectChannels: (project: string) => `[VCA] ${project} — more licensed channels`,
+    contactSubjectRenew: (project: string) => `[VCA] ${project} — licence renewal`,
+    /* The draft is the four facts this screen already holds, in the order the document above
+       prints them, and one sentence of ask. No invoice figure and no channel count to add to:
+       clause 04 says in so many words that this console does not know what anything costs, and a
+       request that names a number the console made up is the same fault one screen further out. */
+    contactBody: (f: { topic: string; project: string; team: string; plan: string; channels: string; expiry: string }) =>
+      `Hello,\n\nWe are writing about the VCA licence on ${f.project}.\n\nRequest: ${f.topic}\n\nTeam: ${f.team}\nPlan: ${f.plan}\nLicensed channels: ${f.channels}\nExpires: ${f.expiry}\n\nCould you tell us what this would involve?`,
     channelsUnitN: (n: number) => `${n} channel${n === 1 ? "" : "s"}`,
     inUseNow: (used: number, avail: number) => `${used} in use · ${avail} free`,
     scopeExcluded: "Not covered",
@@ -173,6 +203,26 @@ const T = {
     clauseFees: "대금",
     feesInContract: "라이선스 파일에 실려 있지 않습니다. 금액은 체결한 계약서에 있습니다.",
     clauseParty: "담당자",
+
+    // ── 문의 경로 ──────────────────────────────────────────────
+    contactAction: "라이선스 문의",
+    contactTitle: "라이선스 문의",
+    contactTo: "받는 사람",
+    contactTopic: "문의 내용",
+    topicChannels: "채널 추가",
+    topicRenew: "기간 갱신",
+    contactDraft: "보낼 내용",
+    contactCopy: "내용 복사",
+    contactClose: "닫기",
+    contactOpenMail: "메일 앱에서 열기",
+    contactCopied: "복사했습니다",
+    contactCopyFailed: "복사하지 못했습니다 — 내용을 직접 선택해 복사하세요.",
+    contactSendsNothing: "포털이 대신 보내지 않습니다. 내용을 복사해 직접 보내거나, 메일 앱에서 열어 보내세요.",
+    contactIsolated: "이 사이트는 외부 인터넷과 연결되어 있지 않아, 여기서 메일 앱을 열어도 전달되지 않습니다. 내용을 복사해 외부망 단말에서 보내거나 전화로 전달하세요.",
+    contactSubjectChannels: (project: string) => `[VCA] ${project} — 채널 추가 문의`,
+    contactSubjectRenew: (project: string) => `[VCA] ${project} — 라이선스 갱신 문의`,
+    contactBody: (f: { topic: string; project: string; team: string; plan: string; channels: string; expiry: string }) =>
+      `안녕하세요,\n\n${f.project}의 VCA 라이선스 관련해 문의드립니다.\n\n문의: ${f.topic}\n\n팀: ${f.team}\n플랜: ${f.plan}\n계약 채널: ${f.channels}\n만료일: ${f.expiry}\n\n진행 방법을 알려주시면 감사하겠습니다.`,
     channelsUnitN: (n: number) => `${n}채널`,
     inUseNow: (used: number, avail: number) => `현재 ${used} 사용 · ${avail} 여유`,
     scopeExcluded: "미포함",
@@ -261,8 +311,16 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
   // ClientLayout uses for its localStorage read. Reads as not-expired for the first frame.
   const [nowMs, setNowMs] = useState<number | null>(null);
   useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
+  /** The licence request panel. Above the guard with every other hook — same rule as the clock. */
+  const [contactOpen, setContactOpen] = useState(false);
 
   if (!project) return null;
+
+  /* Whether a mail app on THIS machine could deliver anything at all. Read through the store's
+     own resolver, which is where "the override wins when set, the measurement otherwise" lives —
+     an administrator who has told Portal this site is air-gapped should not then be handed a
+     mailto: link. */
+  const isolatedSite = isNetworkIsolated(project);
 
   const planMeta = planMetaFor(project.licensePlan);
   const projectTeam = teams.find(o => o.id === project.teamId);
@@ -308,19 +366,28 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
    * outrank a date that is simply far away. Null only before the clock is known — for one frame,
    * where a guessed stamp would be corrected in front of the reader.
    */
-  const stamp: { label: string; color: string } | null =
+  const stamp: { label: string; tone: StatusTone } | null =
     nowMs === null ? null
-    : !hasExpiry ? { label: t.notRecorded, color: "var(--gray-400)" }
-    : isExpired ? { label: t.expired, color: "var(--danger-400)" }
-    : expiringUrgently ? { label: t.expiringSoon, color: "var(--danger-400)" }
-    : expiringSoon ? { label: t.expiringSoon, color: "var(--warning-500)" }
-    /* 「정상」 and 「영구」 are quiet now, like every other well state in Portal since the badge
-       tones were unified — a server that answers, an active account. Green was the last one left,
-       and a green mark on the one screen that has nothing wrong with it was the loudest thing on
-       it. The amber and red steps above stay: this badge is a scale of urgency, not a kind of
-       state, and flattening it would lose the difference between 「곧 만료」 and 「만료 임박」. */
-    : isUnlimitedExpiry ? { label: t.perpetual, color: "var(--gray-600)" }
-    : { label: t.valid, color: "var(--gray-600)" };
+    /* Waiting, not a fault: no expiry on record means no licence file has been installed here
+       yet, which is somebody's next step rather than something that broke. */
+    : !hasExpiry ? { label: t.notRecorded, tone: "waiting" }
+    /* Fault, and the repo settled this once already: ProjectApiPanel badges an expired key
+       `fault` and a revoked one `stopped`, which is the split StatusBadge's own note describes —
+       red is reserved for what a person did, and a term running out is not that. The word beside
+       the mark is what separates 「만료됨」 from 「만료 임박」, and clause 02 still prints the date
+       itself in danger red. */
+    : isExpired ? { label: t.expired, tone: "fault" }
+    /* ONE AMBER STEP, NOT TWO. These two branches carried danger-400 and warning-500 under the
+       SAME WORD, so the only thing separating 30 days from 90 was a hue nobody can name. The
+       difference survives where it is legible: the banner at the top of this page is red inside
+       thirty days and amber outside it, and clause 02's day counter takes the same two colours.
+       The stamp says which state the licence is in; those two say how urgent it is. */
+    : expiringSoon ? { label: t.expiringSoon, tone: "fault" }
+    /* 「정상」 and 「영구」 are quiet, like every other well state in Portal since the badge tones
+       were unified — a server that answers, an active account. A lit mark on the one screen with
+       nothing wrong with it was the loudest thing on it. */
+    : isUnlimitedExpiry ? { label: t.perpetual, tone: "normal" }
+    : { label: t.valid, tone: "normal" };
 
 
   const used = projectCameras.length;
@@ -437,11 +504,18 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
       {/*
         The licence as a document, because that is what it is.
 
-        Everything here was agreed on paper somewhere else and this screen only shows it — which is
-        why the page has no actions and ends with "changed by contract, not here". Drawn as a
-        dashboard it kept promising a control it does not have; somebody reading a usage meter and
-        a plan chip looks for the Upgrade button next to them. A record does not owe anybody a
-        button, so the form settles the question the disclaimer was left to answer.
+        Everything here was agreed on paper somewhere else and this screen only shows it. Drawn as
+        a dashboard it kept promising a control it does not have; somebody reading a usage meter
+        and a plan chip looks for the Upgrade button next to them, and there is no such button —
+        channels and term change by contract, not by a click in a console.
+
+        THE ONE DOOR IS AT THE FOOT, WHERE THE PARTIES ARE (control audit, 2026-09-29). The page
+        having no control at all was the other failure: a licence two channels from full, or six
+        weeks from its term ending, is exactly when somebody needs to do something, and the screen
+        that says so offered them nowhere to go. What it can honestly offer is not an upgrade
+        button but the route the contract already has — the account manager named in the party
+        block — so the affordance sits beside that person rather than up in the corner pretending
+        to be a purchase.
 
         Borrowed from the conventions of a contract, not from paper: a titled head with the status
         stamped beside it, numbered clauses, term-and-value in two columns with a rule between each,
@@ -501,27 +575,21 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
                 {project.name}{projectTeamName ? ` · ${projectTeamName}` : ""}
               </p>
             </div>
-            {/* The stamp. Squared off, not a pill: a pill is a chip in a product and this is the
-                mark on a document — and it is the one place the status is stated, so it sits beside
-                the title rather than in a row of chips further down.
+            {/* THE STATE, DRAWN AS A STATE (control audit, 2026-09-29).
 
-                All five states are decided here rather than as they arise, so none of them is a
-                blank space later. "No expiry recorded" used to render nothing at all, which reads
-                as a valid licence to anybody who does not know the stamp exists; and a perpetual
-                licence read VALID, which is true and says less than it could. */}
-            {stamp && (
-              <span style={{
-                /* Sentence case. Caps are the convention on a rubber stamp and they read as
-                   shouting on a screen — and the longest state here is "No expiry on record",
-                   which in caps is a shout nobody needs. The box already says "stamp"; the letters
-                   only have to say the word. */
-                flexShrink: 0, fontSize: "11px", fontWeight: 700,
-                padding: "5px 10px", borderRadius: "4px",
-                border: `1.5px solid ${stamp.color}`, color: stamp.color,
-              }}>
-                {stamp.label}
-              </span>
-            )}
+                It was a squared box with a 1.5px border and nothing inside it, sitting in the
+                top-right corner where every other screen in this console puts its primary action
+                — measured at 48×29px, transparent fill, radius 4. So the one thing on the licence
+                page that looked pressable was a value, and pressing it did nothing. On a screen
+                that had no controls at all, the only control-shaped thing on it was a lie.
+
+                StatusBadge is the console's own vocabulary for "this is what state something is
+                in" — pill, tinted fill, no border, one glyph per tone — and it is what the camera
+                list, the account list, the API keys and the server tab all draw. Nothing about
+                the document idiom needed a private stamp; what the stamp was for (all five states
+                decided in one place, none of them a blank space) is in the branch above and is
+                unchanged. */}
+            {stamp && <StatusBadge tone={stamp.tone} label={stamp.label} />}
           </div>
         </div>
 
@@ -621,8 +689,46 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-400)", marginTop: "5px" }}>—</p>
             )}
           </div>
+          {/* THE WAY FORWARD, and it is drawn only where there is one.
+
+              A team with no account manager on record has nobody for this to go to, and a button
+              that opens a request addressed to 「—」 is the same empty promise as the box that used
+              to sit in the corner. So the row keeps the space-between it always had, and on those
+              teams the right-hand side of it stays empty.
+
+              Outline, not the purple primary: this does not buy anything or change anything here.
+              It writes the ask and hands it over — see the panel. */}
+          {accountManager && (
+            <button
+              className="portal-btn-outline"
+              onClick={() => setContactOpen(true)}
+              style={{ ...OUTLINE_BTN, cursor: "pointer" }}
+            >
+              <MessageSquare size={14} strokeWidth={2.4} />
+              {t.contactAction}
+            </button>
+          )}
         </div>
       </div>
+
+      {contactOpen && accountManager && (
+        <LicenseContactPanel
+          t={t}
+          manager={accountManager}
+          isolated={isolatedSite}
+          projectName={project.name}
+          teamName={projectTeamName ?? project.name}
+          plan={project.licensePlan ?? t.notSet}
+          channels={limit ? `${t.channelsUnitN(limit)} · ${t.inUseNow(used, available ?? 0)}` : t.noLimitSet}
+          expiry={isUnlimitedExpiry ? t.unlimited : (project.licenseExpiresAt ?? t.notRecorded)}
+          /* Opens on whichever of the two this licence is actually short of — the same fact the
+             banners at the top of the page are already raising. A reader who came down here
+             because 「라이선스 한도까지 2채널 남았습니다」 should not have to say so a second time.
+             Term first: an expired licence outranks a full one, because a full one still works. */
+          initialTopic={isExpired || expiringSoon ? "renew" : "channels"}
+          onClose={() => setContactOpen(false)}
+        />
+      )}
 
       {/*
         THE LICENCE FILE CARD IS NOT DRAWN (owner, 2026-09-28: 이건 일단 지워줘).
@@ -932,6 +1038,188 @@ function LicenseFileSection({ projectId, t }: {
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * THE LICENCE REQUEST, AND WHAT IT HONESTLY DOES (control audit, 2026-09-29).
+ *
+ * The audit's finding was that this screen has no way forward: a licence two channels from full,
+ * or six weeks from its term ending, is the moment somebody has to act, and the page named the
+ * person to act through and gave no way to act.
+ *
+ * WHAT THIS IS NOT: a purchase, a ticket, or a message this console sends. Portal has no backend
+ * behind it (the rest of this console is a front-end the server team builds against) and, more to
+ * the point, half the sites this product ships to have no route off their own network. A flow
+ * whose last step is a toast reading 「전송되었습니다」 would be a lie at those sites, and the worst
+ * kind — the kind that reads exactly like the truth. So nothing here claims to have sent
+ * anything. The panel WRITES the request out of what the screen already knows and hands it over:
+ * copy it, or open it in a mail app where one can reach outside.
+ *
+ * The draft is editable on purpose. Everything in it came off the licence document two inches
+ * behind the panel, so it is right — but the sentence at the end is somebody else's ask, and a
+ * read-only box would make them retype the whole thing to change one line of it.
+ *
+ * NOTHING IS WRITTEN TO THE AUDIT LOG HERE, and that is deliberate rather than missing. What the
+ * console can observe is that a draft was opened and maybe copied; whether a request was ever made
+ * is a fact about somebody's mailbox. Recording "asked the account manager for more channels" off
+ * a copy button would be a plausible entry nobody can stand behind.
+ *
+ * HANDOFF NOTE: if the vendor side ever grows a real channel for this (a request queue on the
+ * licence issuer), it replaces the footer's copy button — and only then may this screen say a
+ * request was sent, and only at sites that can reach it.
+ */
+function LicenseContactPanel({ t, manager, isolated, projectName, teamName, plan, channels, expiry, initialTopic, onClose }: {
+  t: (typeof T)["en"] | (typeof T)["ko"];
+  manager: { name: string; email: string };
+  isolated: boolean;
+  projectName: string;
+  teamName: string;
+  plan: string;
+  channels: string;
+  expiry: string;
+  initialTopic: "channels" | "renew";
+  onClose: () => void;
+}) {
+  const [topic, setTopic] = useState<"channels" | "renew">(initialTopic);
+  const topicLabel = topic === "channels" ? t.topicChannels : t.topicRenew;
+  const subject = topic === "channels" ? t.contactSubjectChannels(projectName) : t.contactSubjectRenew(projectName);
+  const drafted = t.contactBody({ topic: topicLabel, project: projectName, team: teamName, plan, channels, expiry });
+  /* Keyed by topic, so switching the two buttons rewrites the draft — but an edited draft is not
+     thrown away by a re-render, only by choosing the other topic, which is the reader saying they
+     meant to ask something else. */
+  const [body, setBody] = useState(drafted);
+  const pickTopic = (next: "channels" | "renew") => {
+    if (next === topic) return;
+    setTopic(next);
+    setBody(t.contactBody({
+      topic: next === "channels" ? t.topicChannels : t.topicRenew,
+      project: projectName, team: teamName, plan, channels, expiry,
+    }));
+  };
+
+  /*
+   * THE ANSWER LANDS ON THE BUTTON, NOT IN A TOAST.
+   *
+   * A toast was the first shape and it was measured wrong: Portal's toast stack is fixed at the
+   * bottom right with z-index 10000, which put a 240×42px card at (1176, 847) directly over this
+   * panel's footer, whose ​「닫기」 sits at (1213, 854) — so the confirmation covered both footer
+   * buttons for the five seconds it was up, and a hit test on 「닫기」 came back "covered by
+   * Request copied". The success message was disabling the panel it was congratulating.
+   *
+   * The label flip is also the pattern this console already uses wherever a value has to leave
+   * the screen by hand (the temporary-password and invite-link boxes in Users), and it answers
+   * where the reader is looking: on the thing they just pressed.
+   *
+   * Success is claimed only once the write RESOLVES. 「복사했습니다」 over a clipboard that refused
+   * — no permission, an insecure origin — is how somebody pastes whatever was there before.
+   */
+  const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const copy = () => {
+    const failed = () => { setCopied(false); setCopyFailed(true); };
+    const done = () => {
+      setCopyFailed(false);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    };
+    /* No clipboard object at all — an insecure origin, an old browser — is the same answer as a
+       write that was refused, and the reader has to be told either way. */
+    const write = navigator.clipboard?.writeText(`${subject}\n\n${body}`);
+    if (!write) { failed(); return; }
+    write.then(done, failed);
+  };
+
+  const mailHref = `mailto:${manager.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  const label = (text: string) => (
+    <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", textTransform: "uppercase", margin: "0 0 6px" }}>{text}</p>
+  );
+
+  return (
+    <Drawer
+      title={t.contactTitle}
+      onClose={onClose}
+      /* The reader has typed into the draft as soon as it differs from what was written for them,
+         and the scrim is an ambient target — see Drawer's own note. */
+      dirty={body !== drafted}
+      footer={<>
+        <PanelCancel onClick={onClose} label={t.contactClose} />
+        {/* The committing action is COPY, because copying is the only thing on this panel that
+            actually happens. At an isolated site it is also the only thing that can. */}
+        <PanelPrimary onClick={copy} label={copied ? t.contactCopied : t.contactCopy} />
+      </>}
+    >
+      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: "18px" }}>
+        {/* WHO IT GOES TO, first and in full. The party block behind this panel prints the same
+            name and address as text rather than as a link, for the reason written there; a request
+            addressed to somebody has to show who that is before it shows what it says. */}
+        <div>
+          {label(t.contactTo)}
+          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{manager.name}</p>
+          <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{manager.email}</p>
+        </div>
+
+        <div>
+          {label(t.contactTopic)}
+          {/* Two choices, both shown. A dropdown would hide the one they did not arrive for, and
+              there are only ever two things a licence runs out of. */}
+          <div style={{ display: "flex", gap: "8px" }}>
+            {([["channels", t.topicChannels], ["renew", t.topicRenew]] as const).map(([value, text]) => (
+              <button key={value} type="button" onClick={() => pickTopic(value)}
+                style={{
+                  height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px",
+                  border: topic === value ? "1px solid var(--primary-300)" : BORDER,
+                  backgroundColor: topic === value ? "var(--primary-100)" : "white",
+                  color: topic === value ? "var(--primary-400)" : "var(--gray-600)",
+                  fontSize: "12px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
+                }}>
+                {text}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          {label(t.contactDraft)}
+          <textarea
+            value={body}
+            onChange={e => setBody(e.target.value)}
+            spellCheck={false}
+            style={{
+              width: "100%", boxSizing: "border-box", minHeight: "260px", resize: "vertical",
+              border: BORDER, borderRadius: "8px", padding: "12px 14px",
+              fontFamily: "inherit", fontSize: "12px", lineHeight: 1.6,
+              color: "var(--gray-700)", backgroundColor: "white",
+            }}
+          />
+        </div>
+
+        {/* The one way this can go wrong, and it has to be readable rather than a flash: the
+            request is still on screen and the reader has to get it out by hand. */}
+        {copyFailed && (
+          <p style={{ fontSize: "12px", color: "var(--danger-500)", lineHeight: 1.5, margin: 0, maxWidth: MEASURE }}>
+            {t.contactCopyFailed}
+          </p>
+        )}
+
+        {/* What the screen promises, said in the site's own terms. Two different sentences,
+            because at an air-gapped site the first one would be false. */}
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, margin: 0, maxWidth: MEASURE }}>
+          {isolated ? t.contactIsolated : t.contactSendsNothing}
+        </p>
+
+        {/* Offered only where it can work. A mailto: at a site with no route out opens a compose
+            window over a message that will sit in an outbox — the reader believes they have sent
+            it, which is the failure this whole panel is written around. */}
+        {!isolated && (
+          <a className="portal-btn-outline" href={mailHref} style={{ ...OUTLINE_BTN, textDecoration: "none", alignSelf: "flex-start" }}>
+            <Mail size={14} strokeWidth={2.4} />
+            {t.contactOpenMail}
+          </a>
+        )}
+      </div>
+    </Drawer>
   );
 }
 

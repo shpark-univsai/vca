@@ -95,6 +95,21 @@ const T = {
     filterAllZones: "All zones",
     filterAllStatus: "All status",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
+    /* The chip NAMES the one filter that is on. 「1 filter」 named nothing: with 구역=Tampines set
+       the table dropped from 69 rows to 6 and the only way to find out which of the two selects
+       did it was to read both. Two or more go back to the count — this toolbar row already wraps
+       at narrow widths, and three names side by side would push 소스 추가 onto its own line. The
+       two gap cells (서버 미지정 · 좌표 미등록) are their own sentence and go in unprefixed. */
+    filterChipZone: (name: string) => `Zone: ${name}`,
+    filterChipStatus: (label: string) => `Status: ${label}`,
+    /** Under the tab badge when it reads 「6/62」 — what the two numbers are. */
+    tabCountNarrowed: (shown: number, total: number) => `${shown} of ${total} shown — the search box or a filter is narrowing this tab.`,
+    /* Two sentences, because the button dies for two different reasons. The file is the camera
+       rows this list is showing (see exportCsv), so an empty project and a tab or filter that
+       admits no camera both land on zero — and only one of them is fixed from the toolbar. Same
+       pair the VIP registry keeps under these names. */
+    nothingToExport: "This project has no cameras to export.",
+    nothingToExportFiltered: "The file is the cameras this list is showing, and the tab or the filters have left it with none.",
 
     // Source kinds — cameras and uploaded footage share one table
     kindTabAll: "All",
@@ -304,6 +319,11 @@ const T = {
     filterAllZones: "전체 구역",
     filterAllStatus: "전체 상태",
     filtersActive: (n: number) => `필터 ${n}개`,
+    filterChipZone: (name: string) => `구역: ${name}`,
+    filterChipStatus: (label: string) => `상태: ${label}`,
+    tabCountNarrowed: (shown: number, total: number) => `전체 ${total} 중 ${shown}만 보이는 중 — 검색어나 필터가 걸려 있습니다.`,
+    nothingToExport: "이 프로젝트에는 내보낼 카메라가 없습니다.",
+    nothingToExportFiltered: "내보내는 것은 지금 목록에 보이는 카메라인데, 탭이나 필터에 걸린 카메라가 없습니다.",
 
     // Source kinds — cameras and uploaded footage share one table
     kindTabAll: "전체",
@@ -1301,8 +1321,27 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
      tab would open empty with nothing on screen explaining why. They stay in state, so returning
      to Cameras or All brings them back set, with the controls visible again. */
   const fileOnlyTab = kindTab === "video" || kindTab === "image" || kindTab === "deepfake";
-  const activeFilterCount = fileOnlyTab ? 0
-    : [zoneFilter, statusFilter].filter(v => v !== "ALL").length + (gapFilter === null ? 0 : 1);
+  /*
+   * WHAT IS ON, IN WORDS — built here because ActiveFilterCount only draws the label it is handed
+   * (see PortalShared). The chip said 「1 filter」, which names nothing: measured at 구역=Tampines,
+   * the pager dropped to 6 rows and nothing on screen said the word "zone".
+   *
+   * The status values are spelt with the table's own four names (see the ONE NAME PER STATE note
+   * at the top of this dictionary) so the chip and the row it filtered to read the same word.
+   */
+  const statusFilterText = statusFilter === "online" ? t.online
+    : statusFilter === "offline" ? t.offline
+    : statusFilter === "error" ? t.statusError
+    : statusFilter === "awaiting" ? t.statusAwaiting
+    : "";
+  const activeFilterLabels = fileOnlyTab ? [] : [
+    zoneFilter === "ALL" ? null : t.filterChipZone(zoneFilter),
+    statusFilter === "ALL" ? null : t.filterChipStatus(statusFilterText),
+    gapFilter === null ? null : gapFilter === "noServer" ? t.healthNoServer : t.healthNoPosition,
+  ].filter((label): label is string => label !== null);
+  const activeFilterCount = activeFilterLabels.length;
+  /* One filter names itself; two or more go back to a count, because the row wraps. */
+  const filterChipLabel = activeFilterLabels.length === 1 ? activeFilterLabels[0] : t.filtersActive(activeFilterCount);
   // Selected camera ids. Held as a Set of ids rather than of rows so a selection survives the list
   // being re-sorted or re-filtered underneath it.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1418,6 +1457,22 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * whose value is identical on every row is not information.
    */
   const showKindColumn = kindTab === "ALL";
+  /*
+   * NOTHING IS REGISTERED ON THIS PROJECT, and no filter did that.
+   *
+   * Measured on Northgate, whose lists are all empty: the toolbar still offered a search box, a
+   * 구역 select, a 상태 select, a select-all checkbox and four sort headings, every one of them
+   * above zero rows and unable to change anything. A control that cannot act has to be ruled out
+   * by hand before the reader trusts what the screen says.
+   *
+   * What stays is what still does something: the tabs, the CSV 가져오기 — the door out of an empty
+   * list — the disabled Export with its reason, and 소스 추가. Hiding everything would leave an
+   * empty state with no way forward, which is the worse trade.
+   *
+   * Gated on listState so the controls do not blink away under a skeleton: a fleet still in the
+   * air is not an empty one, which is the rule the empty text below already follows.
+   */
+  const nothingRegistered = listState === "ready" && projectCameras.length + projectUploads.length === 0;
   /*
    * ONE TRACK PER CELL, which it was not.
    *
@@ -1764,14 +1819,22 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * itself a few lines up — the map is "a view of the SAME filtered rows" — and an export is one
    * more view of them.
    */
+  /* The camera rows among the visible ones: this file's columns are a camera's (code, zone, RTSP,
+     status), so a file source has nothing to put in them. Lifted out of exportCsv because the
+     button now has to know, before it is pressed, whether there is anything to write — a tab of
+     only files, or a filter that admits no camera, used to hand back a header and no rows. */
+  const exportRows = visibleRows.filter(r => r.kind === "camera").map(r => r.camera);
+  /**
+   * Why the export button is dead, when it is. Undefined while it works, so an enabled control
+   * carries no tooltip — the same pair, under the same two names, as the VIP registry's.
+   */
+  const exportDisabledReason = exportRows.length > 0
+    ? undefined
+    : projectCameras.length === 0 ? t.nothingToExport : t.nothingToExportFiltered;
+
   const exportCsv = () => {
     const header = [t.csvHeaderName, t.csvHeaderCode, t.csvHeaderKind, t.csvHeaderZone, t.csvHeaderLocation, t.csvHeaderRtspUrl, t.csvHeaderStatus];
-    /* The camera rows among them: this file's columns are a camera's (code, zone, RTSP, status),
-       so a file source has nothing to put in them. On a tab that holds only files this now writes
-       a header and no rows — an open question the screen never answered, and better than the old
-       answer, which was to hand back every camera in the project whatever the tab and the search
-       box said. */
-    const rows = visibleRows.filter(r => r.kind === "camera").map(r => r.camera).map(c => [
+    const rows = exportRows.map(c => [
       // Three states, not two. A camera refusing the connection is not "a worse offline" —
       // the store's own note says so — and exporting it as Offline hands an auditor a file
       // that disagrees with the screen it came from.
@@ -1789,10 +1852,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     a.download = `${project?.name ?? "project"}-cameras.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast({ variant: "success", title: t.toastExportTitle, desc: t.toastExportDesc(projectCameras.length) });
+    /* rows.length, not projectCameras.length. The file is the filtered list (see above) and the
+       toast counted the whole register — 「카메라 62대가 CSV로 내보내졌습니다」 over a six-row
+       file — which is the audit line as well as the message. */
+    showToast({ variant: "success", title: t.toastExportTitle, desc: t.toastExportDesc(rows.length) });
     // Written down because a list leaving the console is the part an audit asks about, and until
     // now nothing here knew it had happened. Not a gate — see ListExportRecord.
-    recordListExport({ projectId, list: "cameras", rowCount: projectCameras.length });
+    recordListExport({ projectId, list: "cameras", rowCount: rows.length });
   };
 
   return (
@@ -1859,10 +1925,24 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           { id: "deepfake", label: t.kindTabDeepfake, count: projectUploads.filter(u => u.kind === "deepfake").length },
         ] as { id: "ALL" | SourceKind; label: string; count: number }[]).map(tab => {
           const active = kindTab === tab.id;
+          /*
+           * THE BADGE COUNTS WHAT EXISTS, and says so out loud the moment that stops being what
+           * the table shows.
+           *
+           * Measured: a 구역 filter left this row reading 「Cameras 62」 over a pager reading
+           * "Showing 1–6 of 6" — two numbers in one eyeful, both looking like the count of the
+           * same table. The badge is the right number to keep: it is a fact about the tab, it is
+           * what lets you tell 영상 2 from 카메라 62 before clicking either, and an inactive tab
+           * cannot honestly be filtered by controls that belong to this one. So while something
+           * is narrowing the list the ACTIVE tab prints both, 「6/62」 — the pager's number over
+           * the tab's — and the rest keep their totals.
+           */
+          const narrowedHere = active && (q !== "" || activeFilterCount > 0) && visibleRows.length !== tab.count;
           return (
             <button
               key={tab.id}
               onClick={() => setKindTab(tab.id)}
+              title={narrowedHere ? t.tabCountNarrowed(visibleRows.length, tab.count) : undefined}
               style={{
                 display: "flex", alignItems: "center", gap: "6px",
                 background: "none", border: "none", cursor: "pointer",
@@ -1872,7 +1952,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               }}
             >
               {tab.label}
-              <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>{tab.count}</span>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: active ? "var(--gray-500)" : "var(--gray-400)" }}>
+                {narrowedHere ? `${visibleRows.length}/${tab.count}` : tab.count}
+              </span>
             </button>
           );
         })}
@@ -2058,8 +2140,10 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           count stretched to the row's 36px and drew its text at the top of that box, sitting a
           third of a line above the Delete button beside it. */}
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
-        <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
-        {!fileOnlyTab && <><FilterSelect
+        {/* Gone while the project holds nothing — see nothingRegistered. There is no list to
+            search and no zone to pick from. */}
+        {!nothingRegistered && <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />}
+        {!fileOnlyTab && !nothingRegistered && <><FilterSelect
           value={zoneFilter}
           onChange={setZoneFilter}
           options={[{ value: "ALL", label: t.filterAllZones }, ...zones.map(z => ({ value: z, label: z }))]}
@@ -2079,7 +2163,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             ...(errorCount > 0 ? [{ value: "error", label: `${t.statusError} (${errorCount})` }] : []),
           ]}
         />
-        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} /></>}
+        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={filterChipLabel} /></>}
         {/*
           The tools, at the right end of the toolbar.
 
@@ -2122,8 +2206,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               {t.importCsv}
             </button>
           )}
-          <button className="portal-btn-quiet" onClick={exportCsv}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+          {/* DEAD WHEN THE FILE WOULD BE EMPTY, and it says why — the VIP registry's Export has
+              behaved this way all along and this one was still live over zero rows, writing a
+              header and nothing else (measured on Northgate: disabled=false, no title, while the
+              same button on VIP 등록 was disabled with a reason). One button, two screens, one
+              rule. title rather than a line under it: this row has to stay one row. */}
+          <button className="portal-btn-quiet" onClick={exportCsv} disabled={exportRows.length === 0} title={exportDisabledReason}
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: exportRows.length === 0 ? "var(--gray-300)" : "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: exportRows.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
               <FileOutput size={14} strokeWidth={2.4} />
               {t.exportCsv}
             </button>
@@ -2241,7 +2330,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           border between them so the two halves read as one continuous card. */}
       {view === "table" && (
       <div ref={listRef} style={{ backgroundColor: "white", border: BORDER, borderBottom: "none", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
-          <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
+          {/* The headings go when there is nothing registered — the select-all ticks nothing and
+              each heading sorts nothing, and a heading strip is what makes a reader expect rows
+              under it. The wrapper stays, ref and all: it draws the card's top edge above the
+              empty state, and useFitRowsPerPage measures through this node. */}
+          {!nothingRegistered && <div style={{ display: "grid", gridTemplateColumns: GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
             {/* The thumbnail, address and AI-engine columns carry no sortKey — a picture has no
                 order, an address sorts by whatever the IP happens to start with, and AI engines is
                 a set per camera rather than one value. */}
@@ -2281,7 +2374,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             ] as { label: string; key?: CameraSortKey }[]).map((h, i) => (
               <SortableHeader key={i} label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} />
             ))}
-          </div>
+          </div>}
         </div>
       )}
       </div>

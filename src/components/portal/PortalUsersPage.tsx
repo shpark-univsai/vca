@@ -180,8 +180,24 @@ const T = {
     manageAccount: "Manage account",
     panelWhereSection: "Access",
     panelWhatSection: "Permissions",
-    panelAccountSection: "Password",
+    /* Was "Password". The block holds the login address as well now, and a caption naming only
+       one of the two would hide the other under it. */
+    panelAccountSection: "Sign-in",
     panelStatusSection: "Account",
+    changeEmail: "Change email address",
+    emailPanelTitle: "Change email address",
+    emailPanelCurrent: "Current address",
+    emailPanelNew: "New address",
+    emailPanelWhy: "This is the login ID and where a password reset is sent. Only an owner changes it, and never the account holder themselves \u2014 an address the holder can move is how somebody who has taken an account over locks the real owner out.",
+    emailPanelLog: "The search access log identifies a searcher by their address. Rows already written keep the old one; the change is recorded in the activity log with both.",
+    emailPanelNoVerify: "No confirmation mail is sent \u2014 an isolated site cannot send one. The change takes effect at once, and the person signs in with the new address from now on.",
+    emailPanelApply: "Change address",
+    emailPanelDuplicate: "Another account already uses that address.",
+    emailPanelSame: "That is the address the account already has.",
+    emailPanelInvalid: "That is not an email address.",
+    emailPanelUndeliverable: (domain: string) => `Accounts live on @${domain}. Mail to anything else is refused.`,
+    emailChangedToast: "Email address changed",
+    emailChangedToastDesc: (name: string, addr: string) => `${name} signs in as ${addr} from now on.`,
     panelGrants: "App permissions",
     panelNoPortal: "No Portal",
     panelNoApp: "No app",
@@ -614,8 +630,22 @@ const T = {
        — which is also why 인물 검색 차단 left it (see the 권한 group below). */
     panelWhereSection: "접근",
     panelWhatSection: "권한",
-    panelAccountSection: "비밀번호",
+    panelAccountSection: "로그인",
     panelStatusSection: "계정",
+    changeEmail: "이메일 변경",
+    emailPanelTitle: "이메일 변경",
+    emailPanelCurrent: "현재 주소",
+    emailPanelNew: "새 주소",
+    emailPanelWhy: "이 주소가 로그인 아이디이고, 비밀번호 재설정 메일이 가는 곳입니다. 최고관리자만 바꾸며 본인은 바꿀 수 없습니다 \u2014 본인이 옮길 수 있는 주소는, 계정을 빼앗은 사람이 원래 주인을 잠가버리는 통로입니다.",
+    emailPanelLog: "조회 기록은 조회한 사람을 이 주소로 식별합니다. 이미 남은 기록은 예전 주소를 그대로 두고, 이번 변경은 옛 주소와 새 주소를 함께 변경 기록에 남깁니다.",
+    emailPanelNoVerify: "확인 메일은 보내지 않습니다 \u2014 격리된 현장은 메일을 보낼 수 없습니다. 바꾸는 즉시 적용되고, 이후에는 새 주소로 로그인합니다.",
+    emailPanelApply: "주소 변경",
+    emailPanelDuplicate: "다른 계정이 이미 쓰고 있는 주소입니다.",
+    emailPanelSame: "지금 쓰고 있는 주소와 같습니다.",
+    emailPanelInvalid: "이메일 주소 형식이 아닙니다.",
+    emailPanelUndeliverable: (domain: string) => `계정은 @${domain} 도메인을 씁니다. 그 외 주소로는 메일이 가지 않습니다.`,
+    emailChangedToast: "이메일 주소를 바꿨습니다",
+    emailChangedToastDesc: (name: string, addr: string) => `${name}은(는) 이제 ${addr}로 로그인합니다.`,
     panelGrants: "앱 권한",
     panelNoPortal: "Portal 없음",
     panelNoApp: "앱 없음",
@@ -1822,6 +1852,102 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
  * is no route back to step one, because a second look at the same password does not exist — a
  * lost password is reissued, not recovered.
  */
+/**
+ * CHANGING SOMEBODY'S LOGIN ADDRESS — the one identity field that is not self-service.
+ *
+ * Until now no screen in Portal could change an e-mail at all: a department that renamed its
+ * domain, or a person whose address was mistyped on the invitation, could only be given a second
+ * account — which splits one person's 조회 기록 and 변경 기록 into two people who never meet.
+ *
+ * WHY IT LIVES HERE AND NOT IN SETTINGS (decided 2026-09-29). The address is the login ID and the
+ * destination of a password reset, so a holder who can move it is a holder who can be impersonated:
+ * take the account, change the address, request a reset, and the recovery mail arrives at the
+ * attacker. It is also the key the search access log records a searcher by (actorEmail), so the
+ * person an audit is about must not hold the pen on that record. Owner only, from the account's
+ * own panel, and Settings → 계정 points at this rather than offering a field.
+ *
+ * NO VERIFICATION ROUND TRIP, on purpose. Confirming an address means sending mail to it, and this
+ * product ships on-premises to sites that are deliberately internet-isolated. A confirmation step
+ * that cannot complete at half the installations is not a safeguard, it is a lock-out. The owner's
+ * change takes effect directly, and the audit row carries both addresses so the swap is readable
+ * afterwards — which is the control that replaces the round trip.
+ */
+function ChangeEmailPanel({ user, mailDomain, onClose, onBack }: {
+  user: PortalUser;
+  mailDomain: string | null;
+  onClose: () => void;
+  onBack?: () => void;
+}) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
+  const changePortalUserEmail = useVcaStore(s => s.changePortalUserEmail);
+  const allUsers = useVcaStore(s => s.portalUsers);
+  const { showToast } = useToast();
+  const [value, setValue] = useState(user.email);
+
+  const typed = value.trim();
+  const formatValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed);
+  const same = typed.toLowerCase() === user.email.toLowerCase();
+  const duplicate = !same && typed !== "" && allUsers.some(u => u.id !== user.id && u.email.toLowerCase() === typed.toLowerCase());
+  /* Same gate as the invitation form, from the same helper: an address off the installation's
+     domain receives nothing, so a password reset sent there is a reset nobody gets. */
+  const undeliverable = formatValid && !isMailDeliverable(typed, mailDomain);
+  const error = typed === "" ? ""
+    : !formatValid ? t.emailPanelInvalid
+    : same ? t.emailPanelSame
+    : duplicate ? t.emailPanelDuplicate
+    : undeliverable && mailDomain ? t.emailPanelUndeliverable(mailDomain)
+    : "";
+  const canApply = formatValid && !same && !duplicate && !undeliverable;
+
+  const apply = () => {
+    if (!canApply) return;
+    const problem = changePortalUserEmail(user.id, typed);
+    /* The store is the only thing that can see the whole account list at write time, so a refusal
+       coming back from it is reported rather than assumed away — the form's own duplicate check
+       is a courtesy, not the guard. */
+    if (problem) {
+      showToast({ variant: "warning", title: problem === "duplicate" ? t.emailPanelDuplicate : t.emailPanelSame });
+      return;
+    }
+    showToast({ variant: "success", title: t.emailChangedToast, desc: t.emailChangedToastDesc(user.name, typed) });
+    onClose();
+  };
+
+  return (
+    <Drawer title={t.emailPanelTitle} onClose={onClose} onBack={onBack} width="440px"
+      dirty={typed !== user.email}
+      footer={
+        <>
+          <PanelCancel onClick={onBack ?? onClose} label={t.cancel} />
+          <PanelPrimary onClick={apply} label={t.emailPanelApply} disabled={!canApply} />
+        </>
+      }>
+      <div style={{ padding: "4px 20px 20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailPanelCurrent}</label>
+          {/* The address being replaced, stated rather than left to memory: the field below opens
+              pre-filled with it, so without this line there is nothing to compare a typed change
+              against. */}
+          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", wordBreak: "break-all" }}>{user.email}</p>
+        </div>
+        <div>
+          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailPanelNew}</label>
+          <TextField value={value} onChange={setValue} type="email" placeholder={mailDomain ? `name@${mailDomain}` : "name@example.com"} autoFocus />
+          {error && <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>{error}</p>}
+        </div>
+        {/* THE THREE THINGS A CHANGED ADDRESS DOES, before it is changed rather than after.
+            Amber for the last one: "no confirmation mail" is the sentence that decides whether an
+            owner double-checks the spelling, because a typo here is an account nobody can sign
+            into and nobody can be mailed about. */}
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.emailPanelWhy}</p>
+        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.emailPanelLog}</p>
+        <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.6 }}>{t.emailPanelNoVerify}</p>
+      </div>
+    </Drawer>
+  );
+}
+
 function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }: { user: PortalUser; mailAvailable: boolean; initialCode?: string; onClose: () => void; onBack?: () => void }) {
   useEscapeKey(onClose);
   const issueTemporaryPassword = useVcaStore(s => s.issueTemporaryPassword);
@@ -3691,6 +3817,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
   useEffect(() => { queueMicrotask(() => setNowMs(Date.now())); }, []);
   const portalUsers = useVcaStore(s => s.portalUsers);
   const projects = useVcaStore(s => s.projects);
+  const allTeams = useVcaStore(s => s.teams);
   const updatePortalUserPermission = useVcaStore(s => s.updatePortalUserPermission);
   const updatePortalUserAccess = useVcaStore(s => s.updatePortalUserAccess);
   const staffRoster = useVcaStore(s => s.staffRoster);
@@ -3726,6 +3853,9 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
   // The user a temporary password is being issued for, or null. Held as the user rather than an id
   // so the modal keeps rendering the right name even if the row scrolls out from under it.
   const [credentialFor, setCredentialFor] = useState<PortalUser | null>(null);
+  /* The account whose login address is being changed, or null. Held as the user for the same
+     reason as credentialFor. */
+  const [changingEmailFor, setChangingEmailFor] = useState<PortalUser | null>(null);
   /** The invite links waiting to be handed over, or null. Held by the page, not by whatever made
    *  them: approving the last access request unmounts that panel. See InviteLinkPanel. */
   const [invitePanel, setInvitePanel] = useState<{ title: string; links: InviteLink[] } | null>(null);
@@ -3868,6 +3998,9 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
   const authConfig = getAuthConfig();
   const recoveryOverride = useSearchParams().get("recovery");
   const mailAvailable = recoveryOverride === "adminOnly" ? false : hasOutboundMail(authConfig);
+  /* The domain accounts on this site live on — the same resolution the invite form makes, from the
+     same helper, so a change of address is held to the rule a new address is held to. */
+  const panelMailDomain = resolveMailConfig(projectId, projects, allTeams).mailDomain;
 
   // The roster modals speak their own dictionary — they were written for the tab that used to own
   // them and take it as a prop, which is exactly why they could be shared instead of rewritten.
@@ -5561,6 +5694,15 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                       },
                     }] : []),
                     {
+                      /* THE ONE PLACE AN E-MAIL CAN BE CHANGED, and it is here rather than in
+                         Settings on purpose — see ChangeEmailPanel's own note. First in the
+                         group because it comes before the credential in the reader's order: the
+                         address is who the account is, the password is how they prove it. */
+                      key: "email", label: t.changeEmail, icon: <MailQuestion size={14} strokeWidth={2.2} />,
+                      disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
+                      onClick: () => setChangingEmailFor(mu),
+                    },
+                    {
                       key: "credential", label: t.resetPassword, icon: <KeyRound size={14} strokeWidth={2.2} />,
                       disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
                       /* No close(): the card stays under this, which is what gives the panel a
@@ -5772,6 +5914,12 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
       {credentialFor && (
         <TempPasswordModal user={credentialFor} mailAvailable={mailAvailable}
           onClose={() => setCredentialFor(null)} onBack={() => setCredentialFor(null)} />
+      )}
+      {changingEmailFor && (
+        /* Opens OVER the account card, like the three editors above it, so ← 뒤로 and 취소 land
+           back on the account rather than on the table. */
+        <ChangeEmailPanel user={changingEmailFor} mailDomain={panelMailDomain}
+          onClose={() => setChangingEmailFor(null)} onBack={() => setChangingEmailFor(null)} />
       )}
       {viewingCodeFor?.setupCode && (
         <TempPasswordModal

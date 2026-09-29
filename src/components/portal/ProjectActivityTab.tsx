@@ -352,6 +352,26 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
   const exportBlocked = visible.length > 0 ? undefined
     : projectEntries.length === 0 ? t.exportNothingHeld : t.exportNoMatch;
 
+  /*
+   * NOTHING IS HELD, SO NOTHING IS OFFERED TO NARROW IT (control audit, 2026-09-29).
+   *
+   * On a project whose log has never been written to — a freshly provisioned site — this toolbar
+   * drew a search box, a date range, an actor filter and four sortable headings over zero rows.
+   * Seven live controls, none of which could change anything, above a sentence saying there is
+   * nothing here. A control that answers every press with the same empty table teaches the reader
+   * that the controls on this screen do not work, which is a lesson they carry to the screen where
+   * they do.
+   *
+   * KEYED OFF THE LOG, NOT OFF THE TABLE. `visible.length === 0` would have hidden the filters the
+   * moment a filter matched nothing — taking away the only way back. The question is whether
+   * there is anything to narrow at all.
+   *
+   * WHAT STAYS: the summary strip, the column headings, the empty state, and Export CSV — greyed
+   * with the reason on hover, which is the rule across the product (see the note on the button).
+   * The headings stay because they say what this log holds; they simply stop claiming to sort.
+   */
+  const nothingHeld = projectEntries.length === 0;
+
   const distinctActors = new Set(rows.map(a => a.actor)).size;
   const latest = visible.length > 0
     ? [...rows].sort((a, b) => b.at.localeCompare(a.at))[0]
@@ -372,21 +392,25 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
       ]} state={listState} />
 
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px", marginBottom: TOOLBAR_GAP }}>
-        <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
-        <FilterSelect value={range} onChange={setRange} options={[
-          { value: "7", label: t.range7 },
-          { value: "30", label: t.range30 },
-          { value: "90", label: t.range90 },
-          { value: "ALL", label: t.rangeAll },
-        ]} />
-        <FilterSelect value={actorFilter} onChange={setActorFilter}
-          options={[{ value: "ALL", label: t.filterAllActors }, ...actorOptions]} />
-        {/* Only once more than one screen is in the log. On a project whose every entry came from
-            the same place, this control has one real choice and narrows nothing. */}
-        {areaOptions.length > 1 && (
-          <FilterSelect value={areaFilter} onChange={setAreaFilter}
-            options={[{ value: "ALL", label: t.filterAllAreas }, ...areaOptions]} />
-        )}
+        {/* All four go together — see nothingHeld. The row itself stays, because Export CSV and
+            its reason still belong on it. */}
+        {!nothingHeld && <>
+          <SearchInput value={search} onChange={setSearch} placeholder={t.searchPlaceholder} />
+          <FilterSelect value={range} onChange={setRange} options={[
+            { value: "7", label: t.range7 },
+            { value: "30", label: t.range30 },
+            { value: "90", label: t.range90 },
+            { value: "ALL", label: t.rangeAll },
+          ]} />
+          <FilterSelect value={actorFilter} onChange={setActorFilter}
+            options={[{ value: "ALL", label: t.filterAllActors }, ...actorOptions]} />
+          {/* Only once more than one screen is in the log. On a project whose every entry came from
+              the same place, this control has one real choice and narrows nothing. */}
+          {areaOptions.length > 1 && (
+            <FilterSelect value={areaFilter} onChange={setAreaFilter}
+              options={[{ value: "ALL", label: t.filterAllAreas }, ...areaOptions]} />
+          )}
+        </>}
         <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
         <span style={{ flex: 1 }} />
         {/* WHY THE GREY BUTTON SAYS WHICH KIND OF NOTHING IT IS. The two reasons this control can
@@ -434,7 +458,10 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
             { label: t.colMessage },
             { label: t.colAt, key: "at" as ActivitySortKey },
           ] as { label: string; key?: ActivitySortKey }[]).map((h, i) => (
-            <span key={i}><SortableHeader label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} /></span>
+            /* sortKey withheld while nothing is held, which is how SortableHeader draws a plain
+               heading — it takes the same three props everywhere else and renders text when there
+               is no key. So the column keeps its name and stops offering to reorder nothing. */
+            <span key={i}><SortableHeader label={h.label} sortKey={nothingHeld ? undefined : h.key} sort={sort} onToggle={toggleSort} /></span>
           ))}
         </div>
 

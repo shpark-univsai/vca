@@ -410,3 +410,22 @@ B가 규칙 0대로 이 항목이 있어야 한다고 보고했고, 그게 맞�
   언어는 훅 대신 `lang` prop으로. 포털 파일은 건드리지 않습니다.
 - **조정 세션(나)**: `src/components/portal/ProjectSearchLogTab.tsx` — 화면 필터 추가,
   그리고 위 컴포넌트가 들어오면 네이티브 date 입력 두 개를 그것으로 교체.
+
+### 2026-09-29 — 병렬 3차 (컨트롤 감사 잔여 9건)
+
+디자이너 에이전트가 낸 14건 중 1·3·5·11은 조정 세션이 이미 고쳤고(커밋 bf4c669·6fc110a),
+4번은 재현되지 않아 기각. 나머지를 파일이 겹치지 않게 셋으로 나눕니다.
+
+- **A — 목록 필터**: `ProjectVipTab.tsx` · `ProjectCamerasTab.tsx`
+  2번(탭 왕복 시 필터/검색 불일치) · 6번(필터 칩이 무엇을 걸렀는지) ·
+  12번(탭 뱃지가 필터를 안 따라감) · 7번 중 이 두 화면 몫.
+- **B — 사람과 설정**: `PortalSettingsPage.tsx` · `ProjectMailPanel.tsx` ·
+  `PortalUsersPage.tsx` · `lib/vcaStore.ts`
+  8번(저장 규칙 셋) · 9번(측정값에 붙은 토글) · 13번(이름은 본인, 이메일은 최고관리자).
+- **C — 나머지 화면**: `ProjectLicenseTab.tsx` · `PortalProjectDetailPage.tsx` ·
+  `ProjectActivityTab.tsx` · `ProjectSearchLogTab.tsx`
+  14번(라이선스에 동선 없음) · 10번(개요 카메라 행 본문이 죽음) · 7번 중 기록 화면 몫.
+
+**셋 다 `PortalShared.tsx`는 읽기만** 합니다(공용, 필요하면 조정 세션에 보고).
+**셋 다 git 명령을 쓰지 않습니다** — 커밋은 조정 세션이 끝에 한 번에. 크롬 포트는 A 9391 ·
+B 9392 · C 9393, 스크래치패드 접두사는 `px-a-` · `px-b-` · `px-c-`.

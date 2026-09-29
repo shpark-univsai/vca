@@ -299,6 +299,24 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
   const exportBlocked = visible.length > 0 ? undefined
     : projectRecords.length === 0 ? t.exportNothingHeld : t.exportNoMatch;
 
+  /*
+   * NOTHING IS HELD, SO NOTHING IS OFFERED TO NARROW IT (control audit, 2026-09-29).
+   *
+   * Same call as the tab next door, and for the same reason: on a project nobody has searched
+   * from, this toolbar drew a date range and four sortable headings over zero rows — controls
+   * that answer every press with the table already on screen.
+   *
+   * ONE EXCEPTION, AND IT IS NOT AN OVERSIGHT: the 「화면」 filter stays. Its options are a CLOSED
+   * set the app defines rather than a list read off the rows (see surfaceOptions), and filtering
+   * to a screen with no look-ups is a real question with a real answer — 「RedFace에서는 아무도
+   * 찾지 않았다」 is what a reviewer comes here to confirm. It is the one control on an empty log
+   * that still says something.
+   *
+   * KEYED OFF THE LOG, NOT OFF THE TABLE, so a filter that matches nothing never removes the way
+   * back out of itself.
+   */
+  const nothingHeld = projectRecords.length === 0;
+
   const exportCsv = () => {
     // The file carries the columns the screen carries. A CSV with two always-blank columns is the
     // same unkept promise one screen further out, and it is the copy that leaves the building.
@@ -359,13 +377,15 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: TOOLBAR_GAP }}>
         {/* Gone with the columns: a filter whose only option is "all" narrows nothing. */}
         {/* First in the row, because it is the question an auditor arrives with. */}
-        <span style={{ display: "flex", alignItems: "center", width: "260px", flexShrink: 0 }}>
-          <DateRangeTrigger lang={lang} value={range} onApply={setRange} emptyText={t.filterAllDates} />
-        </span>
-        {purposeAsked && (
-          <FilterSelect value={purposeFilter} onChange={setPurposeFilter}
-            options={[{ value: "ALL", label: t.filterAllPurposes }, ...purposeOptions]} />
-        )}
+        {!nothingHeld && <>
+          <span style={{ display: "flex", alignItems: "center", width: "260px", flexShrink: 0 }}>
+            <DateRangeTrigger lang={lang} value={range} onApply={setRange} emptyText={t.filterAllDates} />
+          </span>
+          {purposeAsked && (
+            <FilterSelect value={purposeFilter} onChange={setPurposeFilter}
+              options={[{ value: "ALL", label: t.filterAllPurposes }, ...purposeOptions]} />
+          )}
+        </>}
         {/* Before the person, because it is the more common question — and after the date, which
             is the one an auditor arrives with. */}
         <FilterSelect value={surfaceFilter} onChange={setSurfaceFilter}
@@ -420,7 +440,9 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
             results: { label: t.colResults },
             ip: { label: t.colIp },
           }[c])) as { label: string; key?: LogSortKey }[]).map((h, i) => (
-            <span key={i}><SortableHeader label={h.label} sortKey={h.key} sort={sort} onToggle={toggleSort} /></span>
+            /* No key while nothing is held — SortableHeader then draws the heading as text, which
+               is what a column with nothing under it can honestly be. */
+            <span key={i}><SortableHeader label={h.label} sortKey={nothingHeld ? undefined : h.key} sort={sort} onToggle={toggleSort} /></span>
           ))}
         </div>
 

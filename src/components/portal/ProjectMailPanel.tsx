@@ -59,6 +59,7 @@
  */
 
 import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { isNetworkIsolated, resolveMailConfig, useVcaStore } from "@/lib/vcaStore";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -73,13 +74,17 @@ const NETWORK_T = {
     isolated: "Isolated", connected: "Connected",
     autoDetected: "Auto-detected via outbound ping:",
     noResponse: "No response (isolated)", reachable: "Reachable",
-    switchLabel: "Internet-isolated",
-    switchDesc: "Off means this site can reach the internet, so invites go out by external email. On routes them through the project's internal mailbox instead.",
-    followingDetection: "Following auto-detection.",
-    overriddenIsolated: "Set manually to isolated, overriding auto-detection.",
-    overriddenConnected: "Set manually to connected, overriding auto-detection.",
-    revertToDetection: "Use auto-detection",
-    overrideWhy: "A firewall or security policy can make the ping check unreliable, so the switch always wins over what was detected.",
+    measured: "Measured",
+    recheck: "Recheck",
+    recheckAsked: (when: string) => `Recheck requested ${when}. The figure above is still the last reading the server reported — this console cannot measure a network itself.`,
+    inForce: "In force",
+    overrideBy: (who: string, when: string) => `Overridden by ${who} on ${when}`,
+    /* Short forms, used only in the override button: the status words above are the value's own
+       ("Isolated", "Connected") and read as a proper noun mid-sentence. */
+    overrideTo: (state: string) => `Override the measurement — treat as ${state}`,
+    isolatedShort: "isolated", connectedShort: "connected",
+    revertToDetection: "Use the measurement",
+    overrideWhy: "The ping check can be wrong behind a firewall or a security policy, so the measurement can be overridden — and the override says who set it, because an invitation that never arrives is traced back through this line.",
   },
   ko: {
     heading: "네트워크 연결 상태",
@@ -87,13 +92,15 @@ const NETWORK_T = {
     isolated: "격리됨", connected: "연결됨",
     autoDetected: "외부 핑(ping)을 통한 자동 감지:",
     noResponse: "응답 없음(격리됨)", reachable: "연결 가능",
-    switchLabel: "인터넷 격리",
-    switchDesc: "꺼두면 이 사이트가 인터넷에 도달할 수 있다는 뜻이고, 초대장이 외부 이메일로 나갑니다. 켜면 프로젝트의 내부 메일함으로 발송됩니다.",
-    followingDetection: "자동 감지 결과를 따르는 중입니다.",
-    overriddenIsolated: "자동 감지를 무시하고 격리로 직접 설정했습니다.",
-    overriddenConnected: "자동 감지를 무시하고 연결로 직접 설정했습니다.",
-    revertToDetection: "자동 감지 사용",
-    overrideWhy: "방화벽이나 보안 정책 때문에 핑 확인이 부정확할 수 있어, 이 스위치가 감지 결과보다 항상 우선합니다.",
+    measured: "측정값",
+    recheck: "다시 확인",
+    recheckAsked: (when: string) => `${when}에 다시 확인을 요청했습니다. 위 값은 여전히 서버가 마지막으로 보고한 측정값입니다 — 이 콘솔은 네트워크를 직접 측정하지 못합니다.`,
+    inForce: "적용 중",
+    overrideBy: (who: string, when: string) => `${who}이(가) ${when}에 측정값을 무시하고 지정`,
+    overrideTo: (state: string) => `측정값을 무시하고 ${state}로 지정`,
+    isolatedShort: "격리", connectedShort: "연결",
+    revertToDetection: "측정값 사용",
+    overrideWhy: "방화벽이나 보안 정책 때문에 핑 확인이 틀릴 수 있어 측정값을 무시할 수 있습니다. 대신 누가 지정했는지를 함께 남깁니다 — 초대장이 도착하지 않을 때 이 줄을 거슬러 올라가 원인을 찾습니다.",
   },
 } as const;
 const MAIL_T = {
@@ -117,6 +124,8 @@ const MAIL_T = {
     fromAddressError: (domain: string) => `Must be an address on ${domain}.`,
     fromAddressHint: "The From: address recipients will see.",
     useTls: "Use TLS", save: "Save", saveProject: "Save for this project",
+    saveNoChanges: "Nothing changed yet",
+    saveFixFields: "Fix the fields marked above",
     toastUsingTeam: "Using team mail settings",
     toastSaved: "Mail settings saved",
     toastSavedDesc: (addr: string) => `Invites will be sent from ${addr}. Nothing has been sent through this relay yet — send one invite and confirm it arrives before you rely on it.`,
@@ -150,6 +159,8 @@ const MAIL_T = {
     fromAddressError: (domain: string) => `${domain} 주소여야 합니다.`,
     fromAddressHint: "수신자에게 표시될 발신(From) 주소입니다.",
     useTls: "TLS 사용", save: "저장", saveProject: "이 프로젝트만 저장",
+    saveNoChanges: "아직 바꾼 것이 없습니다",
+    saveFixFields: "위에 표시된 항목을 고쳐주세요",
     toastUsingTeam: "팀 메일 설정 사용 중",
     toastSaved: "메일 설정 저장됨",
     toastSavedDesc: (addr: string) => `초대장은 ${addr}에서 발송됩니다. 아직 이 릴레이로 보낸 적은 없습니다. 초대를 한 통 보내 도착하는지 확인한 뒤에 쓰세요.`,
@@ -178,6 +189,7 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
   const teams = useVcaStore(s => s.teams);
   const updateProjectMail = useVcaStore(s => s.updateProjectMail);
   const setNetworkIsolationOverride = useVcaStore(s => s.setNetworkIsolationOverride);
+  const requestNetworkRecheck = useVcaStore(s => s.requestNetworkRecheck);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
   const t = MAIL_T[lang];
@@ -207,8 +219,35 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
   // reject or spam-file it — worth catching here rather than discovering it when invites stop
   // arriving.
   const fromMatchesDomain = !domain || !fromAddress || fromAddress.trim().toLowerCase().endsWith(`@${domain.trim().toLowerCase()}`);
-  const canSave = mayEdit
-    && (!override || (domain.trim() !== "" && host.trim() !== "" && portValid && fromAddress.trim() !== "" && fromMatchesDomain));
+  const formValid = !override || (domain.trim() !== "" && host.trim() !== "" && portValid && fromAddress.trim() !== "" && fromMatchesDomain);
+  /*
+   * A SAVE BUTTON THAT IS LIT BEFORE ANYTHING IS TYPED IS LYING ABOUT ITS OWN STATE.
+   *
+   * MEASURED before the change: open Settings → 메일 and 「이 프로젝트만 저장」 was enabled the
+   * instant the tab drew, on a project inheriting everything, with every field untouched —
+   * pressing it wrote an audit row saying the project's mail settings had been updated when
+   * nothing had. The team block beside it had the opposite problem: its button was correctly dead
+   * until an edit, and said nowhere why.
+   *
+   * ONE RULE ACROSS THIS SCREEN, and this is the half that needs a button: a form of several
+   * fields is saved, a single value applies as you set it (the timezone, the watermark, the
+   * network override below). So the button arms on a real difference from what is stored, and
+   * when it is dark a line beside it says which of the three reasons it is.
+   */
+  const storedPort = String(project.smtp?.port ?? 587);
+  const fieldsChanged = domain.trim() !== (project.mailDomain ?? "")
+    || host.trim() !== (project.smtp?.host ?? "")
+    || port.trim() !== storedPort
+    || fromAddress.trim() !== (project.smtp?.fromAddress ?? "")
+    || useTls !== (project.smtp?.useTls ?? true);
+  /* Turning the override off is a change on its own — it clears this project's settings back to
+     the team's — so it counts even though no field was touched. */
+  const changed = override !== overridden || (override && fieldsChanged);
+  const canSave = mayEdit && changed && formValid;
+  const saveBlockedReason = !mayEdit ? readOnlyReason
+    : !changed ? t.saveNoChanges
+    : !formValid ? t.saveFixFields
+    : null;
 
   const save = () => {
     if (!canSave) return;
@@ -257,36 +296,82 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
         <p style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{project.name}</p>
       </div>
       <PairGrid>
-        {/* WHETHER THIS SITE CAN REACH THE WORLD. The switch shows the effective value and IS the
-            override; the line under it says where that value came from, with the way back to
-            detection offered only when there is something to go back from. */}
         {/*
-          LABELLED FOR THE FACT, AND THE SWITCH POINTS THE SAME WAY.
-       
-          Two goes at this. It was "인터넷 격리" over a value reading "연결됨" — a label and a
-          value disagreeing. Renaming the label to 인터넷 연결 fixed that and broke something
-          worse: the switch still carried isolation, so turning ON the thing called Internet said
-          there was none (owner: 켜진 상태같은데, 인터넷이 없는상태라는거지?).
-       
-          A switch names the state it is in when it is on. So this one is connectivity: on is
-          connected, off is isolated, and the stored value is still isolation — the handler
-          inverts once, here, rather than leaving every reader to.
+          A MEASUREMENT IS NOT A SETTING (2026-09-29).
+
+          This was a switch reading 「인터넷 연결 · 연결됨」 with the sentence 「외부 핑을 통한 자동
+          감지: 연결 가능」 directly under it — the screen measuring the network and then handing
+          the reader a control to contradict the measurement, at the same rank, with the switch
+          winning. Two goes had already been spent getting the switch's polarity to agree with its
+          own label; the polarity was never the problem. A switch says "this is yours to set", and
+          whether a gateway answers a ping is not.
+
+          So the measurement is the value now: read-only, stated as what it is, with 「다시 확인」
+          beside it — the only honest verb this console has. It cannot measure a network from a
+          browser, so pressing it records the ASK and says so; the figure above it does not move
+          until the server reports a new one. Same reasoning as the camera status override, where
+          an operator may attempt a reconnect and may not certify a recovery.
+
+          THE OVERRIDE SURVIVES, DEMOTED. It is not decoration: a firewall makes the ping wrong
+          both ways, this product ships on-premises only and some sites are isolated on purpose,
+          and isNetworkIsolated() is what routes an invitation. Taking it away would leave such a
+          site with no way to say so. But it now reads as what it is — somebody overruling a
+          measurement — and it carries their name and the moment, because the question an
+          undelivered invitation raises is "did the ping say this, or did a person?".
         */}
         <PairItem label={t.networkLabel} hint={n.overrideWhy}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <Switch checked={!isolated} onChange={v => setNetworkIsolationOverride(projectId, !v)} label={t.networkLabel} disabled={!mayEdit} />
-              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{isolated ? n.isolated : n.connected}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {/* The measurement, and the only thing on this row drawn as a value. */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
+                {n.measured} · {detected ? n.noResponse : n.reachable}
+              </span>
+              {mayEdit && (
+                <button className="portal-btn-outline" onClick={() => requestNetworkRecheck(projectId)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "5px", flexShrink: 0, height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  <RefreshCw size={11} strokeWidth={2.2} />
+                  {n.recheck}
+                </button>
+              )}
             </div>
-            <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>
-              {n.autoDetected} <span style={{ fontWeight: 700, color: "var(--gray-500)" }}>{detected ? n.noResponse : n.reachable}</span>
-              {hasOverride && <> · {isolated ? n.overriddenIsolated : n.overriddenConnected}</>}
-            </p>
-            {hasOverride && mayEdit && (
-              <button onClick={() => setNetworkIsolationOverride(projectId, null)}
-                style={{ alignSelf: "flex-start", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, color: "var(--primary-400)", textDecoration: "underline" }}>
-                {n.revertToDetection}
-              </button>
+            {/* Only after somebody asks, and it reports the asking rather than an outcome. */}
+            {project.networkCheckRequestedAt && (
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>
+                {n.recheckAsked(new Date(project.networkCheckRequestedAt).toLocaleString(lang === "ko" ? "ko-KR" : "en-US"))}
+              </p>
+            )}
+            {/* SUBORDINATE, AND INDENTED TO SAY SO. Below the measurement, in the lighter tone,
+                behind a rule: the reader meets the measured fact first and the disagreement
+                second. */}
+            {mayEdit && (
+              <div style={{ borderTop: BORDER, paddingTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                {hasOverride ? (
+                  <>
+                    <p style={{ fontSize: "11px", lineHeight: 1.5, color: "var(--warning-500)", fontWeight: 700 }}>
+                      {n.inForce}: {isolated ? n.isolated : n.connected}
+                    </p>
+                    {/* WHO SAID SO. A row written before this field existed has no author, and
+                        the line prints only what it holds rather than guessing at one. */}
+                    {project.networkIsolatedOverrideBy && project.networkIsolatedOverrideAt && (
+                      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>
+                        {n.overrideBy(project.networkIsolatedOverrideBy, new Date(project.networkIsolatedOverrideAt).toLocaleString(lang === "ko" ? "ko-KR" : "en-US"))}
+                      </p>
+                    )}
+                    <button className="portal-btn-outline" onClick={() => setNetworkIsolationOverride(projectId, null)}
+                      style={{ alignSelf: "flex-start", height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      {n.revertToDetection}
+                    </button>
+                  </>
+                ) : (
+                  /* Pinning the value the ping already reports would be a no-op dressed as a
+                     decision, so the one button offered is the disagreement: treat this site as
+                     the opposite of what was measured. */
+                  <button className="portal-btn-outline" onClick={() => setNetworkIsolationOverride(projectId, !detected)}
+                    style={{ alignSelf: "flex-start", height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-500)", fontSize: "11px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                    {n.overrideTo(detected ? n.connectedShort : n.isolatedShort)}
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </PairItem>
@@ -366,13 +451,20 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
         <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.provisionalNotice}</p>
       )}
 
-      <div>
-        {/* Named for what it writes. Two buttons reading "저장" in one card, one of them writing
-            every project on the team, is the kind of button people press once and regret. */}
-        <button className="portal-btn-primary" onClick={save} disabled={!canSave} title={mayEdit ? undefined : readOnlyReason}
+      {/* Named for what it writes. Two buttons reading "저장" in one card, one of them writing
+          every project on the team, is the kind of button people press once and regret. */}
+      {/* THE REASON IS BESIDE THE BUTTON, NOT IN ITS TOOLTIP. A disabled button fires no hover
+          events in some browsers and none at all on touch — the same finding that moved the
+          refused-row reasons in the Users panel onto a visible mark. A dark button with nothing
+          saying why is a screen that has stopped answering. */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        <button className="portal-btn-primary" onClick={save} disabled={!canSave}
           style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
           {t.saveProject}
         </button>
+        {saveBlockedReason && (
+          <span style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{saveBlockedReason}</span>
+        )}
       </div>
     </div>
   );
