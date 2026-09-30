@@ -7,7 +7,7 @@ import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, can
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
-import { SETUP_CODE_TTL_DAYS, codeDaysRemaining } from "@/lib/staffRoster";
+import { SETUP_CODE_TTL_DAYS, codeDaysRemaining, formatCode } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
 import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, StatusBadge, type StatusTone, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL, ActiveFilterCount } from "./PortalShared";
@@ -120,8 +120,22 @@ const T = {
     bulkSuspendTitle: (n: number) => (n === 1 ? "Suspend 1 account?" : `Suspend these ${n} accounts?`),
     bulkSuspendBody: "They stop being able to sign in immediately and stay on the list, so any of them can be restored without a new invitation. Nothing is deleted.",
     bulkSuspendCta: (n: number) => `Suspend ${n}`,
-    bulkSuspendBar: (n: number) => (n === 1 ? "1 account shown" : `${n} accounts shown`),
-    bulkSuspendAction: "Suspend all shown",
+    /*
+     * THE NUMBER THIS BAR NAMES IS THE NUMBER IT ACTS ON (2026-09-30).
+     *
+     * It printed bulkSuspendTargets.length — how many of the shown accounts COULD be suspended —
+     * under the words "accounts shown". Searching "smartcity" put five rows on screen and the bar
+     * said 「표시된 계정 3개」: one row was already suspended and one was the last owner, and
+     * neither is shown-ness. A reader who trusts the bar is off by two before they press anything,
+     * and the button beside it said "Suspend all shown", which was the same claim again.
+     *
+     * Both numbers, whenever they differ, and the button carries the one it will actually do.
+     * The line beside this one still says WHY somebody was left out; this one only has to be
+     * arithmetic the reader can check against the rows in front of them.
+     */
+    bulkSuspendBar: (n: number, shown: number) => n === shown
+      ? (shown === 1 ? "1 account shown" : `${shown} accounts shown`)
+      : `${n} of the ${shown} shown can be suspended`,
     bulkSuspendKept: (n: number) => `${n} left active — the last administrator cannot be suspended, and neither can your own account from here.`,
     bulkSuspendedToast: (n: number) => `${n} account${n === 1 ? "" : "s"} suspended`,
     // ONLY THE HALF THAT IS COUNTED. It promised "and accounts invited over 90 days ago that never
@@ -185,6 +199,25 @@ const T = {
        one of the two would hide the other under it. */
     panelAccountSection: "Sign-in",
     panelStatusSection: "Account",
+    /*
+     * THE ONE FACT THAT MAKES THE REST OF THE CARD HYPOTHETICAL, AT THE TOP OF IT.
+     *
+     * The badge beside the name already says 정지됨, and it was not enough: the card goes on to
+     * offer 비밀번호 재설정, 인물 검색 허용 and 앱 권한 변경, all live, all reading as ordinary
+     * work — so an owner could mint a temporary password, read it down the phone, and neither
+     * they nor the person on the other end would find out until the sign-in was refused. A badge
+     * names a state; this names the CONSEQUENCE, above everything the consequence applies to.
+     *
+     * It says what is kept as well as what is blocked, because the permissions below really are
+     * stored and really do come back with 재활성화 — "nothing works" would be the other kind of
+     * lie.
+     */
+    suspendedPanelTitle: "This account cannot sign in",
+    suspendedPanelBody: "It is suspended. Permissions set here are kept and come back with the account, but no password and no setup code will let it in until it is reactivated — the button is at the bottom of this card.",
+    /* On the two ways back in, which are the ones that would otherwise hand over a credential
+       that cannot work. Not on 이메일 변경: correcting an address is real work on a closed
+       account, and it is not a way in. */
+    reasonSuspended: "The account is suspended, so a new credential could not be used. Reactivate it first — the button is at the bottom of this card.",
     changeEmail: "Change email address",
     emailPanelTitle: "Change email address",
     emailPanelCurrent: "Current address",
@@ -568,8 +601,10 @@ const T = {
     bulkSuspendTitle: (n: number) => `계정 ${n}개를 정지할까요?`,
     bulkSuspendBody: "즉시 로그인이 막히고 목록에는 그대로 남습니다. 그래서 다시 필요해지면 새로 초대하지 않고 되돌릴 수 있습니다. 삭제되는 것은 없습니다.",
     bulkSuspendCta: (n: number) => `${n}개 정지`,
-    bulkSuspendBar: (n: number) => `표시된 계정 ${n}개`,
-    bulkSuspendAction: "표시된 계정 모두 정지",
+    /* 영어 쪽 주석 참고 — 「표시된 계정 3개」가 다섯 줄 위에 떠 있던 건이다. */
+    bulkSuspendBar: (n: number, shown: number) => n === shown
+      ? `표시된 계정 ${shown}개`
+      : `표시된 ${shown}개 중 ${n}개를 정지할 수 있습니다`,
     bulkSuspendKept: (n: number) => `${n}개는 활성으로 남습니다 — 마지막 관리자와 본인 계정은 여기서 정지할 수 없습니다.`,
     bulkSuspendedToast: (n: number) => `계정 ${n}개를 정지했습니다`,
     dormantHint: "90일 넘게 로그인하지 않은 활성 계정입니다. 인력이 도는 현장에서 아무도 닫는 것을 기억하지 못하는 계정이 이것입니다.",
@@ -632,8 +667,21 @@ const T = {
        — which is also why 인물 검색 차단 left it (see the 권한 group below). */
     panelWhereSection: "접근",
     panelWhatSection: "권한",
-    panelAccountSection: "로그인",
+    /*
+     * 「로그인」이 한 화면에 두 번 나오던 것 (2026-09-30).
+     *
+     * 접근 그룹의 첫 줄이 「로그인 · 앱만」(axisDoor, 어느 문으로 들어오나)이고, 이 캡션도
+     * 「로그인」이었다. 한 패널 안에 같은 단어가 두 가지 크기의 것을 가리키고 있었던 셈이다 —
+     * 하나는 들어오는 문, 하나는 그 문을 여는 열쇠들. 영어는 "Signs in to" / "Sign-in"으로
+     * 이미 갈라져 있으니 한국어만 갈라 준다. 「비밀번호와 코드」로 돌아가지 않은 이유는 이
+     * 묶음에 이메일 변경이 함께 들어 있기 때문 — 주소도 로그인 수단이다.
+     */
+    panelAccountSection: "로그인 수단",
     panelStatusSection: "계정",
+    /* 영어 쪽 주석 참고 — 배지는 상태를 부르고, 이 줄은 그 상태의 결과를 말한다. */
+    suspendedPanelTitle: "이 계정은 로그인할 수 없습니다",
+    suspendedPanelBody: "정지된 상태입니다. 여기서 정한 권한은 그대로 보관되어 재활성화하면 함께 돌아오지만, 재활성화하기 전에는 어떤 비밀번호도 설치 코드도 이 계정을 들여보내지 못합니다 — 재활성화 버튼은 이 카드 맨 아래에 있습니다.",
+    reasonSuspended: "정지된 계정이라 새 인증 수단을 발급해도 쓸 수 없습니다. 이 카드 맨 아래에서 먼저 재활성화하세요.",
     changeEmail: "이메일 변경",
     emailPanelTitle: "이메일 변경",
     emailPanelCurrent: "현재 주소",
@@ -2069,13 +2117,30 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }
     });
   };
 
+  /*
+   * A SETUP CODE IS PRINTED 4-4, EVERYWHERE ELSE AND NOW HERE TOO (2026-09-30).
+   *
+   * This box showed `BZLA6V4F`; the roster tab shows `BPXW-4762` from the same generator through
+   * formatCode, and /register's input is four boxes, a break, four boxes. Three spellings of one
+   * string, and this is the one that gets copied onto paper by hand and read back over a phone —
+   * the place where a run of eight characters is hardest to keep your place in.
+   *
+   * Only the code. A temporary password is not grouped (it is not 8 characters and the hyphen
+   * would be read as part of it), so the branch is on `kind`, not on length.
+   *
+   * The clipboard gets the hyphen too, deliberately: /register normalises the field with
+   * normalizeCode, which strips everything that is not A-Z2-9, so a pasted BPXW-4762 resolves the
+   * same as BPXW4762 — and what is copied should be what the reader can see they copied.
+   */
+  const shownCredential = password !== null && kind === "code" ? formatCode(password) : password;
+
   // Clipboard write can be refused (an insecure origin, or the browser's permission), and a "Copied"
   // label over a clipboard that did not take is how a password gets pasted as whatever was there
   // before. Only flip the label once the write actually resolved; on failure the password is still
   // on screen to read off.
   const copy = () => {
-    if (!password) return;
-    navigator.clipboard?.writeText(password).then(
+    if (!shownCredential) return;
+    navigator.clipboard?.writeText(shownCredential).then(
       () => { setCopied(true); setTimeout(() => setCopied(false), 2000); },
       () => setCopied(false),
     );
@@ -2211,7 +2276,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }
                   to get it out of the box. */}
               <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px", borderRadius: "10px", border: "1px solid var(--line)", backgroundColor: "var(--gray-50)" }}>
                 <code style={{ flex: 1, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "18px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "1px", wordBreak: "break-all" }}>
-                  {password}
+                  {shownCredential}
                 </code>
                 <button onClick={copy}
                   style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: copied ? "var(--success-400)" : "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
@@ -4719,14 +4784,18 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           backgroundColor: "var(--gray-50)", border: BORDER,
         }}>
           <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
-            {t.bulkSuspendBar(bulkSuspendTargets.length)}
+            {t.bulkSuspendBar(bulkSuspendTargets.length, filteredUsers.length)}
           </span>
           {bulkSuspendKept > 0 && (
             <span style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.bulkSuspendKept(bulkSuspendKept)}</span>
           )}
           <button className="portal-btn-outline" onClick={() => setConfirmingBulkSuspend(true)}
             style={{ marginLeft: "auto", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            {t.bulkSuspendAction}
+            {/* The count again, not "Suspend all shown": with the bar saying 3 of 5, a button
+                offering "all shown" is the discarded claim coming back one control to the right.
+                Same string the confirm dialog's own button uses, so the number the reader presses
+                here is the number they are asked to confirm. */}
+            {t.bulkSuspendCta(bulkSuspendTargets.length)}
           </button>
         </div>
       )}
@@ -5020,13 +5089,33 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                   in the strip above that filters the table to these rows. */}
               {u.appAccess && (lacksAppScreens(u) ? (
                 <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px", minWidth: 0 }}>
+                  {/*
+                    IT MAY TAKE TWO LINES RATHER THAN LEAVE THE COLUMN (2026-09-30).
+
+                    Measured at 1024x768: this chip wants 119px and the 접근 track gives it 96
+                    (David Ong) or 102 (Wei Chen), and it was `flexShrink: 0` with `nowrap` in a
+                    cell whose wrapper has `minWidth: 0` — so it simply drew past its own column
+                    and over 카메라 next door. On screen that read as one word:
+                    「No app permissionsAll」.
+
+                    Not an ellipsis: this is the line that says the account reaches nothing, and
+                    「No app permis…」 is the sentence losing the half that carries it. Not a wider
+                    column either — the widths are shared with 1280 and 1440, where all of this
+                    already fits on one line, and a track sized for the narrowest window is width
+                    taken from the names at every other one. The pill wraps instead, which costs
+                    a row 12px of height on exactly the rows that have something wrong with them.
+
+                    `alignItems: flex-start` so the mark stays on the FIRST line rather than
+                    centring itself against a two-line block, and the radius comes off 999px —
+                    a stadium round a two-line label is a lozenge, 9px is a chip either way.
+                  */}
                   <span style={{
-                    display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0,
-                    height: "18px", padding: "0 8px", borderRadius: "999px",
+                    display: "inline-flex", alignItems: "flex-start", gap: "4px",
+                    maxWidth: "100%", minHeight: "18px", padding: "2px 8px", borderRadius: "9px",
                     backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
-                    fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap",
+                    fontSize: "10px", fontWeight: 600, lineHeight: "14px",
                   }}>
-                    <MonitorOff size={11} strokeWidth={2.6} />
+                    <MonitorOff size={11} strokeWidth={2.6} style={{ flexShrink: 0, marginTop: "1px" }} />
                     {t.grantsHeldNone}
                   </span>
                   {/* Opens the same dialog as the row menu's 앱 화면 변경, so there is one editor
@@ -5050,8 +5139,23 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                    account that cannot reach a search box is the kind of confident wrong value this
                    console keeps producing. The grant itself is kept in the data when the door
                    shuts and comes back with it; this line just stops claiming it is live. */
-                <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
-                  <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                /*
+                  THE PRESET NAME GETS THE LINE BEFORE THE CHIP GETS ANY (2026-09-30).
+
+                  Two items on one line, one of them `flexShrink: 0`: at 1024x768 the 접근 track
+                  is 103px, 「Investigator」 wants 56 and 「Person Search」 keeps its whole 76, so
+                  the preset was squeezed to 20px and rendered 「In…」 — the name of the thing that
+                  decides what this person sees, reduced to two letters, while a secondary mark
+                  beside it stayed whole.
+
+                  `flexWrap` rather than letting the chip shrink too: the chip is a fixed phrase
+                  that means nothing clipped, and the preset name is the one of the two worth
+                  reading first. Wrapping puts the chip on its own line only when both will not
+                  fit — at 1280 and 1440 they still share one, which is where this was already
+                  right.
+                */
+                <span style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "2px 6px", minWidth: 0 }}>
+                  <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
                     {(u.grantMode === "preset" && u.presetId && presetLabelById.get(u.presetId)) || t.grantCustom}
                   </span>
                   {holdsSearch(u) && (
@@ -5516,6 +5620,34 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             }
             onClose={close}
           >
+              {/*
+                THE STATE, BEFORE ANYTHING THE READER MIGHT DO ABOUT IT (2026-09-30).
+
+                Reproduced at 1440: opening 정지됨 David Ong's card showed 비밀번호 재설정 live,
+                its drawer opened on 「메일로 보내기」 with all three routes enabled, and nothing
+                anywhere in that path said the account is shut. The badge beside the name is the
+                only mark, and a badge is read as a label on the person, not as a rule about the
+                buttons 300px below it.
+
+                Amber, not red: nothing here is broken and nothing is lost — 재활성화 is one press
+                away and it is named in the sentence. Above the groups rather than inside 로그인
+                수단, because 인물 검색 허용 and 앱 권한 are in the same position (offered, live,
+                and pointless until the door opens) and a notice filed under one section does not
+                cover the other.
+              */}
+              {mu.status === "suspended" && (
+                <div style={{
+                  margin: "8px 20px 0", padding: "12px 14px", borderRadius: "10px",
+                  backgroundColor: "var(--warning-100)",
+                  display: "flex", gap: "8px", alignItems: "flex-start",
+                }}>
+                  <UserX size={14} strokeWidth={2.4} aria-hidden="true" style={{ flexShrink: 0, marginTop: "1px", color: "var(--warning-500)" }} />
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "var(--warning-500)" }}>{t.suspendedPanelTitle}</span>
+                    <span style={{ display: "block", fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.5, marginTop: "3px" }}>{t.suspendedPanelBody}</span>
+                  </span>
+                </div>
+              )}
               <div style={{ padding: "8px 20px 4px", display: "flex", flexDirection: "column", gap: "18px" }}>
                 {([["where", t.panelWhereSection], ["what", t.panelWhatSection]] as const).map(([group, heading]) => (
                 <div key={group}>
@@ -5738,14 +5870,36 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     },
                     {
                       key: "credential", label: t.resetPassword, icon: <KeyRound size={14} strokeWidth={2.2} />,
-                      disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
+                      /*
+                       * REFUSED WHILE THE ACCOUNT IS SHUT (2026-09-30).
+                       *
+                       * This opened a drawer offering three delivery routes, all live, mail
+                       * preselected — for an account the gate turns away before it ever looks at
+                       * a password. Every one of the three ends the same way: a credential handed
+                       * over, a person trying it, and a refusal neither of them can explain. The
+                       * mail route is the worst of them, because nothing comes back to the
+                       * administrator at all.
+                       *
+                       * Disabled rather than opened-and-warned: the drawer's own confirm step is
+                       * where the consequences are read, and a box you are meant to read and then
+                       * not use teaches people to press through it. The reason names 재활성화 and
+                       * says where it is; the notice at the top of the card says the same thing
+                       * where a disabled control's tooltip cannot reach (touch, and some browsers
+                       * on hover).
+                       */
+                      disabled: !manageAccess || mu.status === "suspended",
+                      reason: !manageAccess ? t.reasonNotOwner : mu.status === "suspended" ? t.reasonSuspended : undefined,
                       /* No close(): the card stays under this, which is what gives the panel a
                          ← to come back to. Same as the three editors above. */
                       onClick: () => setCredentialFor(mu),
                     },
                     ...(mu.setupCode ? [{
                       key: "code", label: t.viewSetupCode, icon: <Eye size={14} strokeWidth={2.2} />,
-                      disabled: !manageAccess, reason: manageAccess ? undefined : t.reasonNotOwner,
+                      /* Same refusal as 비밀번호 재설정 beside it, and for the same reason: this
+                         is reading a code back out in order to hand it over, which is a way in.
+                         Looking it up is harmless; the errand it exists for is not. */
+                      disabled: !manageAccess || mu.status === "suspended",
+                      reason: !manageAccess ? t.reasonNotOwner : mu.status === "suspended" ? t.reasonSuspended : undefined,
                       onClick: () => setViewingCodeFor(mu),
                     }] : []),
                   ].map(a => (

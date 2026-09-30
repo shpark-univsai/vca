@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n";
 
 export type ToastVariant = "default" | "success" | "info" | "warning" | "error";
@@ -111,6 +111,9 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
       backgroundColor: "var(--gray-900)", border: "1px solid rgba(255, 255, 255, 0.08)",
       boxShadow: "0 12px 32px rgba(24, 17, 39, 0.28)",
       minWidth: "240px", maxWidth: "420px", flexShrink: 0,
+      // The stack around these is pointer-transparent so its empty margins stop swallowing clicks
+      // meant for the page; the card itself still has an action and a ✕ to press.
+      pointerEvents: "auto",
     }}>
       {variant !== "default" && (
         <div style={{ flexShrink: 0, display: "flex" }}>
@@ -180,9 +183,69 @@ export function useToast() {
  */
 const MAX_TOASTS = 3;
 
+/**
+ * IS A PANEL OR A DIALOG OPEN OVER THE PAGE RIGHT NOW.
+ *
+ * Every overlay in this product draws the same thing first: one `position: fixed` element pinned
+ * to all four edges, carrying the scrim, with the panel or the dialog inside it — Drawer at
+ * z-index 320, ConfirmModal at 400, the app's own modals in the same range. So the question can be
+ * asked of the DOM without this file knowing any of their names: a fixed box that covers
+ * essentially the whole window and sits above the page is a scrim, and nothing else in the product
+ * is shaped like one. The toast stack itself is fixed too and is excluded by the same test — it is
+ * a 420px card in a corner, not a full-bleed sheet.
+ *
+ * Deliberately not a MutationObserver: this runs once per change to the toast list, which is the
+ * only moment the answer is needed, and the app's detection ticker mutates the tree several times
+ * a second.
+ */
+function scrimIsUp(): boolean {
+  if (typeof document === "undefined") return false;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  // Overlays in this codebase are styled inline (the house style — there are no CSS modules), so
+  // the attribute selector narrows thousands of nodes to a handful before anything is measured.
+  // getComputedStyle then confirms it rather than trusting the string.
+  for (const el of document.querySelectorAll<HTMLElement>('[style*="position: fixed"]')) {
+    const cs = getComputedStyle(el);
+    if (cs.position !== "fixed") continue;
+    const z = Number.parseInt(cs.zIndex, 10);
+    if (!Number.isFinite(z) || z < 100) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width >= vw * 0.9 && r.height >= vh * 0.9) return true;
+  }
+  return false;
+}
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const nextId = useRef(0);
+  /*
+   * WHICH CORNER, AND WHY IT IS NOT ALWAYS THE SAME ONE.
+   *
+   * Measured on Portal → Users → a row → 비밀번호 재설정 → 「비밀번호를 알려줄 수 있다」 →
+   * 발급: the result panel shows the credential once and its only way out is 완료 at the bottom
+   * right of the panel, and the success toast landed on top of that button and ate the clicks for
+   * the whole five seconds (covered at t=1s and t=4s, clear at t=7s). The panel is 440px of the
+   * right-hand edge and full height, so bottom-right is exactly where its footer is — this is not
+   * one modal's bad luck, it is where every Drawer in the product puts its buttons.
+   *
+   * Three things were tried against it and rejected. Lowering the toast under the overlay hides
+   * it completely behind the panel, so the message about what just happened is never seen. Making
+   * the stack pointer-transparent leaves the card sitting over the button, which stops a misclick
+   * and not the real problem — you still cannot read the label under it. Moving it up the right
+   * edge does nothing against a panel that is the height of the window.
+   *
+   * So it moves to the other corner while an overlay is up. The page behind an overlay is inert —
+   * the scrim takes every click — so the left edge has nothing left on it worth not covering, and
+   * a dialog is centred and a panel is on the right, which leaves bottom-left the one corner both
+   * shapes are guaranteed to leave alone. With nothing open it is the bottom right the comment
+   * below argues for, unchanged.
+   *
+   * Decided when the stack changes rather than continuously: a toast that jumps corners because
+   * somebody closed a panel while reading it is worse than one that stays where it landed, and it
+   * costs no observer.
+   */
+  const [dodgeOverlay, setDodgeOverlay] = useState(false);
+  useLayoutEffect(() => { setDodgeOverlay(toasts.length > 0 && scrimIsUp()); }, [toasts]);
 
   const dismiss = useCallback((id: number) => {
     setToasts(prev => prev.filter(t => t.id !== id));
@@ -211,8 +274,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         a centre line.
       */}
       <div style={{
-        position: "fixed", bottom: "24px", right: "24px", zIndex: 10000,
-        display: "flex", flexDirection: "column-reverse", alignItems: "flex-end", gap: "10px",
+        position: "fixed", bottom: "24px", zIndex: 10000,
+        ...(dodgeOverlay ? { left: "24px" } : { right: "24px" }),
+        display: "flex", flexDirection: "column-reverse", alignItems: dodgeOverlay ? "flex-start" : "flex-end", gap: "10px",
+        /* The box is taller and wider than the cards in it whenever they differ in size, and
+           those gaps were catching clicks meant for whatever is underneath. The cards take their
+           own back. */
+        pointerEvents: "none",
       }}>
         {toasts.map(t => <Toast key={t.id} item={t} onDismiss={dismiss} />)}
       </div>
