@@ -1680,6 +1680,12 @@ const UPLOADS: UploadedMedia[] = [
   { id: "d2", projectId: "proj-sg", fileName: "gate_handover_0905.mp4", kind: "deepfake", durationSec: 128, sizeBytes: 61_000_000, resolution: "1920×1080", uploadedAt: auditAt(33 * 60), uploadedBy: "Marcus Lee", status: "done", deepfakeVerdict: "authentic", deepfakeScore: 0.88 },
   { id: "d3", projectId: "proj-sg", fileName: "lobby_reupload.mp4", kind: "deepfake", durationSec: 12, sizeBytes: 3_100_000, resolution: "854×480", uploadedAt: auditAt(58 * 60), uploadedBy: "Wei Chen", status: "done", deepfakeVerdict: "inconclusive", deepfakeScore: 0.41 },
   { id: "d4", projectId: "proj-sg", fileName: "unverified_tipoff.mp4", kind: "deepfake", durationSec: 74, sizeBytes: 29_000_000, resolution: "1280×720", uploadedAt: auditAt(2 * 60), uploadedBy: "Grace Tan", status: "pending" },
+  // A check that did not finish. A deepfake submission has FOUR outcomes, not three — 진짜,
+  // 조작됨, 판정 불가, and no answer at all — and the fourth is the one an operator mistakes for a
+  // verdict if the screen is careless with it, because "실패" in the column that prints "조작됨"
+  // reads as "it failed the check". It is seeded so that state is on screen and the wording can be
+  // seen to be right; see the row's statusCheckFailed branch.
+  { id: "d5", projectId: "proj-sg", fileName: "carpark_b2_clip.mp4", kind: "deepfake", durationSec: 31, sizeBytes: 11_000_000, resolution: "1280×720", uploadedAt: auditAt(4 * 60), uploadedBy: "Marcus Lee", status: "failed" },
   { id: "i1", projectId: "proj-sg", fileName: "west_gate_snapshot.jpg", kind: "image", sizeBytes: 2_400_000, resolution: "1920×1080", uploadedAt: auditAt(28 * 60), uploadedBy: "Grace Tan", status: "done", detectionCount: 2 },
 ];
 
@@ -3362,6 +3368,19 @@ const ACCESS_REQUESTS: AccessRequest[] = [];
 // no code is possible, and then those two buttons are how it gets one. The console just never
 // writes one itself.
 /*
+ * EVERY CODE HERE HAS AN ISSUE DATE, because every code the console mints gets one
+ * (issueRegistrationCodes stamps `issuedAt`) and the whole expiry rule is issuedAt + TTL.
+ *
+ * Eight of these rows had a code and no date, and 가입 대기 printed them as 「발급됨」 with the
+ * expiry cell simply empty — beside neighbours reading 「2026-10-04 만료」. Nothing on the row said
+ * whether that code never expires, or expires on a date nobody had computed. It is also a state
+ * the console cannot produce, which is the mistake this file's other notes keep catching: a seed
+ * that teaches the reader the list means something it does not.
+ *
+ * The SERVER may still hand over a dateless code, and the cell now says so in words rather than
+ * leaving the reader to guess — see RosterCodeCell.
+ */
+/*
  * THE ROWS CARRY THE GRANTS THE PANEL WOULD HAVE WRITTEN (2026-09-28).
  *
  * A row created through 등록 코드로 추가 now answers four questions, so seeds that answer none of
@@ -3375,23 +3394,23 @@ const ACCESS_REQUESTS: AccessRequest[] = [];
  */
 const STAFF_ROSTER: RosterEntry[] = [
   { employeeId: "EMP-3001", name: "James Whitfield", department: "Control Room", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "FQ4M7XB2", issuedAt: "2026-09-20T09:00:00+08:00" },
-  { employeeId: "EMP-3002", name: "Priya Nair", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "BPXW4762" },
-  { employeeId: "EMP-3003", name: "Daniel Cruz", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "HKLM9234" },
+  { employeeId: "EMP-3002", name: "Priya Nair", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "BPXW4762", issuedAt: "2026-09-22T14:20:00+08:00" },
+  { employeeId: "EMP-3003", name: "Daniel Cruz", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "HKLM9234", issuedAt: "2026-09-24T10:05:00+08:00" },
   { employeeId: "EMP-3004", name: "Farah Ismail", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "TN8R3KD5", issuedAt: "2026-09-20T09:00:00+08:00" },
-  { employeeId: "EMP-3005", name: "Tom Reyes", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "used", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "QRST5678" },
+  { employeeId: "EMP-3005", name: "Tom Reyes", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "used", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "QRST5678", issuedAt: "2026-09-12T09:30:00+08:00" },
   { employeeId: "EMP-3006", name: "Lena Brooks", department: "Field Engineering", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-operator", appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], code: "YC6V9HJ4", issuedAt: "2026-09-20T09:00:00+08:00" },
   // Issued long enough ago that REGISTRATION_CODE_TTL_DAYS has passed: the row still says
   // "unused", and effectiveCodeStatus() is what turns it into "expired". Stored-as-expired is not
   // used in the seeds any more — it could never demonstrate that expiry actually works.
   { employeeId: "EMP-3007", name: "Marcus Ho", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "unused", accessMode: "appOnly", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "VXYZ2345", issuedAt: "2026-07-15T09:00:00+08:00" },
-  { employeeId: "EMP-3008", name: "Aisha Bakar", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "JKMN6789" },
+  { employeeId: "EMP-3008", name: "Aisha Bakar", department: "Operations", projectId: "proj-sg", permission: "operator", status: "unused", code: "JKMN6789", issuedAt: "2026-09-26T16:40:00+08:00" },
   { employeeId: "EMP-3009", name: "Ryan Tavares", department: "Field Engineering", projectId: "proj-sg", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "MZ2K5QP7", issuedAt: "2026-09-20T09:00:00+08:00" },
-  { employeeId: "EMP-3010", name: "Sana Idris", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "used", code: "CDFG3456" },
+  { employeeId: "EMP-3010", name: "Sana Idris", department: "Control Room", projectId: "proj-sg", permission: "operator", status: "used", code: "CDFG3456", issuedAt: "2026-09-15T11:15:00+08:00" },
   { employeeId: "EMP-3011", name: "Emily Foster", department: "Operations", projectId: "proj-riverside", permission: "admin", status: "unused", accessMode: "both", portalRole: "admin", grantMode: "preset", presetId: "preset-investigator", appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], code: "RB9T4LN6", issuedAt: "2026-09-20T09:00:00+08:00" },
-  { employeeId: "EMP-3012", name: "Kevin Ng", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "LMPQ8765" },
+  { employeeId: "EMP-3012", name: "Kevin Ng", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "LMPQ8765", issuedAt: "2026-09-23T09:50:00+08:00" },
   { employeeId: "EMP-3013", name: "Hana Suzuki", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "unused", code: "DX7J2WF8", issuedAt: "2026-09-20T09:00:00+08:00" },
-  { employeeId: "EMP-3014", name: "Oliver Grant", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "used", code: "RSTU4325" },
-  { employeeId: "EMP-3015", name: "Mei Lin Tan", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "WXYZ9876" },
+  { employeeId: "EMP-3014", name: "Oliver Grant", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "used", code: "RSTU4325", issuedAt: "2026-09-11T15:00:00+08:00" },
+  { employeeId: "EMP-3015", name: "Mei Lin Tan", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "WXYZ9876", issuedAt: "2026-09-25T13:30:00+08:00" },
   { employeeId: "EMP-3016", name: "Diego Alvarez", department: "Field Engineering", projectId: "proj-riverside", permission: "operator", status: "unused", code: "ABCD5432", issuedAt: "2026-07-02T09:00:00+08:00" },
   { employeeId: "EMP-3017", name: "Chloe Bennett", department: "Operations", projectId: "proj-riverside", permission: "operator", status: "unused", code: "GK3P8SV5", issuedAt: "2026-09-20T09:00:00+08:00" },
   { employeeId: "EMP-3018", name: "Yusuf Karim", department: "Control Room", projectId: "proj-riverside", permission: "operator", status: "unused", code: "EFGH6543" },

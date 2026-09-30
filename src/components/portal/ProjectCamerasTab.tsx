@@ -144,6 +144,7 @@ const T = {
     statusAnalyzing: "Analysing",
     statusDone: "Analysed",
     statusFailed: "Failed",
+    statusCheckFailed: "Check failed",
     detectionsFound: (n: number) => `${n} face${n === 1 ? "" : "s"}`,
     addSource: "Add source",
     addCameraOption: "Camera (RTSP)",
@@ -353,6 +354,7 @@ const T = {
     statusAnalyzing: "분석 중",
     statusDone: "분석 완료",
     statusFailed: "실패",
+    statusCheckFailed: "검사 실패",
     detectionsFound: (n: number) => `얼굴 ${n}개`,
     addSource: "소스 추가",
     addCameraOption: "카메라 (RTSP)",
@@ -2554,7 +2556,15 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     {/* A finished deepfake row says the verdict here instead of "Analysed". The
                         pipeline word is only news while the answer is missing; once it is there,
                         printing both makes the reader step over "Analysed" to reach it. */}
-                    {!verdict && <span style={{ fontSize: "12px", fontWeight: 700, color: tone.text }}>{t[tone.label]}</span>}
+                    {/* A DEEPFAKE ROW THAT FAILED SAYS 「검사 실패」, not 「실패」. On this screen
+                        「실패」 sits in the column that also prints 「조작됨」, so the bare word reads
+                        as a verdict — the file failed the check — when what happened is the
+                        opposite: no verdict exists, the analysis did not finish. It is the fourth
+                        state, beside 진짜 · 조작됨 · 판정 불가, and it has to be unmistakably not
+                        one of the three. */}
+                    {!verdict && <span style={{ fontSize: "12px", fontWeight: 700, color: tone.text }}>
+                      {u.kind === "deepfake" && u.status === "failed" ? t.statusCheckFailed : t[tone.label]}
+                    </span>}
                     {u.status === "done" && u.kind !== "deepfake" && u.detectionCount !== undefined && (
                       <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{t.detectionsFound(u.detectionCount)}</span>
                     )}

@@ -67,6 +67,8 @@ const T = {
     colStatus: "Status",
     colCode: "Code",
     codeExpiresOn: (date: string) => `Expires ${date}`,
+    codeNoIssueDate: "No expiry date on record",
+    codeNoIssueDateWhy: "This code has no issue date, so the 14-day deadline cannot be worked out. Reissue it to give it one.",
     justIssued: "Just issued",
     codeReveal: "Show the code",
     codeHide: "Hide the code again",
@@ -163,6 +165,8 @@ const T = {
     colStatus: "상태",
     colCode: "코드",
     codeExpiresOn: (date: string) => `${date} 만료`,
+    codeNoIssueDate: "만료일 기록 없음",
+    codeNoIssueDateWhy: "이 코드에는 발급 시각이 없어서 14일 기한을 계산할 수 없습니다. 재발급하면 기한이 생깁니다.",
     justIssued: "방금 발급",
     codeReveal: "코드 보기",
     codeHide: "코드 다시 가리기",
@@ -288,9 +292,20 @@ function RosterCodeCell({ entry, onReveal, onIssue, t, justIssued }: {
      dead" — the state says expired and the date says since when. Only 미발급 has nothing to say,
      because there is no code to date. */
   const expiresAt = codeExpiresAt(entry.issuedAt);
+  /* AND WHEN THERE IS NO DATE, IT SAYS SO. An empty cell next to neighbours reading 「2026-10-04
+     만료」 leaves the reader choosing between two readings — this code never expires, or nobody
+     computed the date — and those are opposite answers. The console always stamps an issue time
+     (issueRegistrationCodes), so this is the row a SERVER handed over without one; the expiry rule
+     is issuedAt + TTL, so with no issuedAt there is no deadline to enforce, and that is worth
+     saying on the row rather than leaving blank. Reissuing stamps one. */
   const expiryLine = expiresAt
     ? <span style={{ fontSize: "10.5px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.codeExpiresOn(sgtDateKey(expiresAt))}</span>
-    : null;
+    /* Only while the code is still waiting to be used. A code somebody has already registered with
+       has no deadline left to miss, so flagging its missing date there would be an alarm about
+       nothing. (An expired row always has a date — that is what made it expired.) */
+    : entry.status === "unused"
+      ? <span title={t.codeNoIssueDateWhy} style={{ fontSize: "10.5px", color: "var(--warning-500)", whiteSpace: "nowrap" }}>{t.codeNoIssueDate}</span>
+      : null;
   /* BESIDE THE CODE, NOT UNDER IT (owner: 두줄로 안하고 한줄로 나란히 둬도 옆에 공간많아). Both
      are one fact about one code and the column has the room, so stacking them spent a second row
      of the table on 10.5px of text and pushed every row taller. */

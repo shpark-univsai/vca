@@ -35,6 +35,7 @@ const T = {
     analysed: "Analysed",
     pending: "Waiting to be analysed",
     running: "Being analysed",
+    failedCheck: "Check failed — no result",
     faces: (n: number) => `${n} face${n === 1 ? "" : "s"} found`,
     verdict: "Deepfake check",
     verdictManipulated: "Manipulated",
@@ -58,6 +59,7 @@ const T = {
     analysed: "분석 완료",
     pending: "분석 대기",
     running: "분석 중",
+    failedCheck: "검사 실패 — 결과 없음",
     faces: (n: number) => `얼굴 ${n}개 검출`,
     verdict: "딥페이크 판정",
     verdictManipulated: "조작됨",
@@ -169,8 +171,14 @@ export default function UploadPreviewModal({ upload, onClose }: { upload: Upload
             {upload.kind === "deepfake" ? t.verdict : t.analysed}
           </span>
           <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
+            {/* THREE STATES BEFORE THE RESULT, not two. A failed analysis fell through to
+                「분석 중」 here — the drawer told the reader an analysis was running that had
+                already given up, and nothing on the panel said otherwise. And on a deepfake
+                submission it has to read as the absence of a verdict, not as one. */}
             {upload.status !== "done"
-              ? (upload.status === "pending" ? t.pending : t.running)
+              ? (upload.status === "pending" ? t.pending
+                : upload.status === "failed" ? t.failedCheck
+                : t.running)
               : upload.kind === "deepfake"
                 // 판정 불가 carries no confidence figure, here or in the row: the number is the
                 // model's confidence in not knowing, and printing it where "조작 · 확신도 94%"

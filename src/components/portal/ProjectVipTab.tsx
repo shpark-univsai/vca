@@ -2670,6 +2670,24 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
             : listState === "failed" ? <TableLoadFailed text={t.loadFailed} retryLabel={t.retry} onRetry={retryList} />
             : projectPersons.length === 0 ? <TableEmpty text={emptyText} /> : projectPersons.map((person, i) => {
             const isLast = i === projectPersons.length - 1;
+            /*
+             * WHICH DEFECT THIS ROW HAS, on the row.
+             *
+             * 사진 없음 · 사진 인식 실패 · 중복 의심 are counted as one cell in the strip above —
+             * they arrive from one act and the reader's next move is the same for all three (owner,
+             * 2026-09-18) — but pressing that cell gave a list of rows that looked like every other
+             * row. The reader had the count and the rows and no way to tell which of the three each
+             * row was, so "open them and fix the file" meant opening each one to find out.
+             *
+             * Ordered, because a row can be more than one: a photoless row is also a name clash
+             * often enough. The photo comes first because it is the one that stops the person being
+             * matched at all; the duplicate is a question about the register, not about whether it
+             * works.
+             */
+            const defect = healthIds.missingPhoto.has(person.id) ? t.healthMissingPhoto
+              : healthIds.embeddingFailed.has(person.id) ? t.healthEmbeddingFailed
+              : healthIds.duplicates.has(person.id) ? t.healthDuplicates
+              : null;
             return (
               /*
                * THE WHOLE ROW OPENS THE PERSON, and lights up under the pointer — the same
@@ -2738,6 +2756,16 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     }}>
                     {person.name}
                   </span>
+                  {/* Under the name, where the expiry tag used to sit: it is a fact about this
+                      listing, and the name cell is the only one on the row with a second line to
+                      give. Amber like every other outstanding defect in Portal, and 「중복 의심」
+                      carries no number — the check is a name match, and a score printed here would
+                      be a figure nobody can act on. */}
+                  {defect && (
+                    <span style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--warning-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {defect}
+                    </span>
+                  )}
                 </span>
                 {showGroupColumn && (
                   <span style={{ minWidth: 0, fontSize: "12px", color: person.groupId ? "var(--gray-600)" : "var(--gray-300)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
