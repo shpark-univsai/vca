@@ -13,8 +13,25 @@ import { useLanguage } from "@/lib/i18n";
 // See the per-file pattern note in lib/i18n.ts.
 const T = {
   en: {
-    deadTitle: "This link no longer works",
-    deadBody: (days: number) => `Invitation links expire after ${days} days or once used. Ask for a new one.`,
+    /*
+     * TWO DEAD ENDS, NOT ONE (2026-09-30).
+     *
+     * There was one title and one body, and the body was the invitation's: "Invitation links
+     * expire after 7 days or once used." Someone who got here holding a TEMPORARY PASSWORD read
+     * that — and they have no link, were never sent one, and the number they were told on the
+     * phone was 24 hours. Both the thing named and the number were wrong on that path, and it is
+     * the path where the person is least able to work out what really happened: the administrator
+     * read them a password out loud and this screen told them about a mail they never received.
+     *
+     * The screen already knows which door it is (`reason=temp`), so each one says its own thing.
+     * The numbers stay interpolated from password.ts — an administrator reads the same two
+     * constants off Portal when they issue either one, and a literal typed here is a second place
+     * for them to live and drift from.
+     */
+    deadTitleInvite: "This link no longer works",
+    deadTitleTemp: "This temporary password can no longer be used",
+    deadBodyInvite: (days: number) => `Invitation links expire after ${days} days or once used. Ask for a new one.`,
+    deadBodyTemp: (hours: number) => `A temporary password lasts ${hours} hours, and stops working once it has been changed. Ask your administrator for a new one.`,
     whoToContact: "WHO TO CONTACT",
     securityTeam: "Your security operations team",
     backToLogin: "Back to log in",
@@ -32,8 +49,10 @@ const T = {
     submit: "Set Password",
   },
   ko: {
-    deadTitle: "더 이상 사용할 수 없는 링크입니다",
-    deadBody: (days: number) => `초대 링크는 ${days}일이 지나거나 한 번 사용하면 만료됩니다. 새 링크를 요청해주세요.`,
+    deadTitleInvite: "더 이상 사용할 수 없는 링크입니다",
+    deadTitleTemp: "더 이상 쓸 수 없는 임시 비밀번호입니다",
+    deadBodyInvite: (days: number) => `초대 링크는 ${days}일이 지나거나 한 번 사용하면 만료됩니다. 새 링크를 요청해주세요.`,
+    deadBodyTemp: (hours: number) => `임시 비밀번호는 ${hours}시간까지만 쓸 수 있고, 한 번 바꾸면 그때 만료됩니다. 관리자에게 새 임시 비밀번호를 요청해주세요.`,
     whoToContact: "문의할 곳",
     securityTeam: "보안 관제 담당자",
     backToLogin: "로그인으로 돌아가기",
@@ -184,6 +203,10 @@ function PasswordSetupForm() {
    * silently to /login, which from the outside looks like a button that did nothing: the person is
    * left clicking the same mail again. It does not distinguish expired from unknown, since the way
    * out is identical and naming which one would confirm to a stranger that the account exists.
+   *
+   * It DOES distinguish the two ways of arriving, which is a different thing: `reason=temp` is in
+   * the address the visitor already holds, so saying it back leaks nothing, and it is the only way
+   * to name the right object and the right number (see the dictionary above).
    */
   if (linkDead) {
     return (
@@ -205,10 +228,12 @@ function PasswordSetupForm() {
           }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", width: "100%" }}>
               <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-800)", letterSpacing: "-0.52px", lineHeight: "40px", textAlign: "center" }}>
-                {t.deadTitle}
+                {forcedByTempPassword ? t.deadTitleTemp : t.deadTitleInvite}
               </h1>
               <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.28px", textAlign: "center", lineHeight: 1.5 }}>
-                {t.deadBody(INVITE_TOKEN_TTL_DAYS)}
+                {forcedByTempPassword
+                  ? t.deadBodyTemp(TEMP_PASSWORD_VALIDITY_HOURS)
+                  : t.deadBodyInvite(INVITE_TOKEN_TTL_DAYS)}
               </p>
             </div>
 

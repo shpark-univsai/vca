@@ -39,6 +39,12 @@ const T = {
     permAdmin: "Administrator — Portal + App",
     permOperator: "App only",
     permPortalOnly: "Portal only — no app",
+    /* The two below are what a row with no app grants on it actually amounts to. Worded off
+       AccessGate's own refusal ("No screens have been assigned to this account") so the sentence
+       the person reads here is the sentence they will meet at the door if nobody acts on it. */
+    permNoScreens: "No screens assigned yet",
+    permAdminNoScreens: "Administrator — Portal. No app screens yet",
+    noScreensNote: "You can create the account now, but the app will turn you away until an administrator assigns your screens in Portal. Ask them to.",
     yesContinue: "Yes, continue",
     notMe: "This isn't me — enter a different code",
     passwordTitle: "Set your password",
@@ -74,6 +80,9 @@ const T = {
     permAdmin: "관리자 — Portal + 앱",
     permOperator: "앱만",
     permPortalOnly: "Portal만 — 앱은 쓰지 않습니다",
+    permNoScreens: "지정된 화면이 아직 없습니다",
+    permAdminNoScreens: "관리자 — Portal. 앱 화면은 아직 없습니다",
+    noScreensNote: "지금 계정을 만들 수는 있지만, 관리자가 Portal에서 볼 화면을 지정하기 전까지 앱은 돌려보냅니다. 관리자에게 지정을 요청해주세요.",
     yesContinue: "네, 계속하기",
     notMe: "제가 아닙니다 — 다른 코드 입력하기",
     passwordTitle: "비밀번호를 설정해주세요",
@@ -109,8 +118,47 @@ interface Activation {
   /** Where the row says they will sign in. Absent on rows that came from the Excel import, and on
    *  the account pool — the two-value field above is the fallback. */
   accessMode?: "both" | "appOnly" | "portalOnly";
+  /**
+   * Whether ONE app screen has been granted. Carried rather than re-derived, because the two pools
+   * keep the grants in different places (RosterEntry.appActions / PortalUser.appActions) and the
+   * confirm screen must not have to know that. See describeGrant for why it is on this screen at
+   * all: without it, an app door with nothing behind it is indistinguishable from a working one.
+   */
+  hasAppGrants: boolean;
   /** Which pool it came from — only needed for the handoff notes about what to burn. */
   source: "roster" | "account";
+}
+
+/**
+ * WHAT THIS CODE WILL ACTUALLY OPEN, IN ONE LINE (2026-09-30).
+ *
+ * The permission row used to read `accessMode ?? (permission === "admin" ? "both" : "appOnly")`
+ * and print that. On a row from the Excel import — no accessMode, no appActions, because a
+ * spreadsheet column cannot hold them — that invented 「앱만」. Measured with JKMN-6789 (Aisha
+ * Bakar): the screen said "App only", and the account activateRosterEntry then minted holds
+ * `appAccess: true` with an EMPTY grant list, which AccessGate refuses with `noScreens`. Portal's
+ * own 「가입 대기」 tab had the row marked 「권한 없음」 the whole time — the only screen telling the
+ * person otherwise was the one addressed to them, at the moment they were being asked to say
+ * "yes, that's me".
+ *
+ * The door is still read the way activateRosterEntry reads it, because that fallback is a true
+ * statement about the door: an imported 관리자 row really does become a Portal admin. What was
+ * never true is what lies behind the app half of it, so that half is now answered by the grants
+ * themselves rather than guessed from the two-value field.
+ *
+ * NOT A REFUSAL. Registering is still offered, and deliberately: the missing answer is an
+ * administrator's to give, the account is the thing they need in Portal in order to give it (it
+ * lands in the 「앱 권한 없음」 cut of Users & Permissions, which exists to be worked through), and
+ * refusing here would leave the person with a burnt afternoon and a roster row nobody is looking
+ * at. So the screen says what is missing, says who fixes it, and lets them through.
+ */
+function describeGrant(entry: Activation, t: (typeof T)[AppLanguage]): { value: string; noScreens: boolean } {
+  const mode = entry.accessMode ?? (entry.permission === "admin" ? "both" : "appOnly");
+  if (mode === "portalOnly") return { value: t.permPortalOnly, noScreens: false };
+  if (entry.hasAppGrants) return { value: mode === "both" ? t.permAdmin : t.permOperator, noScreens: false };
+  // The app door opens onto nothing. A Portal admin still has Portal, and says so; an app-only
+  // account has been granted, in fact, nothing at all.
+  return { value: mode === "both" ? t.permAdminNoScreens : t.permNoScreens, noScreens: true };
 }
 
 /**
@@ -188,7 +236,8 @@ function fieldBorder(active: boolean) {
  *                              by getting MAX_CODE_ATTEMPTS codes wrong
  *
  * The rest are reachable with the seeded codes: BPXW-4762 works, QRST-5678 is already used,
- * VXYZ-2345 was issued too long ago and has expired.
+ * VXYZ-2345 was issued too long ago and has expired, and JKMN-6789 is a row from the Excel import
+ * with no grants on it at all — the case describeGrant exists for.
  */
 export default function RegisterPage() {
   return (
@@ -264,7 +313,8 @@ function RegisterFlow() {
       setCodeError("");
       setEntry({
         name: r.name, employeeId: r.employeeId, department: r.department,
-        projectId: r.projectId, permission: r.permission, accessMode: r.accessMode, source: "roster",
+        projectId: r.projectId, permission: r.permission, accessMode: r.accessMode,
+        hasAppGrants: (r.appActions ?? []).length > 0, source: "roster",
       });
       setStep("confirm");
       return;
@@ -306,6 +356,18 @@ function RegisterFlow() {
         // This screen speaks the roster's two-value language ("Administrator" / "Operator"), so a
         // console role collapses to whether it opens Portal at all.
         permission: canEnterPortal(account.permission) ? "admin" : "operator",
+        /*
+         * THE ACCOUNT ALREADY EXISTS, SO ITS DOORS ARE READ, NOT GUESSED (2026-09-30).
+         *
+         * This branch used to send no `accessMode` at all and let describeGrant's fallback speak
+         * for it, which is a fallback written for a SPREADSHEET row — a thing with no answer. An
+         * account has the answer on it. Left guessed, the seeded auditor (Aaron Sim: reads Portal
+         * for the audit trail, `appAccess: false`) was being promised "Portal + App".
+         */
+        accessMode: account.appAccess
+          ? (canEnterPortal(account.permission) ? "both" : "appOnly")
+          : "portalOnly",
+        hasAppGrants: (account.appActions ?? []).length > 0,
         source: "account",
       });
       setStep("confirm");
@@ -396,10 +458,12 @@ function RegisterFlow() {
     </div>
   );
 
-  const detailRow = (label: string, value: string) => (
+  /* `warn` colours the VALUE only, the way /request-access marks a request that cannot be
+     approved: the label is still just a label, and what is wrong is the answer beside it. */
+  const detailRow = (label: string, value: string, warn = false) => (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
       <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{label}</span>
-      <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-800)", letterSpacing: "-0.26px", textAlign: "right" }}>{value}</span>
+      <span style={{ fontSize: "13px", fontWeight: 700, color: warn ? "var(--warning-500)" : "var(--gray-800)", letterSpacing: "-0.26px", textAlign: "right" }}>{value}</span>
     </div>
   );
 
@@ -483,7 +547,9 @@ function RegisterFlow() {
             </>
           )}
 
-          {step === "confirm" && entry && (
+          {step === "confirm" && entry && (() => {
+            const grant = describeGrant(entry, t);
+            return (
             <>
               {heading(t.confirmTitle, [t.confirmSub])}
 
@@ -506,12 +572,19 @@ function RegisterFlow() {
                       This printed the two-value field, so a row written as Portal-only said
                       「앱만」 — the opposite of the truth, to the one person who most needs to know
                       they will not find the app. The roster row carries `accessMode` now; the
-                      two-value field is only the fallback for rows that came from the import. */}
-                  {detailRow(t.permission, (() => {
-                    const mode = entry.accessMode ?? (entry.permission === "admin" ? "both" : "appOnly");
-                    return mode === "portalOnly" ? t.permPortalOnly : mode === "both" ? t.permAdmin : t.permOperator;
-                  })())}
+                      two-value field is only the fallback for rows that came from the import.
+                      What that fallback may and may not claim: see describeGrant. */}
+                  {detailRow(t.permission, grant.value, grant.noScreens)}
                 </div>
+
+                {/* Said outside the card, because it is not another detail about this person — it
+                    is the one thing they have to do something about, and the row above can only
+                    report that nothing is there. */}
+                {grant.noScreens && (
+                  <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--warning-500)", letterSpacing: "-0.24px", lineHeight: 1.5 }}>
+                    {t.noScreensNote}
+                  </p>
+                )}
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
                   {primaryButton(t.yesContinue, true, () => setStep("password"))}
@@ -524,7 +597,8 @@ function RegisterFlow() {
                 </div>
               </div>
             </>
-          )}
+            );
+          })()}
 
           {step === "password" && entry && (
             <>
