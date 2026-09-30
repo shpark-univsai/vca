@@ -26,6 +26,7 @@ const T = {
   en: {
     // Page header
     inviteUser: "Invite user",
+    inviteNoMail: "This site has no mail server, so an invitation cannot be delivered. Set one up in Settings > Mail, or hand over a registration code instead.",
     filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     searchPlaceholder: "Search by user name or email address",
     rosterSearchPlaceholder: "Search by name or employee ID",
@@ -483,6 +484,7 @@ const T = {
   ko: {
     // Page header
     inviteUser: "사용자 초대",
+    inviteNoMail: "이 현장에는 메일 서버가 없어 초대장이 전달되지 않습니다. 설정 > 메일에서 설정하거나, 등록 코드를 직접 건네주세요.",
     filtersActive: (n: number) => `필터 ${n}개`,
     searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
     rosterSearchPlaceholder: "이름 또는 사번으로 검색",
@@ -1219,6 +1221,14 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
   const t = T[lang];
   /** The account this form just made, or null while it is still a form. Holding it here rather
    *  than closing on submit is what keeps the link reachable — see InviteLinkPanel. */
+  /* CAN THIS SITE SEND AN E-MAIL AT ALL (2026-09-30).
+   *
+   * Measured on Northgate, whose team has no SMTP: the invite panel opened and asked for an
+   * address with nothing said, so an administrator could compose an invitation that can never
+   * leave. `mailAvailable` on the page outside is the INSTALLATION's outbound switch and does not
+   * know a team has no relay — resolveMailConfig does, because it is the same lookup the mail
+   * settings screen reads. */
+  const siteSmtp = resolveMailConfig(defaultProjectId, projects, teams).smtp;
   const [issued, setIssued] = useState<InviteLink | null>(null);
   /** Its id, kept beside the link so the result step can name the account to the scope picker.
    *  Not folded into InviteLink: the bulk panel shares that type and has no use for an id. */
@@ -1613,6 +1623,15 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
              its gap — `overflowY: auto` here as well would be a scroll inside a scroll, and the
              inner one is the one the reader's wheel would not reach. */
           style={MODAL_BODY_WITH_SELECT}>
+          {/* SAID BEFORE THE ADDRESS IS TYPED, not after Send. A site with no relay cannot deliver
+              this, and the form asking for an address anyway is the shape of promise this console
+              keeps catching. The other door is still open — a registration code is handed over by
+              hand and needs no mail — so this points at it rather than just refusing. */}
+          {!siteSmtp && (
+            <p style={{ margin: 0, padding: "10px 12px", borderRadius: "8px", backgroundColor: "var(--warning-100)", color: "var(--warning-500)", fontSize: "12px", fontWeight: 700, lineHeight: 1.5 }}>
+              {t.inviteNoMail}
+            </p>
+          )}
           {/*
             THE ADDRESS FIRST (2026-09-21, after eight invite dialogs on Mobbin: Stripe,
             Productboard, Dub, Whop, Emergent, Zapier, Wellfound, Tana — every one of them opens

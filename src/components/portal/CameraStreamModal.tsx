@@ -82,7 +82,22 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
    * than animating something that is not happening.
    */
   const [playing, setPlaying] = useState(false);
-  const cameraEvents = events.filter(e => e.cameraId === camera.id);
+  /* A DETECTION CANNOT BE NEWER THAN THE LAST TIME THE CAMERA WAS HEARD FROM (2026-09-30).
+   *
+   * Measured on Bedok MRT: the row said 「스트림 끊김 · 9일 09시간 전」 and this panel said
+   * 「마지막 감지 09-30 08:55」 — this morning. A camera that has been dark for nine days did not
+   * see anybody this morning, and a panel that says both is asking the reader to pick which one
+   * to believe.
+   *
+   * So a camera that is not reporting shows nothing stamped after its last contact. The seed is
+   * where the impossible pair comes from here, but the rule belongs on screen either way.
+   * HANDOFF: the server must not report a detection later than the camera's own last contact —
+   * if it can, then one of the two timestamps is measuring something other than what it says.
+   */
+  const lastContact = camera.lastSeenAt ? new Date(camera.lastSeenAt).getTime() : null;
+  const cameraEvents = events.filter(e =>
+    e.cameraId === camera.id
+    && (lastContact === null || new Date(e.timestamp).getTime() <= lastContact));
   // Newest first, then take the top one — the store's order is not guaranteed to be chronological.
   const server = servers.find(sv => sv.id === camera.serverId);
   const lastDetection = cameraEvents.length === 0
