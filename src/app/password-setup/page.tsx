@@ -186,7 +186,23 @@ function PasswordSetupForm() {
     // account that is still holding a live invitation, the person clicks the link they already
     // have, sets a password, and is active again. Nothing clears the token when an account is
     // suspended, so the link keeps working.
-    if (!forcedByTempPassword && target.status !== "suspended") updatePortalUserStatus(target.id, "active");
+    /*
+     * AN ACCOUNT THAT WAS WAITING BECOMES ACTIVE — BY EITHER DOOR (2026-09-30).
+     *
+     * The forced-change branch used to decide nothing about status, and the reasoning above is why:
+     * a password screen must not lift a suspension. But applied to the whole branch it stranded the
+     * ordinary case. Measured: an administrator hands a still-「초대됨」 account a temporary password
+     * over the phone (which is what that path is FOR on a site with no mail), the person signs in,
+     * sets their own password — and the account is still 「초대됨」. The app's gate then reads that
+     * as "never activated" and offers one way out: 「등록 코드로 계정 활성화하기」. They have no
+     * code. Portal goes on counting them under 「초대 미수락」, so nobody is looking either.
+     *
+     * The distinction that matters is not which door they came through, it is WHAT STATE they were
+     * in. `invited` means waiting for a first password; they have just set one, so the wait is over
+     * whichever door delivered it. `suspended` is an administrator's decision and is left alone,
+     * which is the sentence above, kept.
+     */
+    if (target.status === "invited") updatePortalUserStatus(target.id, "active");
     // Retires the temporary password: the must-change flag comes off, and Portal's Users table
     // stops flagging this account as one somebody else has the password to.
     clearTemporaryPassword(target.id);
