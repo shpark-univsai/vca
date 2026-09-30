@@ -6424,12 +6424,39 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     const user = get().portalUsers.find(u => u.id === userId);
     if (!user) return null;
     const token = mintInviteToken();
+    /*
+     * IT WROTE NO RECORD AT ALL (2026-09-30).
+     *
+     * Minting an invite link hands somebody the power to set this account's first password. The
+     * temporary password beside it in the same panel has always been logged; this one and the
+     * setup code were not, so 「누가 이 사람 계정을 열어줬나」 had a partial answer — and the two
+     * paths that leave no trace are the two that leave no trace anywhere else either, because
+     * nothing is sent and nothing is stored but the token.
+     *
+     * Retiring the previous link is part of the same act and goes in the same sentence: a reader
+     * asking why an older link stopped working finds the answer on this row rather than inferring
+     * it from a later one.
+     *
+     * ON THE TEAM, like the account-status row — an account belongs to one team and may reach
+     * several projects, and projectIds[0] is array order, not a choice. See updatePortalUserStatus.
+     */
+    const reissue = !!user.inviteToken;
+    const auditEntry = clientAudit({
+      teamId: user.teamId,
+      area: "accounts", target: user.email,
+      action: reissue ? "Invitation link reissued — previous link retired" : "Invitation link issued",
+      message: reissue
+        ? `Invitation link reissued for ${user.email} — the previous link no longer works`
+        : `Invitation link issued for ${user.email}`,
+      actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+    });
     set(state => ({
       portalUsers: state.portalUsers.map(u =>
         u.id === userId
           ? { ...u, inviteToken: token, inviteTokenIssuedAt: new Date().toISOString() }
           : u
       ),
+      auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return token;
   },
@@ -6443,8 +6470,21 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       ...get().staffRoster.map(r => r.code).filter((c): c is string => !!c),
     ]);
     const code = generateRegistrationCode(taken);
+    /* SCOPED TO THE TEAM, or the row reaches no screen (2026-09-30). It carried neither projectId
+       nor teamId, and the records screen only shows rows matching one or the other — so this row
+       was written and then invisible, which reads exactly like not writing one. Measured: issue a
+       code, open 변경 기록, and the 「Setup code issued」 line is not in the list. Same scope and
+       same reason as the account-status row. */
+    const reissue = !!user.setupCode;
     const auditEntry = clientAudit({
-      area: "accounts", target: user.email, action: "Setup code issued", message: `Setup code issued for ${user.email}`,
+      teamId: user.teamId,
+      area: "accounts", target: user.email,
+      /* A reissue kills the code somebody is already holding, which is its own fact — the person
+         with the old slip will report it as broken, and this is the row that explains it. */
+      action: reissue ? "Setup code reissued — previous code retired" : "Setup code issued",
+      message: reissue
+        ? `Setup code reissued for ${user.email} — the previous code no longer works`
+        : `Setup code issued for ${user.email}`,
       actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
     });
     // mustChangePassword is not set: there is no password to change yet. The code is what stands
