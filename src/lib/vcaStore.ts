@@ -6209,7 +6209,33 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       // Safety net behind the UI, which already refuses to offer these. Both layers are wanted: the
       // UI so the administrator is told why, this so a stray call cannot lock the customer out.
       if (status !== "active" && isLastActiveAdmin(state.portalUsers, userId)) return state;
-      return { portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, status } : u)) };
+      const target = state.portalUsers.find(u => u.id === userId);
+      /*
+       * IT WROTE NO AUDIT ROW AT ALL (2026-09-30).
+       *
+       * Suspending or reactivating an account changed `portalUsers` and stopped. The row visible
+       * on 변경 기록 as 「David Ong · Account suspended」 is a seed — the real action left no trace,
+       * so a panel could spend an afternoon deciding WHICH project the row belongs to while there
+       * was no row. Closing somebody's way in is exactly the kind of act a record exists for.
+       *
+       * ON THE TEAM, not a project. An account belongs to one team and may reach several
+       * projects; filing it under one of them would hide it from the administrators of the others
+       * (`projectIds[0]` is array order, not a choice). AuditEvent.teamId exists for changes that
+       * are not one site's, and ProjectActivityTab already folds a team's rows into every project
+       * in it — so one row reaches everyone who should see it, and nobody counts it twice.
+       */
+      return {
+        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, status } : u)),
+        auditLog: target ? [clientAudit({
+          teamId: target.teamId,
+          area: "accounts", target: target.name,
+          action: status === "suspended" ? "Account suspended" : status === "active" ? "Account reactivated" : `Status set to ${status}`,
+          message: status === "suspended" ? `${target.name}'s account suspended`
+            : status === "active" ? `${target.name}'s account reactivated`
+            : `${target.name}'s status set to ${status}`,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT) : state.auditLog,
+      };
     }),
   suspendPortalUsers: (userIds) => {
     const state = get();
@@ -6229,6 +6255,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       set(st => ({
         portalUsers: st.portalUsers.map(u => (changed.includes(u.id) ? { ...u, status: "suspended" as const } : u)),
         auditLog: [clientAudit({
+          /* Scoped like the single path above — without a team this row reached no records
+             screen at all, which is the same hole one layer along. */
+          teamId: st.portalUsers.find(u => changed.includes(u.id))?.teamId,
           area: "accounts", target: `${changed.length} account${changed.length === 1 ? "" : "s"}`, action: "Suspended in one action", message: `${changed.length} account${changed.length === 1 ? "" : "s"} suspended in one action`
             + (refused.length > 0 ? ` (${refused.length} left active)` : ""),
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
