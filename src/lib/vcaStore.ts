@@ -174,9 +174,16 @@ export interface Project {
    *
    * NOT the same kind of value as `retentionDays` beside it, and the difference is worth stating:
    * recording retention is a number this console only WRITES DOWN — nothing here deletes video.
-   * This one ACTS. It fills the end date on every registration, and an expired listing stops
-   * raising detections in the app (watchedPersonsInProject). So the screen may promise something
-   * for this one, where for the other it may not.
+   * This one ACTS, but only at one end: it fills the end date on every registration.
+   *
+   * IT DOES NOT STOP THE MATCHING. This comment used to say an expired listing stops raising
+   * detections, and that is the opposite of the decision — HANDOFF-SERVER §5, settled 2026-09-18:
+   * 「만료는 안내입니다. 자동으로 대조를 끊지 마세요」, an expired person stays on the watch list
+   * and the console only says 「만료 N일 지남」. The code has always agreed with the decision
+   * (watchedPersonsInProject filters on `releasedAt` and nothing else); only this sentence was
+   * wrong, which is the worse way round — the prose that explains the field said the field did
+   * something it does not, and the next reader would have built to the sentence.
+   * Taking somebody off the list is a person's act, never a date's.
    */
   vipRetentionDays?: number;
   licenseChannelLimit?: number;
