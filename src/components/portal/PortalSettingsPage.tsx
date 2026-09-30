@@ -625,12 +625,23 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
      * longer has to buy its narrowness with a column of navigation, and the card starts on the
      * same line as the tables one tab over.
      *
-     * The cap is 1040 rather than 880 because the sections that were actually cramped are the ones
-     * with a shape — 「VCA가 보내는 메일」 is three columns, the mail form is pairs — and 880 was
-     * sized for a card that had a rail beside it. Prose inside still holds its own measure; see
-     * CardSection.
+     * CAPPED AND CENTRED (owner, 2026-09-30, in this order: 다른 화면처럼 채우는 게 나을 것
+     * 같은데 → 오른쪽으로 늘려준 거 다시 좁혀주고, 정중앙으로 오게 해줘).
+     *
+     * Full width was tried and turned down. What it gave was a bordered box as wide as the tables
+     * holding a 760px form, so the emptiness moved from the page into the card, which is worse —
+     * a card draws an edge, and an edge around air reads as a mistake.
+     *
+     * So the cap comes back, and this time the leftover room is split either side instead of all
+     * of it on the right. That is what the settings pages this was checked against do (Later,
+     * Lindy, Flodesk, Runway) and what the earlier note on this page argued for — the part of that
+     * note that stays true. What does not come back is the second left rail: the sections are a
+     * strip above the card now, so the narrowness costs no navigation column.
+     *
+     * 960 is sized to the widest thing inside rather than to a round number: the project tab's two
+     * tracks of short facts need 896 plus the card's own padding.
      */
-    <div style={{ maxWidth: "1040px", marginBottom: "20px" }}>
+    <div style={{ maxWidth: "960px", marginInline: "auto", marginBottom: "20px" }}>
       {/* Same strip the Users page draws, for the same reason its tabs are up there: which part of
           a screen you are looking at is a different question from what you are doing in it, and
           both pages answer it in the same place now. No counts — a settings section is not a list
