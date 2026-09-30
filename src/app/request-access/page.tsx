@@ -15,8 +15,6 @@ const T = {
   en: {
     errName: "Enter your name.",
     errEmail: "Enter a valid email address.",
-    errAlreadyHasAccess: "This email already has access to this project — log in instead.",
-    errAlreadyRequested: "A request from this email is already waiting for approval.",
     errDomain: (domain: string) => `Use your @${domain} address — invitations can only be sent to that domain.`,
     sentTitle: "Request sent",
     sentReview: "Your administrator will review it.",
@@ -41,8 +39,6 @@ const T = {
   ko: {
     errName: "이름을 입력해주세요.",
     errEmail: "올바른 이메일 주소를 입력해주세요.",
-    errAlreadyHasAccess: "이 이메일은 이미 이 프로젝트에 접근할 수 있습니다. 로그인해주세요.",
-    errAlreadyRequested: "이 이메일로 접수된 요청이 이미 승인을 기다리고 있습니다.",
     errDomain: (domain: string) => `@${domain} 주소를 사용해주세요. 초대는 이 도메인으로만 보낼 수 있습니다.`,
     sentTitle: "요청을 보냈습니다",
     sentReview: "관리자가 검토합니다.",
@@ -123,8 +119,22 @@ function RequestAccessForm() {
   const nameValid = name.trim().length > 0;
   const emailValid = isEmailFormatValid(email);
 
-  // Two states worth catching before creating a record, because both leave the requester waiting
-  // on an approval that will never come: they already have access, or they already asked.
+  /*
+   * THESE TWO ARE READ, AND NEVER SHOWN.
+   *
+   * They used to be field errors: type an address, and the form answered 「이미 이 프로젝트에 접근할
+   * 수 있습니다」 or 「이미 승인을 기다리고 있습니다」. On a screen anybody can open, that is a
+   * machine for finding out who works here — one address at a time, with no credential, no code and
+   * no limit — and it is the same question /login and /forgot-password both refuse to answer. The
+   * file's own note above said so and then closed the SCREEN with authConfig.accessRequest; a
+   * deployment switch is not a fix, it is the hole waiting for somebody to flip it back.
+   *
+   * So they no longer reach the screen at all. Every address gets the same field, the same button
+   * and the same confirmation — the one that already says a person will review it and the invite
+   * will arrive by mail. What they still do is stop a duplicate record being written (see
+   * handleSubmit): the requester learns nothing either way, and the master's queue does not fill
+   * with the same person three times.
+   */
   const existingUser = useVcaStore(s => s.portalUsers).find(
     u => u.email.toLowerCase() === email.trim().toLowerCase(),
   );
@@ -141,24 +151,37 @@ function RequestAccessForm() {
   const undeliverable = emailValid && !isMailDeliverable(email, mailDomain);
 
   const nameError = touched.name && !nameValid ? t.errName : "";
+  /* The domain rule stays on the field, and it is not the same kind of fact: it describes the
+     INSTALLATION — this site's mail only reaches its own domain — and it is true of every address
+     typed, including ones belonging to nobody. It tells a stranger nothing about who has an
+     account here. */
   const emailError = !touched.email ? ""
     : !emailValid ? t.errEmail
-    : alreadyHasAccess ? t.errAlreadyHasAccess
-    : alreadyRequested ? t.errAlreadyRequested
     : undeliverable && mailDomain ? t.errDomain(mailDomain)
     : "";
 
-  const canSubmit = nameValid && emailValid && !alreadyHasAccess && !alreadyRequested && !undeliverable && !!projectId;
+  const canSubmit = nameValid && emailValid && !undeliverable && !!projectId;
 
   const handleSubmit = () => {
     setTouched({ name: true, email: true });
     if (!canSubmit) return;
-    useVcaStore.getState().requestAccess({
-      name: name.trim(),
-      email: email.trim(),
-      projectId,
-      reason: reason.trim() || undefined,
-    });
+    /* Writes nothing when there is nothing to write, and says the same thing either way. The
+       screen below is identical for an address that already has access, one that already asked,
+       and one nobody has ever seen — which is the whole point: the answer cannot be read off the
+       screen, so the screen cannot be used to ask.
+
+       HANDOFF: the server has to behave the same way. It refuses this call while
+       authConfig.accessRequest is off; when it is on, a duplicate is dropped silently and the
+       response is the response every other address gets. A 409 here would put the leak back on
+       the wire, where the screen no longer has it. */
+    if (!alreadyHasAccess && !alreadyRequested) {
+      useVcaStore.getState().requestAccess({
+        name: name.trim(),
+        email: email.trim(),
+        projectId,
+        reason: reason.trim() || undefined,
+      });
+    }
     setSubmitted(true);
   };
 

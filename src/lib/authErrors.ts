@@ -9,6 +9,40 @@
  *
  * HANDOFF NOTE: nothing here is wired to a real response yet. Each state can be viewed by opening
  * /login?demo=<key> — see the demo query below.
+ *
+ * ── THE RULE THAT MAKES THIS LIST SAFE ──────────────────────────────────────────────────────────
+ *
+ * EVERY NOTICE BELOW EXCEPT `badCredentials` MAY BE RETURNED ONLY AFTER THE SUBMITTED CREDENTIALS
+ * HAVE MATCHED. Until they have, the answer is `badCredentials`, whatever the account's state is
+ * and whether or not the identifier matches anything at all.
+ *
+ * Why: every other notice names a real account. 「정지된 계정입니다」 to somebody who typed an
+ * address and any password tells them that address has an account here — and `notActivated` tells
+ * them more than that: this person has never set a password and there is a registration code in
+ * circulation for them, which is the best target on the list. Typed one address at a time against a
+ * public form, that is how an attacker learns who works here, with no credential spent.
+ *
+ * This is a TIMING rule, not a hiding one, and the difference is the whole design: naming the state
+ * after the password verifies is what this industry ships (Genetec returns a distinct locked-account
+ * message; Milestone generalises in the client and documents the lockout). On a closed network with
+ * no self-service recovery, the operator whose own account is suspended needs to be told so rather
+ * than made to guess — they just proved they are that operator.
+ *
+ * Two consequences the endpoint has to get right:
+ *
+ *   · `locked` — verify the password anyway and then refuse. Refusing before verifying is what
+ *     turns a lockout into an oracle: it answers for anyone, with any password.
+ *   · `pendingApproval` — an approval request is not an account and has no password, so no
+ *     credential can ever match one. The endpoint therefore CANNOT return this safely, and the
+ *     answer for that address is `badCredentials`. The state is kept because the screen is built
+ *     and reviewable; if an approval ever mints a real credential, it becomes returnable under the
+ *     same rule as the rest.
+ *
+ * The login screen already enforces its half of this (see src/app/login/page.tsx, and HANDOFF.md
+ * contract 13, corrected on this point in 4cc65ee) — but only the server can honour it, because
+ * only the server can verify a password. It is written here as well because THIS file is the
+ * contract the endpoint is built from, and a rule kept in the screen that calls it is a rule the
+ * endpoint's author never reads.
  */
 export type LoginFailure =
   | "badCredentials"
@@ -35,6 +69,10 @@ export interface LoginNotice {
 export const LOGIN_NOTICES: Record<LoginFailure, LoginNotice> = {
   // Deliberately does not say which of the two was wrong. Telling someone the account exists but
   // the password is wrong confirms the account exists to anyone who guesses an address.
+  //
+  // It is also the answer for an identifier that matches NOTHING, for an account whose state the
+  // server is not yet allowed to name, and for an approval still waiting — one sentence covering
+  // every case where nothing has been proved. See the rule at the top of this file.
   badCredentials: {
     tone: "error",
     title: { en: "That does not match an account", ko: "일치하는 계정이 없습니다" },
