@@ -6,7 +6,7 @@ import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, SectionNav, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, Drawer, PanelCancel, PanelPrimary, Switch, usePortalEditAccess, useTypeLabel } from "./PortalShared";
+import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, Drawer, PanelCancel, PanelPrimary, Switch, usePortalEditAccess, useTypeLabel } from "./PortalShared";
 import { VipCategoryModal } from "./VipCategories";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useToast } from "@/components/Toast";
@@ -609,30 +609,52 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
 
   return (
     /**
-     * One card, capped, and flush left.
+     * TABS ON TOP, LIKE EVERY OTHER SCREEN IN THE CONSOLE (owner, 2026-09-30: 다 위로 올려줘).
      *
-     * The tabs beside this one are tables, and a table earns the full 1600px of the shell: more
-     * width is more rows visible at once. This page is the opposite — five facts, a form and two
-     * sentences — and at full width the pairs opened into six columns, the paragraphs ran to a
-     * measure the eye cannot return from, and the card was mostly air. Both of the settings pages
-     * this was checked against (Time2book, ClickUp) hold their content near 850px on any monitor.
+     * This page used to carry its own SECOND left rail — 계정 / 프로젝트 / 메일 / 언어 in a 208px
+     * column — with the card capped at 880px and centred in what was left. Measured at 1440: every
+     * other screen runs its content 264 → 1408; this one ran 604 → 1276 and did not move when the
+     * window changed. So Settings was the only page in Portal whose content started somewhere
+     * else, with a rail on the left of a rail, and about 700px of that inner column empty below
+     * 「언어」.
      *
-     * 880px: a 240px rail, a 520px column and the card's own padding, which is the width the
-     * sections actually need rather than a round number.
+     * The earlier note here argued for the capped centred card, and it was right about the thing
+     * it was solving: at the full width the pairs fanned out and the paragraphs ran to a measure
+     * nobody returns from. That is still true, and it is why the card is still capped — what
+     * changed is WHERE the leftover room goes. With the sections on a strip above, the cap no
+     * longer has to buy its narrowness with a column of navigation, and the card starts on the
+     * same line as the tables one tab over.
      *
-     * Centred. Left-aligned was tried first, on the reasoning that a card starting where the
-     * Users table starts would not read as a different tab — but a capped column pinned to the
-     * left edge does not read as aligned, it reads as a page that ran out halfway, with the
-     * emptiness collected on one side. Splitting the leftover room puts it either side of the
-     * content instead of all of it in one place, which is what every settings page this was
-     * checked against does (Later, Lindy, Flodesk, Runway).
-     *
-     * The tradeoff is real and known: switching from a table tab to this one now shifts the left
-     * edge. A settings page is entered deliberately and read on its own, so the shift costs less
-     * than the lopsidedness did.
+     * The cap is 1040 rather than 880 because the sections that were actually cramped are the ones
+     * with a shape — 「VCA가 보내는 메일」 is three columns, the mail form is pairs — and 880 was
+     * sized for a card that had a rail beside it. Prose inside still holds its own measure; see
+     * CardSection.
      */
-    <div style={{ display: "flex", alignItems: "flex-start", gap: "28px", maxWidth: "880px", marginInline: "auto" }}>
-      <SectionNav sections={sections} active={active} onSelect={setSection} />
+    <div style={{ maxWidth: "1040px", marginBottom: "20px" }}>
+      {/* Same strip the Users page draws, for the same reason its tabs are up there: which part of
+          a screen you are looking at is a different question from what you are doing in it, and
+          both pages answer it in the same place now. No counts — a settings section is not a list
+          with a length. */}
+      <div style={{ display: "flex", alignItems: "flex-end", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
+        {sections.map(sec => {
+          const on = sec.id === active;
+          return (
+            <button key={sec.id} type="button" onClick={() => setSection(sec.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: "7px",
+                background: "none", border: "none", cursor: "pointer",
+                padding: "0 2px 10px", fontSize: "13px", fontWeight: 700, fontFamily: "inherit",
+                color: on ? "var(--gray-900)" : "var(--gray-500)",
+                borderBottom: on ? "2px solid var(--gray-900)" : "2px solid transparent",
+              }}>
+              {/* The icon comes along from the rail. It was the only thing telling 프로젝트 from
+                  메일 at a glance while scanning, and a strip of four bare words loses that. */}
+              <span style={{ display: "inline-flex", flexShrink: 0, color: on ? "var(--gray-600)" : "var(--gray-400)" }}>{sec.icon}</span>
+              {sec.label}
+            </button>
+          );
+        })}
+      </div>
       {/* No page title here: the top bar's crumb already names this page, and printing the same
           word again 20px lower was the page introducing itself twice. What stays is the row of
           things you can do on it. */}
@@ -640,7 +662,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           which they never reach — the first section has no top rule and the last no bottom one —
           and it clipped the one thing that has to escape this box: the language select sits in the
           final section, so its list opened straight into the card's bottom edge and was cut off. */}
-      <div className="portal-settings-card" style={{ flex: 1, minWidth: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, marginBottom: "20px" }}>
+      <div className="portal-settings-card" style={{ minWidth: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
       {/* Which pairs exist depends on whether the signed-in address matches an account: with no
           match there is nothing to say about a role or a door, so those are absent rather than
           filled with a disclaimer. */}
@@ -776,7 +798,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       */}
       {active === "project" && project && (
         <CardSection heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />}>
-          <PairGrid spaced>
+          <PairGrid spaced twoUp>
             {/* Editable, at last. Every handover starts with a test project and a typo, and
                 there was no renameProject anywhere in the codebase — the first name a project
                 was given was the only one it would ever have. */}
@@ -1065,7 +1087,15 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               the form gap, so the same card read at two rhythms. The columns stay tight — a pair
               side by side is one line of the form, and pushing those apart would separate the
               wrong thing. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "28px 14px" }}>
+          {/* TWO COLUMNS, CAPPED — not auto-fit (2026-09-30).
+              auto-fit was sized for the 880px card this page used to have, where it settled on two.
+              With the sections moved to a strip above, the card is 1040 and the same rule opened it
+              to FOUR: 메일 도메인 · SMTP 호스트 · 사용자 · 비밀번호 all on one line, each field
+              232px with its hint crushed into three lines, and the username/password pair no longer
+              reading as a pair. A form does not get better by getting wider — the values here are a
+              hostname, a port and an address. So the count is fixed at two and the block is capped,
+              which leaves the extra room to the things below that do have a shape to spread into. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "28px 14px", maxWidth: "760px" }}>
             <div>
               <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.teamMailDomain}</label>
               <TextField value={mailDomain} onChange={setMailDomain} placeholder="company.local" />

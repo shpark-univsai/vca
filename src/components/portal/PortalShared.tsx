@@ -1412,8 +1412,22 @@ export function CardSection({ heading, icon, subheading, desc, hint, children }:
  * and on a 720px column the value ended up a hand's width from the word naming it. Stacking the
  * pair puts the two together, so the rules have nothing left to separate: whitespace does it.
  */
-export function PairGrid({ children, spaced }: {
+export function PairGrid({ children, spaced, twoUp }: {
   children: React.ReactNode;
+  /**
+   * Two tracks instead of one, for a section that is a LIST OF SHORT FACTS on a wide card
+   * (2026-09-30, after the settings sections moved to a strip above the card).
+   *
+   * The one-column rule below was written when this card sat beside its own navigation rail and
+   * was 616px of content. It is 1040 now, and 프로젝트's seven pairs — a name, a type, a team, a
+   * region and three settings whose controls are 200px wide — ran 686px down the page using about
+   * four hundred of it. Height that costs nothing to remove.
+   *
+   * OPT-IN, and only where every value is short. A pair whose value is a sentence, a field with a
+   * hint under it, or anything the eye has to read rather than glance at keeps one column: two
+   * tracks of prose is the reading-order problem the note below describes.
+   */
+  twoUp?: boolean;
   /**
    * Wider gaps, for a grid whose rows are separate SUBJECTS rather than fields of one form
    * (owner, 2026-09-29: 인터넷 연결, 메일 서버, VCA가 발송하는 메일 사이간격 더 벌려서 구분을
@@ -1436,7 +1450,12 @@ export function PairGrid({ children, spaced }: {
    
        One column gives it one: label, value, next. Height it costs is height the rail already
        made navigable. */
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: spaced ? "28px" : "16px" }}>
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: twoUp ? "repeat(2, minmax(0, 420px))" : "minmax(0, 1fr)",
+      gap: spaced ? "28px" : "16px",
+      columnGap: twoUp ? "56px" : undefined,
+    }}>
       {children}
     </div>
   );
