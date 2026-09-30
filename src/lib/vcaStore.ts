@@ -69,7 +69,19 @@ export interface SmtpConfig {
   port: number;
   /** The From: address messages are sent as, e.g. "vca-noreply@company.local". */
   fromAddress: string;
+  /** The account the relay authenticates as. Absent on a relay that takes no credentials. */
   username?: string;
+  /**
+   * Whether a password is on file — NOT the password.
+   *
+   * WRITE-ONLY BY DESIGN (2026-09-30). The console has to be able to say 「비밀번호 있음」 so a
+   * reader can tell a configured relay from an unauthenticated one, and it must never be able to
+   * read the secret back. So the form posts a password and the server returns this flag; an empty
+   * password field on a save means 「변경 없음」, never 「지우기」 (clearing is its own action).
+   * HANDOFF: the server stores the secret, returns only this boolean, and a save with the field
+   * blank leaves what it holds alone.
+   */
+  hasPassword?: boolean;
   useTls?: boolean;
 }
 

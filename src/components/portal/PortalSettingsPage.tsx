@@ -80,6 +80,11 @@ const T = {
     teamMailDomain: "Mail domain",
     teamMailDomainHint: "Accounts must have an address on this domain. Requests and invites to anything else are refused.",
     teamMailHost: "SMTP host",
+    teamMailUser: "SMTP username",
+    teamMailUserHint: "Leave both this and the password empty for a relay that takes no credentials.",
+    teamMailPass: "SMTP password",
+    teamMailPassSet: "A password is on file. Type a new one to replace it; leave it empty to keep it.",
+    teamMailPassNone: "Not set.",
     teamMailPort: "Port",
     teamMailFrom: "From address",
     teamMailTls: "Use TLS",
@@ -222,6 +227,11 @@ const T = {
     teamMailDomain: "메일 도메인",
     teamMailDomainHint: "계정은 반드시 이 도메인의 주소여야 합니다. 그 외 주소로의 요청과 초대는 거부됩니다.",
     teamMailHost: "SMTP 호스트",
+    teamMailUser: "SMTP 사용자",
+    teamMailUserHint: "자격증명을 요구하지 않는 릴레이라면 이 칸과 비밀번호를 모두 버려 두세요.",
+    teamMailPass: "SMTP 비밀번호",
+    teamMailPassSet: "비밀번호가 있습니다. 바꾸려면 새로 입력하고, 그대로 두려면 비워 두면 됩니다.",
+    teamMailPassNone: "없습니다.",
     teamMailPort: "포트",
     teamMailFrom: "발신 주소",
     teamMailTls: "TLS 사용",
@@ -491,19 +501,27 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
    * screen is not remounted when the team behind it changes.
    */
   const updateTeamMail = useVcaStore(s => s.updateTeamMail);
-  const [mailDraft, setMailDraft] = useState<{ teamId: string; domain: string; host: string; port: string; from: string; tls: boolean } | null>(null);
+  const [mailDraft, setMailDraft] = useState<{ teamId: string; domain: string; host: string; port: string; from: string; user: string; pass: string; tls: boolean } | null>(null);
   const liveMail = mailDraft && mailDraft.teamId === myTeam?.id ? mailDraft : null;
   const mailDomain = liveMail?.domain ?? myTeam?.mailDomain ?? "";
   const mailHost = liveMail?.host ?? myTeam?.smtp?.host ?? "";
   const mailPort = liveMail?.port ?? (myTeam?.smtp?.port ? String(myTeam.smtp.port) : "");
   const mailFrom = liveMail?.from ?? myTeam?.smtp?.fromAddress ?? "";
+  const mailUser = liveMail?.user ?? myTeam?.smtp?.username ?? "";
+  /* The password field starts EMPTY even when one is on file — see SmtpConfig.hasPassword. There
+     is nothing to prefill it with: the console is never given the secret. Empty on save means
+     「변경 없음」. */
+  const mailPass = liveMail?.pass ?? "";
+  const mailHasPass = myTeam?.smtp?.hasPassword ?? false;
   const mailTls = liveMail?.tls ?? myTeam?.smtp?.useTls ?? true;
-  const editMail = (patch: Partial<{ domain: string; host: string; port: string; from: string; tls: boolean }>) =>
-    setMailDraft({ teamId: myTeam?.id ?? "", domain: mailDomain, host: mailHost, port: mailPort, from: mailFrom, tls: mailTls, ...patch });
+  const editMail = (patch: Partial<{ domain: string; host: string; port: string; from: string; user: string; pass: string; tls: boolean }>) =>
+    setMailDraft({ teamId: myTeam?.id ?? "", domain: mailDomain, host: mailHost, port: mailPort, from: mailFrom, user: mailUser, pass: mailPass, tls: mailTls, ...patch });
   const setMailDomain = (v: string) => editMail({ domain: v });
   const setMailHost = (v: string) => editMail({ host: v });
   const setMailPort = (v: string) => editMail({ port: v });
   const setMailFrom = (v: string) => editMail({ from: v });
+  const setMailUser = (v: string) => editMail({ user: v });
+  const setMailPass = (v: string) => editMail({ pass: v });
   const setMailTls = (v: boolean) => editMail({ tls: v });
   // The from-address has to live on the configured domain or the receiving server rejects it —
   // the same rule the project screen already applies, stated once per screen rather than once.
@@ -532,6 +550,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
         host: mailHost.trim(),
         port: mailPort.trim() === "" ? 587 : mailPortNum,
         fromAddress: mailFrom.trim(),
+        username: mailUser.trim() || undefined,
+        /* A typed password sets the flag; an empty field leaves whatever is on file. The secret
+           itself never comes back here, so there is nothing else this screen can carry — see
+           SmtpConfig.hasPassword. */
+        hasPassword: mailPass.trim() !== "" ? true : mailHasPass,
         useTls: mailTls,
       },
     });
@@ -1051,6 +1074,24 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             <div>
               <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.teamMailHost}</label>
               <TextField value={mailHost} onChange={setMailHost} placeholder="mail.company.local" />
+            </div>
+            {/* THE RELAY'S CREDENTIALS (2026-09-30). The form took a host, a port and a from-address
+                and stopped, so it described a relay that needs no account — which left whoever builds
+                the server to guess between "unauthenticated relay" and "credentials go in somewhere
+                else". Most relays want an account, so the form asks for one, and both fields empty
+                still says the honest thing: this one does not. */}
+            <div>
+              <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.teamMailUser}</label>
+              <TextField value={mailUser} onChange={setMailUser} placeholder="vca@company.local" autoComplete="off" />
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "6px" }}>{t.teamMailUserHint}</p>
+            </div>
+            <div>
+              <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.teamMailPass}</label>
+              <TextField value={mailPass} onChange={setMailPass} type="password" autoComplete="new-password" />
+              {/* Says whether one is on file, never what it is. */}
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "6px" }}>
+                {mailHasPass ? t.teamMailPassSet : t.teamMailPassNone}
+              </p>
             </div>
             <div>
               <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.teamMailPort}</label>
