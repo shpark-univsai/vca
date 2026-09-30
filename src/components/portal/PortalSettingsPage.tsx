@@ -638,8 +638,10 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
      * note that stays true. What does not come back is the second left rail: the sections are a
      * strip above the card now, so the narrowness costs no navigation column.
      *
-     * 960 is sized to the widest thing inside rather than to a round number: the project tab's two
-     * tracks of short facts need 896 plus the card's own padding.
+     * 960 leaves the widest thing inside — the mail form's two columns at 760 — room either side
+     * without the card growing to where a form field would stretch. The project tab went back to
+     * one column (owner, 2026-09-30: 2열인데 1열로 바꿔도 될 것 같아), so height is no longer what
+     * this width is buying; it can be narrowed further if the page ever reads wide.
      */
     <div style={{ maxWidth: "960px", marginInline: "auto", marginBottom: "20px" }}>
       {/* Same strip the Users page draws, for the same reason its tabs are up there: which part of
@@ -809,7 +811,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
       */}
       {active === "project" && project && (
         <CardSection heading={t.projectTitle} icon={<MapPin size={15} strokeWidth={2.2} />}>
-          <PairGrid spaced twoUp>
+          <PairGrid spaced>
             {/* Editable, at last. Every handover starts with a test project and a typo, and
                 there was no renameProject anywhere in the codebase — the first name a project
                 was given was the only one it would ever have. */}
@@ -1104,9 +1106,12 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               to FOUR: 메일 도메인 · SMTP 호스트 · 사용자 · 비밀번호 all on one line, each field
               232px with its hint crushed into three lines, and the username/password pair no longer
               reading as a pair. A form does not get better by getting wider — the values here are a
-              hostname, a port and an address. So the count is fixed at two and the block is capped,
-              which leaves the extra room to the things below that do have a shape to spread into. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "28px 14px", maxWidth: "760px" }}>
+              hostname, a port and an address. So the COUNT stays at two — but the block is no
+              longer capped inside the card (owner, 2026-09-30: 큰 박스 안에 오른쪽 여백 없게
+              채워줘). A capped form inside a bordered card left a band of white down the right of
+              the box, which reads as a section that stopped rather than one sized on purpose. The
+              card holds the measure now, and the two tracks divide it. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "28px 24px" }}>
             <div>
               <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.teamMailDomain}</label>
               <TextField value={mailDomain} onChange={setMailDomain} placeholder="company.local" />
@@ -1168,14 +1173,28 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               screen says why it is refused; once it is allowed, it says what saving will and will
               not do. The reason sits beside the button rather than in a `title` because a disabled
               button gets no hover in some browsers and none at all on touch. */}
-          <div style={{ marginTop: "28px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <button className="portal-btn-primary" onClick={saveTeamMail} disabled={!canSaveTeamMail}
-              style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSaveTeamMail ? "var(--primary-400)" : "var(--gray-200)", color: canSaveTeamMail ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSaveTeamMail ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-              {t.teamMailSaveScoped}
-            </button>
+          {/* THE BUTTON ARRIVES WITH THE CHANGE, AND SITS AT THE RIGHT END (owner, 2026-09-30:
+              액션버튼 2개를 오른쪽으로 보내줘 · 변경사항이 있을 때 버튼이 생기게 하면 어때).
+
+              A save button on a settled form is a control with nothing to do, sitting under every
+              field on every visit and asking to be pressed. `liveMail` is already exactly the
+              answer — it is null until somebody types, and saveTeamMail sets it back to null — so
+              the button is drawn only while there is something to write.
+
+              The sentence stays put, which is what keeps the row from jumping: it holds the line's
+              height whether or not the button is there, so the block below does not move when the
+              first keystroke lands. And it reads better on the left now — the note explains what
+              pressing will do, so it comes before the thing you press. */}
+          <div style={{ marginTop: "28px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", flexWrap: "wrap", minHeight: CONTROL_HEIGHT }}>
             <span style={{ flex: 1, minWidth: "200px", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>
               {teamMailBlockedReason ?? t.teamMailUnverified}
             </span>
+            {liveMail !== null && (
+              <button className="portal-btn-primary" onClick={saveTeamMail} disabled={!canSaveTeamMail}
+                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSaveTeamMail ? "var(--primary-400)" : "var(--gray-200)", color: canSaveTeamMail ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSaveTeamMail ? "pointer" : "not-allowed", fontFamily: "inherit", flexShrink: 0 }}>
+                {t.teamMailSaveScoped}
+              </button>
+            )}
           </div>
           {/*
             THE PROJECT'S EXCEPTION, IN THE SAME CARD.

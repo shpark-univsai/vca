@@ -512,13 +512,20 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
           events in some browsers and none at all on touch — the same finding that moved the
           refused-row reasons in the Users panel onto a visible mark. A dark button with nothing
           saying why is a screen that has stopped answering. */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-        <button className="portal-btn-primary" onClick={save} disabled={!canSave}
-          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
-          {t.saveProject}
-        </button>
+      {/* Drawn only once something differs, and at the right end — the twin of the team default's
+          row above it, same reasoning (owner, 2026-09-30). `changed` already answers it here: it
+          counts a touched field AND turning the override off, which is a change with no field
+          behind it. The blocked reason keeps the left, so the two rows in this card line their
+          buttons up on the same edge. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", flexWrap: "wrap", minHeight: CONTROL_HEIGHT }}>
         {saveBlockedReason && (
-          <span style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{saveBlockedReason}</span>
+          <span style={{ flex: 1, minWidth: "200px", fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5 }}>{saveBlockedReason}</span>
+        )}
+        {changed && (
+          <button className="portal-btn-primary" onClick={save} disabled={!canSave}
+            style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit", flexShrink: 0 }}>
+            {t.saveProject}
+          </button>
         )}
       </div>
     </div>
