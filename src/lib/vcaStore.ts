@@ -4170,7 +4170,23 @@ export interface DailyDetections {
 }
 
 export function dailyDetections(projectId: string, days = 7): DailyDetections[] {
-  const base = 900 + projectId.length * 37;
+  /*
+   * NO CAMERAS, NO DETECTIONS (2026-09-30).
+   *
+   * This was seeded off the project id alone, so a site with nothing installed drew 「감지 · 최근
+   * 7일 9,577건 · -23%」 directly above 「연결된 카메라가 없습니다」 — measured on Northgate. A
+   * figure an administrator would read as traffic, on a site that has never seen any.
+   *
+   * HANDOFF: the population of this number is THE CAMERAS REGISTERED TO THIS PROJECT, and a
+   * camera that is not running contributes nothing. The per-camera rate below is the mock's own
+   * invention and the server replaces the whole series; what it must keep is the rule — the count
+   * comes from this project's cameras, so zero cameras is zero, and an account whose camera scope
+   * narrows the fleet should see the aggregate narrowed the same way (see §4).
+   */
+  const cams = camerasInProject(useVcaStore.getState().cameras, projectId)
+    .filter(c => c.status !== "offline" && c.status !== "error");
+  if (cams.length === 0) return Array.from({ length: days }, (_, i) => ({ daysAgo: days - 1 - i, total: 0, vip: 0, vehicle: 0, unknown: 0 }));
+  const base = 18 * cams.length + projectId.length * 3;
   return Array.from({ length: days }, (_, i) => {
     const daysAgo = days - 1 - i;
     // Seeded off daysAgo, not the array index, so asking for fourteen days and asking for
