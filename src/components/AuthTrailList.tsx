@@ -27,6 +27,14 @@ const T = {
   ko: { elapsed: "경과",   lastSeen: "마지막 목격" },
 } as const;
 
+/** The minute unit, because a number is not language-free. 2026-09-30: the gaps were written as
+ *  plain strings ("6m"), so the Korean panel read 「6m 경과」 — camera name, 「경과」 and
+ *  「마지막 목격」 all translated around an English unit left standing in the middle of them. */
+const MIN: Record<"en" | "ko", (n: number) => string> = {
+  en: n => `${n}m`,
+  ko: n => `${n}분`,
+};
+
 /**
  * Newest first, the way the real timeline reads — the last sighting is the one being looked for.
  * Gaps only; no absolute times.
@@ -36,11 +44,11 @@ const T = {
  * yesterday. That is the opposite of what this screen is showing. Four sightings inside twenty
  * minutes says the search caught up with them, which is the case worth putting on the panel.
  */
-const ROWS: { n: string; name: { en: string; ko: string }; gap: string | null }[] = [
-  { n: "04", name: { en: "Rear Exit",      ko: "후문" },       gap: "6m" },
-  { n: "03", name: { en: "Main Concourse", ko: "중앙 대합실" }, gap: "11m" },
-  { n: "02", name: { en: "Transit Hall",   ko: "환승 통로" },  gap: "4m" },
-  { n: "01", name: { en: "West Gate",      ko: "서문" },       gap: null },
+const ROWS: { n: string; name: { en: string; ko: string }; gapMinutes: number | null }[] = [
+  { n: "04", name: { en: "Rear Exit",      ko: "후문" },       gapMinutes: 6 },
+  { n: "03", name: { en: "Main Concourse", ko: "중앙 대합실" }, gapMinutes: 11 },
+  { n: "02", name: { en: "Transit Hall",   ko: "환승 통로" },  gapMinutes: 4 },
+  { n: "01", name: { en: "West Gate",      ko: "서문" },       gapMinutes: null },
 ];
 
 export default function AuthTrailList({ className }: { className?: string }) {
@@ -86,9 +94,9 @@ export default function AuthTrailList({ className }: { className?: string }) {
                   {t.lastSeen}
                 </span>
               )}
-              {row.gap && (
+              {row.gapMinutes !== null && (
                 <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", letterSpacing: "-0.2px" }}>
-                  <span style={{ color: "var(--gray-500)", fontWeight: 700 }}>{row.gap}</span> {t.elapsed}
+                  <span style={{ color: "var(--gray-500)", fontWeight: 700 }}>{MIN[lang](row.gapMinutes)}</span> {t.elapsed}
                 </span>
               )}
             </div>

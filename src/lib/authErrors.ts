@@ -115,9 +115,14 @@ export const LOGIN_NOTICES: Record<LoginFailure, LoginNotice> = {
       ko: "관리자에게 받은 등록 코드로 먼저 비밀번호를 설정해주세요.",
     },
   },
+  // 2026-09-30: the Korean title was 「로그아웃되었습니다」 here AND in `signedOut` below — two
+  // different notices under one heading, so the only thing telling a Korean operator whether the
+  // machine timed them out or they pressed the button was the second line. English had the
+  // distinction from the start ("You were signed out" / "Signed out"); 「자동」 is the Korean half
+  // of it, and it stays short because this sits above the form, not in place of it.
   sessionExpired: {
     tone: "info",
-    title: { en: "You were signed out", ko: "로그아웃되었습니다" },
+    title: { en: "You were signed out", ko: "자동 로그아웃되었습니다" },
     detail: {
       en: "The session expired. Sign in again to continue.",
       ko: "접속 시간이 만료되었습니다. 다시 로그인해주세요.",

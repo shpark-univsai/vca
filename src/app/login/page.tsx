@@ -8,7 +8,7 @@ import AuthTrailArt from "@/components/AuthTrailArt";
 import AuthTrailList from "@/components/AuthTrailList";
 import { getAuthConfig } from "@/lib/authConfig";
 import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
-import { LOGIN_NOTICES, parseLoginNotice, type LoginFailure } from "@/lib/authErrors";
+import { LOGIN_NOTICES, parseLoginNotice, type LoginFailure, type LoginNotice } from "@/lib/authErrors";
 import { canEnterPortal, canUseAppNow, useVcaStore } from "@/lib/vcaStore";
 import { readGateChoice } from "@/components/AccessGate";
 import { useLanguage } from "@/lib/i18n";
@@ -107,6 +107,37 @@ const FIELD_LABEL: React.CSSProperties = {
 };
 /** Only ever holds the identifier. Never the password, never a session token. */
 const REMEMBERED_ID_KEY = "vca.rememberedId";
+
+/**
+ * The sign-in notice's icon, in the tone the notice already declares.
+ *
+ * 2026-09-30: all seven notices drew AuthIcons' ErrorCircleIcon, whose fill is written into the
+ * path as --danger-400, so 「로그아웃되었습니다」 — where nothing went wrong and the operator
+ * simply signed out — wore a red exclamation mark on the calm blue info panel. The panel's
+ * background had followed `tone` since it was built; the icon never did, and an icon arguing with
+ * the surface it sits on is read before the sentence is.
+ *
+ * Drawn here rather than by giving ErrorCircleIcon a colour prop, because ErrorCircleIcon is still
+ * exactly right where it is used next — the red Caps Lock line under the password field — and this
+ * pair of glyphs belongs to the notice panel.
+ *
+ * The info glyph is the error glyph mirrored, not a second drawing: the ring is centred on (10,10)
+ * and symmetric about it, so flipping vertically leaves the circle alone and stands the
+ * exclamation mark on its head, which is an "i". One geometry, so the two can never drift apart in
+ * weight or size the way two hand-traced paths would.
+ */
+function NoticeIcon({ tone }: { tone: LoginNotice["tone"] }) {
+  const error = tone === "error";
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path
+        transform={error ? undefined : "translate(0, 20) scale(1, -1)"}
+        d="M10.3615 13.5665C10.4624 13.4655 10.5129 13.3451 10.5129 13.2052C10.5129 13.0652 10.4624 12.9447 10.3615 12.8438C10.2605 12.7428 10.14 12.6923 10 12.6923C9.86 12.6923 9.73951 12.7428 9.63854 12.8438C9.53757 12.9447 9.48708 13.0652 9.48708 13.2052C9.48708 13.3451 9.53757 13.4655 9.63854 13.5665C9.73951 13.6674 9.86 13.7179 10 13.7179C10.14 13.7179 10.2605 13.6674 10.3615 13.5665ZM9.58333 10.9615H10.4167V5.96146H9.58333V10.9615ZM10.0027 17.5C8.96563 17.5 7.99056 17.3032 7.0775 16.9096C6.16458 16.516 5.37042 15.9818 4.695 15.3071C4.01958 14.6324 3.48493 13.8389 3.09104 12.9267C2.69701 12.0146 2.5 11.0399 2.5 10.0027C2.5 8.96563 2.69681 7.99055 3.09042 7.0775C3.48403 6.16458 4.01819 5.37042 4.69292 4.695C5.36764 4.01958 6.16111 3.48493 7.07333 3.09104C7.98542 2.69701 8.96007 2.5 9.99729 2.5C11.0344 2.5 12.0094 2.69681 12.9225 3.09042C13.8354 3.48403 14.6296 4.01819 15.305 4.69292C15.9804 5.36764 16.5151 6.16111 16.909 7.07333C17.303 7.98542 17.5 8.96007 17.5 9.99729C17.5 11.0344 17.3032 12.0094 16.9096 12.9225C16.516 13.8354 15.9818 14.6296 15.3071 15.305C14.6324 15.9804 13.8389 16.5151 12.9267 16.909C12.0146 17.303 11.0399 17.5 10.0027 17.5Z"
+        fill={error ? "var(--danger-400)" : "var(--info-500)"}
+      />
+    </svg>
+  );
+}
 
 /**
  * HANDOFF NOTE — viewing every state without a backend.
@@ -346,7 +377,7 @@ function LoginForm() {
                   }}
                 >
                   <span style={{ display: "flex", flexShrink: 0, marginTop: "1px" }}>
-                    <ErrorCircleIcon />
+                    <NoticeIcon tone={LOGIN_NOTICES[notice].tone} />
                   </span>
                   <div>
                     <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-800)", letterSpacing: "-0.26px" }}>
