@@ -1500,7 +1500,50 @@ export interface AuditEvent {
    * column and the search box read, because it is the one field every row is guaranteed to have.
    */
   message: string;
+  /**
+   * WHO, as a display name — and a name is not an identity, which is why the next two fields
+   * exist.
+   *
+   * An audit log's first question is "who did this", and this field answers it with whatever the
+   * account was called at the time. Names are editable and accounts get deleted, so on its own
+   * this column cannot survive either: two people called Wei Chen are one column value, and a row
+   * whose actor has since left is a string that no longer points at anybody.
+   *
+   * Kept as the thing the screen prints, because a screen that prints an account id is a screen
+   * nobody can read. It is the snapshot, not the reference.
+   */
   actor: string;
+  /**
+   * WHO, as the account. Stable across renames and outlives the account itself.
+   *
+   * Optional only because rows written before this existed, and rows a server has not been taught
+   * to send it with, still have to render. Every row this frontend writes carries it — see
+   * clientAudit, which fills it in rather than trusting eighty-odd call sites to remember.
+   *
+   * HANDOFF: this is the field an audit is actually run against. The address is here too because
+   * an id is what a query joins on and an address is what a person recognises, and a log that has
+   * to be read by a human and joined by a machine needs both.
+   */
+  actorId?: string;
+  actorEmail?: string;
+  /**
+   * WHAT IT WAS, and WHAT IT BECAME — for the rows where the change is a value.
+   *
+   * 「보관 기간 변경됨」 says that something moved and refuses to say from where to where, which is
+   * the one thing the question "was this allowed" turns on: 90일 → 30일 destroys footage and
+   * 30일 → 90일 does not, and both wrote the same sentence. The old value is also the only part
+   * that cannot be recovered afterwards — the new one is on the settings screen, the old one is
+   * gone the moment it is overwritten. That is why this is the field that had to exist before the
+   * server takes the log over, not after.
+   *
+   * Both optional and both absent together: a row that records an event rather than an edit (a
+   * CSV export, a code issued, a camera added) has no previous value, and inventing 「—」 for it
+   * would make the column look like a value that used to be empty. Strings, not the typed value,
+   * because what this has to survive is being read a year later by somebody who does not have the
+   * schema — 「30일」 and 「끔」 keep their meaning, `30` and `false` do not.
+   */
+  before?: string;
+  after?: string;
   at: string;
   /**
    * Who saw the action happen — and therefore whether this row can be offered as evidence.
@@ -4456,7 +4499,7 @@ export function unstableCameras(projectId: string, cameras: Camera[], limit = 4)
 // so the seed that stands in for a server's history has to carry the mark a server's history
 // carries. That the mock assembles them client-side is a fact about the mock, not about the
 // action. This is the only place in this file "server" is written; see `clientAudit`.
-const AUDIT_LOG: AuditEvent[] = [
+const AUDIT_LOG_SEED: AuditEvent[] = [
   { id: "audit-1", projectId: "proj-sg", area: "cameras", target: "CAM-NOV-001", action: "RTSP URL updated", message: "Camera CAM-NOV-001 RTSP URL updated", actor: "Grace Tan", at: auditAt(20), recordedBy: "server" },
   { id: "audit-2", projectId: "proj-sg", area: "vip", target: "Wei Chen", action: "Registered", message: "VIP Wei Chen registered", actor: "Marcus Lee", at: auditAt(65), recordedBy: "server" },
   { id: "audit-3", projectId: "proj-sg", area: "accounts", target: "David Ong", action: "Account suspended", message: "David Ong's account suspended", actor: "Grace Tan", at: auditAt(240), recordedBy: "server" },
@@ -4492,6 +4535,17 @@ const AUDIT_LOG: AuditEvent[] = [
   { id: "audit-18", projectId: "proj-sg", area: "cameras", target: "Zone Angmokio", action: "Created with 3 cameras", message: "Zone Angmokio created with 3 cameras", actor: "Marcus Lee", at: auditAt(11520), recordedBy: "server" },
   { id: "audit-19", projectId: "proj-sg", area: "license", target: "Project licence", action: "Renewed until 2029-03-31", message: "License renewed until 2029-03-31", actor: "Grace Tan", at: auditAt(12960), recordedBy: "server" },
 ];
+const AUDIT_LOG: AuditEvent[] = AUDIT_LOG_SEED.map(row => {
+  /* THE SEEDS CARRY THE ACTOR'S ACCOUNT TOO, resolved from the account list by name.
+     They stand in for rows a server wrote, and a server writing an audit row knows which account
+     asked — so a seed that carries only a display name would be showing the Records screen a
+     weaker row than the real one, and any column built against the id would look empty on exactly
+     the rows an audit opens with. Resolved rather than typed in, so the two lists cannot drift.
+     An actor who is not an account (no row matches) keeps the name alone — which is the honest
+     answer for an action taken by somebody who has since been removed. */
+  const account = PORTAL_USERS.find(u => u.name === row.actor);
+  return account ? { ...row, actorId: account.id, actorEmail: account.email } : row;
+});
 let auditSeq = AUDIT_LOG.length;
 
 /**
@@ -4509,7 +4563,19 @@ let auditSeq = AUDIT_LOG.length;
  * Converting one of them means moving the write to the server, not passing a different string.
  */
 function clientAudit(fields: Omit<AuditEvent, "id" | "recordedBy">): AuditEvent {
-  return { id: `audit-${++auditSeq}`, recordedBy: "client", ...fields };
+  /* actorId and actorEmail are filled in HERE, not at the call sites. Eighty-six of them pass
+     `actor: SIGNED_IN_USER.name` and the viewer is the same account in every one, so asking each to
+     also remember the id is asking to have it missing from whichever one gets added next — and a
+     row missing its actor id is a row an audit cannot follow to a person. A call site that knows
+     better (an action taken on somebody else's behalf) can still pass its own: `fields` is spread
+     last. */
+  return {
+    id: `audit-${++auditSeq}`,
+    recordedBy: "client",
+    actorId: SIGNED_IN_USER.accountId,
+    actorEmail: SIGNED_IN_USER.email,
+    ...fields,
+  };
 }
 
 let presetSeq = 0;
@@ -5012,6 +5078,8 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   setEvidenceWatermark: (projectId, on) =>
     set(state => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, evidenceWatermark: on } : p)),
+      /* before/after in words, not "true"/"false" — see AuditEvent.before. This is a two-state
+         switch, so the pair is the whole change. */
       /* Audited in both directions, and the OFF line is the one that matters: it is the record that
          somebody removed the mark that ties a leaked still to a session. */
       auditLog: [
@@ -5021,6 +5089,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           target: "Viewer watermark",
           action: on ? "Turned on" : "Turned OFF — leaked stills no longer name the session",
           message: on ? "Viewer watermark turned on" : "Viewer watermark turned OFF — leaked stills no longer name the session",
+          before: on ? "Off" : "On", after: on ? "On" : "Off",
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }),
         ...state.auditLog,
@@ -5036,7 +5105,15 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // ++auditSeq, not Date.now(): two changes inside one millisecond produced duplicate
         // React keys. And sliced like every other writer — this was the one that could grow the
         // log past the ceiling the Activity screen prints.
-        clientAudit({ projectId, area: "settings", target: "Time zone", action: `Set to ${timeZone}`, message: `Project timezone set to ${timeZone}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() }),
+        /* The zone it was on is the part that cannot be recovered later: every day boundary in
+           the log, the reports and the retention sweep moved when it changed, and only the new
+           one is still on the settings screen. */
+        clientAudit({
+          projectId, area: "settings", target: "Time zone",
+          action: `Set to ${timeZone}`, message: `Project timezone set to ${timeZone}`,
+          before: state.projects.find(p => p.id === projectId)?.timeZone, after: timeZone,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }),
         ...state.auditLog,
       ].slice(0, AUDIT_LOG_LIMIT),
     })),
@@ -5238,12 +5315,20 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           projectId,
           area: "settings",
           target: "Retention period",
-          action: days === null
-            ? `Cleared (was ${before ?? "unset"} days)`
-            : `Changed from ${before ?? "unset"} to ${days} days`,
+          /* The action says what was done; the before/after pair below it carries the two values,
+             so the sentence no longer spells them out as well. `message` keeps the full sentence —
+             it is the one field every reader is guaranteed (search, CSV fallback, a server that
+             never learns the split). */
+          action: days === null ? "Cleared" : `Changed to ${days} days`,
           message: days === null
             ? `Retention period cleared (was ${before ?? "unset"} days)`
             : `Retention period changed from ${before ?? "unset"} to ${days} days`,
+          /* Already in the sentence; also here as a pair, so the Records screen can put the two
+             values side by side instead of leaving a reader to parse "changed from X to Y" —
+             and so a shortening (90 → 30, which destroys footage) can be told from a lengthening
+             without reading the prose. */
+          before: before === undefined ? "Not set" : `${before} days`,
+          after: days === null ? "Not set" : `${days} days`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -5272,12 +5357,12 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           projectId,
           area: "settings",
           target: "VIP listing period",
-          action: days === null
-            ? `Cleared (was ${before ?? "unset"} days)`
-            : `Changed from ${before ?? "unset"} to ${days} days`,
+          action: days === null ? "Cleared" : `Changed to ${days} days`,
           message: days === null
             ? `VIP listing period cleared (was ${before ?? "unset"} days)`
             : `VIP listing period changed from ${before ?? "unset"} to ${days} days`,
+          before: before === undefined ? "Not set" : `${before} days`,
+          after: days === null ? "Not set" : `${days} days`,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -5306,6 +5391,15 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           target: "Network reachability",
           action: override === null ? "Reset to auto-detection" : `Manually set to ${override ? "internet-isolated" : "internet-connected"}`,
           message: override === null ? "Network reachability reset to auto-detection" : `Network reachability manually set to ${override ? "internet-isolated" : "internet-connected"}`,
+          /* The override, not the measurement: what this call changed is whether a person's answer
+             overrides the ping, so that is what the pair records. */
+          before: state.projects.find(p => p.id === projectId)?.networkIsolatedOverride === undefined
+            || state.projects.find(p => p.id === projectId)?.networkIsolatedOverride === null
+              ? "Auto-detected"
+              : state.projects.find(p => p.id === projectId)?.networkIsolatedOverride
+                ? "Internet-isolated (manual)" : "Internet-connected (manual)",
+          after: override === null ? "Auto-detected"
+            : override ? "Internet-isolated (manual)" : "Internet-connected (manual)",
           actor: SIGNED_IN_USER.name, at,
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
@@ -6255,6 +6349,10 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
           message: status === "suspended" ? `${target.name}'s account suspended`
             : status === "active" ? `${target.name}'s account reactivated`
             : `${target.name}'s status set to ${status}`,
+          /* The state it came FROM. 「계정 정지」 reads the same whether it closed a working account
+             or re-closed one that had never been activated, and those are different acts — the
+             first took somebody's access away today. */
+          before: target.status, after: status,
           actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT) : state.auditLog,
       };

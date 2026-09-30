@@ -121,6 +121,7 @@ const T = {
     recordedClient: "Not on the server",
     recordedClientWhy: "This console wrote this row. The server has no record of it — the action it describes is not wired to the API yet.",
     csvRecordedBy: "Recorded by", csvServer: "server", csvClient: "browser",
+    csvActorId: "Account", csvBefore: "Was", csvAfter: "Became",
   },
   ko: {
     intro: "포털에서 이 프로젝트에 가해진 모든 변경입니다. 기관 전체에 적용되는 정책 변경과, 등록 코드로 가입해 계정이 만들어진 일도 함께 나옵니다.",
@@ -148,6 +149,7 @@ const T = {
     recordedClient: "서버 미기록",
     recordedClientWhy: "이 줄은 콘솔이 적었고 서버에는 없습니다. 여기 적힌 동작이 아직 API에 연결되지 않았습니다.",
     csvRecordedBy: "기록 주체", csvServer: "서버", csvClient: "브라우저",
+    csvActorId: "계정", csvBefore: "이전 값", csvAfter: "바뀐 값",
   },
 } as const;
 
@@ -320,7 +322,12 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
     /* Same order as the table, and the header now matches what the body actually writes — it read
        「대상, 화면」 over cells that were area-then-target, so a spreadsheet had the two columns
        swapped under their own names. */
-    const header = [t.csvActor, t.csvArea, t.csvTarget, t.csvMessage, t.csvAt, t.csvRecordedBy];
+    /* 계정, 이전 값, 바뀐 값 go out with the file too.
+       The spreadsheet is what gets quoted in a review, and the two things a review asks that a
+       display name and a sentence cannot answer are "which account was that" — names repeat and
+       change — and "what was it before", which nothing else keeps once it is overwritten. Empty
+       for the rows that are events rather than edits; see AuditEvent.before. */
+    const header = [t.csvActor, t.csvActorId, t.csvArea, t.csvTarget, t.csvMessage, t.csvBefore, t.csvAfter, t.csvAt, t.csvRecordedBy];
     // The column goes out with the file. A row pulled into a spreadsheet loses the screen's
     // second line, and what gets quoted in a review is the spreadsheet.
     //
@@ -330,8 +337,10 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
     // beats a cell that says something the row never claimed.
     const body = visible.map((a: AuditEvent) => [
       a.actor,
+      a.actorEmail ?? a.actorId ?? "",
       a.area ? areaLabel(a.area) : "", a.target ?? "",
       a.area ? (a.action ?? a.message) : a.message,
+      a.before ?? "", a.after ?? "",
       stamp(a.at),
       a.recordedBy === "client" ? t.csvClient : t.csvServer,
     ]);
@@ -563,6 +572,20 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
                 <span style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>
                   {a.action ?? a.message}
                   {clientMark}
+                  {/* THE PAIR, UNDER THE SENTENCE — and only where the row has one.
+                      An edit's two values are what "was this allowed" turns on: 90일 → 30일
+                      destroys footage and 30일 → 90일 does not, and the sentence above reads the
+                      same either way for half the rows that write it. Rows that record an event
+                      rather than an edit (a code issued, a CSV exported, a camera added) have no
+                      previous value and get no line — an arrow with a dash on its left would look
+                      like a value that used to be empty. */}
+                  {a.before !== undefined && a.after !== undefined && (
+                    <span style={{ display: "block", marginTop: "2px", fontSize: "11px", color: "var(--gray-400)" }}>
+                      {a.before}
+                      <span aria-hidden="true" style={{ margin: "0 5px" }}>→</span>
+                      <span style={{ color: "var(--gray-600)", fontWeight: 600 }}>{a.after}</span>
+                    </span>
+                  )}
                 </span>
                 {/* Last, and in the same monospace it always had — a column of stamps only lines
                     up if the digits do. */}
