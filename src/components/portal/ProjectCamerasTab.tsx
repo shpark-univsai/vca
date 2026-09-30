@@ -13,7 +13,7 @@ import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, TABLE_RULE, CARD_BORDER, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, TABLE_RULE, CARD_BORDER, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Tooltip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
 import CameraStreamModal from "./CameraStreamModal";
 
 const T = {
@@ -66,6 +66,7 @@ const T = {
     healthConnected: "connected cameras",
     healthConnectedWhy: "Answered the last connection attempt. It says the stream is reachable, not that anything is looking at it.",
     healthOfFleet: (total: number) => `of ${total}`,
+    healthOfCameras: (total: number) => `of ${total} cameras`,
     healthAwaiting: "awaiting first contact",
     healthAwaitingWhy: "Registered here, never heard from. Not a fault — this is where every camera sits between being added and its first report. On installation day it is most of the fleet.",
     statusAwaiting: "Awaiting first contact",
@@ -121,6 +122,7 @@ const T = {
     verdictAuthentic: "Authentic",
     verdictManipulated: "Manipulated",
     verdictInconclusive: "Inconclusive",
+    verdictInconclusiveHint: "The model did not lean either way. A person has to look at this.",
     verdictScore: (n: number) => `${Math.round(n * 100)}%`,
     /* PARALLEL WITH THE ITEM ABOVE IT. Both are uploads; what differs is what happens next, so
        the label carries the purpose and keeps the verb. "의뢰" (a request lodged with somebody)
@@ -296,6 +298,7 @@ const T = {
     healthConnected: "연결된 카메라",
     healthConnectedWhy: "마지막 연결 시도에 응답했습니다. 스트림에 닿는다는 뜻이지, 누가 보고 있다는 뜻은 아닙니다.",
     healthOfFleet: (total: number) => `/ ${total}대`,
+    healthOfCameras: (total: number) => `/ 카메라 ${total}대`,
     healthAwaiting: "첫 연결 대기",
     healthAwaitingWhy: "여기 등록만 되고 아직 한 번도 응답한 적이 없습니다. 고장이 아니라, 모든 카메라가 등록과 첫 보고 사이에 거치는 자리입니다. 설치 당일에는 대부분이 여기 있습니다.",
     statusAwaiting: "첫 연결 대기",
@@ -335,6 +338,7 @@ const T = {
     verdictAuthentic: "진짜",
     verdictManipulated: "조작됨",
     verdictInconclusive: "판정 불가",
+    verdictInconclusiveHint: "모델이 어느 쪽으로도 기울지 않았습니다. 사람이 봐야 합니다.",
     verdictScore: (n: number) => `${Math.round(n * 100)}%`,
     deepfakeFileOption: "딥페이크 검사 업로드",
     deepfakeUploadTitle: "딥페이크 검사",
@@ -2017,11 +2021,22 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           </p>
         </div>
       )}
+      {/*
+          WHICH POPULATION THE DENOMINATORS COUNT, said out loud on the 전체 tab.
+
+          Measured: 전체 tab, 「연결됨 54 / 62대」 in the strip sitting directly under 「전체 69」 on
+          the tab above it. Both look like the size of the list below. Neither is wrong — the table
+          on 전체 holds 62 cameras and 7 uploaded files — but a reader has no way to tell that 62
+          and 69 are two different populations rather than one of them being stale. A file has no
+          connection to be online or offline with, so every figure in this strip is a camera figure;
+          on the tab that also lists files, the denominator says so.
+      */}
       {(kindTab === "ALL" || kindTab === "camera") && <SummaryStrip cells={[
         ...[
           {
             key: "online" as const, count: onlineCount, label: t.healthConnected, why: t.healthConnectedWhy,
-            unit: t.healthOfFleet(projectCameras.length), tone: "neutral" as const,
+            unit: kindTab === "ALL" ? t.healthOfCameras(projectCameras.length) : t.healthOfFleet(projectCameras.length),
+            tone: "neutral" as const,
             icon: <VideoIcon size={14} strokeWidth={2.4} />,
           },
           {
@@ -2111,7 +2126,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           key: "noServer",
           icon: <ServerOff size={14} strokeWidth={2.4} />,
           figure: noServerCount,
-          unit: t.healthOfFleet(projectCameras.length),
+          unit: kindTab === "ALL" ? t.healthOfCameras(projectCameras.length) : t.healthOfFleet(projectCameras.length),
           label: t.healthNoServer,
           explanation: t.healthNoServerWhy,
           /* Amber, unlike 좌표 미등록's neutral. A camera missing its survey still records and
@@ -2543,20 +2558,32 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     {u.status === "done" && u.kind !== "deepfake" && u.detectionCount !== undefined && (
                       <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{t.detectionsFound(u.detectionCount)}</span>
                     )}
-                    {/* A deepfake row's result is a judgement, not a count — and the score travels
-                        with it, because "manipulated" at 41% and at 94% are the same word and very
-                        different news. Only "manipulated" is coloured: authentic is the expected
+                    {/* A deepfake row's result is a judgement, not a count — and for an answer the
+                        score travels with it, because "manipulated" at 55% and at 94% are the same
+                        word and very different news. 판정 불가 IS NOT AN ANSWER, so it carries no
+                        number: its score is the model's confidence in not knowing, which sits in
+                        the same place as "조작 94%" and reads as the same kind of figure while
+                        meaning nothing a person can act on. The word plus what to do about it is
+                        the whole message. Only "manipulated" is coloured: authentic is the expected
                         answer and inconclusive is an absence of one, and painting either would
                         make three verdicts look like three alarms. */}
                     {verdict && (
                       <>
-                        <span style={{ fontSize: "12px", fontWeight: 700, color: verdict === "manipulated" ? "var(--danger-400)" : "var(--gray-900)" }}>
-                          {verdict === "manipulated" ? t.verdictManipulated
-                            : verdict === "authentic" ? t.verdictAuthentic
-                            : t.verdictInconclusive}
-                        </span>
-                        {u.deepfakeScore !== undefined && (
-                          <span style={{ fontSize: "10px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.verdictScore(u.deepfakeScore)}</span>
+                        {verdict === "inconclusive" ? (
+                          <Tooltip text={t.verdictInconclusiveHint}>
+                            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", borderBottom: "1px dotted var(--gray-300)" }}>
+                              {t.verdictInconclusive}
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          <>
+                            <span style={{ fontSize: "12px", fontWeight: 700, color: verdict === "manipulated" ? "var(--danger-400)" : "var(--gray-900)" }}>
+                              {verdict === "manipulated" ? t.verdictManipulated : t.verdictAuthentic}
+                            </span>
+                            {u.deepfakeScore !== undefined && (
+                              <span style={{ fontSize: "10px", color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.verdictScore(u.deepfakeScore)}</span>
+                            )}
+                          </>
                         )}
                       </>
                     )}

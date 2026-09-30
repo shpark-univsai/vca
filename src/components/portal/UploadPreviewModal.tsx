@@ -172,9 +172,12 @@ export default function UploadPreviewModal({ upload, onClose }: { upload: Upload
             {upload.status !== "done"
               ? (upload.status === "pending" ? t.pending : t.running)
               : upload.kind === "deepfake"
+                // 판정 불가 carries no confidence figure, here or in the row: the number is the
+                // model's confidence in not knowing, and printing it where "조작 · 확신도 94%"
+                // prints makes an absence of an answer look like a measured one.
                 ? `${upload.deepfakeVerdict === "manipulated" ? t.verdictManipulated
                     : upload.deepfakeVerdict === "authentic" ? t.verdictAuthentic : t.verdictInconclusive}`
-                  + (upload.deepfakeScore !== undefined ? ` · ${t.score(upload.deepfakeScore)}` : "")
+                  + (upload.deepfakeScore !== undefined && upload.deepfakeVerdict !== "inconclusive" ? ` · ${t.score(upload.deepfakeScore)}` : "")
                 : upload.detectionCount !== undefined ? t.faces(upload.detectionCount) : t.analysed}
           </span>
         </span>

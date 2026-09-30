@@ -111,7 +111,11 @@ const T = {
     todaySoFar: "Today",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · Vehicle ${vehicle} · Unknown ${unknown.toLocaleString("en-US")}`,
-    dropNth: (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"} time this week`,
+    /* "this week" and "the last 7 days" are not the same window, and the note and its own tooltip
+       said one each. The count is over a rolling seven days, so both say seven days. */
+    dropNth: (n: number) => `${n} drops in 7 days`,
+    downPastWindow: "down all week",
+    downPastWindowFull: "Last seen more than 7 days ago and has not come back, so the 7-day drop count cannot see this outage",
     dropNoteFull: (n: number) => `Dropped its stream ${n} times in the last 7 days`,
     viewAllCameras: (n: number) => `View all ${n} camera${n === 1 ? "" : "s"}`,
     viewAllVips: "Open the registry",
@@ -201,7 +205,9 @@ const T = {
     todaySoFar: "오늘",
     detectionSplit: (vip: number, vehicle: number, unknown: number) =>
       `VIP ${vip} · 차량 ${vehicle} · 미확인 ${unknown.toLocaleString("en-US")}`,
-    dropNth: (n: number) => `이번 주 ${n}번째`,
+    dropNth: (n: number) => `7일간 ${n}회`,
+    downPastWindow: "7일 내내 끊긴 채",
+    downPastWindowFull: "마지막 접속이 7일보다 앞서고 그 뒤로 돌아오지 않았습니다. 7일 끊김 횟수로는 이 장애가 보이지 않습니다.",
     dropNoteFull: (n: number) => `지난 7일 동안 ${n}회 끊겼습니다`,
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
     viewAllVips: "VIP 목록 열기",
@@ -1667,6 +1673,24 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                     <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
                     {visibleCameraRows.map((c, i) => {
                       const online = c.status === "online";
+                      /*
+                        HOW LONG IT HAS BEEN DOWN decides whether the drop count means anything.
+
+                        The counts come from a 7-day window (unstableCameras builds dropsByDay over
+                        seven days). A camera that went down eleven days ago and never came back
+                        dropped nothing INSIDE that window, so it scored 0 and its row printed no
+                        note at all — the worst camera on the list was the quietest one. And where
+                        the seed happened to give it a count, the note was worse than silent: a
+                        camera that never recovered cannot have dropped three separate times this
+                        week.
+
+                        So the window decides which sentence the row gets. Down longer than the
+                        window: say that, and say nothing about a count the window cannot see.
+                        Down inside it: the count is a real count of this week's drops.
+                      */
+                      const downMs = nowMs !== null && c.lastSeenAt ? nowMs - new Date(c.lastSeenAt).getTime() : null;
+                      const downPastWindow = downMs !== null && downMs >= 7 * 86_400_000;
+                      const drops = dropsByCamera.get(c.id) ?? 0;
                       const openCamera = () => { setInspectCameraId(c.id); onTabChange("cameras"); };
                       return (
                         /*
@@ -1766,12 +1790,18 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                           <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0, fontSize: "12px", fontWeight: 600, color: online ? "var(--gray-500)" : "var(--gray-900)" }}>
                             <span style={{ width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0, backgroundColor: online ? "var(--gray-300)" : TONE_STYLE.fault.fg }} />
                             <span style={{ flexShrink: 0 }}>{online ? t.online : c.status === "error" ? t.refusing : t.offline}</span>
-                            {!online && (dropsByCamera.get(c.id) ?? 0) > 0 && (
+                            {/* Two or more, not one or more. Every offline camera dropped at least
+                                once — that is what being offline means — so 「7일간 1회」 next to
+                                「Offline」 was the word "offline" a second time, and the column to
+                                the left already says when it happened. Two is where the note starts
+                                saying something the row does not: this camera is not down, it is
+                                flapping. */}
+                            {!online && (downPastWindow || drops >= 2) && (
                               <span
-                                title={t.dropNoteFull(dropsByCamera.get(c.id) as number)}
+                                title={downPastWindow ? t.downPastWindowFull : t.dropNoteFull(drops)}
                                 style={{ fontSize: "10px", fontWeight: 500, color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                               >
-                                {t.dropNth(dropsByCamera.get(c.id) as number)}
+                                {downPastWindow ? t.downPastWindow : t.dropNth(drops)}
                               </span>
                             )}
                           </span>

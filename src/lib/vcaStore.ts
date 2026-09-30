@@ -1656,8 +1656,11 @@ export interface UploadedMedia {
   detectionCount?: number;
   /** Deepfake submissions only, and only once the check has finished. */
   deepfakeVerdict?: DeepfakeVerdict;
-  /** 0-1, the model's confidence in that verdict. Shown beside it: "manipulated" at 0.55 and at
-   *  0.98 are the same word and very different news. */
+  /** 0-1, the model's confidence in that verdict. Shown beside an ANSWER — "manipulated" at 0.55
+   *  and at 0.98 are the same word and very different news. NOT shown for "inconclusive", where it
+   *  is confidence in not knowing: in the place a reader reads "조작 94%" it reads as the same kind
+   *  of figure and means nothing they can act on. The screens drop it for that verdict; a server
+   *  may still send it. */
   deepfakeScore?: number;
 }
 
