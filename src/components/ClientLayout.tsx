@@ -20,6 +20,7 @@ import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import {
   useVcaStore, currentPortalUser, screensFor, holdsAppAction, cameraInScope,
+  dashboardOpensFor, actionsOfSignedIn,
   camerasInProject, getActiveProjectId, useActiveProjectId, watchedPersonsInProject,
   type AppScreen, type Camera,
 } from "@/lib/vcaStore";
@@ -372,9 +373,24 @@ export default function ClientLayout() {
   /* The dashboard rides on `liveView` rather than on the app door. It was `true` for everybody
      with the app, which let an account with no viewing grant watch the live VIP feed, the live
      detection count and the detections on the map — see dashboardOpensFor. */
-  const holdsLive = holdsAppAction(portalUsersForScreens, "liveView");
+  /*
+   * AND IT OPENS ON `systemStatus` TOO (2026-09-30).
+   *
+   * `dashboardOpensFor` was written for exactly this and then never called — the check here asked
+   * `liveView` alone. The dashboard is two panels (dashboardPanelsFor): EVENTS is detections,
+   * SYSTEM is cameras and servers with nobody's data in it, which is the whole reason an IT
+   * operator can be given the second without the first (owner, 2026-09-21). Refusing the tab on
+   * `liveView` told that account it had no access to a screen whose System half is precisely its
+   * grant — and because DASHBOARD is also the fallback, `firstAllowedTab` had nothing to return
+   * and the navbar drew no tabs at all, so the person could not leave the screen they had just
+   * been refused.
+   *
+   * The panels gate themselves inside (Sidebar / CollapsedSidebar read dashboardPanelsFor), so
+   * opening the tab does not open the feed.
+   */
+  const dashboardOpen = dashboardOpensFor(actionsOfSignedIn(portalUsersForScreens));
   const tabAllowed = (tab: NavTab) =>
-    tab === "DASHBOARD" ? holdsLive
+    tab === "DASHBOARD" ? dashboardOpen
     : tab === "BEST FRAME" ? holds("bestframe")
     : tab === "REDMAP" ? holds("redmap")
     : holds("live") || holds("reid") || holds("redface");
@@ -539,11 +555,12 @@ export default function ClientLayout() {
     if (tabAllowed(activePage)) return;
     setRefusedScreen(activePage);
     setActivePage(firstAllowedTab);
-    // `holdsLive` joins the deps because the dashboard is gated on it now: revoking live view
-    // while somebody is sitting on the dashboard has to move them, and heldScreens does not
-    // change when it happens (the dashboard is not an AppScreen).
+    // The dashboard's own grants join the deps: revoking live view (or the system panel) while
+    // somebody is sitting on the dashboard has to move them, and heldScreens does not change when
+    // it happens — the dashboard is not an AppScreen. `dashboardOpen` is a boolean, so this
+    // re-runs when the answer flips rather than on every store write.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePage, heldScreens, holdsLive]);
+  }, [activePage, heldScreens, dashboardOpen]);
   /**
    * The address bar has to stop naming the refused screen too.
    *

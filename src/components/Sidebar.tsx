@@ -1725,7 +1725,25 @@ interface SidebarProps {
 export default function Sidebar({ onEventSelect, selectedEventId, locationFilter, onLocationClear, onLocationSelect, districtFilter, onPinDevice, pinnedDeviceId, isCollapsed, onToggleDetectionChart, position = "left" }: SidebarProps) {
   const [lang] = useLanguage();
   const t = T[lang];
-  const [activeTab, setActiveTab] = usePersistedSidebarTab();
+  const [storedTab, setActiveTab] = usePersistedSidebarTab();
+  /*
+   * THE EXPANDED RAIL GATES ITS PANELS TOO (2026-09-30).
+   *
+   * CollapsedSidebar has read `useDashboardPanels()` since the two-panel cut was made and draws
+   * only the tabs the account holds. This one — the 380px rail, the one that is open by default —
+   * hardcoded both tabs and never asked. So an account granted `systemStatus` and nothing else,
+   * which is the case the owner asked for on 2026-09-21 (an IT operator who watches cameras, not
+   * people), still got an EVENTS tab, and behind it the detection feed with people's names and
+   * match scores on it. The grant existed, the screen just did not read it.
+   *
+   * Same shape as the collapsed twin, deliberately: a stored preference for a panel this account
+   * does not hold is corrected HERE rather than in an effect, because an effect lets the panel
+   * paint one frame first and that frame is the whole thing being gated.
+   */
+  const panels = useDashboardPanels();
+  const activeTab: SidebarTab = panels[storedTab === "SYSTEM" ? "system" : "events"]
+    ? storedTab
+    : (panels.events ? "EVENTS" : "SYSTEM");
   const [personFilter, setPersonFilter] = useState<string | null>(null);
   // A person filter names one person at one site. Left standing through a site switch it filtered
   // this site's list by a name that is not in it, so the list read as empty with a purple chip on
@@ -1749,7 +1767,10 @@ export default function Sidebar({ onEventSelect, selectedEventId, locationFilter
       {/* Tab toggle */}
       <div style={{ padding:"12px 20px 6px", flexShrink:0 }}>
         <div style={{ display:"flex", backgroundColor:"var(--gray-100)", borderRadius:"12px", padding:"4px", gap:"4px" }}>
-          {(["EVENTS","SYSTEM"] as SidebarTab[]).map(tab => {
+          {/* Only the panels this account holds. Both when it holds both, which is every ordinary
+              account — the filter changes nothing for them and removes a door for the one case it
+              is there for. */}
+          {(["EVENTS","SYSTEM"] as SidebarTab[]).filter(tab => panels[tab === "SYSTEM" ? "system" : "events"]).map(tab => {
             const active = activeTab === tab;
             return (
               <button key={tab} onClick={() => setActiveTab(tab)} style={{
