@@ -142,10 +142,16 @@ const RESEND_COOLDOWN_SEC = 30;
  * else is wrong — the mail is going somewhere they cannot read — and more codes only invalidate the
  * one that may yet arrive.
  *
- * HANDOFF NOTE: counted in this component, so it resets on reload. The real limit is per account
- * and lives on the server, which also has to return `resendLimit`; this number has to match it.
+ * Counts the code that "Request code" issues as well as the resends (2026-09-30). It was
+ * MAX_RESENDS and counted resends only, while "Request code" counted nothing at all — so one
+ * attempt really got four codes, and the limit did not limit the thing it names.
+ *
+ * HANDOFF NOTE: counted in this component, so it resets on reload — and pressing Start over and
+ * asking again starts a fresh count, because a browser cannot hold a limit that belongs to the
+ * account. The real limit is per account and lives on the server, which also has to return
+ * `resendLimit`; this number has to match it.
  */
-const MAX_RESENDS = 3;
+const MAX_CODES_PER_ATTEMPT = 3;
 /** A code the demo rejects so the wrong-code state is reachable without a backend. See the
  *  HANDOFF NOTE on verifyCode. */
 const DEMO_REJECTED_CODE = "12345678";
@@ -207,7 +213,7 @@ function fieldBorder(active: boolean) {
  *   /forgot-password?demo=expired    code too old
  *   /forgot-password?demo=throttled  too many attempts, entry locked
  *   /forgot-password?demo=resendLimit  asked for too many codes (also reachable for real, by
- *                                    pressing Resend past MAX_RESENDS)
+ *                                    pressing Resend past MAX_CODES_PER_ATTEMPT)
  *   /forgot-password?demo=password   set the new password
  *   /forgot-password?demo=done       finished
  *   /forgot-password?demo=adminOnly  deployment with no mail server at all
@@ -260,8 +266,9 @@ function ForgotPasswordFlow() {
       : null
   );
   const [cooldown, setCooldown] = useState(0);
-  const [resends, setResends] = useState(0);
-  // Bumped to send focus back to the first box after a resend.
+  /** Codes issued during this attempt, the first one included — see MAX_CODES_PER_ATTEMPT. */
+  const [codesSent, setCodesSent] = useState(0);
+  // Bumped to send focus back to the first box: after a resend, and after a code is rejected.
   const [focusSignal, setFocusSignal] = useState(0);
   const code = digits.join("");
   const codeComplete = code.length === RESET_CODE_LENGTH;
@@ -303,12 +310,17 @@ function ForgotPasswordFlow() {
     if (!identifierValid) return;
     resetCodeEntry();
     setCooldown(RESEND_COOLDOWN_SEC);
+    // A code is going out, so it counts — and it is the first of a new attempt, which is why this
+    // sets the count rather than adding to it. Before, only `resend` ever touched the count, so
+    // Start over walked back into a code step that had already spent its allowance: the first
+    // resend of a brand new attempt was refused with "Too many codes requested" (2026-09-30).
+    setCodesSent(1);
     setStep("code");
   };
 
   const resend = () => {
     if (cooldown > 0) return;
-    if (resends + 1 > MAX_RESENDS) {
+    if (codesSent >= MAX_CODES_PER_ATTEMPT) {
       setDigits(Array(RESET_CODE_LENGTH).fill(""));
       setCodeFailure("resendLimit");
       // Held down as well as refused. Without a cooldown the link stayed live under the notice
@@ -317,7 +329,7 @@ function ForgotPasswordFlow() {
       setCooldown(RESEND_COOLDOWN_SEC);
       return;
     }
-    setResends(n => n + 1);
+    setCodesSent(n => n + 1);
     resetCodeEntry();
     setCooldown(RESEND_COOLDOWN_SEC);
     setFocusSignal(n => n + 1);
@@ -333,6 +345,16 @@ function ForgotPasswordFlow() {
     if (!codeComplete) return;
     if (code === DEMO_REJECTED_CODE) {
       setCodeFailure("wrong");
+      // The digits stay where they are and focus goes back to the first box (2026-09-30). The
+      // error says "Check and try again", so the thing to check has to still be on screen — a row
+      // wiped blank is a row that cannot be compared against the mail, and the usual mistake is
+      // one transposed digit, not eight wrong ones. Keeping them cost nothing to read but
+      // everything to retype: focus was left on the Next button, so a second attempt began with
+      // eight presses of Backspace. Each box selects its own contents on focus, so from the first
+      // box one keystroke per digit replaces the code, and correcting one digit is a click and a
+      // key. Nothing is cleared here on purpose — the first keystroke clears the error itself,
+      // through the onChange below.
+      setFocusSignal(n => n + 1);
       return;
     }
     setCodeFailure(null);
@@ -561,7 +583,15 @@ function ForgotPasswordFlow() {
                 typedEmail
                   ? t.codeRequestedFor(identifier.trim())
                   : t.codeRequestedForAccount,
-                t.expiresIn(RESET_CODE_TTL_MIN),
+                // Only while there is a deadline to state (2026-09-30). On the expired state the
+                // ten minutes have already run out, and on the resend limit nothing was issued —
+                // the clock belongs to some earlier code whose start this screen does not know.
+                // Both printed "Expires in 10 minutes" directly above "Code expired. Request a new
+                // one.", so the subtitle contradicted the error under it, and a promise of a live
+                // code is the half a person believes.
+                ...(codeFailure === "expired" || codeFailure === "resendLimit"
+                  ? []
+                  : [t.expiresIn(RESET_CODE_TTL_MIN)]),
               ])}
 
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
@@ -575,42 +605,39 @@ function ForgotPasswordFlow() {
                     autoFocus
                   />
 
-                  {codeFailure ? (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
-                      <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.24px", textAlign: "center" }}>
-                        <ErrorCircleIcon /> {CODE_FAILURE_TEXT[codeFailure][lang]}
-                      </p>
-                      {/* An expired code cannot be retyped into working, so the way out is offered
-                          right here instead of leaving them to find the resend link. */}
-                      {codeFailure === "expired" && cooldown === 0 && (
+                  {/* The error and the resend row, not one or the other (2026-09-30). The error
+                      used to REPLACE this row, and `codeFailure` only clears on the next keystroke
+                      — so one wrong code took the resend away for good, cooldown or no cooldown,
+                      and the only door left was Start over, which throws the typed address away.
+                      The person who mistyped the code is exactly the person who may also need a
+                      fresh one; they are not alternatives. */}
+                  {codeFailure && (
+                    <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--danger-400)", letterSpacing: "-0.24px", textAlign: "center" }}>
+                      <ErrorCircleIcon /> {CODE_FAILURE_TEXT[codeFailure][lang]}
+                    </p>
+                  )}
+                  <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
+                    {/* An expired code cannot be retyped into working, so there the row drops the
+                        question — they did get the code — and offers the new one outright. One
+                        affordance either way: a second button doing the same thing beside the
+                        first reads as a second, different remedy. */}
+                    {codeFailure === "expired" ? null : <>{t.noCode}{" "}</>}
+                    {/* The cooldown is spelled out rather than just greying the link, so waiting
+                        reads as waiting and not as a dead button. */}
+                    {cooldown > 0
+                      ? <span style={{ color: "var(--gray-400)" }}>{t.resendIn(cooldown)}</span>
+                      : (
+                        /* Not routed through textButton(): the lint rule cannot see that the
+                           helper only stores the callback, so handing it a function that focuses
+                           a ref reads as a ref access during render. */
                         <button
                           onClick={resend}
                           style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
                         >
-                          {t.sendNewCode}
+                          {codeFailure === "expired" ? t.sendNewCode : t.resend}
                         </button>
                       )}
-                    </div>
-                  ) : (
-                    <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.24px" }}>
-                      {/* The cooldown is spelled out rather than just greying the link, so waiting
-                          reads as waiting and not as a dead button. */}
-                      {t.noCode}{" "}
-                      {cooldown > 0
-                        ? <span style={{ color: "var(--gray-400)" }}>{t.resendIn(cooldown)}</span>
-                        : (
-                          /* Not routed through textButton(): the lint rule cannot see that the
-                             helper only stores the callback, so handing it a function that focuses
-                             a ref reads as a ref access during render. */
-                          <button
-                            onClick={resend}
-                            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}
-                          >
-                            {t.resend}
-                          </button>
-                        )}
-                    </p>
-                  )}
+                  </p>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
