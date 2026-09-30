@@ -58,7 +58,7 @@
  * internet, and this override is keyed on the second one.
  */
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { isNetworkIsolated, resolveMailConfig, useVcaStore } from "@/lib/vcaStore";
 import { useToast } from "../Toast";
@@ -144,8 +144,9 @@ const MAIL_T = {
     isolatedRisk: "This site is internet-isolated and still using the team's mail server. Invitations will not arrive unless that server is reachable from inside the site.",
     inheritedSummary: (domain: string, host: string) => `${domain} · ${host}`,
     whatVcaSends: "What VCA sends",
-    accountInvitation: "Account invitation", accountInvitationValue: "To the invited address, on approval",
-    passwordReset: "Password reset", passwordResetValue: "To the account's own address, on request",
+    accountInvitation: "Account invitation", accountInvitationTo: "The invited address", accountInvitationWhen: "On approval",
+    sendsColTo: "Goes to", sendsColWhen: "Sent when",
+    passwordReset: "Password reset", passwordResetTo: "The account's own address", passwordResetWhen: "On request",
   },
   ko: {
     usingDefault: (name: string) => `${name}의 기본 메일 서버 사용 중`,
@@ -178,8 +179,9 @@ const MAIL_T = {
     isolatedRisk: "이 사이트는 인터넷과 격리돼 있는데 팀의 메일 서버를 쓰고 있습니다. 사이트 안에서 그 서버에 닿지 않으면 초대장이 도착하지 않습니다.",
     inheritedSummary: (domain: string, host: string) => `${domain} · ${host}`,
     whatVcaSends: "VCA가 발송하는 메일",
-    accountInvitation: "계정 초대", accountInvitationValue: "승인 시 초대받은 주소로 발송",
-    passwordReset: "비밀번호 재설정", passwordResetValue: "요청 시 계정 본인 주소로 발송",
+    accountInvitation: "계정 초대", accountInvitationTo: "초대받은 주소", accountInvitationWhen: "승인했을 때",
+    sendsColTo: "받는 주소", sendsColWhen: "발송 시점",
+    passwordReset: "비밀번호 재설정", passwordResetTo: "계정 본인 주소", passwordResetWhen: "요청했을 때",
   },
 } as const;
 
@@ -311,6 +313,43 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
       {/* `spaced`: these rows are three subjects — is there internet, which mail server, what
           goes out — not three fields of one form. */}
       <PairGrid spaced>
+
+        {/* WHERE MAIL GOES OUT FROM. One switch, not a banner button and a checkbox in two boxes.
+            The inherited values are stated beside it rather than repeated in a card of their own,
+            because "what is in force" is one line when nothing is being edited. */}
+        <PairItem label={t.mailServerLabel} hint={t.useDifferentServerDesc}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Switch checked={override} onChange={setOverride} label={t.useDifferentServer} disabled={!mayEdit} />
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
+                {override ? t.thisProject : t.inheritedFrom(team?.name ?? t.theTeam)}
+              </span>
+            </div>
+            {!override && inherited.mailDomain && (
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", fontFamily: "monospace" }}>
+                {t.inheritedSummary(inherited.mailDomain, inherited.smtp ? `${inherited.smtp.host}:${inherited.smtp.port}` : "—")}
+              </p>
+            )}
+            {/* A project with nothing configured anywhere cannot invite anyone, which is worth
+                saying whatever the switch is set to. */}
+            {!inherited.mailDomain && !override && (
+              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.notConfigured}</p>
+            )}
+            {/* THE WARNING, ONLY WHERE IT IS TRUE. This was a permanent amber banner on every
+                inheriting project; the case that actually loses invitations is an isolated site
+                relying on a server it may not be able to reach. */}
+            {!override && isolated && inherited.mailDomain && (
+              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.isolatedRisk}</p>
+            )}
+          </div>
+        </PairItem>
+
+        {/* THE MAIL SERVER LEADS (owner, 2026-09-30: 이거 제목 맞아? 아래 인터넷 정보
+            들어가는것같은뎅). It was first, so a section headed 「프로젝트 메일」 opened with
+            「인터넷 연결」 and read as the wrong subject. The reachability belongs here — it is
+            what decides whether an invitation leaves by external mail or the site's own
+            mailbox — but it is a CONSEQUENCE of the server choice, not the headline. Order
+            now: which server, then can it reach out, then what gets sent. */}
         {/*
           A MEASUREMENT IS NOT A SETTING (2026-09-29).
 
@@ -408,36 +447,6 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
           </div>
         </PairItem>
 
-        {/* WHERE MAIL GOES OUT FROM. One switch, not a banner button and a checkbox in two boxes.
-            The inherited values are stated beside it rather than repeated in a card of their own,
-            because "what is in force" is one line when nothing is being edited. */}
-        <PairItem label={t.mailServerLabel} hint={t.useDifferentServerDesc}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <Switch checked={override} onChange={setOverride} label={t.useDifferentServer} disabled={!mayEdit} />
-              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>
-                {override ? t.thisProject : t.inheritedFrom(team?.name ?? t.theTeam)}
-              </span>
-            </div>
-            {!override && inherited.mailDomain && (
-              <p style={{ fontSize: "11px", color: "var(--gray-400)", fontFamily: "monospace" }}>
-                {t.inheritedSummary(inherited.mailDomain, inherited.smtp ? `${inherited.smtp.host}:${inherited.smtp.port}` : "—")}
-              </p>
-            )}
-            {/* A project with nothing configured anywhere cannot invite anyone, which is worth
-                saying whatever the switch is set to. */}
-            {!inherited.mailDomain && !override && (
-              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.notConfigured}</p>
-            )}
-            {/* THE WARNING, ONLY WHERE IT IS TRUE. This was a permanent amber banner on every
-                inheriting project; the case that actually loses invitations is an isolated site
-                relying on a server it may not be able to reach. */}
-            {!override && isolated && inherited.mailDomain && (
-              <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.isolatedRisk}</p>
-            )}
-          </div>
-        </PairItem>
-
         {override && (
           <>
             <PairItem label={t.mailDomain} hint={t.mailDomainHint}>
@@ -470,9 +479,23 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
         {/* The two messages this product sends, and who each one goes to. Read once, which is why
             it is the last pair rather than a card of its own. */}
         <PairItem label={t.whatVcaSends}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            <SettingRow label={t.accountInvitation} value={t.accountInvitationValue} />
-            <SettingRow label={t.passwordReset} value={t.passwordResetValue} />
+          {/* THREE FACTS PER ROW, IN THREE COLUMNS (owner, 2026-09-30: 너무 줄글처럼 보여서).
+              It was two label-and-sentence rows, and each sentence had the recipient and the
+              trigger mashed into one clause (「승인 시 초대받은 주소로 발송」) — so the block read
+              as prose when it is a table of two facts about two kinds of mail. Split, and the
+              columns named once at the top. */}
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,auto) minmax(0,1fr) minmax(0,auto)", columnGap: "16px", rowGap: "6px", alignItems: "baseline" }}>
+            <span />
+            <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>{t.sendsColTo}</span>
+            <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>{t.sendsColWhen}</span>
+            {([[t.accountInvitation, t.accountInvitationTo, t.accountInvitationWhen],
+               [t.passwordReset, t.passwordResetTo, t.passwordResetWhen]] as const).map(([what, to, when]) => (
+              <Fragment key={what}>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>{what}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-600)", minWidth: 0 }}>{to}</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-600)", whiteSpace: "nowrap" }}>{when}</span>
+              </Fragment>
+            ))}
           </div>
         </PairItem>
       </PairGrid>
