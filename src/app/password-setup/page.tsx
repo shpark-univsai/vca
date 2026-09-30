@@ -160,7 +160,14 @@ function PasswordSetupForm() {
     // Only an invitation ends in an active account. A forced change decides nothing about status:
     // the account is already whatever an administrator last made it, and a password screen is not
     // where a suspension gets lifted.
-    if (!forcedByTempPassword) updatePortalUserStatus(target.id, "active");
+    //
+    // THE SAME SENTENCE NOW COVERS BOTH BRANCHES (2026-09-30). It was written here and applied only
+    // to the forced-change half, so the invitation half still wrote "active" over any status at
+    // all — including a suspension. Measured on the twin door: an administrator suspends an
+    // account that is still holding a live invitation, the person clicks the link they already
+    // have, sets a password, and is active again. Nothing clears the token when an account is
+    // suspended, so the link keeps working.
+    if (!forcedByTempPassword && target.status !== "suspended") updatePortalUserStatus(target.id, "active");
     // Retires the temporary password: the must-change flag comes off, and Portal's Users table
     // stops flagging this account as one somebody else has the password to.
     clearTemporaryPassword(target.id);

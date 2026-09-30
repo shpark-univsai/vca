@@ -121,7 +121,7 @@ interface Activation {
  * is close to nothing, while the person who has genuinely already registered (or handed their slip
  * to a colleague) learns the one thing that explains what they are seeing.
  */
-const CODE_ERRORS: Record<"unknown" | "used" | "expired", Record<AppLanguage, string>> = {
+const CODE_ERRORS: Record<"unknown" | "used" | "expired" | "blocked", Record<AppLanguage, string>> = {
   unknown: {
     en: "Code not recognised. Check the sheet you were given.",
     ko: "확인되지 않는 코드입니다. 받으신 용지를 다시 확인해주세요.",
@@ -133,6 +133,21 @@ const CODE_ERRORS: Record<"unknown" | "used" | "expired", Record<AppLanguage, st
   expired: {
     en: "Code expired. Ask your administrator for a new one.",
     ko: "만료된 코드입니다. 관리자에게 새 코드를 요청해주세요.",
+  },
+  /*
+   * THE CODE IS GOOD AND THE ACCOUNT IS CLOSED.
+   *
+   * Refused HERE, at the code step, rather than after the confirm screen — the confirm screen
+   * prints a real person's name, department and project, and a closed account is not a thing to
+   * hand that out for. It also cannot say "no" any later: the step after it sets a password, and
+   * the account is already whatever an administrator last made it.
+   *
+   * Named apart from "used" and "expired" because the next move is different: those two are fixed
+   * by a new code, and this one is not fixed by a code at all.
+   */
+  blocked: {
+    en: "This account cannot sign in. Ask your administrator — a new code will not help.",
+    ko: "로그인할 수 없는 계정입니다. 관리자에게 문의해주세요 — 새 코드를 받아도 열리지 않습니다.",
   },
 };
 
@@ -264,6 +279,26 @@ function RegisterFlow() {
         rejectCode("expired");
         return;
       }
+      /*
+       * A SUSPENDED ACCOUNT'S CODE OPENS NOTHING (2026-09-30).
+       *
+       * Measured before this: issue a setup code to a suspended account from Users, type it here,
+       * and the confirm screen printed that person's name with no mention of the suspension; a
+       * password later the account read ACTIVE in Portal again. The administrator closed the door
+       * and the person on the other side opened it with a slip of paper — and the change record
+       * credited whoever happened to be signed in to the console, not them.
+       *
+       * The status check belongs at the code step for the same reason the expiry check does: this
+       * is the last screen that can refuse without first showing a stranger who the code belongs
+       * to. savePassword keeps its own guard as a second line, so the two never disagree.
+       */
+      if (account.status === "suspended") {
+        /* NOT through rejectCode: that counts the attempt against the five-guess limit, and this
+           code was RIGHT. Burning a guess for holding a valid slip would lock out the one person
+           who has nothing to guess. */
+        setCodeError(CODE_ERRORS.blocked[lang]);
+        return;
+      }
       setCodeError("");
       setEntry({
         name: account.name,
@@ -293,7 +328,11 @@ function RegisterFlow() {
       const account = portalUsers.find(u => u.setupCode === normalizeCode(code));
       if (account) {
         clearSetupCode(account.id);
-        updatePortalUserStatus(account.id, "active");
+        /* Only an account that was WAITING to be activated becomes active. A suspended one stays
+           suspended — setting a password is not how a suspension is lifted, and this screen is not
+           where an administrator's decision gets reversed. submitCode already refuses such a code
+           before this point; this is the guard that holds if that one is ever moved. */
+        if (account.status !== "suspended") updatePortalUserStatus(account.id, "active");
       }
     } else if (entry.employeeId) {
       activateRosterEntry(entry.employeeId);
