@@ -3317,7 +3317,12 @@ export function PanelCancel({ onClick, label, apart }: {
   apart?: boolean;
 }) {
   return (
-    <button type="button" onClick={onClick}
+    /* `portal-btn-quiet`, so it answers the pointer (owner, 2026-10-01: close도 호버 효과
+       추가해줘). It was the one button in a drawer footer with no hover at all — a transparent
+       label beside a bordered button and a filled one, which reads as text rather than as
+       something that can be pressed. The class is the product's own quiet-button hover
+       (gray-100), the same one the icon buttons and the kebab menus use. */
+    <button type="button" onClick={onClick} className="portal-btn-quiet"
       style={{
         padding: "10px 14px", borderRadius: "8px", border: "none", backgroundColor: "transparent",
         color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
