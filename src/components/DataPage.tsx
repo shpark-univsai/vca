@@ -544,7 +544,7 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
               <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{T[lang].reidObject(String(item.id).padStart(4,"0"))}</p>
               <ScoreBadge score={item.similarity} />
               <span style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-600)", backgroundColor:"var(--gray-100)", padding:"2px 7px", borderRadius:"999px" }}>{item.cam}</span>
-              <span style={{ fontSize:"10px", fontWeight:800, color:REID_STATUS_STYLE[item.status].text, backgroundColor:`${REID_STATUS_STYLE[item.status].text}1a`, padding:"2px 7px", borderRadius:"999px" }}>{attr(item.status, lang)}</span>
+              <span style={{ fontSize:"10px", fontWeight:800, color:REID_STATUS_STYLE[item.status].text, backgroundColor:REID_STATUS_STYLE[item.status].tint, padding:"2px 7px", borderRadius:"999px" }}>{attr(item.status, lang)}</span>
             </div>
             <p style={{ fontSize:"10px", color:"var(--gray-400)", marginTop:"1px" }}>{item.time}</p>
           </div>
@@ -2583,10 +2583,27 @@ interface SearchFilterState {
 }
 
 // ── Re-ID Analysis Tab ─────────────────────────────────────────
-const REID_STATUS_STYLE: Record<ReIDStatus, { text: string; border: string; glow?: string }> = {
-  VIP:     { text:"var(--primary-400)", border:"var(--primary-400)" },
-  Unknown: { text:"var(--gray-500)", border:"var(--gray-500)" },
-  RedFace: { text:"var(--danger-400)", border:"var(--danger-400)", glow:"0 0 0 2px var(--danger-400), 0 0 10px rgba(244, 63, 94,0.38)" },
+/*
+ * `tint` IS DECLARED HERE RATHER THAN BUILT AT THE CALL SITE, and that is the whole fix.
+ *
+ * The pill beside the camera chip asked for its own background as `${...text}1a` — a hex alpha
+ * suffix appended to the colour. That works on a literal and stopped working the day the palette
+ * became tokens: it resolves to `background-color: var(--primary-400)1a`, `var()` substitution is
+ * not string concatenation, and the browser drops the whole declaration. Measured in Chrome just
+ * now: `rgba(0, 0, 0, 0)`. So the status pill has been drawing bare text next to a chip that does
+ * have a background — one pill and one loose word on the same line.
+ *
+ * MapView:665-678 records this same trap, measured the same way, and the halo it was about was
+ * deleted for it. This was the one place that survived.
+ *
+ * `color-mix` rather than a second hex: it composes with a token, so the tint follows the colour
+ * if the palette ever moves, and it is already how this file builds `ZONE_TINT`. 10% is what `1a`
+ * meant (26/255), so the pill lands where it was designed to.
+ */
+const REID_STATUS_STYLE: Record<ReIDStatus, { text: string; border: string; tint: string; glow?: string }> = {
+  VIP:     { text:"var(--primary-400)", border:"var(--primary-400)", tint:"color-mix(in srgb, var(--primary-400) 10%, transparent)" },
+  Unknown: { text:"var(--gray-500)", border:"var(--gray-500)", tint:"color-mix(in srgb, var(--gray-500) 10%, transparent)" },
+  RedFace: { text:"var(--danger-400)", border:"var(--danger-400)", tint:"color-mix(in srgb, var(--danger-400) 10%, transparent)", glow:"0 0 0 2px var(--danger-400), 0 0 10px rgba(244, 63, 94,0.38)" },
 };
 
 const REID_STATUS_CYCLE: ReIDStatus[] = [
