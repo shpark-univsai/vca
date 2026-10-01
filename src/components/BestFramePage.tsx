@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { Search } from "lucide-react";
-import { useVcaStore, useActiveProjectId, useProjectCameras, holdsAppAction, type Camera as StoreCamera, type UploadedMedia } from "@/lib/vcaStore";
+import { useVcaStore, useActiveProjectId, useProjectCameras, holdsAppAction, handlingFor, type Camera as StoreCamera, type UploadedMedia, type DetectionHandling } from "@/lib/vcaStore";
+import { formatTimeAgo } from "@/lib/mockData";
 import { runStateOf } from "@/lib/realtime/cameraStatus";
 import BestFrameDetailPage from "./BestFrameDetailPage";
 import { useToast } from "./Toast";
@@ -38,6 +39,7 @@ const T = {
     typeFile: "File",
     noDetections: "No detections",
     unknownTarget: "Unknown target",
+    targetCount: (n: number) => `${n} target${n === 1 ? "" : "s"}`,
     detail: (n: number) => `DETAIL ${n}`,
     group: "GROUP",
     camera: "CAMERA",
@@ -64,6 +66,31 @@ const T = {
     unavailableDesc: (name: string) => `${name} is offline and can't be added to the view.`,
     limitTitle: "Camera limit reached",
     limitDesc: (max: number) => `You can only view up to ${max} cameras at once.`,
+    /**
+     * WHAT THE SHIFT DID about this detection — not whether the match is right.
+     *
+     * The panel above these words is where an operator looks at a live frame and a reference
+     * photo side by side, which is the OTHER question (see DetectionJudgement in vcaStore). So
+     * none of these words can mean "the match is correct": acknowledging claims somebody looked
+     * at it, closing claims somebody dealt with it, and neither says anything about the face.
+     */
+    handling: {
+      acknowledge: "Acknowledge",
+      closeOut: "Close…",
+      /**
+       * NAMES WHAT IS BEING CLOSED, because "Close" is already taken on this screen — it is the
+       * label on the dismiss X (`close` above), and a button that commits a closure must not share
+       * a word with one that just puts a panel away. Korean has no clash (닫기 vs 종결) and says the
+       * same thing anyway.
+       */
+      closeConfirm: "Close detection",
+      cancel: "Cancel",
+      reopen: "Reopen",
+      notePlaceholder: "What was done",
+      acknowledgedBy: (actor: string, when: string) => `Acknowledged by ${actor} · ${when}`,
+      assignedTo: (assignee: string, actor: string, when: string) => `Assigned to ${assignee} by ${actor} · ${when}`,
+      closedBy: (actor: string, when: string) => `Closed by ${actor} · ${when}`,
+    },
   },
   ko: {
     filterAll: "전체",
@@ -86,6 +113,7 @@ const T = {
     typeFile: "파일",
     noDetections: "감지 없음",
     unknownTarget: "미확인 대상",
+    targetCount: (n: number) => `대상 ${n}명`,
     detail: (n: number) => `속성 ${n}`,
     group: "그룹",
     camera: "카메라",
@@ -112,6 +140,17 @@ const T = {
     unavailableDesc: (name: string) => `${name}이(가) 중단 상태여서 화면에 추가할 수 없습니다.`,
     limitTitle: "카메라 개수 상한",
     limitDesc: (max: number) => `한 번에 최대 ${max}대까지만 볼 수 있습니다.`,
+    handling: {
+      acknowledge: "확인",
+      closeOut: "종결…",
+      closeConfirm: "감지 종결",
+      cancel: "취소",
+      reopen: "다시 열기",
+      notePlaceholder: "어떻게 처리했는지",
+      acknowledgedBy: (actor: string, when: string) => `${actor} 확인 · ${when}`,
+      assignedTo: (assignee: string, actor: string, when: string) => `${assignee} 담당 (${actor} 지정) · ${when}`,
+      closedBy: (actor: string, when: string) => `${actor} 종결 · ${when}`,
+    },
   },
 } as const;
 
@@ -710,7 +749,7 @@ function CameraCard({
               onClick={dets.length > 0 ? onHeaderArrowClick : undefined}
               style={{ display:"flex", alignItems:"center", gap:"4px", cursor: dets.length > 0 ? "pointer" : "default" }}
             >
-            <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{dets.length} target</span>
+            <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.targetCount(dets.length)}</span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M10.5 6.5V9.5C10.5 9.76522 10.3946 10.0196 10.2071 10.2071C10.0196 10.3946 9.76522 10.5 9.5 10.5H2.5C2.23478 10.5 1.98043 10.3946 1.79289 10.2071C1.60536 10.0196 1.5 9.76522 1.5 9.5V2.5C1.5 2.23478 1.60536 1.98043 1.79289 1.79289C1.98043 1.60536 2.23478 1.5 2.5 1.5H5.5" stroke="var(--gray-700)" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M10.5 1.5L6 6" stroke="var(--gray-700)" strokeLinecap="round" strokeLinejoin="round"/>
@@ -790,6 +829,116 @@ function CameraCard({
     </div>
   );
 }
+
+/* ── Detection handling, on the frame ───────────────────────────────────────
+ *
+ * The question a shift handover opens with — 「이건 누가 봤나」 — asked on the camera wall rather
+ * than in the dashboard's queue. Somebody watching twelve tiles needs to know whether the face
+ * they are looking at has already been dealt with, and to say so without leaving the frame.
+ *
+ * A DIFFERENT AXIS FROM THE PANEL ABOVE IT. The photo comparison and the match percentage are
+ * about whether this is the right person; this block is about whether anybody did anything. They
+ * are separated by a rule and share no control, because a correct match still needs somebody to
+ * walk over and a false positive still needs closing.
+ *
+ * TWO ACTIONS, NOT FOUR. Acknowledging and closing belong to whoever is looking at the frame.
+ * Assigning does not: handing a detection to a named colleague is a queue operation, it needs the
+ * list of who is on shift beside it, and that list is on the dashboard where the queue is. A
+ * picker in a 320px popup over a video tile would be the same control in a worse place.
+ *
+ * THE EVENT ID CARRIES THE CAMERA, not just the detection's own id. A feed's detections are
+ * hand-authored (CAMERA_FEEDS) and bound to whichever registered camera the site's roster lands
+ * them on, so "d3" alone names a different sighting at a different site — a handling keyed by it
+ * would follow the footage across installs. Keyed by camera, the record stays with the camera the
+ * operator was watching.
+ */
+function HandlingBlock({ det, camId }: { det: Detection; camId: string }) {
+  const [lang] = useLanguage();
+  const t = T[lang].handling;
+  const detectionHandlings = useVcaStore(st => st.detectionHandlings);
+  const setDetectionHandling = useVcaStore(st => st.setDetectionHandling);
+  const clearDetectionHandling = useVcaStore(st => st.clearDetectionHandling);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { if (noteOpen) noteRef.current?.focus(); }, [noteOpen]);
+
+  const eventId = `${camId}:${det.id}`;
+  const handling = handlingFor(detectionHandlings, eventId);
+  // No actor and no timestamp passed: the store takes both from the session. An operator typing
+  // their own name onto a closure is not a record anybody can rely on.
+  const write = (state: DetectionHandling["state"], noteText?: string) =>
+    setDetectionHandling({ eventId, subject: det.name, state, note: noteText, assignee: handling?.assignee });
+
+  const line = handling
+    ? handling.state === "closed" ? t.closedBy(handling.actor, formatTimeAgo(handling.at, lang))
+      : handling.state === "assigned" ? t.assignedTo(handling.assignee ?? handling.actor, handling.actor, formatTimeAgo(handling.at, lang))
+      : t.acknowledgedBy(handling.actor, formatTimeAgo(handling.at, lang))
+    : null;
+
+  return (
+    <div style={{ borderTop:BORDER, paddingTop:"14px", display:"flex", flexDirection:"column", gap:"8px" }}>
+      {line && (
+        <div style={{ display:"flex", flexDirection:"column", gap:"3px" }}>
+          <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-600)" }}>{line}</span>
+          {handling?.note && (
+            <span style={{ fontSize:"12px", fontWeight:400, color:"var(--gray-700)", wordBreak:"break-word" }}>{handling.note}</span>
+          )}
+        </div>
+      )}
+      {noteOpen ? (
+        <>
+          <textarea
+            ref={noteRef}
+            rows={2}
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder={t.notePlaceholder}
+            style={{
+              width:"100%", resize:"none", padding:"8px 10px", borderRadius:"10px",
+              border:"1px solid var(--line-control)", outline:"none", boxSizing:"border-box",
+              fontSize:"12px", fontWeight:500, color:"var(--gray-900)", fontFamily:"inherit", lineHeight:1.45,
+            }}
+          />
+          <div style={{ display:"flex", gap:"6px" }}>
+            <button
+              disabled={note.trim().length === 0}
+              onClick={() => { write("closed", note.trim()); setNote(""); setNoteOpen(false); }}
+              style={{
+                ...HUD_HANDLING_BTN, border:"none",
+                backgroundColor: note.trim() ? "var(--gray-900)" : "var(--gray-200)",
+                color: note.trim() ? "white" : "var(--gray-400)",
+                cursor: note.trim() ? "pointer" : "not-allowed",
+              }}
+            >{t.closeConfirm}</button>
+            <button onClick={() => { setNote(""); setNoteOpen(false); }} style={HUD_HANDLING_BTN}>{t.cancel}</button>
+          </div>
+        </>
+      ) : (
+        <div style={{ display:"flex", gap:"6px" }}>
+          {/* Reopening drops the row back to untouched rather than stacking a stage on the
+              closure — the store keeps one row per event, so the closure it replaces stops being
+              readable here and the server that owns these has to keep the history. */}
+          {handling?.state === "closed" ? (
+            <button onClick={() => clearDetectionHandling(eventId)} style={HUD_HANDLING_BTN}>{t.reopen}</button>
+          ) : (
+            <>
+              {!handling && <button onClick={() => write("acknowledged")} style={HUD_HANDLING_BTN}>{t.acknowledge}</button>}
+              <button onClick={() => setNoteOpen(true)} style={HUD_HANDLING_BTN}>{t.closeOut}</button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Smaller and quieter than the HUD's two main buttons: these are a record, not the errand. */
+const HUD_HANDLING_BTN: React.CSSProperties = {
+  padding:"7px 12px", borderRadius:"10px", cursor:"pointer",
+  border:"1px solid var(--line-control)", backgroundColor:"white",
+  fontSize:"12px", fontWeight:600, color:"var(--gray-700)", whiteSpace:"nowrap",
+};
 
 /* ── HUD popup ─────────────────────────────────────────────────── */
 function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState; onClose: () => void; onAnalyze: () => void; onTrackOnMap?: () => void }) {
@@ -896,6 +1045,10 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
           </>
         )}
       </div>
+
+      {/* What the shift did about it — a rule above it, because it answers a different question
+          from everything over the rule. */}
+      <HandlingBlock det={det} camId={hud.camId} />
 
       {/* Actions */}
       <div style={{ display:"flex", gap:"8px" }}>

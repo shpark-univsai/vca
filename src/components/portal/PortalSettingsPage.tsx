@@ -129,6 +129,14 @@ const T = {
     retentionUnset: "Not decided",
     retentionDaysLabel: (n: number) => `${n} days`,
     retentionNote: "This console deletes nothing. Saving writes the number down here; it does not reach the recorder or the server.",
+    accessRetention: "Access log retention",
+    accessRetentionMonthsLabel: (n: number) => `${n} months`,
+    /* The floor is the law's, not a recommendation of ours, so the hint names it. Faces processed
+       to identify individuals are 생체인식정보 and therefore 민감정보, which puts this installation
+       on the two-year period rather than the one-year default — 고시 제8조제1항. */
+    accessRetentionNote: "24 months is the legal minimum for this installation, because it processes faces to identify people.",
+    accessRetentionUnset: "Not set",
+    accessRetentionShort: "Shorter than the 24 months this installation has to keep.",
     vipRetention: "VIP listing period",
     vipRetentionNote: "How long a new VIP listing lasts here. It fills the end date on registration, and an expired listing stops raising detections. Listings already on the list keep the date they were given.",
     vipRetentionInherited: (n: number) => `${n} days — deployment default`,
@@ -273,6 +281,11 @@ const T = {
     retentionUnset: "미정",
     retentionDaysLabel: (n: number) => `${n}일`,
     retentionNote: "이 콘솔은 영상을 지우지 않습니다. 저장하면 이 숫자가 여기에 기록될 뿐, 레코더와 서버에는 전달되지 않습니다.",
+    accessRetention: "접속 기록 보관기간",
+    accessRetentionMonthsLabel: (n: number) => `${n}개월`,
+    accessRetentionNote: "얼굴로 사람을 식별하는 설치본이라 법정 최소가 24개월입니다.",
+    accessRetentionUnset: "미설정",
+    accessRetentionShort: "이 설치본이 보관해야 하는 24개월보다 짧습니다.",
     vipRetention: "VIP 등록 유효기간",
     vipRetentionNote: "이 현장에서 새 VIP 등록이 얼마나 유지되는지입니다. 등록할 때 만료일을 채우고, 만료된 등록은 검출 알림을 올리지 않습니다. 이미 명단에 있는 사람의 날짜는 그대로 둡니다.",
     vipRetentionInherited: (n: number) => `${n}일 · 배포 기본값`,
@@ -377,6 +390,28 @@ const RETENTION_OPTIONS = (t: (typeof T)["en"] | (typeof T)["ko"]) => [
  * every registration. So the blank option says which number that is, and only reads as "미정"
  * where the deployment has no rule either.
  */
+/**
+ * The floor the law sets for 접속 기록, in months — see the field's own note.
+ *
+ * A constant and not a literal in two places: the Settings field and the access log's own
+ * footnote both state it, and the one way they could ever disagree is by being written twice.
+ */
+export const ACCESS_RETENTION_FLOOR_MONTHS = 24;
+
+/*
+ * Starts at the floor. The shorter steps appear ONLY when the installation already holds a
+ * shorter number, so the screen can name it as short instead of pretending it was never set —
+ * silently rewriting a customer's policy is worse than showing them it is wrong.
+ */
+const ACCESS_RETENTION_OPTIONS = (t: (typeof T)["en"] | (typeof T)["ko"], current: number | undefined) => {
+  const steps = [ACCESS_RETENTION_FLOOR_MONTHS, 36, 60];
+  const held = current !== undefined && !steps.includes(current) ? [current] : [];
+  return [
+    ...(current === undefined ? [{ value: "", label: t.accessRetentionUnset }] : []),
+    ...[...held, ...steps].sort((a, b) => a - b).map(m => ({ value: String(m), label: t.accessRetentionMonthsLabel(m) })),
+  ];
+};
+
 const VIP_RETENTION_OPTIONS = (t: (typeof T)["en"] | (typeof T)["ko"]) => {
   const fallback = getComplianceConfig().vipDefaultValidDays;
   return [
@@ -430,6 +465,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const projects = useVcaStore(s => s.projects);
   const setProjectTimeZone = useVcaStore(s => s.setProjectTimeZone);
   const setProjectRetention = useVcaStore(s => s.setProjectRetention);
+  const setAccessLogRetention = useVcaStore(s => s.setAccessLogRetention);
   const setProjectVipRetention = useVcaStore(s => s.setProjectVipRetention);
   const setEvidenceWatermark = useVcaStore(s => s.setEvidenceWatermark);
   /* What the row shows for a site that has not set its own — the deployment's number, not a blank.
@@ -919,6 +955,41 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 </span>
               ) : (
                 project.retentionDays === undefined ? t.retentionUnset : t.retentionDaysLabel(project.retentionDays)
+              )}
+            </PairItem>
+            {/*
+             * ACCESS LOG RETENTION, and it is the one number on this screen the customer does not
+             * get to choose freely.
+             *
+             * Recording retention above is a policy the customer sets; this one has a floor in law
+             * (고시 제8조제1항): 1년 for an ordinary system, 2년 for one processing 민감정보, and
+             * faces processed to identify people are 생체인식정보 under 시행령 제18조 — so this
+             * installation is on the longer period. The options therefore START at 24 months, and
+             * the shorter ones exist only so a customer who has typed a shorter number can see it
+             * named as short rather than silently corrected.
+             *
+             * No "not decided" option. Unset is a state the access log already reports ("24 months
+             * is the minimum"), and offering it back as a choice would make the obligation look
+             * optional.
+             */}
+            <PairItem label={t.accessRetention} hint={t.accessRetentionNote}>
+              {maySetPolicy ? (
+                <span style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <FilterSelect
+                  value={project.accessLogRetentionMonths === undefined ? "" : String(project.accessLogRetentionMonths)}
+                  onChange={v => { if (v === "") return; setAccessLogRetention(project.id, Number(v)); showToast({ variant: "success", title: t.settingSaved, desc: t.accessRetention }); }}
+                  options={ACCESS_RETENTION_OPTIONS(t, project.accessLogRetentionMonths)}
+                  fitContent
+                />
+                {project.accessLogRetentionMonths !== undefined && project.accessLogRetentionMonths < ACCESS_RETENTION_FLOOR_MONTHS && (
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--danger-500)" }}>{t.accessRetentionShort}</span>
+                )}
+                <LastChanged projectId={project.id} target="Access log retention" lang={lang} t={t} />
+                </span>
+              ) : (
+                project.accessLogRetentionMonths === undefined
+                  ? t.accessRetentionUnset
+                  : t.accessRetentionMonthsLabel(project.accessLogRetentionMonths)
               )}
             </PairItem>
             {/* Beside recording retention because it is the same kind of value — the site's, not the

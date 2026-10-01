@@ -7,6 +7,7 @@ import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, g
 import {
   vcaEventsToLiveEvents, todaysDetectionHits, useDashboardPanels, holdsAppAction, useVcaStore,
   useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras, type Camera,
+  handlingFor, SIGNED_IN_USER, type DetectionHandling,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useOnValueChange } from "@/hooks/useOnValueChange";
@@ -85,6 +86,36 @@ const T = {
     tabSystem: "SYSTEM",
     events: "Events",
     system: "System",
+    /**
+     * WHAT THE SHIFT DID about a detection — not whether the match is right.
+     *
+     * The two are separate questions and this list answers only the second one (see
+     * DetectionHandlingState in vcaStore). So nothing here says "confirm", "correct", "wrong" or
+     * "false positive": an operator acknowledging a row is claiming they looked at it, not that
+     * the face was matched properly. The words were chosen to be unable to mean the other thing.
+     */
+    handling: {
+      acknowledge: "Acknowledge",
+      /** Ellipsis because it opens the note field rather than closing anything yet. */
+      closeOut: "Close…",
+      /**
+       * NAMES WHAT IS BEING CLOSED, because "Close" is already taken on this screen — it is the
+       * label on the dismiss X (`close` above), and a button that commits a closure must not share
+       * a word with one that just puts a panel away. Korean has no clash (닫기 vs 종결) and says the
+       * same thing anyway.
+       */
+      closeConfirm: "Close detection",
+      cancel: "Cancel",
+      reopen: "Reopen",
+      assign: "Assign",
+      /** Placeholder, not a label above the box — the button beside it already says what it is for. */
+      notePlaceholder: "What was done",
+      unhandled: "Unhandled",
+      noUnhandled: "Nothing left unhandled.",
+      acknowledgedBy: (actor: string, when: string) => `Acknowledged by ${actor} · ${when}`,
+      assignedTo: (assignee: string, actor: string, when: string) => `Assigned to ${assignee} by ${actor} · ${when}`,
+      closedBy: (actor: string, when: string) => `Closed by ${actor} · ${when}`,
+    },
   },
   ko: {
     live: "정상",
@@ -129,6 +160,20 @@ const T = {
     tabSystem: "시스템",
     events: "이벤트",
     system: "시스템",
+    handling: {
+      acknowledge: "확인",
+      closeOut: "종결…",
+      closeConfirm: "감지 종결",
+      cancel: "취소",
+      reopen: "다시 열기",
+      assign: "담당 지정",
+      notePlaceholder: "어떻게 처리했는지",
+      unhandled: "미처리",
+      noUnhandled: "처리 안 된 건이 없습니다.",
+      acknowledgedBy: (actor: string, when: string) => `${actor} 확인 · ${when}`,
+      assignedTo: (assignee: string, actor: string, when: string) => `${assignee} 담당 (${actor} 지정) · ${when}`,
+      closedBy: (actor: string, when: string) => `${actor} 종결 · ${when}`,
+    },
   },
 } as const;
 
@@ -740,7 +785,7 @@ function hopCameraKey(hop: TrackingHop): string {
  * expanded timeline below is unchanged and still shows the whole trail, which is where "he
  * carried on to Jurong East" belongs.
  */
-function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null }: { event: LiveEvent; isSelected: boolean; onClick: () => void; districtHopFilter?: string | null }) {
+function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null, handling, onAcknowledge }: { event: LiveEvent; isSelected: boolean; onClick: () => void; districtHopFilter?: string | null; handling?: DetectionHandling; onAcknowledge: () => void }) {
   const photoUrl = getFacePhoto(event.id);
   // event.path is stored oldest-first, but the most-recently-seen camera is what an operator
   // cares about first — reverse once here so both the collapsed route line and the expanded
@@ -772,12 +817,18 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
     return groups;
   }, []);
   const [isHovered, setIsHovered] = useState(false);
+  // Keyboard focus reveals the acknowledge tick the same way the pointer does — without this the
+  // one-click path is pointer-only. The relatedTarget test keeps it open while focus moves INTO
+  // the tick itself: a plain onBlur unmounts the button the moment it is tabbed to.
+  const [isFocused, setIsFocused] = useState(false);
   const [lang] = useLanguage();
   const t = T[lang];
   return (
     <div>
       <div
         onClick={onClick}
+        onFocus={() => setIsFocused(true)}
+        onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsFocused(false); }}
         // Same treatment as VipEventRow, for the reason written there: selecting a row moves the
         // map to it, and this was a div with an onClick that no keyboard could reach. A trail row
         // needed it more than a VIP row does — it is the row that opens a person's whole
@@ -872,7 +923,14 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
             <PawTrackIcon size={14} />
             <span style={{ fontSize:"12px", fontWeight:600, color:"var(--type-tracking)", letterSpacing:"-0.24px", whiteSpace:"nowrap" }}>{t.tracking}</span>
           </div>
-          <ChevronDownIcon rotated={isSelected} />
+          {/* The handling slot sits on the chevron's line rather than under it: a third stacked
+              item would push the right column taller than the row's own 54px photo. */}
+          <div style={{ display:"flex", alignItems:"center", gap:"6px", minHeight:"22px" }}>
+            {handling
+              ? <HandlingMark handling={handling} />
+              : (isHovered || isFocused) && <AckButton onAck={onAcknowledge} />}
+            <ChevronDownIcon rotated={isSelected} />
+          </div>
         </div>
       </div>
       {isSelected && (
@@ -931,16 +989,20 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
   );
 }
 
-function VipEventRow({ event, isSelected, photoUrl, onClick, locationFilter }: { event: LiveEvent; isSelected: boolean; photoUrl: string; onClick: () => void; locationFilter?: string | null }) {
+function VipEventRow({ event, isSelected, photoUrl, onClick, locationFilter, handling, onAcknowledge }: { event: LiveEvent; isSelected: boolean; photoUrl: string; onClick: () => void; locationFilter?: string | null; handling?: DetectionHandling; onAcknowledge: () => void }) {
   // Already scoped to one location (the "Live Analytics · Tampines" header above says so) —
   // repeating that same location on every row just to append the camera label pushed long labels
   // (e.g. "CAM-SIM-513...") into ellipsis. Only the camera name is new information here.
   const secondLine = locationFilter ? (event.cameraLabel ?? event.location) : `${event.location}${event.cameraLabel ? ` · ${event.cameraLabel}` : ""}`;
   const [isHovered, setIsHovered] = useState(false);
+  // See the note on the same pair in TrackingEventRow.
+  const [isFocused, setIsFocused] = useState(false);
   const [lang] = useLanguage();
   return (
     <div
       onClick={onClick}
+      onFocus={() => setIsFocused(true)}
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsFocused(false); }}
       // Selecting a detection moves the map to it — the main thing this panel is for, and it was
       // a div with an onClick, so a keyboard could not reach it at all.
       role="button"
@@ -978,9 +1040,300 @@ function VipEventRow({ event, isSelected, photoUrl, onClick, locationFilter }: {
           </div>
         </div>
       </div>
-      <div style={{ marginLeft:"8px", flexShrink:0, alignSelf:"flex-start", marginTop:"10px" }}>
+      {/* The type badge says what this is; the slot under it says what was done about it. Empty
+          while nobody has touched it — a mark on every row would have no glance value left. */}
+      <div style={{ marginLeft:"8px", flexShrink:0, alignSelf:"flex-start", marginTop:"10px", display:"flex", flexDirection:"column", alignItems:"flex-end", gap:"6px", minHeight:"38px" }}>
         <VipBadge />
+        {handling
+          ? <HandlingMark handling={handling} />
+          : (isHovered || isFocused) && <AckButton onAck={onAcknowledge} />}
       </div>
+    </div>
+  );
+}
+
+/* ── Detection handling ─────────────────────────────────────────────────────
+ *
+ * "이건 누가 봤나" — the question a handover opens with, which this list could not answer.
+ *
+ * A DIFFERENT AXIS FROM THE JUDGEMENT, and the screen must not blur them (see
+ * DetectionHandlingState in vcaStore). A judgement says whether the match is right; this says
+ * whether anybody dealt with it. A correct match still needs somebody to walk over, and a false
+ * positive still needs closing so the next shift does not re-open it. So no control here says
+ * confirm / correct / wrong, and this never appears on the same control as a verdict.
+ *
+ * WHERE THE CONTROLS LIVE, and why not in the row.
+ *
+ * The row is 380px wide and 74px tall, twelve to a page, watched for a whole shift. Four controls
+ * on every row would double its height and bury the two things it is read for — the name and the
+ * camera. Measured against what the row already carries: the top-right corner is spent on the
+ * type badge (VIP / Tracking), the second line on place and time, and both already ellipsize.
+ *
+ * So the row carries ONE thing and it is the answer, not a control: a mark saying what state this
+ * detection got to, in the right column under the type badge. Nothing is drawn while a detection
+ * is untouched — an untouched detection is not an error, and a list where every row carries a
+ * badge has no glance value left. A marked row is one somebody touched.
+ *
+ * The one gesture that has to be fast sits in the same slot, revealed on hover or keyboard focus:
+ * a 22px tick that acknowledges in one click, without opening anything. Acknowledging on a busy
+ * night cannot cost three clicks or the log stays empty. Its slot is the mark's slot, so the row
+ * never reflows between "hover" and "acknowledged".
+ *
+ * Everything that needs words — assign, close with a note, reopen, and who last moved it — is in
+ * the panel the row already opens. Clicking a row still selects it on the map, which is what it
+ * always did; the strip is the last thing in what it opens, under the trail for a Tracking row,
+ * directly under the row for a VIP one.
+ *
+ * NO BULK ACKNOWLEDGE, deliberately. Every state change has to carry the account that made it —
+ * that actor field is the evidence that a person was in the loop — and a sweep over a page is a
+ * gesture nobody can honestly claim they looked at. One row, one person, one look.
+ */
+
+function TickIcon({ color, size = 13 }: { color: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none" style={{ flexShrink:0 }}>
+      <path d="M2.6 7.4L5.4 10.2L11.4 3.6" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function AssigneeIcon({ color }: { color: string }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" style={{ flexShrink:0 }}>
+      <path d="M11.5 12.25V11.083C11.5 10.465 11.254 9.871 10.817 9.433C10.379 8.996 9.786 8.75 9.167 8.75H4.833C4.214 8.75 3.621 8.996 3.183 9.433C2.746 9.871 2.5 10.465 2.5 11.083V12.25" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M7 6.417C8.289 6.417 9.333 5.372 9.333 4.083C9.333 2.795 8.289 1.75 7 1.75C5.711 1.75 4.667 2.795 4.667 4.083C4.667 5.372 5.711 6.417 7 6.417Z" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+/**
+ * The sentence saying who last moved this and when — the whole point of the record.
+ *
+ * Typed structurally rather than as T["en"]["handling"]: `as const` makes every string in the
+ * dictionary its own literal type, so the English shape and the Korean one are not assignable to
+ * each other and naming either of them here would have rejected the other language.
+ */
+interface HandlingWords {
+  acknowledgedBy: (actor: string, when: string) => string;
+  assignedTo: (assignee: string, actor: string, when: string) => string;
+  closedBy: (actor: string, when: string) => string;
+}
+function handlingLine(h: DetectionHandling, t: HandlingWords, when: string): string {
+  if (h.state === "closed") return t.closedBy(h.actor, when);
+  if (h.state === "assigned") return t.assignedTo(h.assignee ?? h.actor, h.actor, when);
+  return t.acknowledgedBy(h.actor, when);
+}
+
+/**
+ * The mark in the row's right column. Three states, told apart by shape first and colour second,
+ * because this is read at a glance across a room rather than inspected.
+ *
+ * Only "closed" carries a colour, and it is the one state where a colour claims something true
+ * and useful — the work is finished. Acknowledged and assigned stay grey: somebody looked, which
+ * is not an outcome. The assignee's name is printed because "누가" is the question; the full
+ * sentence, with who marked it and when, is in the title and in the strip the row opens.
+ */
+function HandlingMark({ handling }: { handling: DetectionHandling }) {
+  const [lang] = useLanguage();
+  const t = T[lang].handling;
+  const line = handlingLine(handling, t, formatTimeAgo(handling.at, lang));
+  if (handling.state === "closed") return (
+    <span title={line} style={{ width:"15px", height:"15px", borderRadius:"50%", backgroundColor:"var(--success-400)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+      <TickIcon color="white" size={9} />
+    </span>
+  );
+  if (handling.state === "assigned") return (
+    <span title={line} style={{ display:"flex", alignItems:"center", gap:"3px", maxWidth:"78px" }}>
+      <AssigneeIcon color="var(--gray-500)" />
+      <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+        {handling.assignee ?? handling.actor}
+      </span>
+    </span>
+  );
+  return (
+    // gray-600, the weight of the row's own secondary text — not gray-400. Measured on screen at
+    // 14px it was the faintest thing on the row, and this is the mark the list is scanned for.
+    <span title={line} style={{ display:"flex", flexShrink:0 }}>
+      <TickIcon color="var(--gray-600)" size={15} />
+    </span>
+  );
+}
+
+/**
+ * Acknowledge, in one click, from the row.
+ *
+ * A tick with no word beside it: the slot is 22px and a labelled button here would take the width
+ * the camera name is already short of. The labelled button exists — in the strip the row opens —
+ * so this is the shortcut for somebody who already knows the screen, not the only door to it.
+ *
+ * stopPropagation on both click and keydown: the row around it is a role="button" that selects
+ * the event on the map, and acknowledging must not also move the map.
+ */
+function AckButton({ onAck }: { onAck: () => void }) {
+  const [lang] = useLanguage();
+  const t = T[lang].handling;
+  const [hot, setHot] = useState(false);
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onAck(); }}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
+      onMouseEnter={() => setHot(true)}
+      onMouseLeave={() => setHot(false)}
+      title={t.acknowledge}
+      aria-label={t.acknowledge}
+      style={{
+        width:"22px", height:"22px", borderRadius:"7px", padding:0, cursor:"pointer",
+        border:"1px solid var(--line-control)",
+        backgroundColor: hot ? "var(--gray-200)" : "white",
+        display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+        transition:"background-color 0.15s",
+      }}
+    >
+      <TickIcon color="var(--gray-600)" size={12} />
+    </button>
+  );
+}
+
+const STRIP_BTN: React.CSSProperties = {
+  padding:"5px 10px", borderRadius:"8px", cursor:"pointer",
+  border:"1px solid var(--line-control)", backgroundColor:"white",
+  fontSize:"12px", fontWeight:600, color:"var(--gray-700)", letterSpacing:"-0.24px",
+  whiteSpace:"nowrap",
+};
+
+/**
+ * The handling panel, the last thing in what a row opens.
+ *
+ * Reading order down the opened row: who and where (the row) → where they went (a trail's
+ * timeline) → what we did about it (this). The strip closes the panel the way a form's footer
+ * closes a form, and it sits outside the row's own click target, so nothing in here can
+ * accidentally move the map.
+ *
+ * CLOSING TAKES A NOTE AND ACKNOWLEDGING DOES NOT, because the two claim different things:
+ * acknowledging claims somebody looked, closing claims it was handled. The Close button stays
+ * disabled on an empty box rather than silently writing a closure with nothing in it.
+ */
+function HandlingStrip({ event, handling }: { event: LiveEvent; handling?: DetectionHandling }) {
+  const [lang] = useLanguage();
+  const t = T[lang].handling;
+  const setDetectionHandling = useVcaStore(st => st.setDetectionHandling);
+  const clearDetectionHandling = useVcaStore(st => st.clearDetectionHandling);
+  const portalUsers = useVcaStore(st => st.portalUsers);
+  const activeProjectId = useActiveProjectId();
+  /**
+   * ONE IDIOM FOR THE WHOLE STRIP: a control that needs more than a click replaces the button
+   * row in place rather than opening something over the list. Assigning and closing both work
+   * that way, so there is one thing to learn, and neither has to be positioned against a panel
+   * that scrolls.
+   *
+   * No native <select> for the assignee, per the house rule beside DataPage's SimpleSelect: the
+   * console draws its own lists so they look the same on every OS. Names as pills needs no popup
+   * at all, which is also why this is cheaper than a select.
+   */
+  const [mode, setMode] = useState<null | "assign" | "note">(null);
+  const [note, setNote] = useState("");
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { if (mode === "note") noteRef.current?.focus(); }, [mode]);
+
+  /**
+   * Who this can be handed to: the accounts with a way into the app at THIS site. An account
+   * with no app actions cannot open the screen the detection is on, so naming it as the person
+   * on their way over would be a promise the install cannot keep. The signed-in account sits
+   * first, because taking it yourself is the common move.
+   */
+  const candidates = portalUsers
+    .filter(u => u.projectIds.includes(activeProjectId) && (u.appActions?.length ?? 0) > 0)
+    .map(u => u.name)
+    .sort((a, b) =>
+      a === SIGNED_IN_USER.name ? -1 : b === SIGNED_IN_USER.name ? 1 : a.localeCompare(b));
+
+  const write = (state: DetectionHandling["state"], extra?: { assignee?: string; note?: string }) =>
+    // No actor and no timestamp passed: the store takes both from the session. An operator
+    // typing their own name onto a closure is not a record anybody can rely on.
+    setDetectionHandling({ eventId: event.id, subject: event.name, state, ...extra });
+
+  const closed = handling?.state === "closed";
+
+  return (
+    <div style={{ padding:"0 16px 12px", display:"flex", flexDirection:"column", gap:"8px" }}>
+      {handling && (
+        <div style={{ display:"flex", flexDirection:"column", gap:"3px" }}>
+          <span style={{ fontSize:"12px", fontWeight:600, color:"var(--gray-600)", letterSpacing:"-0.2px" }}>
+            {handlingLine(handling, t, formatTimeAgo(handling.at, lang))}
+          </span>
+          {handling.note && (
+            <span style={{ fontSize:"12px", fontWeight:400, color:"var(--gray-700)", letterSpacing:"-0.2px", wordBreak:"break-word" }}>
+              {handling.note}
+            </span>
+          )}
+        </div>
+      )}
+
+      {mode === "note" ? (
+        <>
+          <textarea
+            ref={noteRef}
+            rows={2}
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder={t.notePlaceholder}
+            style={{
+              width:"100%", resize:"none", padding:"7px 9px", borderRadius:"8px",
+              border:"1px solid var(--line-control)", outline:"none",
+              fontSize:"12px", fontWeight:500, color:"var(--gray-900)", fontFamily:"inherit",
+              letterSpacing:"-0.2px", lineHeight:1.45, boxSizing:"border-box",
+            }}
+          />
+          <div style={{ display:"flex", gap:"6px" }}>
+            <button
+              disabled={note.trim().length === 0}
+              onClick={() => { write("closed", { note: note.trim(), assignee: handling?.assignee }); setNote(""); setMode(null); }}
+              style={{
+                ...STRIP_BTN,
+                border:"none", backgroundColor: note.trim() ? "var(--gray-900)" : "var(--gray-200)",
+                color: note.trim() ? "white" : "var(--gray-400)",
+                cursor: note.trim() ? "pointer" : "not-allowed",
+              }}
+            >{t.closeConfirm}</button>
+            <button onClick={() => { setNote(""); setMode(null); }} style={STRIP_BTN}>{t.cancel}</button>
+          </div>
+        </>
+      ) : mode === "assign" ? (
+        <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
+          {candidates.map(name => (
+            <button
+              key={name}
+              onClick={() => { write("assigned", { assignee: name }); setMode(null); }}
+              style={{
+                ...STRIP_BTN, borderRadius:"999px",
+                backgroundColor: name === handling?.assignee ? "var(--gray-100)" : "white",
+              }}
+            >{name}</button>
+          ))}
+          <button onClick={() => setMode(null)} style={{ ...STRIP_BTN, borderRadius:"999px", color:"var(--gray-500)" }}>{t.cancel}</button>
+        </div>
+      ) : closed ? (
+        <div style={{ display:"flex", gap:"6px" }}>
+          {/* Reopening drops the row back to untouched — it does not stack a stage on top of the
+              closure, because the store keeps one row per event (see DetectionHandling). So the
+              closure it replaces stops being readable here, and the server that owns these has to
+              keep the history this mock cannot. Written down rather than worked around. */}
+          <button onClick={() => clearDetectionHandling(event.id)} style={STRIP_BTN}>{t.reopen}</button>
+        </div>
+      ) : (
+        <div style={{ display:"flex", gap:"6px", alignItems:"center", flexWrap:"wrap" }}>
+          {!handling && (
+            <button onClick={() => write("acknowledged")} style={STRIP_BTN}>{t.acknowledge}</button>
+          )}
+          {/* Not drawn when there is nobody to hand it to: an account with no way into the app
+              cannot be on its way over, so a picker of nobody would be a promise the install
+              cannot keep. */}
+          {candidates.length > 0 && (
+            <button onClick={() => setMode("assign")} style={STRIP_BTN}>{t.assign}</button>
+          )}
+          <button onClick={() => setMode("note")} style={STRIP_BTN}>{t.closeOut}</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1003,6 +1356,21 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
   const [filter, setFilter] = useState<FilterType>("All");
   const [page, setPage] = useState(1);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
+  /**
+   * A SECOND AXIS, NOT A FOURTH TYPE PILL.
+   *
+   * The pills beside it narrow by WHAT a detection is; this narrows by whether anybody has dealt
+   * with it. Folding it in as a fourth pill would have made "VIP" and "Unhandled" look mutually
+   * exclusive when they are not, so it sits apart, right-aligned, and fills dark grey rather than
+   * purple when it is on — the purple belongs to the axis it is not part of.
+   *
+   * OFF BY DEFAULT, and that is the point: a closed detection stays in the list where the shift
+   * that closed it can show its work. This hides nothing permanently, which is why it carries the
+   * count — with twelve rows to a page the backlog is otherwise unknowable.
+   */
+  const [unhandledOnly, setUnhandledOnly] = useState(false);
+  const detectionHandlings = useVcaStore(st => st.detectionHandlings);
+  const setDetectionHandling = useVcaStore(st => st.setDetectionHandling);
   /*
    * TRACKING IS THE MAP'S CAPABILITY, WEARING THE DASHBOARD'S CLOTHES (2026-09-23, owner:
    * 대시보드에서 이벤트에 VIP 감지뿐 아니라 지금 트레킹도 있긴 하거든 · 못 보게 할 거면 같이
@@ -1082,11 +1450,16 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
     : null;
   const placeLabel = districtLabel || locationFilter || t.all;
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Counted over the list the other filters already narrowed, so the figure answers "how many
+  // are left in what I am looking at" rather than site-wide — the pill sits in that filter row.
+  const unhandled = filtered.filter(e => !handlingFor(detectionHandlings, e.id));
+  const visible = unhandledOnly ? unhandled : filtered;
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const safePage   = Math.min(page, totalPages);
-  const paginated  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const paginated  = visible.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const rangeStart = (safePage - 1) * PAGE_SIZE + 1;
-  const rangeEnd   = Math.min(safePage * PAGE_SIZE, filtered.length);
+  const rangeEnd   = Math.min(safePage * PAGE_SIZE, visible.length);
 
   return (
     <>
@@ -1167,6 +1540,21 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
               </button>
             );
           })}
+          <button
+            onClick={() => { setUnhandledOnly(v => !v); setPage(1); }}
+            aria-pressed={unhandledOnly}
+            style={{
+              marginLeft:"auto", display:"flex", alignItems:"center", gap:"5px",
+              padding:"4px 9px", borderRadius:"999px", cursor:"pointer",
+              border: unhandledOnly ? "1px solid var(--gray-900)" : "1px solid var(--line-control)",
+              backgroundColor: unhandledOnly ? "var(--gray-900)" : "white",
+              color: unhandledOnly ? "white" : "var(--gray-600)",
+              fontSize:"12px", fontWeight:600, letterSpacing:"-0.24px", whiteSpace:"nowrap",
+              transition:"all 0.15s",
+            }}>
+            {t.handling.unhandled}
+            <span style={{ fontWeight:700, color: unhandledOnly ? "white" : "var(--gray-900)" }}>{unhandled.length}</span>
+          </button>
         </div>
       </div>
 
@@ -1175,21 +1563,32 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
         {paginated.length === 0 && (
           <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", padding:"32px 20px" }}>
             <span style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-400)", textAlign:"center", letterSpacing:"-0.26px" }}>
-              {t.noEvents}
+              {/* "No events detected currently." would be a false statement with the pill on and
+                  every event handled — there ARE events, they are just all dealt with. */}
+              {unhandledOnly && filtered.length > 0 ? t.handling.noUnhandled : t.noEvents}
             </span>
           </div>
         )}
         {paginated.map((event, i) => {
           const isSelected = event.id === selectedEventId;
           const photoUrl = getFacePhoto(event.id);
+          const handling = handlingFor(detectionHandlings, event.id);
+          // The one-gesture path. No actor and no timestamp passed — the store takes both from
+          // the session, which is what makes the row evidence that a person was in the loop.
+          const acknowledge = () => setDetectionHandling({ eventId: event.id, subject: event.name, state: "acknowledged" });
           return (
             <div key={`${event.type}-${event.id}-${i}`}>
               {event.type === "Tracking" ? (
                 <TrackingEventRow event={event} isSelected={isSelected} onClick={() => onEventSelect?.(isSelected ? null : event)}
-                  districtHopFilter={districtFilter} />
+                  districtHopFilter={districtFilter} handling={handling} onAcknowledge={acknowledge} />
               ) : (
-                <VipEventRow event={event} isSelected={isSelected} photoUrl={photoUrl} onClick={() => onEventSelect?.(isSelected ? null : event)} locationFilter={locationFilter} />
+                <VipEventRow event={event} isSelected={isSelected} photoUrl={photoUrl} onClick={() => onEventSelect?.(isSelected ? null : event)} locationFilter={locationFilter} handling={handling} onAcknowledge={acknowledge} />
               )}
+              {/* The last thing in what the row opens — under a trail's timeline for a Tracking
+                  row, directly under the row for a VIP one. Rendered here rather than inside the
+                  rows so it is outside their click target: the row selects the event on the map,
+                  and nothing in here should move the map. */}
+              {isSelected && <HandlingStrip event={event} handling={handling} />}
               {i < paginated.length - 1 && <div style={{ height:"1px", backgroundColor:"var(--gray-200)", margin:"0 16px" }} />}
             </div>
           );
@@ -1198,7 +1597,7 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
 
       {/* Pagination */}
       <div style={{ padding:"10px 16px", borderTop:BORDER, flexShrink:0, display:"flex", justifyContent:"space-between", alignItems:"center", backgroundColor:"white" }}>
-        <span style={{ fontSize:"10px", color:"var(--gray-400)", fontWeight:600 }}>{t.rangeOf(rangeStart, rangeEnd, filtered.length)}</span>
+        <span style={{ fontSize:"10px", color:"var(--gray-400)", fontWeight:600 }}>{t.rangeOf(rangeStart, rangeEnd, visible.length)}</span>
         <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
           <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>{t.goToPage}</span>
           <input type="number" min={1} max={totalPages} value={safePage}

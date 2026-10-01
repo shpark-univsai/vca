@@ -186,6 +186,13 @@ export interface Project {
    * Taking somebody off the list is a person's act, never a date's.
    */
   vipRetentionDays?: number;
+  /**
+   * How long 접속 기록 is kept, in months. See setAccessLogRetention for why it sits on a project.
+   *
+   * Unset means the installation has not decided, and the screen says so rather than printing a
+   * number nobody chose — the same rule `retentionDays` follows.
+   */
+  accessLogRetentionMonths?: number;
   licenseChannelLimit?: number;
   licensePlan?: string;
   // A date string, or the literal "Unlimited" for a plan with no expiry.
@@ -680,6 +687,58 @@ export interface SearchAccessRecord {
  */
 export type DetectionVerdict = "confirmed" | "false_positive";
 
+/**
+ * What the shift DID about a detection.
+ *
+ * Not DetectionJudgement, and the difference is the whole reason this exists. A judgement answers
+ * "is this the right person" — a call about the match. This answers "has anybody dealt with it" —
+ * a call about the work. They come apart constantly: a correctly matched VIP still needs somebody
+ * to walk over, and a false positive still needs closing so the next shift does not re-open it.
+ *
+ * Without it the event list only accumulates. Every comparable product acknowledges an alarm —
+ * Genetec audits who acknowledged, who forcibly acknowledged, who forwarded and who snoozed one,
+ * which is how basic the action is there — and the question a handover opens with, "이건 누가
+ * 봤나", has no answer on this screen today.
+ *
+ * One row per event, replaced in place: the state is where it got to, not a history of stages.
+ * HANDOFF NOTE: the server owns these and must take the actor from the session. An operator
+ * marking their own name onto a closure is not a record anybody can rely on.
+ */
+export type DetectionHandlingState =
+  /** Somebody has seen it. The minimum, and the one that stops the list growing silently. */
+  | "acknowledged"
+  /** Somebody is on it — assignee is set. */
+  | "assigned"
+  /** Dealt with, with a note saying what was done. */
+  | "closed";
+
+export interface DetectionHandling {
+  id: string;
+  /** The event handled. Seeded event ids, like DetectionJudgement.subjectId. */
+  eventId: string;
+  /** Who the event was about, so a closed row still says what it was about. */
+  subject: string;
+  state: DetectionHandlingState;
+  /** Set when state is "assigned" — a display name, like the other logs. */
+  assignee?: string;
+  /**
+   * What was done. Required to close and not to acknowledge, because the two claim different
+   * things: acknowledging claims only that somebody looked, closing claims it was handled.
+   */
+  note?: string;
+  /** Who last moved it, and when. */
+  actor: string;
+  at: string;
+}
+
+/** The handling on an event, or undefined if nobody has touched it. */
+export function handlingFor(
+  list: DetectionHandling[],
+  eventId: string,
+): DetectionHandling | undefined {
+  return list.find(h => h.eventId === eventId);
+}
+
 export interface DetectionJudgement {
   id: string;
   /** Which screen the call was made on — the same subject id can exist on more than one. */
@@ -725,16 +784,191 @@ export function judgementFor(
  * audit row is a note to ourselves; a client that writes it can skip writing it. These exports
  * have to go through the server, which logs before it returns the file.
  */
-export interface ListExportRecord {
+/**
+ * Something left this installation as a file.
+ *
+ * Was `ListExportRecord`, and the name had become a lie in two directions. It was written by the
+ * Portal's four CSV buttons and **displayed nowhere** — the store kept it and no screen read it,
+ * which is the failure the look-up log's own header warns about: a record nobody can produce
+ * counts, to an auditor, as a record that was never kept. And the only exports it could describe
+ * were lists, while the export that actually matters under 개인정보 보호법 is a FRAME — a face,
+ * leaving the building.
+ *
+ * So one list, not two. An auditor asks "what left here, who took it, and on whose authority",
+ * and a spreadsheet of camera names and a still of somebody's face are both answers to it. The
+ * kind says which, and the fields that only make sense for one of them are optional.
+ */
+export type ExportKind =
+  /** A table the Portal wrote to CSV. Carries rowCount, no subject. */
+  | "list"
+  /** One still frame out of the app. Carries the subject; rowCount is 1. */
+  | "frame"
+  /** A result set out of the app — Re-ID candidates, a Redmap trail. */
+  | "results";
+
+export interface ExportRecord {
   id: string;
   /** The project whose log this lands in. Absent for a list that belongs to no single site. */
   projectId?: string;
-  /** Which list left — the tab a reader would go back to. */
-  list: "vips" | "searchLog" | "activity" | "roster" | "cameras";
-  /** How many rows went, so the row says how much left without opening the file. */
+  kind: ExportKind;
+  /** Which list left — the tab a reader would go back to. Lists only. */
+  list?: "vips" | "searchLog" | "activity" | "roster" | "cameras" | "accessLog" | "exportLog";
+  /** Which app screen it left from — frames and result sets only. */
+  surface?: "bestframe" | "reid" | "redmap" | "redface" | "live";
+  /**
+   * WHO the file is about, when it is about somebody.
+   *
+   * A list export is about no one in particular; a frame is a person's face. Without this the row
+   * says a file left and cannot answer the question that gets asked next — whose face was it.
+   */
+  subject?: string;
+  /**
+   * The person, by id, beside the name.
+   *
+   * Asked for by both screens that read this log, for the reason `SearchAccessRecord.actorEmail`
+   * gives about actors: a name alone does not identify anybody. Two people called 김민수 collapse
+   * into one row an auditor cannot separate, and a row cannot lead back to the VIP entry it is
+   * about. Optional because a list export is about nobody.
+   */
+  subjectId?: string;
+  /** How many rows or frames went, so the row says how much left without opening the file. */
   rowCount: number;
+  /**
+   * Why it left, and the paper that authorises it.
+   *
+   * Optional in the TYPE and not in the product: whether the app stops to ask is a policy switch,
+   * and a mock that forged a reason nobody typed would put a claim in the record the operator
+   * never made — the same rule the look-up log follows for purpose.
+   */
+  reason?: string;
+  reference?: string;
+  /*
+   * ───── 목적 외 이용·제3자 제공 대장 (표준 개인정보 보호지침 제42조제1항) ─────
+   *
+   * Seven items, and they are not our list — they are the columns of the register a 공공기관
+   * customer is inspected against, which maps 1:1 to 시행규칙 별지 제1호서식. A frame of a face
+   * leaving the building is 목적 외 이용 or 제3자 제공 (법 제18조), so the row has to carry them.
+   *
+   * Optional in the TYPE because the Portal's four CSV buttons predate this and record none of
+   * them — a camera list is not somebody's face. The app's frame export is where they are
+   * required, and that screen asks before the file leaves.
+   */
+  /** ① The file, by name, so a row can be matched to what somebody is holding. */
+  fileName?: string;
+  /**
+   * ② and the question that decides whether masking is required at all.
+   *
+   * 표준지침 제46조 obliges de-identification only on ONE of these paths: when the 정보주체
+   * themselves is given footage that other identifiable people appear in. Giving it to 수사기관
+   * does not (masking would damage the evidence), and internal viewing is within the purpose it
+   * was collected for. So this field is what has to exist now; the masking engine is what can
+   * wait, and it waits honestly rather than by being forgotten.
+   */
+  requesterKind?: "subject" | "police" | "thirdParty";
+  /** ② The person or body receiving it. */
+  recipient?: string;
+  /** ④ The article relied on — 법 제18조제2항제7호 for a criminal investigation, and so on. */
+  legalBasis?: string;
+  /** ⑤ The span of footage, not the span of the file: which cameras, which hours. */
+  period?: string;
+  /** ⑥ Copy, printout or on-screen viewing — the three the register distinguishes. */
+  form?: "copy" | "print" | "screen";
+  /*
+   * ───── the monthly review (고시 제8조제2항) ─────
+   *
+   * Not part of the register: the register says what left, these say somebody checked why. Unset
+   * means nobody has looked at this row yet, which is what the reviewer filters on.
+   */
+  reviewedAt?: string;
+  reviewedBy?: string;
+  /** See SearchAccessRecord.actorEmail — the reviewer is identified by address, like everyone else. */
+  reviewedByEmail?: string;
+  reviewNote?: string;
   actor: string;
+  /** See SearchAccessRecord.actorEmail — a name alone does not identify anybody. */
+  actorEmail?: string;
   at: string;
+  /**
+   * Who observed the export: the browser, or the server.
+   *
+   * `AuditEvent` has carried this since the audit log was built, and this record did not — so the
+   * Portal could not tell a row the browser wrote from one a server saw, which is the difference
+   * between a record and a claim. A client-assembled CSV is permanently "client": there is no
+   * request for a server to observe. A frame export becomes "server" the day it is a call that
+   * logs before it returns bytes.
+   */
+  recordedBy?: "client" | "server";
+}
+
+/**
+ * Somebody tried to get in.
+ *
+ * 접속 기록, and it is the one log in this console that a Korean deployment is REQUIRED to keep:
+ * 개인정보의 안전성 확보조치 기준 제8조. It is also the log every comparable product keeps by
+ * default — Milestone's audit log notes user logins with no option turned on, and Genetec's
+ * activity trails carry logon/logoff.
+ *
+ * Deliberately not the audit log and not the look-up log. The audit log answers "what changed",
+ * the look-up log answers "who looked somebody up", and this answers "who got in, and who tried
+ * and failed". Three questions, three readers, three lists.
+ *
+ * NOT project-scoped, unlike the other two. A person signs in to the installation, not to a site
+ * — so this carries teamId and the project's Records screen shows the installation's rows. The
+ * server will scope it the same way.
+ *
+ * HANDOFF NOTE: every field here is the server's to write. A browser cannot know its own public
+ * address, cannot be trusted about the time, and must not be the thing that decides whether a
+ * sign-in counts as refused. The seed below exists so the screen can be designed and read.
+ */
+export type AccessEventKind =
+  | "signIn"
+  | "signOut"
+  /** Credentials did not match, or matched an account that may not come in. */
+  | "refused"
+  /** The attempt that tripped the lockout — kept apart from `refused` because it is the one a
+   *  reviewer looks for, and counting refusals to find it is work the screen should have done. */
+  | "lockedOut";
+
+/*
+ * NOTE ON WHAT THIS LOG IS AND IS NOT (법률 검토 2026-10-01).
+ *
+ * 고시 제2조 defines 접속기록 as five things: 계정 · 접속일시 · 접속지 정보 · 처리한 정보주체
+ * 정보 · 수행업무. This type carries the first three and the fourth only as "which door" — and
+ * that is deliberate, not a gap. The last two live in the logs built for them: 조회 기록 carries
+ * who was looked up (SearchAccessRecord.target), 변경 기록 carries what was changed, and 반출
+ * 기록 carries what was taken out. The obligation is met by the four lists together, and the
+ * access log's own page says so rather than growing two columns it can never fill.
+ *
+ * Retention is TWO YEARS for this product, not the base one year: faces are processed by
+ * technical means to identify individuals, which makes them 생체인식정보 under 시행령 제18조 and
+ * therefore 민감정보, and 고시 제8조제1항 puts a 민감정보 system on the longer period. The 5만명
+ * threshold does not matter here — we are already over the line on the other condition.
+ *
+ * Review is MONTHLY, not half-yearly (고시 제8조제2항), and a download found in the review has to
+ * have its reason confirmed — which is why 반출 기록 carries the register fields above.
+ *
+ * 위변조 방지 (고시 제8조제3항) is a UI constraint, not a server detail: no row on this screen
+ * may be edited, hidden or deleted from the console. Export is allowed; removal is not.
+ */
+export interface AccessRecord {
+  id: string;
+  teamId: string;
+  at: string;
+  kind: AccessEventKind;
+  /**
+   * What was typed in the identifier box.
+   *
+   * Kept even when it matched nothing, which is the whole value of a refused row: an address
+   * nobody here uses, tried forty times, is what the log exists to make visible.
+   */
+  identifier: string;
+  /** The account it matched, when it matched one. Absent on a refusal that matched nothing. */
+  actor?: string;
+  actorEmail?: string;
+  /** Which door — the admin console or the monitoring app. */
+  door: "portal" | "app";
+  /** HANDOFF: set by the server, not the browser. See SearchAccessRecord.ip. */
+  ip?: string;
 }
 
 export interface SearchPurposeSelection {
@@ -963,8 +1197,12 @@ interface VcaStoreState {
   searchAccessLog: SearchAccessRecord[];
   /** Operator calls on individual detections — see DetectionJudgement. */
   detectionJudgements: DetectionJudgement[];
-  /** Every list taken out of the console as a file — see ListExportRecord. */
-  listExports: ListExportRecord[];
+  /** What the shift did about each detection — see DetectionHandling. */
+  detectionHandlings: DetectionHandling[];
+  /** Everything that left this installation as a file — see ExportRecord. */
+  exportLog: ExportRecord[];
+  /** Who got in and who tried — see AccessRecord. Installation-wide, not per project. */
+  accessLog: AccessRecord[];
   /** Outside requests for recorded footage — see FootageRequest. Empty until one is filed. */
   footageRequests: FootageRequest[];
   /** Requests to be erased — see ErasureRequest. Empty until one is filed. */
@@ -1093,8 +1331,53 @@ interface VcaStoreState {
   recordJudgement: (j: Pick<DetectionJudgement, "surface" | "subjectId" | "targetLabel" | "verdict">) => void;
   /** Back to "nobody has looked at this". Not the same as marking it a false positive. */
   clearJudgement: (surface: DetectionJudgement["surface"], subjectId: string) => void;
-  /** Write down that a whole list left as a file. See ListExportRecord — a record, not a gate. */
-  recordListExport: (e: Pick<ListExportRecord, "projectId" | "list" | "rowCount">) => void;
+  /** Write down that a whole list left as a file. See ExportRecord — a record, not a gate. */
+  recordListExport: (e: { projectId?: string; list: NonNullable<ExportRecord["list"]>; rowCount: number }) => void;
+  /**
+   * Write down that a frame or a result set left the monitoring app.
+   *
+   * Same list as the Portal's CSV exports, because an auditor asks one question. The caller passes
+   * who it was about and which screen it left from; when, who and the id are filled here.
+   */
+  recordFootageExport: (e: {
+    projectId?: string;
+    kind: Extract<ExportKind, "frame" | "results">;
+    surface: NonNullable<ExportRecord["surface"]>;
+    subject: string;
+    rowCount: number;
+    reason?: string;
+    reference?: string;
+  } & Pick<ExportRecord, "fileName" | "requesterKind" | "recipient" | "legalBasis" | "period" | "form">) => void;
+  /**
+   * Somebody checked, during the monthly review, why a file left.
+   *
+   * 고시 제8조제2항 does not stop at keeping the log: the review has to happen at least monthly,
+   * and a download found in it has to have its reason confirmed. A console that cannot record
+   * the confirmation leaves the reviewer no way to show the review happened — which is the same
+   * failure as not keeping the record at all.
+   *
+   * HANDOFF NOTE: the reviewer and the time are the server's to write, and there must be no path
+   * that clears one. A reviewer who can delete their own confirmation has not confirmed anything.
+   */
+  recordExportReviewed: (e: { exportId: string; note?: string }) => void;
+  /** What the shift did about a detection. Replaces the row rather than stacking — see DetectionHandling. */
+  setDetectionHandling: (e: {
+    eventId: string;
+    subject: string;
+    state: DetectionHandlingState;
+    assignee?: string;
+    note?: string;
+  }) => void;
+  /** Drop the handling back to untouched, for an event re-opened by the next shift. */
+  clearDetectionHandling: (eventId: string) => void;
+  /**
+   * How long 접속 기록 is kept, in months.
+   *
+   * HANDOFF NOTE: written per project here because Settings is a project screen, and read as an
+   * installation-wide value — the access log is not per site (see AccessRecord). The server should
+   * hold one value per installation.
+   */
+  setAccessLogRetention: (projectId: string, months: number) => void;
   /** File a new request. Returns its id. */
   addFootageRequest: (r: Omit<FootageRequest, "id" | "status" | "receivedAt" | "receivedBy">) => string;
   /** Approve or refuse. A note is required either way — see decideFootageRequest's own comment. */
@@ -4499,6 +4782,25 @@ export function unstableCameras(projectId: string, cameras: Camera[], limit = 4)
 // so the seed that stands in for a server's history has to carry the mark a server's history
 // carries. That the mock assembles them client-side is a fact about the mock, not about the
 // action. This is the only place in this file "server" is written; see `clientAudit`.
+/*
+ * 접속 기록 seed. Written against the Users screen's accounts so a row leads to a person, and
+ * dated backwards from a fixed day rather than from `new Date()` — a seed that moves with the
+ * clock makes two readers of the same screen disagree about what they saw.
+ *
+ * The last three rows are the shape a reviewer opens this screen to find: one address tried over
+ * and over from one machine until the lockout caught it.
+ */
+const ACCESS_LOG_SEED: AccessRecord[] = [
+  { id: "acc-1", teamId: "team-univs", at: "2026-10-01 09:12", kind: "signIn", identifier: "grace.tan@smartcity.gov.sg", actor: "Grace Tan", actorEmail: "grace.tan@smartcity.gov.sg", door: "portal", ip: "10.20.1.14" },
+  { id: "acc-2", teamId: "team-univs", at: "2026-10-01 08:58", kind: "signIn", identifier: "EMP-2043", actor: "Nadia Rahman", actorEmail: "nadia.rahman@smartcity.gov.sg", door: "app", ip: "10.20.4.7" },
+  { id: "acc-3", teamId: "team-univs", at: "2026-10-01 08:41", kind: "signOut", identifier: "marcus.lee@smartcity.gov.sg", actor: "Marcus Lee", actorEmail: "marcus.lee@smartcity.gov.sg", door: "app", ip: "10.20.4.31" },
+  { id: "acc-4", teamId: "team-univs", at: "2026-09-30 22:17", kind: "signIn", identifier: "aaron.sim@smartcity.gov.sg", actor: "Aaron Sim", actorEmail: "aaron.sim@smartcity.gov.sg", door: "portal", ip: "10.20.1.52" },
+  { id: "acc-5", teamId: "team-univs", at: "2026-09-30 19:03", kind: "refused", identifier: "wei.chen@smartcity.gov.sg", actor: "Wei Chen", actorEmail: "wei.chen@smartcity.gov.sg", door: "app", ip: "10.20.4.66" },
+  { id: "acc-6", teamId: "team-univs", at: "2026-09-30 18:59", kind: "refused", identifier: "wei.chen@smartcity.gov.sg", actor: "Wei Chen", actorEmail: "wei.chen@smartcity.gov.sg", door: "app", ip: "10.20.4.66" },
+  { id: "acc-7", teamId: "team-univs", at: "2026-09-30 18:55", kind: "lockedOut", identifier: "wei.chen@smartcity.gov.sg", actor: "Wei Chen", actorEmail: "wei.chen@smartcity.gov.sg", door: "app", ip: "10.20.4.66" },
+  { id: "acc-8", teamId: "team-univs", at: "2026-09-30 18:52", kind: "refused", identifier: "admin@smartcity.gov.sg", door: "portal", ip: "203.0.113.77" },
+];
+
 const AUDIT_LOG_SEED: AuditEvent[] = [
   { id: "audit-1", projectId: "proj-sg", area: "cameras", target: "CAM-NOV-001", action: "RTSP URL updated", message: "Camera CAM-NOV-001 RTSP URL updated", actor: "Grace Tan", at: auditAt(20), recordedBy: "server" },
   { id: "audit-2", projectId: "proj-sg", area: "vip", target: "Wei Chen", action: "Registered", message: "VIP Wei Chen registered", actor: "Marcus Lee", at: auditAt(65), recordedBy: "server" },
@@ -4581,6 +4883,7 @@ function clientAudit(fields: Omit<AuditEvent, "id" | "recordedBy">): AuditEvent 
 let presetSeq = 0;
 let judgementSeq = 0;
 let exportSeq = 0;
+let handlingSeq = 0;
 let footageSeq = 0;
 let erasureSeq = 0;
 
@@ -4738,7 +5041,22 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   // No seed. These are events, and an installation that has run no searches has none.
   searchAccessLog: [],
   detectionJudgements: [],
-  listExports: [],
+  detectionHandlings: [],
+  exportLog: [],
+  /*
+   * SEEDED, unlike the look-up log beside it, and the difference is not an inconsistency.
+   *
+   * A look-up happens inside this app, so an installation that has run none has none and an empty
+   * list is the truth. A sign-in happens BEFORE the app is running — every person on the Users
+   * screen got in somehow — so an empty access log would be the one state this screen can never
+   * honestly be in, and it is also the state that teaches a reviewer the log is broken.
+   *
+   * Written against the roster deliberately: these are the accounts on the Users screen, so a
+   * reader can follow a row to a person. The refusals and the lockout are the rows the screen
+   * exists for, and the last two are the same address tried from one machine over and over —
+   * which is what a reviewer is looking for when they open this.
+   */
+  accessLog: ACCESS_LOG_SEED,
   // Empty on purpose, like the access requests below it: a seeded release would teach whoever
   // reads this screen that the product has already handed footage to somebody.
   footageRequests: SEED_FOOTAGE_REQUESTS,
@@ -5261,23 +5579,26 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   recordListExport: ({ projectId, list, rowCount }) =>
     set(state => {
       const at = new Date().toISOString();
-      const LIST_NAME: Record<ListExportRecord["list"], string> = {
+      const LIST_NAME: Record<NonNullable<ExportRecord["list"]>, string> = {
         vips: "VIP registry", searchLog: "search access log", activity: "activity log",
         roster: "staff roster", cameras: "camera list",
+        accessLog: "access log", exportLog: "export log",
       };
       /* The screen the button was pressed on, so an export lands under the list it emptied rather
          than all five landing under one name. Both records read the same `list` key, so they
          cannot disagree about which screen that was. */
-      const LIST_AREA: Record<ListExportRecord["list"], AuditArea> = {
+      const LIST_AREA: Record<NonNullable<ExportRecord["list"]>, AuditArea> = {
         vips: "vip", searchLog: "records", activity: "records",
         roster: "roster", cameras: "cameras",
+        accessLog: "records", exportLog: "records",
       };
       return {
         // Append, never replace — the same rule as evidenceExports. Exporting the same list twice
         // is two files in the world, and the second one is often the one that left the building.
-        listExports: [
-          { id: `listexport-${++exportSeq}`, projectId, list, rowCount, actor: SIGNED_IN_USER.name, at },
-          ...state.listExports,
+        exportLog: [
+          { id: `export-${++exportSeq}`, kind: "list", projectId, list, rowCount,
+            actor: SIGNED_IN_USER.name, actorEmail: SIGNED_IN_USER.email, at, recordedBy: "client" },
+          ...state.exportLog,
         ],
         // The row count is in the line because it is what tells a reader whether this was somebody
         // checking one page or the whole registry leaving.
@@ -5285,13 +5606,89 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // recordedBy "client" is PERMANENT here, not a mock artifact waiting on a backend. The CSV
         // is assembled in the browser from rows already on the page and handed straight to the
         // user — there is no request for the server to observe, so no server-recorded row can
-        // exist for it. See src/lib/evidence.ts:28, which reached the same conclusion for the
-        // evidence bundle: the export has to be a server call that logs before it returns bytes,
-        // otherwise the one action worth auditing is the one nobody sees.
+        // exist for it. The same conclusion was reached for frame export on 베스트 프레임 상세:
+        // the export has to be a server call that logs before it returns bytes, otherwise the one
+        // action worth auditing is the one nobody sees. (This used to cite src/lib/evidence.ts,
+        // which was deleted with the old evidence bundle and is not in the repo.)
         auditLog: [clientAudit({
           projectId,
           area: LIST_AREA[list], target: LIST_NAME[list], action: `Exported as a file — ${rowCount} row(s)`, message: `${LIST_NAME[list]} exported as a file — ${rowCount} row(s)`,
           actor: SIGNED_IN_USER.name, at,
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+      };
+    }),
+  recordFootageExport: ({ projectId, kind, surface, subject, rowCount, ...register }) =>
+    set(state => {
+      const at = new Date().toISOString();
+      return {
+        exportLog: [
+          { id: `export-${++exportSeq}`, kind, projectId, surface, subject, rowCount, ...register,
+            actor: SIGNED_IN_USER.name, actorEmail: SIGNED_IN_USER.email, at, recordedBy: "client" },
+          ...state.exportLog,
+        ],
+      };
+    }),
+  recordExportReviewed: ({ exportId, note }) =>
+    set(state => {
+      /*
+       * FIRST REVIEW WINS, and there is no second one.
+       *
+       * 고시 제8조제3항 requires the record to be safe from alteration, and a second call with the
+       * same id used to replace the first reviewer's name, time and note. The screen had no path
+       * to it — the button disappears once a row is reviewed — but a guarantee that holds only
+       * because no button calls it is not a guarantee. Caught by the team that built the screen.
+       */
+      const held = state.exportLog.find(e => e.id === exportId);
+      if (!held || held.reviewedAt) return state;
+      /*
+       * The reviewer is whoever is signed in to the Portal, not the module constant.
+       * `SIGNED_IN_USER` is a stand-in for a session and its name can differ from the account's —
+       * and a review stamped with the wrong name has reviewed nothing. Same resolution the frame
+       * export uses.
+       */
+      const me = currentPortalUser(state.portalUsers);
+      return {
+        // Stamped on the row rather than kept as a second list: "has this been reviewed" is a
+        // property of the export, and a reviewer scanning for unchecked rows should not have to
+        // join two lists to find them.
+        exportLog: state.exportLog.map(e => e.id === exportId
+          ? { ...e,
+              reviewedAt: new Date().toISOString(),
+              reviewedBy: me?.name ?? SIGNED_IN_USER.name,
+              reviewedByEmail: me?.email ?? SIGNED_IN_USER.email,
+              reviewNote: note }
+          : e),
+      };
+    }),
+  setDetectionHandling: ({ eventId, subject, state: handledState, assignee, note }) =>
+    set(store => ({
+      // One row per event, replaced in place — see DetectionHandling. A list of stages would read
+      // as a history this product cannot honestly keep: the mock has no server to order the writes.
+      detectionHandlings: [
+        { id: `handling-${++handlingSeq}`, eventId, subject, state: handledState, assignee, note,
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString() },
+        ...store.detectionHandlings.filter(h => h.eventId !== eventId),
+      ],
+    })),
+  clearDetectionHandling: (eventId) =>
+    set(store => ({ detectionHandlings: store.detectionHandlings.filter(h => h.eventId !== eventId) })),
+  setAccessLogRetention: (projectId, months) =>
+    set(state => {
+      const project = state.projects.find(p => p.id === projectId);
+      if (!project || project.accessLogRetentionMonths === months) return state;
+      const before = project.accessLogRetentionMonths;
+      return {
+        projects: state.projects.map(p => (p.id === projectId ? { ...p, accessLogRetentionMonths: months } : p)),
+        auditLog: [clientAudit({
+          projectId,
+          area: "settings",
+          target: "Access log retention",
+          action: `${months} months`,
+          message: `Access log retention set to ${months} months`,
+          before: before === undefined ? "not set" : `${before} months`,
+          after: `${months} months`,
+          actor: SIGNED_IN_USER.name,
+          at: new Date().toISOString(),
         }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),

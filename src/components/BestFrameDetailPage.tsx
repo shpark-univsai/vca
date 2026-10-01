@@ -4,9 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { DetType, Detection, CamData } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { sgtDateKey } from "@/lib/time";
-import ViewerWatermark from "./ViewerWatermark";
-import { useVcaStore, holdsAppAction, useRetentionFloor } from "@/lib/vcaStore";
+import { clockMinutesIn, dateKeyIn, sgtDateKey, siteTimeZone } from "@/lib/time";
+import ViewerWatermark, { viewerStampText } from "./ViewerWatermark";
+import {
+  SIGNED_IN_USER, currentPortalUser, holdsAppAction, useActiveProjectId, useRetentionFloor, useVcaStore,
+} from "@/lib/vcaStore";
+import type { ExportRecord } from "@/lib/vcaStore";
+import { useToast } from "./Toast";
+import { CircleAlert, ImageDown } from "lucide-react";
 
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
@@ -48,6 +53,30 @@ const T = {
     hour: "Hour",
     minute: "Min",
     weekdays: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+    exportFrame: "Export frame",
+    exportSubject: "Subject",
+    exportFootage: "Footage",
+    exportFile: "File",
+    exportWatermark: "Watermark",
+    exportWatermarkOn: "Burned into the file",
+    exportWatermarkOff: "Not in the file — off for this site",
+    exportRequesterKind: "Request type",
+    exportKindSubject: "Data subject",
+    exportKindPolice: "Investigating authority",
+    exportKindThirdParty: "Other third party",
+    exportRecipient: "Recipient",
+    exportRecipientHint: "e.g. Central Police Division, Investigation Unit",
+    exportPurpose: "Purpose",
+    exportPurposeHint: "e.g. Identifying a suspect in case 2026-1138",
+    exportLegalBasis: "Legal basis",
+    exportMaskNotice: "Other people appear in this frame. Handing it to the data subject requires their faces to be de-identified first, and this console cannot do that.",
+    exportCancel: "Cancel",
+    exportGo: "Export",
+    exportBusy: "Preparing…",
+    exportedTitle: "Frame exported",
+    exportedDesc: "A row for it is in the export register.",
+    exportFailedTitle: "Frame not exported",
+    exportFailedDesc: "The frame could not be read. Nothing left and nothing was recorded.",
   },
   ko: {
     all: "전체",
@@ -84,6 +113,30 @@ const T = {
     hour: "시",
     minute: "분",
     weekdays: ["일", "월", "화", "수", "목", "금", "토"],
+    exportFrame: "프레임 반출",
+    exportSubject: "대상",
+    exportFootage: "영상 범위",
+    exportFile: "파일",
+    exportWatermark: "워터마크",
+    exportWatermarkOn: "파일에 함께 들어갑니다",
+    exportWatermarkOff: "파일에 없습니다 — 이 현장은 꺼져 있습니다",
+    exportRequesterKind: "요청 구분",
+    exportKindSubject: "본인",
+    exportKindPolice: "수사기관",
+    exportKindThirdParty: "그 밖의 제3자",
+    exportRecipient: "제공받는 자",
+    exportRecipientHint: "예: 중앙경찰서 수사과",
+    exportPurpose: "목적",
+    exportPurposeHint: "예: 2026-1138 사건 피의자 특정",
+    exportLegalBasis: "법령상 근거",
+    exportMaskNotice: "이 프레임에는 다른 사람도 찍혀 있습니다. 본인에게 줄 때는 그 사람들을 알아볼 수 없게 해야 하고, 이 콘솔은 그 처리를 하지 못합니다.",
+    exportCancel: "취소",
+    exportGo: "반출",
+    exportBusy: "준비 중…",
+    exportedTitle: "프레임을 반출했습니다",
+    exportedDesc: "반출 기록에 줄이 남았습니다.",
+    exportFailedTitle: "반출하지 못했습니다",
+    exportFailedDesc: "프레임을 읽을 수 없었습니다. 파일도 나가지 않고 기록도 남지 않았습니다.",
   },
 } as const;
 
@@ -903,6 +956,405 @@ function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (da
   );
 }
 
+/* ═══ ONE FRAME, OUT OF THE BUILDING ══════════════════════════════════════════════════════════
+ *
+ * Until now nothing could leave the operator app — not one still. The only exports in the whole
+ * product were the Portal's four CSV buttons, so for a police request an operator's real options
+ * were a phone camera or a screenshot, and the institution had no row saying a face had left.
+ * 반출은 의무가 시작되는 지점이고, 그 지점이 없었다.
+ *
+ * WHAT THIS DOES NOT CLAIM, AND WHY THE LAST ATTEMPT WAS DELETED. There was an "증거 내보내기"
+ * button here until 3c69916 took it out, and it deserved it: the file it wrote held no frame at
+ * all (a manifest of ids and a URL, frame_sha256 null by design), it said in its own text that
+ * nothing proved which installation made it, and the log it wrote was read by no screen. This is
+ * the opposite on each count — the bytes ARE the frame, the row is read in the Portal's 반출
+ * 기록, and the word "evidence" appears nowhere on the screen. A PNG assembled by a browser is a
+ * copy of a picture, not a sealed exhibit, so the UI calls it a copy of a frame and stops there.
+ * No hash, no signature, no evidence lock: those are claims only the recorder can make.
+ *
+ * ───── WHAT THE SERVER HAS TO OWN (this is the honest limit of this version) ─────
+ *
+ * 1. THE EXPORT HAS TO BE A SERVER CALL THAT LOGS BEFORE IT RETURNS BYTES. Everything below runs
+ *    in the browser: the canvas is composed here and handed to the user here, so there is no
+ *    request for a server to observe, and a client that writes its own audit row is a client that
+ *    can skip writing it. `recordListExport` in vcaStore reached exactly this conclusion for the
+ *    CSV buttons and points at a planned `src/lib/evidence.ts` — WHICH DOES NOT EXIST in this
+ *    repo, so nothing here can lean on it. 고시 제8조제2항 makes it concrete: the monthly review
+ *    has to catch a download and ask why, which only works if the download happened where the
+ *    system could see it. The frame export belongs behind `POST /exports/frame` → the server
+ *    renders, writes the register row, and only then streams the file.
+ * 2. THE ACTOR. `SIGNED_IN_USER` is a module constant standing in for a session. The server takes
+ *    the operator from the session, never from the body.
+ * 3. THE TIME. A browser clock is not evidence of when anything happened.
+ * 4. PERMISSION. There is no `AppAction` for exporting — the old `"export"` action went with
+ *    3c69916 (17 grants → 16) and re-adding one touches `vcaStore.ts` and `appGrants.ts`, which
+ *    this session does not own. So this control is open to anyone who can reach the screen. It is
+ *    the biggest hole left here and it is named in the handover.
+ * 5. `recordedBy`. `AuditEvent` carries it, `ExportRecord` does not — so the Portal cannot tell a
+ *    row the browser wrote from one the server saw. The field belongs on ExportRecord.
+ *
+ * WHAT IT DOES PROMISE, AND KEEPS: the picture in the file is the picture that was on screen —
+ * the same still, cover-cropped the same way, the same detection boxes, the same date-time plate,
+ * and the viewer watermark burned in when the site has it on. Two deliberate differences, both
+ * because they would make the copy WORSE than the frame the recorder holds: the feed's decorative
+ * scanlines and its 0.9 opacity are display chrome and are not baked in, and the 11px VIP crown
+ * glyph on a box label is not redrawn (the purple box and the name carry it). Nothing else is
+ * added, removed or re-cropped.
+ * ════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** An example, not a default — a console must not put a statute in the operator's mouth. The
+ *  citation is the same text in both languages, so it is not in T. */
+const LEGAL_BASIS_EXAMPLE = "개인정보 보호법 제18조제2항제7호";
+
+/**
+ * A design-system value, resolved for a canvas.
+ *
+ * `fillStyle` cannot take `var(--gray-900)`, and the rule that only the 32 tokens may be used
+ * does not bend for a canvas — so the tokens are read off the document instead of retyped as
+ * hex. An unreadable token throws, and the handler below turns that into a refused export with
+ * no record, which is the right outcome: if the copy cannot be drawn the way the screen draws it,
+ * it must not go out looking almost right.
+ */
+function cssToken(name: string): string {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  if (!value) throw new Error(`BestFrameDetailPage: design token ${name} is not defined`);
+  return value;
+}
+
+/**
+ * The still, loaded so its pixels can be read back out again.
+ *
+ * `crossOrigin` on every request, including the same-origin ones: a same-origin response has no
+ * CORS header to fail against, and without it a remote feed taints the canvas so `toBlob` throws.
+ * A camera whose still cannot be read with CORS cannot be exported — and that is reported as a
+ * failure rather than papered over with a blank frame.
+ */
+function loadFrameImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("BestFrameDetailPage: the frame image could not be read"));
+    img.src = src;
+  });
+}
+
+interface FrameExportInput {
+  bgUrl: string;
+  /** Exactly the boxes the screen is drawing right now — the caller filters, not this. */
+  boxes: { det: Detection; targetNo: number; focused: boolean }[];
+  /** The frame's own date-time plate, in the form the screen already prints it. */
+  stamp: string;
+  /** The viewer stamp, or null when the site has the watermark switched off. */
+  watermark: string | null;
+  fontFamily: string;
+}
+
+function plate(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, radius: number, fill: string,
+) {
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  // roundRect is the one path primitive here that is not universally old; a square plate is a
+  // correct plate, so the fallback draws one rather than skipping the fill.
+  if (typeof ctx.roundRect === "function") ctx.roundRect(x, y, w, h, radius);
+  else ctx.rect(x, y, w, h);
+  ctx.fill();
+}
+
+/**
+ * The frame on screen, as a PNG.
+ *
+ * Geometry first, because this is where a copy quietly stops being the same picture. The feed is
+ * a 16/9 box with `objectFit: cover`, so the export is the centred 16/9 crop of the source at its
+ * OWN pixels — never scaled up, never letterboxed. Everything drawn over it is sized through `k`,
+ * the ratio of this canvas to the 540px-tall frame the screen's own px values were written for,
+ * so a mark keeps its proportion instead of becoming a speck on a large still.
+ */
+async function composeFrameExport(input: FrameExportInput): Promise<Blob> {
+  const img = await loadFrameImage(input.bgUrl);
+  const natW = img.naturalWidth, natH = img.naturalHeight;
+  if (!natW || !natH) throw new Error("BestFrameDetailPage: the frame image has no pixels");
+
+  let sw: number, sh: number;
+  if (natW / natH > FRAME_ASPECT) { sh = natH; sw = Math.round(sh * FRAME_ASPECT); }
+  else { sw = natW; sh = Math.round(sw / FRAME_ASPECT); }
+  const sx = Math.round((natW - sw) / 2), sy = Math.round((natH - sh) / 2);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = sw; canvas.height = sh;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("BestFrameDetailPage: no 2d context");
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+  const k = sh / 540;
+  const white = cssToken("--gray-0");
+  ctx.textBaseline = "alphabetic";
+
+  /* The boxes, in the feed's own line language — see detBoxBorder, which this follows value for
+     value: VIP purple because identity is not a focus state, dashed for an absent identification,
+     and the focused one ringed in SELECTED outside its own border rather than recoloured. */
+  for (const { det, targetNo, focused } of input.boxes) {
+    const left = pctOf(det.left), top = pctOf(det.top);
+    const bw = pctOf(det.width), bh = pctOf(det.height);
+    if (left === null || top === null || !bw || !bh) continue;
+    const x = left * sw, y = top * sh, w = bw * sw, h = bh * sh;
+
+    ctx.save();
+    ctx.lineWidth = 2 * k;
+    ctx.strokeStyle = cssToken(det.type === "VIP" ? "--primary-400" : "--type-vehicle");
+    if (det.type === "Unknown") ctx.setLineDash([6 * k, 4 * k]);
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
+
+    if (focused) {
+      ctx.save();
+      ctx.lineWidth = 3 * k;
+      ctx.strokeStyle = cssToken("--gray-900");
+      const o = 2.5 * k; // half the box's own 2px border plus half this 3px ring
+      ctx.strokeRect(x - o, y - o, w + o * 2, h + o * 2);
+      ctx.restore();
+    }
+
+    /* The white label plate above the box: "P-01" in grey, the name in near-black, at the feed's
+       own 3px/8px padding and 5px gap. An unfocused box's label is at 0.85, as on screen. */
+    const labelFont = `600 ${Math.round(10 * k)}px ${input.fontFamily}`;
+    ctx.save();
+    ctx.globalAlpha = focused ? 1 : 0.85;
+    ctx.font = labelFont;
+    const no = targetLabel(targetNo);
+    const noW = ctx.measureText(no).width;
+    const nameW = ctx.measureText(det.name).width;
+    const padX = 8 * k, padY = 3 * k, gap = 5 * k;
+    const plateH = Math.round(10 * k * 1.25) + padY * 2;
+    const plateW = noW + gap + nameW + padX * 2;
+    const plateY = y - 4 * k - plateH;
+    plate(ctx, x, plateY, plateW, plateH, 0, white);
+    const textY = plateY + plateH - padY - 1.5 * k;
+    ctx.fillStyle = cssToken("--gray-500");
+    ctx.fillText(no, x + padX, textY);
+    ctx.fillStyle = cssToken("--gray-900");
+    ctx.fillText(det.name, x + padX + noW + gap, textY);
+    ctx.restore();
+  }
+
+  /* The frame's own date-time plate, top right, where the screen puts it. */
+  {
+    ctx.save();
+    ctx.font = `600 ${Math.round(10 * k)}px ${input.fontFamily}`;
+    if ("letterSpacing" in ctx) ctx.letterSpacing = `${0.5 * k}px`;
+    const padX = 8 * k, padY = 3 * k;
+    const textW = ctx.measureText(input.stamp).width;
+    const h = Math.round(10 * k * 1.25) + padY * 2;
+    const x = sw - 14 * k - (textW + padX * 2), y = 12 * k;
+    plate(ctx, x, y, textW + padX * 2, h, 0, cssToken("--label-plate"));
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = white;
+    ctx.fillText(input.stamp, x + padX, y + h - padY - 1.5 * k);
+    ctx.restore();
+  }
+
+  /* WHO WAS WATCHING, BURNED IN. The overlay on screen is a DOM node anybody can delete, so a
+     copy that left without it would carry nothing back to a session. Same corner, same scrim
+     plate, same 0.72 — and absent entirely when the site has the watermark off, because a file
+     that stamps a name the site chose not to show would be the console inventing attribution.
+     HANDOFF NOTE: the stamp string is rebuilt here from the same project, user and zone
+     ViewerWatermark reads. Two copies of one sentence can drift — ViewerWatermark should export
+     the builder and both should call it. */
+  if (input.watermark) {
+    ctx.save();
+    ctx.globalAlpha = 0.72;
+    ctx.font = `600 ${Math.round(10 * k)}px ${input.fontFamily}`;
+    const padX = 7 * k, padY = 3 * k;
+    const textW = ctx.measureText(input.watermark).width;
+    const h = Math.round(10 * k * 1.25) + padY * 2;
+    const x = 8 * k, y = sh - 8 * k - h;
+    plate(ctx, x, y, textW + padX * 2, h, 6 * k, cssToken("--scrim"));
+    ctx.fillStyle = white;
+    ctx.fillText(input.watermark, x + padX, y + h - padY - 1.5 * k);
+    ctx.restore();
+  }
+
+  const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/png"));
+  if (!blob) throw new Error("BestFrameDetailPage: the frame could not be encoded");
+  return blob;
+}
+
+
+type RequesterKind = NonNullable<ExportRecord["requesterKind"]>;
+
+const EXPORT_FIELD_STYLE: CSSProperties = {
+  width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: "8px",
+  border: "1px solid var(--gray-300)", outline: "none",
+  fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", fontFamily: "inherit",
+  backgroundColor: "white",
+};
+
+function ExportFieldLabel({ text, required = false }: { text: string; required?: boolean }) {
+  return (
+    <span style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", marginBottom: "5px" }}>
+      {text}{required && <span style={{ color: "var(--danger-400)", marginLeft: "3px" }}>*</span>}
+    </span>
+  );
+}
+
+/**
+ * ASK, THEN EXPORT.
+ *
+ * A frame of a face leaving the institution is 목적 외 이용 or 제3자 제공 (법 제18조), so a plain
+ * "save" button is the wrong shape — the register has to be filled before the file exists, not
+ * reconstructed from memory afterwards. Milestone's Smart Client and Genetec Clearance both stop
+ * at a dialog before an export for the same reason; what is taken from them is the stop, not
+ * their contents (see the reference notes in the handover).
+ *
+ * FOUR QUESTIONS, NOT SEVEN. The register wants seven items and this screen already knows three
+ * of them — which footage (one camera, one instant), the file's name, and that the form is a copy
+ * — so it states them and does not ask. Asking an operator to retype what is on the screen above
+ * them is how a register fills up with approximations.
+ *
+ * Only 요청 구분 and 법령상 근거 are required. 제공받는 자 and 목적 are the two an urgent handover
+ * genuinely fills in later, and blocking on them would push the operator back to a phone camera,
+ * which records nothing at all.
+ */
+function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFrame, onCancel, onConfirm }: {
+  subject: string;
+  footage: string;
+  fileName: string;
+  watermarkOn: boolean;
+  /** How many people other than the one named are in the picture — decides the masking notice. */
+  othersInFrame: number;
+  onCancel: () => void;
+  onConfirm: (fields: { requesterKind: RequesterKind; recipient: string; reason: string; legalBasis: string }) => void;
+}) {
+  const [lang] = useLanguage();
+  const t = T[lang];
+  const [requesterKind, setRequesterKind] = useState<RequesterKind | null>(null);
+  const [recipient, setRecipient] = useState("");
+  const [reason, setReason] = useState("");
+  const [legalBasis, setLegalBasis] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEscapeKey(onCancel, !busy);
+
+  const ready = requesterKind !== null && legalBasis.trim().length > 0;
+  const KINDS: { id: RequesterKind; label: string }[] = [
+    { id: "subject", label: t.exportKindSubject },
+    { id: "police", label: t.exportKindPolice },
+    { id: "thirdParty", label: t.exportKindThirdParty },
+  ];
+  const facts: [string, string][] = [
+    [t.exportSubject, subject],
+    [t.exportFootage, footage],
+    [t.exportFile, fileName],
+    [t.exportWatermark, watermarkOn ? t.exportWatermarkOn : t.exportWatermarkOff],
+  ];
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget && !busy) onCancel(); }}
+      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, width: "100%", maxWidth: "468px", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "var(--shadow-modal)" }}>
+
+        <div style={{ padding: "14px 16px", borderBottom: BORDER, backgroundColor: "var(--gray-50)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.exportFrame}</p>
+          <button onClick={onCancel} disabled={busy} aria-label={t.exportCancel}
+            style={{ padding: "4px", border: "none", background: "none", cursor: busy ? "default" : "pointer", color: "var(--gray-400)", display: "flex" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
+          {/* What is already known, stated rather than asked. */}
+          <div style={{ border: BORDER, borderRadius: "10px", padding: "10px 12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+            {facts.map(([label, value]) => (
+              <div key={label} style={{ display: "flex", gap: "10px", alignItems: "baseline" }}>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", width: "66px", flexShrink: 0 }}>{label}</span>
+                {/* break-word, not break-all: break-all split the clock time across two lines as
+                    "12:34:0 / 0", and a time that reads as two numbers is the one value on this
+                    panel that must not be misread. The file name breaks at its own hyphens. */}
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflowWrap: "break-word", minWidth: 0 }}>{value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <ExportFieldLabel text={t.exportRequesterKind} required />
+            <div role="radiogroup" aria-label={t.exportRequesterKind} style={{ display: "flex", gap: "6px" }}>
+              {KINDS.map(kind => {
+                const on = requesterKind === kind.id;
+                return (
+                  <button key={kind.id} role="radio" aria-checked={on} onClick={() => setRequesterKind(kind.id)}
+                    style={{
+                      flex: 1, padding: "8px 4px", borderRadius: "8px", cursor: "pointer",
+                      // SELECTED, like every other mark on this screen — see the note on it.
+                      border: on ? `1px solid ${SELECTED}` : "1px solid var(--gray-300)",
+                      backgroundColor: on ? SELECTED : "white",
+                      color: on ? "white" : "var(--gray-700)",
+                      fontSize: "12px", fontWeight: on ? 700 : 600, fontFamily: "inherit",
+                    }}>
+                    {kind.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 표준지침 제46조 binds on ONE of the three paths — footage given to the data subject
+              with other identifiable people in it. Said, not fixed: this console has no masking
+              and must not imply one is a click away. */}
+          {requesterKind === "subject" && othersInFrame > 0 && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-200)" }}>
+              <span style={{ display: "flex", flexShrink: 0, marginTop: "1px", color: "var(--warning-500)" }}>
+                <CircleAlert size={15} strokeWidth={2.2} aria-hidden="true" />
+              </span>
+              <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, lineHeight: 1.5, color: "var(--warning-500)" }}>
+                {t.exportMaskNotice}
+              </p>
+            </div>
+          )}
+
+          <div>
+            <ExportFieldLabel text={t.exportLegalBasis} required />
+            <input value={legalBasis} onChange={e => setLegalBasis(e.target.value)}
+              placeholder={LEGAL_BASIS_EXAMPLE} style={EXPORT_FIELD_STYLE} />
+          </div>
+          <div>
+            <ExportFieldLabel text={t.exportRecipient} />
+            <input value={recipient} onChange={e => setRecipient(e.target.value)}
+              placeholder={t.exportRecipientHint} style={EXPORT_FIELD_STYLE} />
+          </div>
+          <div>
+            <ExportFieldLabel text={t.exportPurpose} />
+            <input value={reason} onChange={e => setReason(e.target.value)}
+              placeholder={t.exportPurposeHint} style={EXPORT_FIELD_STYLE} />
+          </div>
+        </div>
+
+        <div style={{ padding: "12px 16px", borderTop: BORDER, flexShrink: 0, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+          <button onClick={onCancel} disabled={busy}
+            style={{ padding: "9px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "13px", fontWeight: 700, cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}>
+            {t.exportCancel}
+          </button>
+          <button
+            onClick={() => {
+              if (!ready || busy) return;
+              setBusy(true);
+              onConfirm({ requesterKind: requesterKind!, recipient: recipient.trim(), reason: reason.trim(), legalBasis: legalBasis.trim() });
+            }}
+            disabled={!ready || busy}
+            style={{
+              padding: "9px 18px", borderRadius: "8px", border: "none",
+              backgroundColor: ready && !busy ? "var(--gray-900)" : "var(--gray-200)",
+              color: ready && !busy ? "white" : "var(--gray-400)",
+              fontSize: "13px", fontWeight: 700, cursor: ready && !busy ? "pointer" : "default", fontFamily: "inherit",
+            }}>
+            {busy ? t.exportBusy : t.exportGo}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main component ──────────────────────────────────────────── */
 export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedmapTrace, autoOpenDetail, initialDate, initialTime }: DetailProps) {
   const [lang] = useLanguage();
@@ -942,6 +1394,95 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   const dateDropdownRef = useRef<HTMLDivElement>(null);
   const timeDropdownRef = useRef<HTMLDivElement>(null);
   const thumbRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  /* ── Frame export ─ see the block above FrameExportDialog ───────────────── */
+  const [exportOpen, setExportOpen] = useState(false);
+  const projects = useVcaStore(s => s.projects);
+  const exportPortalUsers = useVcaStore(s => s.portalUsers);
+  const recordFootageExport = useVcaStore(s => s.recordFootageExport);
+  const exportProjectId = useActiveProjectId();
+  const { showToast } = useToast();
+  const exportProject = projects.find(p => p.id === exportProjectId);
+  /* Absent means on — the same reading ViewerWatermark gives Project.evidenceWatermark. */
+  const watermarkOn = exportProject?.evidenceWatermark !== false;
+  const exportZone = exportProject?.timeZone ?? siteTimeZone();
+
+  /* Exactly the boxes the feed below is drawing, with the frame's own numbering: Inspection
+     Detail hides every box but the focused one, and the copy has to match the screen. */
+  const drawnBoxes = data.detections
+    .map((det, i) => ({ det, targetNo: i + 1, focused: det.id === focusedDet.id }))
+    .filter(box => !selectedPerson || box.focused);
+  /* Whose faces leave besides the one named. Vehicles are not faces and are not counted here —
+     the plate is in the picture either way, which is what `period` and the file itself record. */
+  const othersInFrame = data.detections.filter(d => d.type !== "Vehicle" && d.id !== focusedDet.id).length;
+  /* The register is not translated — the same rule every seeded record in the store follows — so
+     the stored subject is built in English and only the dialog's copy of it follows the UI. */
+  const exportSubject = othersInFrame > 0
+    ? `${focusedDet.name} + ${othersInFrame} other${othersInFrame === 1 ? "" : "s"} in frame`
+    : focusedDet.name;
+  const exportSubjectShown = othersInFrame === 0
+    ? focusedDet.name
+    : lang === "ko" ? `${focusedDet.name} · 외 ${othersInFrame}명 함께 촬영` : exportSubject;
+  /* ⑤ 영상의 범위: one camera, one instant, and the zone that instant is read in. */
+  const exportPeriod = `${data.camLabel} · ${data.location} · ${focusedDet.date} ${focusedDet.time} (${exportZone})`;
+  const exportFileName = `${data.camLabel}_${focusedDet.date}_${focusedDet.time.replace(/:/g, "")}.png`;
+
+  const runFrameExport = async (fields: { requesterKind: RequesterKind; recipient: string; reason: string; legalBasis: string }) => {
+    try {
+      const now = new Date();
+      const who = currentPortalUser(exportPortalUsers)?.name ?? SIGNED_IN_USER.name;
+      const blob = await composeFrameExport({
+        bgUrl: data.bgUrl ?? "",
+        boxes: drawnBoxes,
+        // The plate the feed prints, character for character.
+        stamp: `${focusedDet.date.split("-").reverse().join("-")} ${focusedDet.time}`,
+        watermark: watermarkOn ? viewerStampText(who, now, exportZone) : null,
+        fontFamily: getComputedStyle(document.body).fontFamily,
+      });
+
+      /* BYTES FIRST, THEN THE ROW, and never the other way round: a register that holds an export
+         nobody could produce is worse than one row short. The reverse gap is real and is the
+         server's to close — once the anchor is clicked the browser owns the download, and a user
+         who cancels the save dialog leaves a row for a file that never landed. That disappears the
+         moment the bytes come from a server call that logged them (see the handoff note above). */
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = exportFileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      // Not revoked on this tick — Chrome has cancelled downloads whose blob URL went away while
+      // the save was still being set up.
+      window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+
+      recordFootageExport({
+        projectId: exportProjectId,
+        kind: "frame",
+        surface: "bestframe",
+        subject: exportSubject,
+        rowCount: 1,
+        fileName: exportFileName,
+        requesterKind: fields.requesterKind,
+        // Written only where the operator wrote something. An empty string in the register reads
+        // as an answered question.
+        recipient: fields.recipient || undefined,
+        reason: fields.reason || undefined,
+        legalBasis: fields.legalBasis,
+        period: exportPeriod,
+        /* ⑥ Always a copy: this screen hands over a file. 출력 and 화면 are the other two the
+           register distinguishes and neither is what this button does, so neither is offered. */
+        form: "copy",
+      });
+      setExportOpen(false);
+      showToast({ variant: "success", title: t.exportedTitle, desc: t.exportedDesc });
+    } catch {
+      /* The frame could not be read or drawn — most often a still the browser will not let a
+         canvas read back. Nothing left, so nothing is recorded, and the screen says both. */
+      setExportOpen(false);
+      showToast({ variant: "error", title: t.exportFailedTitle, desc: t.exportFailedDesc });
+    }
+  };
 
   const axisSpanSec = AXIS_SPAN_SEC;
   const axisStartSec = windowCenterSec - axisSpanSec / 2;
@@ -1000,14 +1541,16 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   // buttons. Skipped while the date picker or AI Inspection Detail panel is open so the keys
   // don't fight with whatever's focused there.
   useEffect(() => {
-    if (dateOpen || selectedPerson) return;
+    if (dateOpen || selectedPerson || exportOpen) return;
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "ArrowLeft") stepBy(e.shiftKey ? -10 : -1);
       else if (e.key === "ArrowRight") stepBy(e.shiftKey ? 10 : 1);
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dateOpen, selectedPerson]);
+    // exportOpen is in here because the export dialog is typing room: an arrow key in its Legal
+    // basis field was also seeking the footage behind the scrim.
+  }, [dateOpen, selectedPerson, exportOpen]);
 
   // Keeps the selected thumbnail in view as it changes — mainly for step/jump navigation, which
   // can land on a frame that's scrolled off to either side of the now-scrollable strip. A plain
@@ -1060,8 +1603,26 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               {focusedDet.date}
             </div>
           </div>
-          <div style={{ padding:"4px 10px", fontSize:"12px", fontWeight:700, color:"var(--gray-500)" }}>
-            AI engine v5.22.2
+          {/* THE WAY OUT, ON THE FRAME'S OWN HEADER.
+              It sits here and not in a panel because this row is already touching the frame — the
+              operator's eye is a couple of centimetres away and nothing has to be covered to
+              reach it. A control that opens over the video is a control that hides the thing it
+              is about. Grey, like the date and Jump to buttons below the strip: taking a face out
+              of the building is consequential, which is what the dialog is for, and it is not an
+              emergency, which is what a red or purple button would say.
+              Absent with no still — a camera can arrive without one, and there is then no frame
+              to copy (the feed above shows the same nothing). */}
+          <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+            {data.bgUrl && (
+              <button onClick={() => { setDateOpen(false); setTimeOpen(false); setExportOpen(true); }}
+                style={{ display:"inline-flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:"8px", padding:"6px 12px", border:"1px solid var(--gray-300)", cursor:"pointer", fontFamily:"inherit", fontSize:"12px", fontWeight:700, color:"var(--gray-900)" }}>
+                <ImageDown size={14} strokeWidth={2} aria-hidden="true" />
+                {t.exportFrame}
+              </button>
+            )}
+            <div style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-500)" }}>
+              AI engine v5.22.2
+            </div>
           </div>
         </div>
 
@@ -1171,6 +1732,18 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             <ViewerWatermark />
           </div>
         </div>
+
+        {exportOpen && (
+          <FrameExportDialog
+            subject={exportSubjectShown}
+            footage={exportPeriod}
+            fileName={exportFileName}
+            watermarkOn={watermarkOn}
+            othersInFrame={othersInFrame}
+            onCancel={() => setExportOpen(false)}
+            onConfirm={runFrameExport}
+          />
+        )}
       </div>
 
       {/* ── Right panel — shares the top row's height with the camera feed, so it's shorter

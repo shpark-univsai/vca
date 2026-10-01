@@ -977,16 +977,15 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
 
   const siteProjectName = useVcaStore(state => state.projects.find(pr => pr.id === state.activeProjectId)?.name ?? "");
 
-  /**
-   * One sighting, out of the console and into a file.
+  /*
+   * A docblock describing a one-sighting export used to sit here and has been removed. It
+   * documented a manifest format, a hashing decision and a `purpose: null` field for a function
+   * that no longer exists — deleted with the old 「증거 내보내기」 in 3c69916 — and it had come to
+   * sit above an unrelated piece of state, so it read as documentation for this line.
    *
-   * Assembled from what this row already shows — camera, site clock, score, who was searched for,
-   * and the operator's call if one has been made. The frame is referenced rather than enclosed,
-   * and the manifest hashes itself rather than the image: see src/lib/evidence.ts for why a
-   * browser-computed frame hash would be worse than none.
-   *
-   * `purpose: null` until the app collects one. Written explicitly rather than omitted so the
-   * gap is visible in every file produced before that exists.
+   * It also cited `src/lib/evidence.ts`, which is not in the repo. Frame export now lives on
+   * 베스트 프레임 상세, writes a 대장 row through `recordFootageExport`, and claims nothing about
+   * hashes or signatures — see that screen's header for what a browser may honestly promise.
    */
   // Which distinct person(s) the map/route-history panel currently trace — only meaningful (and
   // only shown as chips) when the current results actually contain more than one distinct person.

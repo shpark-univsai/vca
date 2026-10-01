@@ -8,6 +8,8 @@ import { BORDER } from "./PortalShared";
 import type { RecordsTab } from "./ProjectSidebar";
 import ProjectActivityTab from "./ProjectActivityTab";
 import ProjectSearchLogTab from "./ProjectSearchLogTab";
+import ProjectAccessLogTab from "./ProjectAccessLogTab";
+import ProjectExportLogTab from "./ProjectExportLogTab";
 
 /*
  * THE TABS KEEP THEIR SHORT NAMES (owner, 2026-09-28: 그냥두자).
@@ -23,8 +25,8 @@ import ProjectSearchLogTab from "./ProjectSearchLogTab";
  * 같아— measured: 콘솔 appears 19 times in this product against 806 for Portal/포털).
  */
 const T = {
-  en: { activity: "Activity log", searchlog: "Search log" },
-  ko: { activity: "변경 기록", searchlog: "조회 기록" },
+  en: { activity: "Activity log", accesslog: "Access log", searchlog: "Search log", exportlog: "Export log" },
+  ko: { activity: "변경 기록", accesslog: "접속 기록", searchlog: "조회 기록", exportlog: "반출 기록" },
 } as const;
 
 /**
@@ -51,6 +53,8 @@ export default function ProjectRecordsTabs({ projectId }: { projectId: string })
   const searchLogEnabled = getComplianceConfig().searchAccessLog;
   const auditLog = useVcaStore(s => s.auditLog);
   const searchAccessLog = useVcaStore(s => s.searchAccessLog);
+  const accessLog = useVcaStore(s => s.accessLog);
+  const exportLog = useVcaStore(s => s.exportLog);
 
   /* Which list is open lives in the URL, like the sub-tabs on 사용자 — an older ?tab=searchlog
      bookmark lands on that list rather than on whichever one happens to be first. */
@@ -60,7 +64,9 @@ export default function ProjectRecordsTabs({ projectId }: { projectId: string })
     /* `tab` as well as `sub`: an old bookmark says ?tab=searchlog, which PortalShell now resolves
        to the 기록 row — it has to arrive on the list it asked for, not on the first one. */
     const want = q.get("sub") ?? q.get("tab");
-    return want === "searchlog" && searchLogEnabled ? "searchlog" : "activity";
+    if (want === "searchlog") return searchLogEnabled ? "searchlog" : "activity";
+    if (want === "accesslog" || want === "exportlog") return want;
+    return "activity";
   });
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -70,20 +76,28 @@ export default function ProjectRecordsTabs({ projectId }: { projectId: string })
 
   const counts: Record<RecordsTab, number> = {
     activity: auditLog.filter(a => !a.projectId || a.projectId === projectId).length,
+    /* Not filtered by project: a person signs in to the installation, not to a site — see
+       AccessRecord. Filtering by projectId here would print 0 beside a tab that has rows. */
+    accesslog: accessLog.length,
     searchlog: searchAccessLog.filter(r => r.projectId === projectId).length,
+    exportlog: exportLog.filter(e => !e.projectId || e.projectId === projectId).length,
   };
 
-  const body = tab === "searchlog" && searchLogEnabled
-    ? <ProjectSearchLogTab projectId={projectId} />
+  const body = tab === "searchlog" && searchLogEnabled ? <ProjectSearchLogTab projectId={projectId} />
+    : tab === "accesslog" ? <ProjectAccessLogTab projectId={projectId} />
+    : tab === "exportlog" ? <ProjectExportLogTab projectId={projectId} />
     : <ProjectActivityTab projectId={projectId} />;
 
-  if (!searchLogEnabled) return body;
+  /* The strip is drawn whatever the switches say now. It used to disappear with 조회 기록 off,
+     because one tab is not a choice — but 접속 기록 and 반출 기록 are not switchable: one is a
+     legal obligation and the other records something that already happens. */
 
   return (
     <>
       {/* The same strip 입력 소스 · VIP 등록 · 사용자 use, at the same values. */}
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
-        {(["activity", "searchlog"] as RecordsTab[]).map(id => {
+        {(["activity", "accesslog", "searchlog", "exportlog"] as RecordsTab[])
+          .filter(id => id !== "searchlog" || searchLogEnabled).map(id => {
           const active = tab === id;
           return (
             <button key={id} type="button" onClick={() => setTab(id)}

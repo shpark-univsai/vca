@@ -54,6 +54,18 @@ const minuteClock = {
  * stream. It never covers a control: `pointer-events: none` means a click goes through to whatever
  * is underneath, so a dot on a map or a button under the corner still works.
  */
+/**
+ * The sentence itself, so the screen and a file that burns it in cannot drift apart.
+ *
+ * Frame export (베스트 프레임 상세) draws this same stamp onto the canvas it hands over. It was
+ * reassembling the string from the same three parts, which is one edit away from a file whose
+ * stamp reads differently from the view it was taken from — and on a stamp kept for attribution,
+ * the two disagreeing is the whole failure.
+ */
+export function viewerStampText(who: string, at: Date, zone: string): string {
+  return `${who} · ${dateKeyIn(at, zone)} ${clockMinutesIn(at, zone)}`;
+}
+
 export default function ViewerWatermark({ corner = "bottom-left" }: {
   /** Which corner of the media box. The default is the one Leaflet and our own overlays leave free. */
   corner?: "bottom-left" | "bottom-right" | "top-left" | "top-right";
@@ -84,7 +96,7 @@ export default function ViewerWatermark({ corner = "bottom-left" }: {
   const now = new Date(minute * MINUTE_MS);
 
   const zone = project?.timeZone ?? siteTimeZone();
-  const stamp = `${who} · ${dateKeyIn(now, zone)} ${clockMinutesIn(now, zone)}`;
+  const stamp = viewerStampText(who, now, zone);
 
   const place: React.CSSProperties =
     corner === "bottom-left" ? { bottom: "8px", left: "8px" }

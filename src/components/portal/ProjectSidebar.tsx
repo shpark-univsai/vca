@@ -8,7 +8,7 @@ import { getComplianceConfig } from "@/lib/complianceConfig";
 export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "grants" | "records" | "requests";
 
 /** The two lists inside 기록. Kept as their own names because the URL and the deep links use them. */
-export type RecordsTab = "activity" | "searchlog";
+export type RecordsTab = "activity" | "accesslog" | "searchlog" | "exportlog";
 
 interface IconProps {
   color: string;
