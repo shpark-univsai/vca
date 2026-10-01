@@ -6,7 +6,7 @@ import { Search, Crown } from "lucide-react";
 import { Device, DeviceStatus, FilterType, SidebarTab, LiveEvent, TrackingHop, getFacePhoto, formatTimeAgo, districtIdAt } from "@/lib/mockData";
 import {
   vcaEventsToLiveEvents, todaysDetectionHits, useDashboardPanels, holdsAppAction, useVcaStore,
-  useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras, type Camera,
+  useActiveProjectId, useProjectEvents, useProjectPersons, useProjectCameras, currentPortalUser, scopedCameraIds, type Camera,
   handlingFor, SIGNED_IN_USER, type DetectionHandling,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -75,6 +75,11 @@ const T = {
     linkedCams: "Linked cams",
     outCams: "Out cams",
     availability: "Availability",
+    /* The site's own total is deliberately absent (owner's call, 2026-10-01). What the operator
+       needs to know is that these figures are not the whole site; how big the site is is not
+       theirs to be told. */
+    scopedToYou: (n: number) => `Only the ${n} camera${n === 1 ? "" : "s"} assigned to this account`,
+    scopedToNone: "No cameras are assigned to this account",
     searchDevices: "Search devices",
     columns: { name: "NAME", status: "STATUS", info: "INFO", pin: "PIN" },
     devicesLoadFailed: "Couldn’t load devices.",
@@ -149,6 +154,8 @@ const T = {
     linkedCams: "연결된 카메라",
     outCams: "중단된 카메라",
     availability: "가동률",
+    scopedToYou: (n: number) => `이 계정에 지정된 ${n}대만 보입니다`,
+    scopedToNone: "이 계정에 지정된 카메라가 없습니다",
     searchDevices: "장비 검색",
     columns: { name: "이름", status: "상태", info: "정보", pin: "고정" },
     devicesLoadFailed: "장비 목록을 불러오지 못했습니다.",
@@ -1653,6 +1660,21 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
   // switching sites in the header re-reads the list instead of leaving the previous site's rows.
   const activeProjectId = useActiveProjectId();
   const cameras = useProjectCameras();
+  /*
+   * WHETHER THESE FIGURES ARE THE WHOLE SITE.
+   *
+   * Every count on this tab is computed from the cameras this ACCOUNT can see — the app has
+   * always filtered them (`useProjectCameras` → `camerasVisibleTo`, which resolves the account's
+   * camera groups through their current membership) and has never said so anywhere. An operator
+   * holding twelve of a site's cameras read 「12대」 with no way to tell whether the site has
+   * twelve (owner, 2026-10-01).
+   *
+   * `null` is "every camera", and then nothing is drawn: a notice that is always on is furniture,
+   * and this one has to mean something on the screens where it appears.
+   */
+  const scopeGroups = useVcaStore(st => st.cameraGroups);
+  const scopeMe = useVcaStore(st => currentPortalUser(st.portalUsers));
+  const cameraScope = scopeMe ? scopedCameraIds(scopeMe, scopeGroups) : null;
   // Routed through the future-backend stubs instead of importing the mock array/object directly
   // — see lib/api/dashboard.ts. `devices` defaults to [] for the brief pre-fetch window, which
   // the existing "No devices found." empty state already covers.
@@ -1737,6 +1759,13 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
             <AvailabilityDonut pct={availability} hasCameras={devices.length > 0} />
           </div>
         </div>
+        {/* Under the figures it qualifies, not above them: the numbers are what the reader came
+            for, and this is the footnote saying what they were counted over. */}
+        {cameraScope !== null && (
+          <p style={{ fontSize:"11px", fontWeight:600, color: cameras.length === 0 ? "var(--danger-500)" : "var(--gray-400)", padding:"8px 0 0", lineHeight:1.5 }}>
+            {cameras.length === 0 ? t.scopedToNone : t.scopedToYou(cameras.length)}
+          </p>
+        )}
       </div>
 
       {/* Search */}

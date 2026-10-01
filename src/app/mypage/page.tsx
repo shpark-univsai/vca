@@ -7,7 +7,7 @@ import {
   DISTRICT_ALERT_THRESHOLD_KEY, DISTRICT_MODERATE_THRESHOLD_KEY,
   DEFAULT_DISTRICT_ALERT_THRESHOLD, DEFAULT_DISTRICT_MODERATE_THRESHOLD,
 } from "@/lib/mockData";
-import { APP_ACTIONS, canEnterPortal, canUseAppNow, currentPortalUser, holdsAppAction, SIGNED_IN_USER, useVcaStore } from "@/lib/vcaStore";
+import { APP_ACTIONS, canEnterPortal, canUseAppNow, currentPortalUser, holdsAppAction, scopedCameraIds, SIGNED_IN_USER, useProjectCameras, useVcaStore } from "@/lib/vcaStore";
 import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
@@ -47,6 +47,14 @@ const T = {
     myPage: "My page",
     myGrants: "What this account can open",
     myGrantsWho: "Granted per account. An administrator changes this in Portal, under Users & Permissions.",
+    myCameras: "Cameras you can see",
+    myCamerasAll: "Every camera at this site",
+    myCamerasSome: (n: number) => `${n} assigned to this account`,
+    /* An empty scope is somebody's answer, not a missing one — see scopedCameraIds. It has to
+       read as different from "every camera", because on every screen in the app the two look
+       the same: a list with nothing in it. */
+    myCamerasNone: "No cameras assigned",
+    myCamerasGroups: (names: string) => `Through ${names}`,
     profile: "Profile information",
     fullName: "Full name",
     emailAddress: "Email address",
@@ -96,6 +104,11 @@ const T = {
     myPage: "마이 페이지",
     myGrants: "이 계정이 열 수 있는 것",
     myGrantsWho: "계정마다 따로 지정됩니다. Portal의 사용자 및 권한에서 관리자가 바꿉니다.",
+    myCameras: "보이는 카메라",
+    myCamerasAll: "이 현장의 모든 카메라",
+    myCamerasSome: (n: number) => `이 계정에 지정된 ${n}대`,
+    myCamerasNone: "지정된 카메라가 없습니다",
+    myCamerasGroups: (names: string) => `${names} 그룹으로`,
     profile: "프로필 정보",
     fullName: "이름",
     emailAddress: "이메일 주소",
@@ -636,6 +649,26 @@ export default function MyPage() {
   // Derived outside the selector: screensFor() builds a new array on every call, and a zustand
   // selector that returns a fresh array re-renders forever.
   const portalUsers = useVcaStore(s => s.portalUsers);
+  /*
+   * WHICH CAMERAS THIS ACCOUNT SEES, said on the one screen that answers "what can I do here".
+   *
+   * The app has always ENFORCED the camera scope — `useProjectCameras` runs every list through
+   * `camerasVisibleTo`, which resolves the account's groups through their current membership and
+   * unions them with any individual cameras — and it has never SAID so anywhere. An operator
+   * holding 12 of a site's cameras saw 「12대」 in the system tab with no way to tell whether the
+   * site has twelve or whether they have twelve of it (owner, 2026-10-01).
+   *
+   * The count is the one the app actually draws, not a recount: same hook the lists use, so this
+   * line cannot disagree with the screens it describes. The site's own total is deliberately NOT
+   * here — what the operator needs is that their view is not all of it, and the installation's
+   * size is not theirs to be told.
+   */
+  const cameraGroups = useVcaStore(s => s.cameraGroups);
+  const visibleCameras = useProjectCameras();
+  const cameraScope = me ? scopedCameraIds(me, cameraGroups) : null;
+  const scopeGroupNames = (me?.cameraGroupIds ?? [])
+    .map(id => cameraGroups.find(g => g.id === id)?.label)
+    .filter((n): n is string => Boolean(n));
   // Only one session is ever listed here (this mock has no other-device data to actually
   // terminate) — the confirmation is honest about that rather than pretending to have revoked
   // something. Auto-clears the same way BestFramePage's highlightCamId does.
@@ -734,6 +767,24 @@ export default function MyPage() {
                       <GrantChip key={action} label={APP_GRANT_LABELS[lang].actionName[action]}
                         on={holdsAppAction(portalUsers, action)} />
                     ))}
+                  </div>
+                  {/* Under the screen chips, because it answers the same question about a
+                      different axis: those say WHICH SCREENS, this says WHICH CAMERAS. Both are
+                      the administrator's to set, so the one sentence about who changes them
+                      covers both and stays last. */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-500)" }}>{t.myCameras}</span>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: cameraScope !== null && visibleCameras.length === 0 ? "var(--danger-500)" : "var(--gray-900)" }}>
+                      {cameraScope === null ? t.myCamerasAll
+                        : visibleCameras.length === 0 ? t.myCamerasNone
+                        : t.myCamerasSome(visibleCameras.length)}
+                    </span>
+                    {/* The groups behind the number, when groups are what gave it. An operator
+                        told 「12대」 cannot ask an administrator to change anything; told
+                        「시청 주변 그룹으로」 they can name the thing that would have to change. */}
+                    {cameraScope !== null && scopeGroupNames.length > 0 && (
+                      <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{t.myCamerasGroups(scopeGroupNames.join(" · "))}</span>
+                    )}
                   </div>
                   <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", lineHeight: 1.5 }}>{t.myGrantsWho}</span>
                 </div>
