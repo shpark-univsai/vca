@@ -317,7 +317,17 @@ const TAB_LABEL: Record<"en" | "ko", Record<NavTab, string>> = {
   ko: { DASHBOARD: "대시보드", "BEST FRAME": "베스트 프레임", DATA: "데이터", REDMAP: "레드맵" },
 };
 
-function ScreenRefusedNotice({ screen, onDismiss }: { screen: string; onDismiss: () => void }) {
+/*
+ * `moved` is only true when the app actually MOVED somebody (2026-10-01).
+ *
+ * This notice had one shape, written for the deep-link case: arriving on a bookmarked screen the
+ * account has since lost, where the app corrects the tab and the sentence 「가진 화면으로 옮겨
+ * 두었습니다」 reports what it did. Now the tab row can raise the same notice, and there nothing
+ * moved — the person is still on the screen they were on and simply pressed a tab that is not
+ * theirs. Telling them they were moved would be a false statement about the app's own behaviour,
+ * which is exactly the kind of line this codebase keeps removing.
+ */
+function ScreenRefusedNotice({ screen, moved, onDismiss }: { screen: string; moved: boolean; onDismiss: () => void }) {
   const [lang] = useLanguage();
   const t = {
     en: {
@@ -339,7 +349,7 @@ function ScreenRefusedNotice({ screen, onDismiss }: { screen: string; onDismiss:
       <div style={{ backgroundColor: "white", borderRadius: "16px", maxWidth: "380px", width: "100%", padding: "22px", boxShadow: "var(--shadow-modal)" }}>
         <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
         <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "8px" }}>{t.body(screen)}</p>
-        <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "6px" }}>{t.moved}</p>
+        {moved && <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "6px" }}>{t.moved}</p>}
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "18px" }}>
           <button onClick={onDismiss}
             style={{ padding: "9px 18px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
@@ -418,6 +428,12 @@ export default function ClientLayout() {
    */
   const [refusedScreen, setRefusedScreen] = useState<NavTab | null>(
     () => (tabAllowed(requestedTab) ? null : requestedTab),
+  );
+  /* True only on the paths where the app corrected the tab under somebody: the deep link seeded
+     above, and the effect that moves a person whose screen is revoked mid-shift. Pressing a tab
+     in the row moves nothing. */
+  const [refusedMoved, setRefusedMoved] = useState<boolean>(
+    () => !tabAllowed(requestedTab),
   );
   /** Where somebody goes when the screen they asked for is not theirs. The fallback stays the
    *  dashboard for the case where nothing is allowed — the grant screen refuses that combination
@@ -557,6 +573,7 @@ export default function ClientLayout() {
   useEffect(() => {
     if (tabAllowed(activePage)) return;
     setRefusedScreen(activePage);
+    setRefusedMoved(true);
     setActivePage(firstAllowedTab);
     // The dashboard's own grants join the deps: revoking live view (or the system panel) while
     // somebody is sitting on the dashboard has to move them, and heldScreens does not change when
@@ -643,12 +660,16 @@ export default function ClientLayout() {
   return (
     <ToastProvider>
     <VipAlertTicker onNavigate={handleNotificationNavigate} />
-    {refusedScreen && <ScreenRefusedNotice screen={TAB_LABEL[lang][refusedScreen]} onDismiss={() => setRefusedScreen(null)} />}
+    {refusedScreen && <ScreenRefusedNotice screen={TAB_LABEL[lang][refusedScreen]} moved={refusedMoved} onDismiss={() => { setRefusedScreen(null); setRefusedMoved(false); }} />}
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
       <Navbar
         activeTab={activePage}
         onTabChange={setActivePage}
         allowedTabs={VALID_TABS.filter(tabAllowed)}
+        /* Pressing a tab this account does not hold opens the notice that already exists for the
+           deep-link case, which names the screen and says where it is granted. Nothing moves —
+           `refusedScreen` only draws the sheet; the tab the person is on stays put. */
+        onTabRefused={(tab) => { setRefusedMoved(false); setRefusedScreen(tab); }}
         onNotificationSelect={handleNotificationNavigate}
         // Only actually affects the Dashboard tab's Sidebar+Map layout — hidden on the other tabs
         // (via Navbar's own `{onSidebarPositionChange && (...)}` guard) so the Settings dropdown

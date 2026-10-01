@@ -40,6 +40,9 @@ export const TABS: { id: NavTab; label: { en: string; ko: string }; icon: string
 const T = {
   en: {
     goToDashboard: "Go to Dashboard",
+    /* The hover line on a tab this account does not hold. Short, and it names the remedy rather
+       than the refusal — the full sentence is in the notice the click opens. */
+    lockedTab: "Not assigned to this account — press to see how it is granted",
     running: (n: number | string) => `${n} ${n === 1 ? "camera" : "cameras"} running`,
     stopped: (n: number | string) => `${n} ${n === 1 ? "camera" : "cameras"} stopped`,
     vipDetections: "VIP detections",
@@ -57,6 +60,7 @@ const T = {
   },
   ko: {
     goToDashboard: "대시보드로 이동",
+    lockedTab: "이 계정에 지정되지 않은 화면입니다 — 누르면 받는 방법이 나옵니다",
     running: (n: number | string) => `구동 중 ${n}대`,
     stopped: (n: number | string) => `중지 ${n}대`,
     vipDetections: "VIP 감지",
@@ -87,12 +91,32 @@ interface NavbarProps {
    * Security Desk gives when a task privilege is missing.
    */
   allowedTabs?: NavTab[];
+  /**
+   * Called instead of changing tab when somebody presses a tab this account does not hold.
+   *
+   * THE TABS ARE ALL DRAWN NOW, AND THE ONES NOT HELD REFUSE (owner, 2026-10-01: 메뉴는 보이고
+   * 권한이 없다고 하는 게 낫지 않아?). They used to be filtered out, which meant the navigation
+   * was a different shape for every account: 「데이터 탭을 누르세요」 was a wrong instruction for
+   * some readers, a screenshot in the handover document matched nobody in particular, and the
+   * person could not know there was anything to ask for. And the two reports are not equally
+   * diagnosable — 「데이터 탭이 안 보여요」 could be a fault or a grant, 「데이터를 누르면 권한이
+   * 없다고 떠요」 is only ever a grant.
+   *
+   * The refusal itself already existed for the deep-link case (arriving on a bookmarked screen the
+   * account has since lost), naming the screen and where it is granted — see ScreenRefusedNotice.
+   * This hands the same notice the same job from the tab row.
+   *
+   * Deliberately NOT extended to the dashboard's own two panels, the bell or the activity chart:
+   * those are two items in a 380px rail and two live-data affordances, not navigation, and what
+   * sits behind the one that would go grey is the detection feed the grant exists to withhold.
+   */
+  onTabRefused?: (tab: NavTab) => void;
   onNotificationSelect?: (event: LiveEvent) => void;
   sidebarPosition?: "left" | "right";
   onSidebarPositionChange?: (position: "left" | "right") => void;
 }
 
-export default function Navbar({ activeTab: externalTab, onTabChange, onNotificationSelect, allowedTabs, sidebarPosition, onSidebarPositionChange }: NavbarProps) {
+export default function Navbar({ activeTab: externalTab, onTabChange, onNotificationSelect, allowedTabs, onTabRefused, sidebarPosition, onSidebarPositionChange }: NavbarProps) {
   const router = useRouter();
   const [lang] = useLanguage();
   const t = T[lang];
@@ -436,19 +460,32 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
       <div style={{
         display: "flex", alignItems: "center", height: "62px", justifySelf: "center",
       }}>
-        {TABS.filter(tab => allowedTabs === undefined || allowedTabs.includes(tab.id)).map((tab) => {
+        {TABS.map((tab) => {
           const active = activeTab === tab.id;
+          /* `undefined` is the stand-in's "holds everything", the same convention the store uses
+             for an identity that resolves to nobody. */
+          const held = allowedTabs === undefined || allowedTabs.includes(tab.id);
           return (
             <button
               key={tab.id}
               className="navbar-tab"
               data-active={active}
-              onClick={() => setActiveTab(tab.id)}
+              /* Not `disabled`: a disabled button fires no click, and the click is the whole
+                 point — it is what produces the sentence explaining why. It also gets no hover
+                 and no focus, so a keyboard user would meet a tab that cannot even be reached to
+                 be refused. It is pressable and it answers. */
+              aria-disabled={!held}
+              onClick={() => (held ? setActiveTab(tab.id) : onTabRefused?.(tab.id))}
+              title={held ? undefined : t.lockedTab}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
                 height: "62px", padding: "0 20px", gap: "8px",
                 position: "relative", cursor: "pointer",
                 border: "none",
+                /* Quieter, not struck through or greyed to invisibility: the label still has to be
+                   READ, because its job now is to tell somebody what exists. 0.42 keeps the word
+                   legible while putting it clearly behind the three that work. */
+                opacity: held ? 1 : 0.42,
               }}
             >
               <div className="navbar-tab-icon" style={{
