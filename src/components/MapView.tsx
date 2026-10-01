@@ -7,7 +7,7 @@ import { LiveEvent, Device, TrackingHop, getFacePhoto, formatTimeAgo,
   districtIdForCameraZone } from "@/lib/mockData";
 import {
   vcaEventsToLiveEvents,
-  useProjectEvents, useProjectCameras, todaysDetectionHits, hasPosition, type Camera,
+  useProjectEvents, useProjectCameras, todaysDetectionHits, useDashboardPanels, hasPosition, type Camera,
 } from "@/lib/vcaStore";
 import { useCameraStatus, runStateOf } from "@/lib/realtime/cameraStatus";
 import { useApiData } from "@/hooks/useApiData";
@@ -1024,7 +1024,25 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
    * every VIP who had been picked up by two or more cameras, because those collapse into one
    * "Tracking" row: the most active people in a district counted zero there.
    */
-  const todaysHits = useMemo(() => todaysDetectionHits(projectEvents), [projectEvents]);
+  /*
+   * AND NOTHING AT ALL FOR AN ACCOUNT WITHOUT THE EVENTS GRANT (2026-10-01).
+   *
+   * The dashboard is two panels and they are granted apart: EVENTS is detections, SYSTEM is
+   * cameras and servers with nobody's data in it (dashboardPanelsFor). The tab strip and the app's
+   * tab list both honour that now — but the MAP did not, so an account granted `systemStatus`
+   * alone opened the dashboard, saw the SYSTEM panel it is entitled to, and behind it a district
+   * pill reading 「Serangoon · VIP × 1 · 3 cams」. Reported from the running screen.
+   *
+   * Gated here rather than at each pill: every detection figure on this map — the district counts,
+   * the per-camera people counts, the hover rows — is derived from this one list, so emptying it
+   * removes the layer in one place and cannot be forgotten at a fourth call site. The camera
+   * layer is untouched: that is the half this account holds.
+   */
+  const mapPanels = useDashboardPanels();
+  const todaysHits = useMemo(
+    () => (mapPanels.events ? todaysDetectionHits(projectEvents) : []),
+    [projectEvents, mapPanels.events],
+  );
 
   // ── Map initialization ───────────────────────────────────────────
   useEffect(() => {

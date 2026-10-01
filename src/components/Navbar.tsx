@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { formatTimeAgo, LiveEvent } from "@/lib/mockData";
 import {
   SIGNED_IN_USER, resolveActiveProject, useVcaStore, canEnterPortal, currentPortalUser,
-  vcaEventsToLiveEvents, useActiveProjectId, useProjectEvents,
+  vcaEventsToLiveEvents, useActiveProjectId, useProjectEvents, useDashboardPanels,
 } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useApiData } from "@/hooks/useApiData";
@@ -198,7 +198,23 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
   const notifications = vcaEventsToLiveEvents(vipEvents)
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
     .slice(0, NOTIF_LIMIT);
-  const unreadCount = vipEvents.filter(e => e.timestamp > lastReadNotifAt).length;
+  /*
+   * THE BELL IS DETECTIONS, SO IT NEEDS THE EVENTS GRANT (2026-10-01).
+   *
+   * It lists VIP sightings — a person, a place, a time — and it sat in the header for every
+   * account with the app. Reported from the running screen: an account granted `systemStatus`
+   * alone, which is the infrastructure half of the dashboard and holds nobody's data, had a red
+   * 「1」 on the bell. Opening it would have named the person.
+   *
+   * Same grant the map layer and the activity chart now read (dashboardPanelsFor). The whole
+   * control goes rather than the badge alone: a bell that opens an empty list is a door this
+   * account is being invited to try.
+   */
+  const notifPanels = useDashboardPanels();
+  const maySeeNotifications = notifPanels.events;
+  const unreadCount = maySeeNotifications
+    ? vipEvents.filter(e => e.timestamp > lastReadNotifAt).length
+    : 0;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -501,7 +517,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
 
         {/* Bell + Settings */}
         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-          <div ref={notifRef} style={{ position: "relative" }}>
+          {maySeeNotifications && <div ref={notifRef} style={{ position: "relative" }}>
             <button
               className="navbar-icon-btn"
               aria-label={t.vipDetections}
@@ -606,7 +622,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                 )}
               </div>
             )}
-          </div>
+          </div>}
 
           <div ref={settingsRef} style={{ position: "relative" }}>
             <button

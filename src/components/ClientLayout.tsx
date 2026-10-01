@@ -20,7 +20,7 @@ import { ToastProvider, useToast } from "./Toast";
 import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
 import {
   useVcaStore, currentPortalUser, screensFor, holdsAppAction, cameraInScope,
-  dashboardOpensFor, actionsOfSignedIn,
+  dashboardOpensFor, dashboardPanelsFor, actionsOfSignedIn,
   camerasInProject, getActiveProjectId, useActiveProjectId, watchedPersonsInProject,
   type AppScreen, type Camera,
 } from "@/lib/vcaStore";
@@ -389,6 +389,9 @@ export default function ClientLayout() {
    * opening the tab does not open the feed.
    */
   const dashboardOpen = dashboardOpensFor(actionsOfSignedIn(portalUsersForScreens));
+  /* Which HALF of the dashboard this account holds — the tab above opens on either, and the
+     pieces inside ask separately. See dashboardPanelsFor. */
+  const dashPanels = dashboardPanelsFor(actionsOfSignedIn(portalUsersForScreens));
   const tabAllowed = (tab: NavTab) =>
     tab === "DASHBOARD" ? dashboardOpen
     : tab === "BEST FRAME" ? holds("bestframe")
@@ -725,7 +728,12 @@ export default function ClientLayout() {
                   through behind it, rather than a separate opaque section below the map.
                   Toggles from clicking "Today's detections" in the sidebar, or minimizes down
                   into a small floating pill from the chevron on the chart itself. */}
-              {showDetectionChart ? (
+              {/* THE DETECTION CHART IS THE EVENTS PANEL TOO (2026-10-01). It is today's
+                  detections by hour, so it belongs to `liveView` like the feed and the map layer —
+                  an account granted only the system panel was being offered 「Today's detections by
+                  hour」 as a button over its own infrastructure screen. Reported from the running
+                  screen. Both the chart and the pill that opens it go. */}
+              {dashPanels.events && (showDetectionChart ? (
                 <div style={{ position: "absolute", left: "24px", right: "24px", bottom: "24px", zIndex: 900 }}>
                   <DetectionActivityChart onHide={() => setShowDetectionChart(false)} />
                 </div>
@@ -757,7 +765,7 @@ export default function ClientLayout() {
                     {DETECTION_CHART_TITLE[lang]}
                   </span>
                 </button>
-              )}
+              ))}
             </div>
           );
           return isRight ? <>{mapAreaEl}{sidebarEl}</> : <>{sidebarEl}{mapAreaEl}</>;
