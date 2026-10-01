@@ -2960,16 +2960,16 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           what holding this group will mean for somebody. */}
       {groupingSelection && (
         <ConfirmModal
-          title={t.groupModalTitle(selectedIds.size)}
+          title={t.groupModalTitle(visibleSelectedIds.length)}
           body={t.groupModalBody}
           confirmLabel={t.groupCreate}
           cancelLabel={t.cancel}
           confirmDisabled={groupName.trim() === ""}
           onConfirm={() => {
             const label = groupName.trim();
-            const refusal = addCameraGroup(projectId, label, [...selectedIds]);
+            const refusal = addCameraGroup(projectId, label, visibleSelectedIds);
             if (refusal === "duplicate-label") { setGroupError(t.groupDuplicate); return; }
-            showToast({ variant: "success", title: t.groupCreatedTitle, desc: t.groupCreatedDesc(label, selectedIds.size) });
+            showToast({ variant: "success", title: t.groupCreatedTitle, desc: t.groupCreatedDesc(label, visibleSelectedIds.length) });
             setGroupingSelection(false);
             setGroupName("");
             setGroupError(null);
