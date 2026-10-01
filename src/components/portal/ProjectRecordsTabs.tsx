@@ -10,6 +10,7 @@ import ProjectActivityTab from "./ProjectActivityTab";
 import ProjectSearchLogTab from "./ProjectSearchLogTab";
 import ProjectAccessLogTab from "./ProjectAccessLogTab";
 import ProjectExportLogTab from "./ProjectExportLogTab";
+import ProjectHandlingLogTab from "./ProjectHandlingLogTab";
 
 /*
  * THE TABS KEEP THEIR SHORT NAMES (owner, 2026-09-28: 그냥두자).
@@ -25,8 +26,8 @@ import ProjectExportLogTab from "./ProjectExportLogTab";
  * 같아— measured: 콘솔 appears 19 times in this product against 806 for Portal/포털).
  */
 const T = {
-  en: { activity: "Activity log", accesslog: "Access log", searchlog: "Search log", exportlog: "Export log" },
-  ko: { activity: "변경 기록", accesslog: "접속 기록", searchlog: "조회 기록", exportlog: "반출 기록" },
+  en: { activity: "Activity log", accesslog: "Access log", searchlog: "Search log", exportlog: "Export log", handlinglog: "Handling log" },
+  ko: { activity: "변경 기록", accesslog: "접속 기록", searchlog: "조회 기록", exportlog: "반출 기록", handlinglog: "처리 기록" },
 } as const;
 
 /**
@@ -55,6 +56,7 @@ export default function ProjectRecordsTabs({ projectId }: { projectId: string })
   const searchAccessLog = useVcaStore(s => s.searchAccessLog);
   const accessLog = useVcaStore(s => s.accessLog);
   const exportLog = useVcaStore(s => s.exportLog);
+  const detectionHandlings = useVcaStore(s => s.detectionHandlings);
 
   /* Which list is open lives in the URL, like the sub-tabs on 사용자 — an older ?tab=searchlog
      bookmark lands on that list rather than on whichever one happens to be first. */
@@ -65,7 +67,7 @@ export default function ProjectRecordsTabs({ projectId }: { projectId: string })
        to the 기록 row — it has to arrive on the list it asked for, not on the first one. */
     const want = q.get("sub") ?? q.get("tab");
     if (want === "searchlog") return searchLogEnabled ? "searchlog" : "activity";
-    if (want === "accesslog" || want === "exportlog") return want;
+    if (want === "accesslog" || want === "exportlog" || want === "handlinglog") return want;
     return "activity";
   });
   useEffect(() => {
@@ -81,11 +83,15 @@ export default function ProjectRecordsTabs({ projectId }: { projectId: string })
     accesslog: accessLog.length,
     searchlog: searchAccessLog.filter(r => r.projectId === projectId).length,
     exportlog: exportLog.filter(e => !e.projectId || e.projectId === projectId).length,
+    /* Not project-filtered: a handling is recorded against an app event, and app events carry no
+       project today (the app's modules have no project concept yet — see the handoff notes). */
+    handlinglog: detectionHandlings.length,
   };
 
   const body = tab === "searchlog" && searchLogEnabled ? <ProjectSearchLogTab projectId={projectId} />
     : tab === "accesslog" ? <ProjectAccessLogTab projectId={projectId} />
     : tab === "exportlog" ? <ProjectExportLogTab projectId={projectId} />
+    : tab === "handlinglog" ? <ProjectHandlingLogTab projectId={projectId} />
     : <ProjectActivityTab projectId={projectId} />;
 
   /* The strip is drawn whatever the switches say now. It used to disappear with 조회 기록 off,
@@ -96,7 +102,7 @@ export default function ProjectRecordsTabs({ projectId }: { projectId: string })
     <>
       {/* The same strip 입력 소스 · VIP 등록 · 사용자 use, at the same values. */}
       <div style={{ display: "flex", gap: "20px", borderBottom: BORDER, marginBottom: "16px" }}>
-        {(["activity", "accesslog", "searchlog", "exportlog"] as RecordsTab[])
+        {(["activity", "accesslog", "searchlog", "exportlog", "handlinglog"] as RecordsTab[])
           .filter(id => id !== "searchlog" || searchLogEnabled).map(id => {
           const active = tab === id;
           return (

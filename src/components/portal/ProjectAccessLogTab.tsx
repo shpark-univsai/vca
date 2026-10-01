@@ -275,6 +275,7 @@ export default function ProjectAccessLogTab({ projectId }: { projectId: string }
   const [listState, retryList] = useListState();
   /* The whole installation's rows. See the note at the top of this file — no projectId filter. */
   const accessLog = useVcaStore(s => s.accessLog);
+  const recordListExport = useVcaStore(s => s.recordListExport);
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   const projectZone = project?.timeZone ?? PROJECT_TIME_ZONE;
   /* READ ONLY. Settings owns this value; an access log that offered to shorten its own retention
@@ -457,14 +458,10 @@ export default function ProjectAccessLogTab({ projectId }: { projectId: string }
     a.href = url;
     a.click();
     URL.revokeObjectURL(url);
-    /*
-     * NO recordListExport CALL HERE, and that is a gap rather than a decision I can make.
-     * ListExportRecord.list is a closed union of the lists that can leave, and 접속 기록 is not
-     * one of its values — so recording this export means widening that type in vcaStore.ts,
-     * which is not this file's to edit. Writing it under one of the existing names would file a
-     * look-up export in place of an access-log export, which is worse than no row at all.
-     * HANDOFF: add "accessLog" to that union and this call is one line.
-     */
+    /* Taking a log out is itself an export, and this is the one that must not be the unrecorded
+       one: 고시 제8조제2항 has the monthly review confirm the reason for any download it finds,
+       so a download of the log the review reads cannot be invisible to it. */
+    recordListExport({ projectId, list: "accessLog", rowCount: visible.length });
   };
 
   return (

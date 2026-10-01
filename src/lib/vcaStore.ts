@@ -728,6 +728,8 @@ export interface DetectionHandling {
   note?: string;
   /** Who last moved it, and when. */
   actor: string;
+  /** See SearchAccessRecord.actorEmail — a name alone does not identify anybody. */
+  actorEmail?: string;
   at: string;
 }
 
@@ -812,7 +814,7 @@ export interface ExportRecord {
   projectId?: string;
   kind: ExportKind;
   /** Which list left — the tab a reader would go back to. Lists only. */
-  list?: "vips" | "searchLog" | "activity" | "roster" | "cameras" | "accessLog" | "exportLog";
+  list?: "vips" | "searchLog" | "activity" | "roster" | "cameras" | "accessLog" | "exportLog" | "handlingLog";
   /** Which app screen it left from — frames and result sets only. */
   surface?: "bestframe" | "reid" | "redmap" | "redface" | "live";
   /**
@@ -4790,6 +4792,23 @@ export function unstableCameras(projectId: string, cameras: Camera[], limit = 4)
  * The last three rows are the shape a reviewer opens this screen to find: one address tried over
  * and over from one machine until the lockout caught it.
  */
+/* The night shift, as the Records screen reads it. See the note on `detectionHandlings`. */
+const HANDLING_SEED: DetectionHandling[] = [
+  { id: "handling-s1", eventId: "seed-ev-1", subject: "Arjun Kumar", state: "closed",
+    note: "Approached at the concourse, identity confirmed, escorted to the office.",
+    actor: "Nadia Rahman", actorEmail: "nadia.rahman@smartcity.gov.sg", at: "2026-09-30 23:41" },
+  { id: "handling-s2", eventId: "seed-ev-2", subject: "Rachel Ong", state: "assigned",
+    assignee: "Marcus Lee", actor: "Nadia Rahman", actorEmail: "nadia.rahman@smartcity.gov.sg",
+    at: "2026-10-01 01:12" },
+  { id: "handling-s3", eventId: "seed-ev-3", subject: "Alexander Wright", state: "acknowledged",
+    actor: "Marcus Lee", actorEmail: "marcus.lee@smartcity.gov.sg", at: "2026-10-01 02:55" },
+  { id: "handling-s4", eventId: "seed-ev-4", subject: "Grace Lim", state: "closed",
+    note: "Same person as the 22:10 hit at Orchard. One visit, not two.",
+    actor: "Marcus Lee", actorEmail: "marcus.lee@smartcity.gov.sg", at: "2026-10-01 03:20" },
+  { id: "handling-s5", eventId: "seed-ev-5", subject: "Priya Nair", state: "acknowledged",
+    actor: "Aaron Sim", actorEmail: "aaron.sim@smartcity.gov.sg", at: "2026-10-01 06:04" },
+];
+
 const ACCESS_LOG_SEED: AccessRecord[] = [
   { id: "acc-1", teamId: "team-univs", at: "2026-10-01 09:12", kind: "signIn", identifier: "grace.tan@smartcity.gov.sg", actor: "Grace Tan", actorEmail: "grace.tan@smartcity.gov.sg", door: "portal", ip: "10.20.1.14" },
   { id: "acc-2", teamId: "team-univs", at: "2026-10-01 08:58", kind: "signIn", identifier: "EMP-2043", actor: "Nadia Rahman", actorEmail: "nadia.rahman@smartcity.gov.sg", door: "app", ip: "10.20.4.7" },
@@ -5041,7 +5060,20 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   // No seed. These are events, and an installation that has run no searches has none.
   searchAccessLog: [],
   detectionJudgements: [],
-  detectionHandlings: [],
+  /*
+   * SEEDED, for the reason the access log is — see ACCESS_LOG_SEED.
+   *
+   * A handling is recorded in the app, so "an installation that has handled nothing has nothing"
+   * is true of a FRESH SESSION and false of a running installation: the night shift happened
+   * before the administrator opened this console. The question this list exists to answer —
+   * 「어제 야간에 누가 뭘 봤나」 — cannot be asked of an empty table, and an empty one is also the
+   * state that teaches a reader the list is broken.
+   *
+   * Three operators, the three states, and the pair that matters: a row acknowledged and left,
+   * and a row somebody closed with what they did. Dated backwards from a fixed day so two readers
+   * of this screen see the same thing.
+   */
+  detectionHandlings: HANDLING_SEED,
   exportLog: [],
   /*
    * SEEDED, unlike the look-up log beside it, and the difference is not an inconsistency.
@@ -5582,7 +5614,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const LIST_NAME: Record<NonNullable<ExportRecord["list"]>, string> = {
         vips: "VIP registry", searchLog: "search access log", activity: "activity log",
         roster: "staff roster", cameras: "camera list",
-        accessLog: "access log", exportLog: "export log",
+        accessLog: "access log", exportLog: "export log", handlingLog: "handling log",
       };
       /* The screen the button was pressed on, so an export lands under the list it emptied rather
          than all five landing under one name. Both records read the same `list` key, so they
@@ -5590,7 +5622,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const LIST_AREA: Record<NonNullable<ExportRecord["list"]>, AuditArea> = {
         vips: "vip", searchLog: "records", activity: "records",
         roster: "roster", cameras: "cameras",
-        accessLog: "records", exportLog: "records",
+        accessLog: "records", exportLog: "records", handlingLog: "records",
       };
       return {
         // Append, never replace — the same rule as evidenceExports. Exporting the same list twice
@@ -5661,15 +5693,23 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       };
     }),
   setDetectionHandling: ({ eventId, subject, state: handledState, assignee, note }) =>
-    set(store => ({
-      // One row per event, replaced in place — see DetectionHandling. A list of stages would read
-      // as a history this product cannot honestly keep: the mock has no server to order the writes.
-      detectionHandlings: [
-        { id: `handling-${++handlingSeq}`, eventId, subject, state: handledState, assignee, note,
-          actor: SIGNED_IN_USER.name, at: new Date().toISOString() },
-        ...store.detectionHandlings.filter(h => h.eventId !== eventId),
-      ],
-    })),
+    set(store => {
+      /* Whoever is signed in to the console, not the module constant — the same resolution the
+         frame export and the export review use. A row stamped with the wrong name is evidence of
+         nothing, and this is the row a shift handover is read from. */
+      const me = currentPortalUser(store.portalUsers);
+      return {
+        // One row per event, replaced in place — see DetectionHandling. A list of stages would read
+        // as a history this product cannot honestly keep: the mock has no server to order the writes.
+        detectionHandlings: [
+          { id: `handling-${++handlingSeq}`, eventId, subject, state: handledState, assignee, note,
+            actor: me?.name ?? SIGNED_IN_USER.name,
+            actorEmail: me?.email ?? SIGNED_IN_USER.email,
+            at: new Date().toISOString() },
+          ...store.detectionHandlings.filter(h => h.eventId !== eventId),
+        ],
+      };
+    }),
   clearDetectionHandling: (eventId) =>
     set(store => ({ detectionHandlings: store.detectionHandlings.filter(h => h.eventId !== eventId) })),
   setAccessLogRetention: (projectId, months) =>

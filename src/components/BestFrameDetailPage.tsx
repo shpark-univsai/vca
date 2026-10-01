@@ -69,6 +69,21 @@ const T = {
     exportPurpose: "Purpose",
     exportPurposeHint: "e.g. Identifying a suspect in case 2026-1138",
     exportLegalBasis: "Legal basis",
+    /*
+     * An example, not a default — a console must not put a statute in the operator's mouth.
+     *
+     * It used to be one constant outside T, on the reasoning that a citation reads the same in
+     * both languages. It does not read the same to the READER: an operator on the English screen
+     * was shown 「개인정보 보호법 제18조제2항제7호」, which is the one field on this dialog they
+     * cannot act on without being able to read Korean. The English form is the one the Act's own
+     * official translation uses.
+     *
+     * HANDOFF: this names KOREAN law, and the article is the right one for a criminal
+     * investigation here (목적 외 이용·제3자 제공, 제18조제2항제7호). An installation outside
+     * Korea is under its own statute and this example is then wrong — it should come from the
+     * installation's configuration rather than from this file.
+     */
+    exportLegalBasisHint: "e.g. Personal Information Protection Act, Art. 18(2)7",
     exportMaskNotice: "Other people appear in this frame. Handing it to the data subject requires their faces to be de-identified first, and this console cannot do that.",
     exportCancel: "Cancel",
     exportGo: "Export",
@@ -125,6 +140,7 @@ const T = {
     exportKindPolice: "수사기관",
     exportKindThirdParty: "그 밖의 제3자",
     exportRecipient: "제공받는 자",
+    exportLegalBasisHint: "예: 개인정보 보호법 제18조제2항제7호",
     exportRecipientHint: "예: 중앙경찰서 수사과",
     exportPurpose: "목적",
     exportPurposeHint: "예: 2026-1138 사건 피의자 특정",
@@ -1002,10 +1018,6 @@ function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (da
  * added, removed or re-cropped.
  * ════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** An example, not a default — a console must not put a statute in the operator's mouth. The
- *  citation is the same text in both languages, so it is not in T. */
-const LEGAL_BASIS_EXAMPLE = "개인정보 보호법 제18조제2항제7호";
-
 /**
  * A design-system value, resolved for a canvas.
  *
@@ -1315,7 +1327,7 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
           <div>
             <ExportFieldLabel text={t.exportLegalBasis} required />
             <input value={legalBasis} onChange={e => setLegalBasis(e.target.value)}
-              placeholder={LEGAL_BASIS_EXAMPLE} style={EXPORT_FIELD_STYLE} />
+              placeholder={t.exportLegalBasisHint} style={EXPORT_FIELD_STYLE} />
           </div>
           <div>
             <ExportFieldLabel text={t.exportRecipient} />
