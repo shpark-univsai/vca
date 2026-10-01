@@ -128,6 +128,11 @@ const T = {
     contactOpenMail: "Open in your mail app",
     contactCopied: "Request copied",
     contactCopyFailed: "Could not copy — select the text and copy it by hand.",
+    /* Shown after the mail button is pressed, because nothing else can be. A mailto: opens only
+       where the machine has a mail app registered as its handler, and the page is never told
+       whether it did — there is no event and no error. So the fallback is offered on the press
+       rather than on a failure nobody can detect. */
+    contactMailMaybe: "Nothing opened? Copy the request and send it from your own mail.",
     /* The promise the screen can keep, and it is different at an isolated site. Portal sends
        nothing either way: it writes the request and hands it to you. */
     contactSendsNothing: "Portal does not send this. Copy it into your own mail, or open it in your mail app.",
@@ -217,6 +222,7 @@ const T = {
     contactOpenMail: "메일 앱에서 열기",
     contactCopied: "복사했습니다",
     contactCopyFailed: "복사하지 못했습니다 — 내용을 직접 선택해 복사하세요.",
+    contactMailMaybe: "아무것도 열리지 않았나요? 내용을 복사해 직접 보내세요.",
     contactSendsNothing: "포털이 대신 보내지 않습니다. 내용을 복사해 직접 보내거나, 메일 앱에서 열어 보내세요.",
     contactIsolated: "이 사이트는 외부 인터넷과 연결되어 있지 않아, 여기서 메일 앱을 열어도 전달되지 않습니다. 내용을 복사해 외부망 단말에서 보내거나 전화로 전달하세요.",
     contactSubjectChannels: (project: string) => `[VCA] ${project} — 채널 추가 문의`,
@@ -1116,6 +1122,21 @@ function LicenseContactPanel({ t, manager, isolated, projectName, teamName, plan
    */
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
+  /*
+   * WHETHER THE MAIL BUTTON HAS BEEN PRESSED — not whether it worked (owner's choice, 2026-10-01).
+   *
+   * `mailto:` opens a compose window only where the machine has a mail app registered: a Mac
+   * almost always does, Windows usually does unless it is a managed desktop with none installed,
+   * and a Linux control-room workstation or a policy-locked kiosk frequently does not. When it
+   * does nothing it does nothing SILENTLY — the click fires no event the page can read and
+   * reports no error — so a reader on such a machine presses the primary action and watches
+   * nothing happen.
+   *
+   * Detection is impossible, so the fallback is offered on the attempt instead. The sentence
+   * above the footer already names both routes before the press; this one names the other route
+   * again at the moment it is needed, which is after.
+   */
+  const [mailTried, setMailTried] = useState(false);
   const copy = () => {
     const failed = () => { setCopied(false); setCopyFailed(true); };
     const done = () => {
@@ -1132,8 +1153,10 @@ function LicenseContactPanel({ t, manager, isolated, projectName, teamName, plan
 
   const mailHref = `mailto:${manager.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
-  const label = (text: string) => (
-    <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", textTransform: "uppercase", margin: "0 0 6px" }}>{text}</p>
+  /* `inline` drops the 6px it reserves underneath, for the one place the label sits BESIDE its
+     value rather than over it (see 받는 사람). */
+  const label = (text: string, opts?: { inline?: boolean }) => (
+    <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", textTransform: "uppercase", margin: opts?.inline ? 0 : "0 0 6px", flexShrink: 0 }}>{text}</p>
   );
 
   return (
@@ -1144,19 +1167,68 @@ function LicenseContactPanel({ t, manager, isolated, projectName, teamName, plan
          and the scrim is an ambient target — see Drawer's own note. */
       dirty={body !== drafted}
       footer={<>
-        <PanelCancel onClick={onClose} label={t.contactClose} />
-        {/* The committing action is COPY, because copying is the only thing on this panel that
-            actually happens. At an isolated site it is also the only thing that can. */}
-        <PanelPrimary onClick={copy} label={copied ? t.contactCopied : t.contactCopy} />
+        <PanelCancel onClick={onClose} label={t.contactClose} apart />
+        {/*
+          THE LAST THING YOU DO SITS LAST (owner, 2026-10-01: 패널에서 요구사항 복사하고 결국
+          마지막 액션은 메일 여는 거 아니야? 근데 카피 버튼이 아래 있고 메일 오픈이 중간에 있어).
+          
+          It was the other way round: 「요청 복사」 was the footer's primary and 「메일 앱에서 열기」
+          sat loose in the middle of the panel, so the errand's first step was in the most
+          prominent place and its last step was buried above it.
+          
+          And they are not two steps. `mailHref` carries the subject AND the body, so opening the
+          mail app hands over a message that is already written — copying is not a thing you do
+          first, it is a DIFFERENT ROUTE for somebody who will send it from webmail, from another
+          machine, or read it down the phone. Two routes, so the one that finishes the errand in a
+          single press is the primary and the other is beside it.
+          
+          The old note said copy was the committing action "because copying is the only thing on
+          this panel that actually happens", and that is still true of one site: where there is no
+          route to the internet a mailto opens a window over a message that will sit in an outbox.
+          There the mail button is not drawn at all and copy goes back to being the primary — which
+          is what `isolated` decides below.
+        */}
+        {isolated ? (
+          <PanelPrimary onClick={copy} label={copied ? t.contactCopied : t.contactCopy} />
+        ) : (
+          <>
+            <button type="button" className="portal-btn-outline" onClick={copy}
+              style={{ ...OUTLINE_BTN, flexShrink: 0 }}>
+              {copied ? t.contactCopied : t.contactCopy}
+            </button>
+            <a className="portal-btn-primary" href={mailHref} onClick={() => setMailTried(true)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "7px", flexShrink: 0,
+                padding: "10px 18px", borderRadius: "8px", border: "none",
+                backgroundColor: "var(--primary-400)", color: "white",
+                fontSize: "13px", fontWeight: 700, textDecoration: "none", cursor: "pointer",
+              }}>
+              <Mail size={14} strokeWidth={2.4} />
+              {t.contactOpenMail}
+            </a>
+          </>
+        )}
       </>}
     >
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: "18px" }}>
         {/* WHO IT GOES TO, first and in full. The party block behind this panel prints the same
             name and address as text rather than as a link, for the reason written there; a request
             addressed to somebody has to show who that is before it shows what it says. */}
-        <div>
-          {label(t.contactTo)}
-          <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{manager.name}</p>
+        {/* LABEL AND NAME ON ONE LINE (owner, 2026-10-01: 이거를 한 줄에 넣어줘). 「받는 사람」 over
+            「Jihoon Park」 spent two lines on four words and put a caption above a name that needs
+            none — the label is 11px and the name is 14px/700, so the rank is in the type and the
+            line only has to hold them in the right order. The address keeps its own line: it is
+            the longer string and the one that would push the name around when it wraps. */}
+        {/* MORE AIR UNDER WHO IT GOES TO (owner, 2026-10-01: 이거 밑으로 공간을 더 띄워줘도 될 것
+            같아). 10px on top of the column's 18px. The three groups below it — what it is about,
+            the request, the note — are one errand being composed; this one names the person it is
+            addressed to, which is a different kind of fact, and at the form gap it read as the
+            first row of the form. */}
+        <div style={{ marginBottom: "10px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
+            {label(t.contactTo, { inline: true })}
+            <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{manager.name}</p>
+          </div>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{manager.email}</p>
         </div>
 
@@ -1180,6 +1252,22 @@ function LicenseContactPanel({ t, manager, isolated, projectName, teamName, plan
           </div>
         </div>
 
+        {/*
+          THE ROOM BELOW THIS IS LEFT EMPTY, ON PURPOSE.
+          
+          There is about 230px between this panel's last sentence and its footer. Both ways of
+          filling it were tried and turned down: shrinking the panel to its content made it the one
+          drawer out of eight that is not full height, which reads as a mistake before it reads as
+          a decision (owner: 얘만 갑자기 짧게된게 좀 어색한뎅); stretching the box hurt the thing the
+          panel is for — a six-line request in a 500px field loses its shape, and the text somebody
+          has to READ before sending sits adrift in a container four times its size (owner:
+          요구사항 가독성이 떨어지니까). The box is sized to the request, which is what keeps the
+          request readable.
+
+          So the panel keeps its height, the box keeps its own, and what is left is margin (owner's
+          call, 2026-10-01: 그냥 여백으로 두자). Empty room under a finished block is not a defect —
+          it is what every one of these panels has when its content is short.
+        */}
         <div>
           {label(t.contactDraft)}
           <textarea
@@ -1193,31 +1281,32 @@ function LicenseContactPanel({ t, manager, isolated, projectName, teamName, plan
               color: "var(--gray-700)", backgroundColor: "white",
             }}
           />
+          {/* BOTH OF THESE BELONG TO THE BOX, so they sit under it at 8px rather than out in the
+              column's 18px rhythm (owner, 2026-10-01: 이거 위치를 살짝 위로 올려서 박스에 붙여줘).
+              They are about this text — what pressing will and will not do with it, and what to do
+              if the copy failed — and at the column gap the sentence floated between the request
+              and the footer as if it belonged to neither. */}
+          {/* The one way this can go wrong, and it has to be readable rather than a flash: the
+              request is still on screen and the reader has to get it out by hand. */}
+          {copyFailed && (
+            <p style={{ fontSize: "12px", color: "var(--danger-500)", lineHeight: 1.5, margin: "8px 0 0", maxWidth: MEASURE }}>
+              {t.contactCopyFailed}
+            </p>
+          )}
+          {/* What the screen promises, said in the site's own terms. Two different sentences,
+              because at an air-gapped site the first one would be false. */}
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, margin: "8px 0 0", maxWidth: MEASURE }}>
+            {isolated ? t.contactIsolated : t.contactSendsNothing}
+          </p>
+          {mailTried && !isolated && (
+            <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", lineHeight: 1.5, margin: "8px 0 0", maxWidth: MEASURE }}>
+              {t.contactMailMaybe}
+            </p>
+          )}
         </div>
 
-        {/* The one way this can go wrong, and it has to be readable rather than a flash: the
-            request is still on screen and the reader has to get it out by hand. */}
-        {copyFailed && (
-          <p style={{ fontSize: "12px", color: "var(--danger-500)", lineHeight: 1.5, margin: 0, maxWidth: MEASURE }}>
-            {t.contactCopyFailed}
-          </p>
-        )}
-
-        {/* What the screen promises, said in the site's own terms. Two different sentences,
-            because at an air-gapped site the first one would be false. */}
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, margin: 0, maxWidth: MEASURE }}>
-          {isolated ? t.contactIsolated : t.contactSendsNothing}
-        </p>
-
-        {/* Offered only where it can work. A mailto: at a site with no route out opens a compose
-            window over a message that will sit in an outbox — the reader believes they have sent
-            it, which is the failure this whole panel is written around. */}
-        {!isolated && (
-          <a className="portal-btn-outline" href={mailHref} style={{ ...OUTLINE_BTN, textDecoration: "none", alignSelf: "flex-start" }}>
-            <Mail size={14} strokeWidth={2.4} />
-            {t.contactOpenMail}
-          </a>
-        )}
+        {/* The mail button moved to the footer — see the note there. Nothing stands here now:
+            the sentence above is the last thing the panel says before the actions. */}
       </div>
     </Drawer>
   );

@@ -3300,12 +3300,28 @@ export function Drawer({ title, onClose, onBack, footer, width = "520px", escape
  * the same twelve properties by hand and no two of them agreed: three paddings, two font sizes and
  * two different disabled greys were in the file at once.
  */
-export function PanelCancel({ onClick, label }: { onClick: () => void; label: string }) {
+export function PanelCancel({ onClick, label, apart }: {
+  onClick: () => void;
+  label: string;
+  /**
+   * Pushes this button to the FAR LEFT of the footer, away from the actions (owner, 2026-10-01:
+   * close를 왼쪽 끝으로 두면 어떨까 싶어).
+   *
+   * Opt-in, not the default, and the reason is how many buttons the footer holds. Seven of the
+   * eight drawers in Portal end in a PAIR — 취소 · 저장 — and those two are a choice between each
+   * other, so splitting them to opposite ends makes the eye cross the panel to compare them. The
+   * licence enquiry panel is the one with THREE: leave, and two different routes to the same
+   * errand. There, separating the exit from the two doers is exactly the grouping, and leaving it
+   * paired with them reads as a third route.
+   */
+  apart?: boolean;
+}) {
   return (
     <button type="button" onClick={onClick}
       style={{
         padding: "10px 14px", borderRadius: "8px", border: "none", backgroundColor: "transparent",
         color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+        ...(apart ? { marginRight: "auto" } : null),
       }}>
       {label}
     </button>
