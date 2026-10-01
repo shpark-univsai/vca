@@ -2948,9 +2948,22 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           <TableEmpty text={emptyText} />
         </div>
       ) : (
-        /* gridAutoRows 1fr on top of the fixed slots inside each card. The slots are what make the
-           heights match; this is the guard that keeps a row level if something in a card ever
-           grows anyway. */
+        /*
+         * gridAutoRows 1fr IS WHAT MAKES THE HEIGHTS MATCH, and it is now the only thing doing it.
+         *
+         * It used to sit on top of fixed slots inside each card — a 35px name box and an 18px tag
+         * row, reserved whether the card needed them or not. Two mechanisms for one job, and the
+         * inner one cost what the owner saw (2026-10-01: 「이름이 두줄되는 사람 때문에 이렇게
+         * 적은거지? 여백이 다 카드중간에 있네」): a one-line name left the second line empty, so
+         * most cards had a hole between the name and the pill that qualifies it. A gap there does
+         * not read as layout, it reads as the tag having come loose from the name.
+         *
+         * So the slots are gone, the text block fills the card, and the date is pushed to the
+         * bottom. The cards in a row are still exactly as tall as each other — the grid sees to
+         * that — and the dates line up across the row because they all sit on its floor. The
+         * slack that is left is one piece, below the last thing the card says, where slack
+         * belongs.
+         */
         /*
          * THE FACE IS THE CARD (owner, 2026-10-01: 「vip 등록에 그리드가 꼭 필요할까?」 → ②).
          *
@@ -3005,19 +3018,19 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               <FacePhoto src={person.photoUrl} radius="0"
                 style={{ width: "100%", aspectRatio: "4 / 5", flexShrink: 0 }}
                 hiddenStyle={{ borderWidth: "0 0 1px 0" }} />
-              <div style={{ minWidth: 0, padding: "8px 12px 10px" }}>
+              <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", padding: "8px 12px 10px" }}>
                 {/* Name first. The tags used to sit above it, which put a pill where the eye goes
                     for the thing a vipRegistry card is actually scanned for — a face and a name. The
                     group and the priority qualify that name, so they read after it. */}
-                {/* Two lines, always — reserved whether the name needs them or not.
-                    "Muhammad Rizal bin Hassan" wraps at this width and "David Ho" does not, so a
-                    height that follows the name made every card a different card. Clamped rather
-                    than ellipsised on one line, because a vipRegistry that truncates the name has
-                    broken the one thing it is for; two lines hold every name in the registry. */}
+                {/* Up to two lines, and only as many as the name uses. Clamped at two rather
+                    than ellipsised on one, because a registry that truncates the name has broken
+                    the one thing it is for — "Muhammad Rizal bin Hassan" wraps at this width and
+                    two lines hold every name in the register. No reserved height: the row's cards
+                    are levelled by the grid, so a name that needs one line can have one. */}
                 <p style={{
                   fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", lineHeight: 1.35,
                   display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-                  overflow: "hidden", height: "35px",
+                  overflow: "hidden",
                 }}>{person.name}</p>
                 {(
                   /* Priority on every card, "normal" included.
@@ -3026,12 +3039,10 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                      same silence as "nobody has set this yet". Every face in the registry has a
                      priority; the card states it. Normal stays grey, so the ones that are not
                      normal are still the only colour in the grid.
-                     One line and no wrap, and the row is here even when this person has neither
-                     tag: it used to appear only when there was something to show and to wrap onto
-                     a second line when a group name ran long, which is two more ways for one card
-                     to be taller than the one beside it. Reserved space costs 18px on the cards
-                     that have nothing to say; a ragged grid costs the reader every card. */
-                  <div style={{ display: "flex", gap: "4px", margin: "4px 0 0", height: "18px", overflow: "hidden" }}>
+                     One line and no wrap. The row is always drawn because the priority is always
+                     stated, so there is nothing to reserve for — and clipping it keeps a long
+                     group name from wrapping onto a second line. */
+                  <div style={{ display: "flex", gap: "4px", margin: "4px 0 0", overflow: "hidden" }}>
                     {/* Priority first. It is the shorter of the two and the one that decides how
                         hard a detection is chased, so it reads before the party a person happens to
                         be travelling with — and being first means it keeps its full width while the
@@ -3062,7 +3073,10 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     in front of it was a word repeated on every card to say what the screen it sits
                     on already says. The detail sheet and the table both keep the label, where a
                     date sits next to other labelled values and needs to say which one it is. */}
-                <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "4px" }}>{person.registeredAt.slice(0, 10)}</p>
+                {/* On the card's floor, not under the tags: `marginTop: auto` takes whatever
+                    slack the card has, so the dates sit on one line across the row however long
+                    the names above them are. */}
+                <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "auto", paddingTop: "6px" }}>{person.registeredAt.slice(0, 10)}</p>
               </div>
               {/* No delete on the card.
                   It was a trash icon in this corner — a third route to the one irreversible action
