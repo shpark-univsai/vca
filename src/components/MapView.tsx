@@ -566,7 +566,16 @@ function districtPillHtml(
 
   const secondLine = [vipFigure, cameraNote].filter(Boolean).join(sep);
 
-  const shadow = isDark || isAlert ? "0 2px 10px rgba(24, 17, 39,0.2)" : "0 2px 6px rgba(24, 17, 39,0.08)";
+  /* The quiet plate is a chip sitting just off the surface, which is exactly what
+     --shadow-raised is for (globals.css, the three-token note) — it was the one hand-mixed
+     rgba() in this file that already had a token waiting for it.
+
+     THE DARK/ALERT BRANCH KEEPS ITS LITERAL. There is no token at that weight, and the weight is
+     doing a job: this plate lands on the customer's own GIS tiles, which may be anything from
+     near-white to a dense colour map, and a --gray-900 plate under a 0.12 shadow does not read as
+     sitting on top of anything (the same argument globals.css makes for .vca-map-dot). Inventing
+     a step for it would be the thing we are not allowed to do — see the handover note. */
+  const shadow = isDark || isAlert ? "0 2px 10px rgba(24, 17, 39,0.2)" : "var(--shadow-raised)";
   return `<div style="transform:translateX(-50%) translateY(-50%);display:inline-flex;flex-direction:column;
       align-items:center;gap:1px;background:${bg};${border}border-radius:10px;padding:5px 10px;
       font-family:'SUIT',system-ui,sans-serif;color:${textColor};box-shadow:${shadow};

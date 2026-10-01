@@ -11,6 +11,8 @@ import { formatElapsed, parseSgtStamp, recentSgtStamp, sgtDateKey } from "@/lib/
 import { camerasInProject, hasPosition, canSearchIn, judgementFor, SIGNED_IN_USER, useActiveProjectId, useProjectCameras, useRetentionFloor, useVcaStore, type Camera } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { siteTimeZone } from "@/lib/time";
+import { DateRangeTrigger, dateKeyOf } from "./shared/DateRangePicker";
+import ScoreBadge from "./shared/ScoreBadge";
 import RemoveImageButton from "./RemoveImageButton";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
@@ -25,8 +27,6 @@ const T = {
     noPermissionTitle: "Person search permission required",
     noPermissionBody: "Redmap only shows results from a search, so with no search permission there is nothing to show. An administrator can grant it in the Portal, under Users & Permissions.",
     close: "Close",
-    prevMonth: "Previous month",
-    nextMonth: "Next month",
     dragAndDrop: "Drag and drop an image here",
     searchTargets: "Search targets",
     searchResults: "Search results",
@@ -48,7 +48,6 @@ const T = {
     face: "Face",
     body: "Body",
     searchByImage: (what: string) => `${what} — search by image`,
-    clearRange: "Clear",
     reset: "Reset",
     detach: "Detach",
     loaded: "Loaded",
@@ -113,8 +112,6 @@ const T = {
     noPermissionTitle: "인물 검색 권한이 필요합니다",
     noPermissionBody: "Redmap은 검색으로만 결과를 보여주는 화면이라, 검색 권한 없이는 보여줄 것이 없습니다. 관리자에게 요청하면 Portal의 사용자 및 권한에서 열어 줄 수 있습니다.",
     close: "닫기",
-    prevMonth: "지난달",
-    nextMonth: "다음달",
     dragAndDrop: "이미지를 여기로 끌어다 놓으세요",
     searchTargets: "검색 대상",
     searchResults: "검색 결과",
@@ -136,7 +133,6 @@ const T = {
     face: "얼굴",
     body: "전신",
     searchByImage: (what: string) => `${what} — 이미지로 검색`,
-    clearRange: "지우기",
     reset: "초기화",
     detach: "떼어내기",
     loaded: "첨부됨",
@@ -524,16 +520,6 @@ function ClockIconXs() {
   );
 }
 
-function CalendarIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <rect x="1" y="2.5" width="12" height="10" rx="2" stroke="var(--gray-400)" strokeWidth="1.2" />
-      <path d="M1 6.5h12" stroke="var(--gray-400)" strokeWidth="1.2" />
-      <path d="M4 1v3M10 1v3" stroke="var(--gray-400)" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function FaceIcon({ color = "var(--gray-400)" }: { color?: string }) {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -621,229 +607,42 @@ function PinIconSm({ color = "var(--gray-600)" }: { color?: string }) {
   );
 }
 
-/* ── DateRangePicker ──────────────────────────────────────── */
-// Korean names its months by number, so the "full" and "short" forms are the same string.
-const MONTHS_FULL: Record<AppLanguage, string[]> = {
-  en: ["January","February","March","April","May","June","July","August","September","October","November","December"],
-  ko: ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"],
-};
-const MONTHS_SHORT: Record<AppLanguage, string[]> = {
-  en: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
-  ko: MONTHS_FULL.ko,
-};
-const DAY_HEADS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+/* ── Date range ───────────────────────────────────────────────
+   The shared picker, same as Live Monitoring, Re-ID Analysis and RedFace use.
 
-function DateRangePicker({ value, onChange }: { value: DateRange; onChange: (v: DateRange) => void }) {
+   This screen used to draw its own calendar — a second implementation of the same control, with
+   <div> cells instead of <button>s (so no day could be reached by keyboard), 34px rows at 13px/400
+   against the shared 28px circles at 12px/500, a radius that switched between 50% and 4px
+   depending on whether the day was an endpoint, in-range days in --primary-400, and no quick
+   ranges. The retention floor WAS already honoured here (51d082e) — that part was not missing —
+   but it was honoured by a second copy of the rule, which is the thing that goes wrong next time.
+
+   The two shapes bridged here: this screen keeps its range as "YYYY-MM-DD" strings (that is what
+   a hit's `date` is, and the filter below compares them as strings), while the shared picker
+   speaks Date at local midnight. dateKeyOf is the shared component's own formatter, so the two
+   directions cannot drift apart. */
+const localMidnight = (key: string) => {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+function RedmapDateRange({ value, onChange }: { value: DateRange; onChange: (v: DateRange) => void }) {
   const [lang] = useLanguage();
-  const t = T[lang];
-  const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<"start"|"end">("start");
-  // Opens on the month being edited, not a hardcoded one. This was pinned to June 2026 back when
-  // the mock sightings carried fixed June dates; they are relative to now since, so the calendar
-  // was opening three months away from anything it could select.
-  const initialView = (value.start ?? value.end ?? recentSgtStamp(0).date).split("-");
-  const [viewYear, setViewYear] = useState(parseInt(initialView[0], 10));
-  const [viewMonth, setViewMonth] = useState(parseInt(initialView[1], 10) - 1); // 0-indexed
-  const containerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  useEscapeKey(() => setOpen(false), open);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  useEffect(() => {
-    if (open && listRef.current) {
-      const el = listRef.current.querySelector("[data-active='true']");
-      el?.scrollIntoView({ block: "center" });
-    }
-  }, [open]);
-
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
-  const toDateStr = (day: number) => `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-  /* The oldest day this site still holds. Redmap draws its own calendar rather than the shared
-     one, so the floor has to be honoured here too — otherwise this screen opens backwards forever
-     while the other three stop, and the same date is offered on one and refused on the next. */
+  /* The oldest day this site still holds — one hook, so this screen and the other three cannot
+     disagree about how far back their calendars open. */
   const floor = useRetentionFloor();
-  const floorKey = floor
-    ? `${floor.getFullYear()}-${String(floor.getMonth()+1).padStart(2,"0")}-${String(floor.getDate()).padStart(2,"0")}`
-    : null;
-  const isGone = (day: number) => !!floorKey && toDateStr(day) < floorKey;
-
-  const formatDisplay = (d: string | null) => {
-    if (!d) return null;
-    const [y, m, day] = d.split("-");
-    return lang === "ko"
-      ? `${y}. ${MONTHS_SHORT.ko[parseInt(m)-1]} ${parseInt(day)}일`
-      : `${MONTHS_SHORT.en[parseInt(m)-1]} ${parseInt(day)}, ${y}`;
-  };
-
-  const handleDayClick = (day: number) => {
-    if (isGone(day)) return;
-    const ds = toDateStr(day);
-    if (step === "start") {
-      onChange({ start: ds, end: null });
-      setStep("end");
-    } else {
-      if (value.start && ds < value.start) onChange({ start: ds, end: value.start });
-      else onChange({ start: value.start, end: ds });
-      setStep("start");
-      setOpen(false);
-    }
-  };
-
-  const dayState = (day: number): "start"|"end"|"range"|"none" => {
-    const d = toDateStr(day);
-    if (d === value.start) return "start";
-    if (d === value.end) return "end";
-    if (value.start && value.end && d > value.start && d < value.end) return "range";
-    return "none";
-  };
-
-  const monthList: { year: number; month: number }[] = [];
-  for (let y = 2023; y <= 2027; y++) for (let m = 0; m < 12; m++) monthList.push({ year: y, month: m });
-
-  const prevMonth = () => { if (viewMonth === 0) { setViewMonth(11); setViewYear(y=>y-1); } else setViewMonth(m=>m-1); };
-  const nextMonth = () => { if (viewMonth === 11) { setViewMonth(0); setViewYear(y=>y+1); } else setViewMonth(m=>m+1); };
-
-  const sd = formatDisplay(value.start);
-  const ed = formatDisplay(value.end);
-
   return (
-    <div ref={containerRef} style={{ position: "relative", flexShrink: 0 }}>
-      {/* Trigger button */}
-      <div
-        onClick={() => { setOpen(o=>!o); setStep("start"); }}
-        style={{
-          display: "flex", alignItems: "center", gap: "8px",
-          border: `1px solid ${open ? "var(--primary-200)" : "var(--gray-200)"}`,
-          borderRadius: "999px", padding: "0 20px", height: "36px",
-          backgroundColor: "white", cursor: "pointer", userSelect: "none",
-        }}
-      >
-        <CalendarIcon />
-        <span style={{ fontSize: "12px", fontWeight: 600, color: sd ? "var(--gray-800)" : "var(--gray-500)", whiteSpace: "nowrap" }}>
-          {sd || "Start date"}
-        </span>
-        <span style={{ color: "var(--gray-300)", fontSize: "12px" }}>-</span>
-        <span style={{ fontSize: "12px", fontWeight: 600, color: ed ? "var(--gray-800)" : "var(--gray-500)", whiteSpace: "nowrap" }}>
-          {ed || "End date"}
-        </span>
-      </div>
-
-      {/* Dropdown */}
-      {open && (
-        <div style={{
-          position: "absolute", top: "42px", left: 0, zIndex: 2000,
-          backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "8px",
-          boxShadow: "var(--shadow-popover)", display: "flex", overflow: "hidden", width: "560px",
-        }}>
-          {/* Left: month list */}
-          <div ref={listRef} style={{
-            width: "148px", borderRight: "1px solid var(--gray-200)",
-            overflowY: "auto", maxHeight: "360px", flexShrink: 0,
-            paddingTop: "4px", paddingBottom: "4px",
-          }}>
-            {monthList.map(({ year, month }) => {
-              const active = year === viewYear && month === viewMonth;
-              return (
-                <div
-                  key={`${year}-${month}`}
-                  data-active={active ? "true" : undefined}
-                  onClick={() => { setViewYear(year); setViewMonth(month); }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.backgroundColor = "var(--gray-50)"; }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.backgroundColor = "transparent"; }}
-                  style={{
-                    padding: "9px 16px", fontSize: "13px",
-                    fontWeight: active ? 700 : 500,
-                    color: active ? "var(--primary-400)" : "var(--gray-900)",
-                    backgroundColor: active ? "var(--primary-100)" : "transparent",
-                    cursor: "pointer",
-                  }}
-                >
-                  {MONTHS_SHORT[lang][month]} {year}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Right: calendar */}
-          <div style={{ flex: 1, padding: "16px 20px" }}>
-            {/* Step pills */}
-            <div style={{ display: "flex", gap: "6px", marginBottom: "12px" }}>
-              {(["start","end"] as const).map(s => (
-                <span key={s} style={{
-                  fontSize: "12px", padding: "2px 10px", borderRadius: "999px", fontWeight: 600,
-                  backgroundColor: step === s ? "var(--primary-100)" : "var(--gray-100)",
-                  color: step === s ? "var(--primary-400)" : "var(--gray-400)",
-                  border: `1px solid ${step === s ? "var(--primary-200)" : "var(--gray-200)"}`,
-                }}>
-                  {s === "start" ? `Start${sd ? " · "+sd : " · pick"}` : `End${ed ? " · "+ed : " · pick"}`}
-                </span>
-              ))}
-            </div>
-
-            {/* Month nav */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-              <button onClick={prevMonth} aria-label={t.prevMonth} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", color: "var(--gray-900)", padding: "2px 6px", lineHeight: 1 }}>‹</button>
-              <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{lang === "ko" ? `${viewYear}년 ${MONTHS_FULL.ko[viewMonth]}` : `${MONTHS_FULL.en[viewMonth]} ${viewYear}`}</span>
-              <button onClick={nextMonth} aria-label={t.nextMonth} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", color: "var(--gray-900)", padding: "2px 6px", lineHeight: 1 }}>›</button>
-            </div>
-
-            {/* Day headers */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: "2px" }}>
-              {DAY_HEADS.map(d => (
-                <div key={d} style={{ textAlign: "center", fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", padding: "3px 0" }}>{d}</div>
-              ))}
-            </div>
-
-            {/* Days grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1px" }}>
-              {Array.from({ length: firstDay }, (_, i) => <div key={`e${i}`} />)}
-              {Array.from({ length: daysInMonth }, (_, i) => {
-                const day = i + 1;
-                const ds = dayState(day);
-                const gone = isGone(day);
-                return (
-                  <div
-                    key={day}
-                    onClick={() => handleDayClick(day)}
-                    onMouseEnter={e => { if (ds === "none" && !gone) e.currentTarget.style.backgroundColor = "var(--gray-100)"; }}
-                    onMouseLeave={e => { if (ds === "none" && !gone) e.currentTarget.style.backgroundColor = "transparent"; }}
-                    style={{
-                      height: "34px", display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "13px", fontWeight: ds === "start" || ds === "end" ? 700 : 400,
-                      cursor: gone ? "not-allowed" : "pointer", borderRadius: ds === "start" || ds === "end" ? "50%" : "4px",
-                      color: gone ? "var(--gray-300)" : ds === "start" || ds === "end" ? "white" : ds === "range" ? "var(--primary-400)" : "var(--gray-900)",
-                      backgroundColor: ds === "start" || ds === "end" ? "var(--primary-400)" : ds === "range" ? "var(--primary-100)" : "transparent",
-                      transition: "background 0.1s",
-                    }}
-                  >
-                    {day}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Clear */}
-            {(value.start || value.end) && (
-              <div style={{ marginTop: "10px", textAlign: "right" }}>
-                <button
-                  onClick={() => { onChange({ start: null, end: null }); setStep("start"); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "10px", color: "var(--gray-400)", fontWeight: 600 }}
-                >
-                  {t.clearRange}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+    /* The trigger lays itself out at width:100%, and this toolbar is a nowrap flex row, so it
+       needs a box of its own. 232px is what the two dates, the dash, the icon and the chevron
+       measure at this size. */
+    <div style={{ width: "232px", flexShrink: 0 }}>
+      <DateRangeTrigger
+        lang={lang}
+        minDate={floor}
+        mode="merged"
+        value={{ start: value.start ? localMidnight(value.start) : null, end: value.end ? localMidnight(value.end) : null }}
+        onApply={(v) => onChange({ start: v.start ? dateKeyOf(v.start) : null, end: v.end ? dateKeyOf(v.end) : null })}
+      />
     </div>
   );
 }
@@ -1380,7 +1179,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             padding: "12px", display: "flex", flexDirection: "column", gap: "10px",
           }}>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button onClick={() => setUploadFor(null)} aria-label={t.close} style={{
+              <button onClick={() => setUploadFor(null)} aria-label={t.close} className="vca-hover-quiet" style={{
                 width: "37px", height: "37px", borderRadius: "8px", backgroundColor: "var(--gray-50)",
                 border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
               }}>
@@ -1409,8 +1208,13 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
               </div>
               <button
                 onClick={() => uploadInputRef.current?.click()}
+                className="vca-hover-darken"
                 style={{
-                  padding: "10px 16px", borderRadius: "24px", border: "none", cursor: "pointer",
+                  /* 8px, like every other --gray-900 button in the app (this file's own Search
+                     button, Data's "Open in Redmap", the two empty-state buttons below). It was
+                     the one 24px pill, and a pill is this app's shape for a FILTER — the mode
+                     toggle, the plate field, the image chips in the toolbar right above. */
+                  padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer",
                   backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700,
                   boxShadow: "var(--shadow-raised)",
                 }}
@@ -1421,6 +1225,41 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           </div>
         </div>
       )}
+
+      {/* ── Hover, for the things that are already clickable ────────────────────────────────
+          Measured before this block: 19 elements in this file set cursor:pointer and 7 of them
+          changed under the pointer. The cursor was the whole feedback on the other 12 — and a
+          cursor is not visible in a screenshot, on a touch screen, or to anyone scanning for what
+          is pressable.
+
+          THESE ARE DataPage's CLASSES, VERBATIM — same names, same declarations (DataPage.tsx,
+          "Hover, for the things that are already clickable"). Only one of the two screens is
+          mounted at a time, so each has to carry the tag; identical rules mean a stray double
+          mount is a no-op. They belong in globals.css and should move there as one edit to both
+          files — see the handover note.
+
+          NO NEW COLOUR. --gray-50 is the row hover globals.css already gives .vca-picker-option;
+          --gray-100 is the fill portal-btn-quiet uses for a bare button; --gray-400 is the edge
+          portal-card-clickable raises; brightness() is what portal-btn-primary does to a fill
+          nothing lighter can tint.
+
+          !important is on the fills because these controls carry backgroundColor in an inline
+          style, and an inline declaration outranks any stylesheet selector. */}
+      <style>{`
+        .vca-hover-row { transition: background-color .12s; }
+        .vca-hover-row:hover:not(:disabled) { background-color: var(--gray-50) !important; }
+
+        .vca-hover-quiet { transition: background-color .12s; }
+        .vca-hover-quiet:hover:not(:disabled) { background-color: var(--gray-100) !important; }
+
+        .vca-hover-outline { transition: background-color .12s, border-color .12s; }
+        .vca-hover-outline:hover:not(:disabled) { background-color: var(--gray-50) !important; border-color: var(--gray-400) !important; }
+
+        .vca-hover-darken { transition: filter .12s; }
+        .vca-hover-darken:hover:not(:disabled) { filter: brightness(.88); }
+
+        .vca-hover-underline:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
+      `}</style>
 
       {/* ── Search bar ──
           Always one row. The full set of person filters wants ~1710px, and on a 14" laptop
@@ -1456,7 +1295,12 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                   borderRadius: "999px", border: "none",
                   cursor: "pointer",
                   backgroundColor: active ? "white" : "transparent",
-                  color: active ? "var(--primary-400)" : "var(--gray-500)",
+                  /* Grey, not purple: this marks WHICH MODE is selected, and on a screen whose
+                     subject is finding people the VIP colour cannot also mean "you are here"
+                     (78fcfcb, Sidebar.tsx). The white fill and the raised shadow already carry
+                     the selection; the colour was saying it a third time, in the one hue this
+                     product reserves. */
+                  color: active ? "var(--gray-900)" : "var(--gray-500)",
                   fontWeight: active ? 800 : 600, fontSize: "13px", letterSpacing: "-0.26px",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                   boxShadow: active ? "var(--shadow-raised)" : "none",
@@ -1464,8 +1308,8 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                 }}
               >
                 {m === "person"
-                  ? <PersonIcon color={active ? "var(--primary-400)" : "var(--gray-400)"} size={18} />
-                  : <VehicleIcon color={active ? "var(--primary-400)" : "var(--gray-400)"} size={18} />}
+                  ? <PersonIcon color={active ? "var(--gray-900)" : "var(--gray-400)"} size={18} />
+                  : <VehicleIcon color={active ? "var(--gray-900)" : "var(--gray-400)"} size={18} />}
                 <span className="vca-tb-mode">{m === "person" ? t.modePerson : t.modeVehicle}</span>
               </button>
             );
@@ -1475,7 +1319,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
         {mode === "car" ? (
           /* ── VEHICLE mode fields ── */
           <>
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
+            <RedmapDateRange value={dateRange} onChange={setDateRange} />
 
             <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, backgroundColor: "var(--gray-200)" }} />
 
@@ -1498,6 +1342,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                 {licensePlate && (
                   <button
                     onClick={() => setLicensePlate("")}
+                    className="vca-hover-darken"
                     style={{ background: "none", border: "none", cursor: "pointer", color: "var(--gray-400)", fontSize: "14px", padding: 0, lineHeight: 1 }}
                   >
                     ×
@@ -1509,7 +1354,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
         ) : (
           /* ── PERSON mode fields ── */
           <>
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
+            <RedmapDateRange value={dateRange} onChange={setDateRange} />
 
             <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, backgroundColor: "var(--gray-200)" }} />
 
@@ -1637,6 +1482,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
         <div style={{ display: "flex", gap: "12px", flexShrink: 0, marginLeft: "auto" }}>
           <button
             onClick={handleReset}
+            className="vca-hover-quiet"
             style={{
               display: "flex", alignItems: "center", gap: "8px",
               height: "36px", padding: "0 20px", borderRadius: "8px",
@@ -1650,6 +1496,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           <button
             onClick={handleSearch}
             disabled={searching}
+            className="vca-hover-darken"
             style={{
               height: "36px", padding: "0 20px", borderRadius: "8px",
               border: "none", cursor: searching ? "default" : "pointer",
@@ -1783,7 +1630,10 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                 {distinctPersons.map((p) => {
                   const active = selectedPersonIds.has(p.personId);
                   return (
-                    <button key={p.personId} onClick={() => togglePerson(p.personId)} style={{
+                    <button key={p.personId} onClick={() => togglePerson(p.personId)}
+                      /* Only while unselected. A selected chip is filled with that person's own
+                         colour, and a grey tint over it would read as switched off. */
+                      className={active ? undefined : "vca-hover-outline"} style={{
                       display: "flex", alignItems: "center", gap: "6px", padding: "5px 12px",
                       borderRadius: "999px", cursor: "pointer",
                       border: active ? `1px solid ${p.color}` : "1px solid var(--gray-300)",
@@ -1823,7 +1673,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                     through the archive camera by camera. Only the second is worth a way out —
                     see useSearchRun in DataPage.tsx. */}
                 {mode === "person" && (
-                  <button onClick={() => { stopRun(); setRunState("idle"); clearSearchOutcome(); }} style={{
+                  <button onClick={() => { stopRun(); setRunState("idle"); clearSearchOutcome(); }} className="vca-hover-outline" style={{
                     padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--gray-300)",
                     backgroundColor: "white", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", cursor: "pointer",
                   }}>{t.cancelSearch}</button>
@@ -1840,7 +1690,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                   <strong style={{ color: "var(--gray-700)" }}>{t.searchFailedTitle}</strong><br />
                   {t.searchFailedBody}
                 </p>
-                <button onClick={startRun} style={{
+                <button onClick={startRun} className="vca-hover-outline" style={{
                   padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--gray-300)",
                   backgroundColor: "white", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", cursor: "pointer",
                 }}>{t.retrySearch}</button>
@@ -1889,12 +1739,15 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                   <div
                     key={hit.id}
                     onClick={() => handleHitClick(index)}
-                    onMouseEnter={e => { if (activeHit !== index) e.currentTarget.style.backgroundColor = "var(--gray-50)"; }}
-                    onMouseLeave={e => { if (activeHit !== index) e.currentTarget.style.backgroundColor = "transparent"; }}
+                    /* The class, not two handlers writing style.backgroundColor: the selected card
+                       already carries a --gray-900 edge and must not also take the hover fill. */
+                    className={activeHit === index ? undefined : "vca-hover-row"}
                     style={{
                       cursor: "pointer", display: "flex", flexDirection: "column", gap: "6px",
                       padding: "4px", borderRadius: "10px",
-                      border: activeHit === index ? "2px solid var(--primary-400)" : "2px solid transparent",
+                      /* The selected card's edge is grey for the same reason the mode toggle's
+                         is: "this is the card you picked" is not "this is a person". */
+                      border: activeHit === index ? "2px solid var(--gray-900)" : "2px solid transparent",
                       opacity: excluded ? 0.45 : 1,
                       transition: "all 0.2s",
                     }}
@@ -1909,20 +1762,31 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                         <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "var(--label-plate)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px", borderRadius: "3px" }}>{t.body}</span>
                       </div>
                     </div>
-                    <div style={{ backgroundColor: "var(--gray-100)", borderRadius: "6px", padding: "4px 6px", overflow: "hidden" }}>
-                      <span style={{ display: "block", fontSize: "10px", color: "var(--gray-700)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {t.face} <span style={{ fontWeight: 800, color: "var(--primary-400)" }}>{hit.score}</span>
-                        {/* No body image was searched → bodyScore has nothing real behind it and
-                            reads as "0%", not an actual (low) match — show Face alone rather than
-                            a body score that isn't measuring anything. */}
-                        {parseFloat(hit.bodyScore) > 0 && (
-                          <> · {t.body} <span style={{ fontWeight: 800, color: "var(--primary-400)" }}>{hit.bodyScore}</span></>
-                        )}
+                    {/* The scores, through the one badge that draws them everywhere (shared/
+                        ScoreBadge). They used to be 10px/800 --primary-400 inside a --gray-100
+                        strip: purple, which in this product means a person, on a number that is
+                        not one — and 82% read as loud here and quiet on the Best Frame wall.
+                        size 10, the default, because these cards are 134px wide and two sit in a
+                        row. The strip's own --gray-100 fill went with them: the badge carries its
+                        own, and a grey chip on a grey strip is no chip at all. One per line,
+                        since the pair does not fit across 134px. */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "3px", overflow: "hidden" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "var(--gray-700)", whiteSpace: "nowrap" }}>
+                        {t.face} <ScoreBadge score={parseFloat(hit.score)} />
                       </span>
+                      {/* No body image was searched → bodyScore has nothing real behind it and
+                          reads as "0%", not an actual (low) match — show Face alone rather than
+                          a body score that isn't measuring anything. */}
+                      {parseFloat(hit.bodyScore) > 0 && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px", color: "var(--gray-700)", whiteSpace: "nowrap" }}>
+                          {t.body} <ScoreBadge score={parseFloat(hit.bodyScore)} />
+                        </span>
+                      )}
                     </div>
                     {excluded ? (
                       <button
                         onClick={e => { e.stopPropagation(); clearJudgement("redmap", hit.id); }}
+                        className="vca-hover-underline"
                         style={{ display: "flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", width: "fit-content" }}
                       >
                         <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--danger-400)" }}>{t.excluded}</span>
@@ -1935,6 +1799,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                       <button
                         onClick={e => { e.stopPropagation(); clearJudgement("redmap", hit.id); }}
                         title={t.undoConfirm}
+                        className="vca-hover-underline"
                         style={{ display: "flex", alignItems: "center", gap: "4px", border: "none", background: "none", padding: 0, cursor: "pointer", width: "fit-content" }}
                       >
                         <CheckIconSm />
@@ -2025,7 +1890,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             <h3 style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>
               {t.routeHistory}
             </h3>
-            <button onClick={() => setTimelineNewestFirst(v => !v)} style={{
+            <button onClick={() => setTimelineNewestFirst(v => !v)} className="vca-hover-underline" style={{
               display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none",
               cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)",
             }}>
@@ -2088,8 +1953,9 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                         <div
                           key={node.key}
                           onClick={() => { if (node.hitIndex >= 0) handleNodeClick(node.hitIndex); }}
-                          onMouseEnter={e => { if (node.hitIndex >= 0 && !isActive) e.currentTarget.style.backgroundColor = "var(--gray-50)"; }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                          /* Only the rows that lead somewhere: a stop with no hit behind it is not
+                             clickable, and the selected one is marked by its ring. */
+                          className={node.hitIndex >= 0 && !isActive ? "vca-hover-row" : undefined}
                           style={{ display: "flex", alignItems: "flex-start", gap: "12px", position: "relative", zIndex: 1, cursor: node.hitIndex >= 0 ? "pointer" : "default", borderRadius: "12px", transition: "background-color 0.15s" }}
                         >
                           <div style={{

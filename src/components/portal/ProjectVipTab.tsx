@@ -9,7 +9,7 @@ import { getComplianceConfig } from "@/lib/complianceConfig";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
-import { TABLE_HEADER_COLOR, ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, TableSkeleton, TableLoadFailed, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
+import { ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, TableSkeleton, TableLoadFailed, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 import VipImportModal from "./VipImportModal";
 import { DateRangeTrigger, dateKeyOf } from "../shared/DateRangePicker";
@@ -2510,8 +2510,15 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
         ) : (
           <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW }}>
             <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: GROUP_GRID, columnGap: TABLE_COLUMN_GAP, padding: "10px 16px", backgroundColor: "var(--gray-50)", borderBottom: TABLE_RULE, borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS }}>
+              {/* The shared heading, so the two tables on THIS screen agree: the 사람 table draws
+                  its headings through SortableHeader, which is sentence case with no tracking, and
+                  this one was putting the same kind of heading in caps with 0.4px — caps and
+                  letter-spacing are a Latin-only device, so the Korean headings here were being
+                  spread apart without being capitalised and the English pair read as two tables
+                  from two products. These columns do not sort, and a plain SortableHeader is what
+                  a table with no sorting uses. */}
               {[t.colGroup, t.colMembers, t.colPriority, t.colNote, ""].map((h, i) => (
-                <span key={i} style={{ fontSize: "10px", fontWeight: 600, color: TABLE_HEADER_COLOR, letterSpacing: "0.4px" }}>{h.toUpperCase()}</span>
+                <SortableHeader key={i} label={h} />
               ))}
             </div>
             {projectGroups.map((group, i) => {
@@ -2566,7 +2573,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           {visibleSelectedIds.length > 0 && (
             <div style={{ position: "fixed", left: 0, right: 0, bottom: "24px", zIndex: 40, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
               <div style={{
-                pointerEvents: "auto", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap",
+                pointerEvents: "auto", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
                 backgroundColor: "var(--gray-900)", borderRadius: "12px", padding: "10px 12px 10px 18px",
                 boxShadow: "0 12px 32px rgba(24,17,39,0.28)", maxWidth: "calc(100% - 48px)",
               }}>
@@ -2582,7 +2589,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                       had only the expiry, which read as a single odd errand — see applyBulkGroup.
                       Selects rather than buttons: the answer is one of a list, and a list of
                       buttons for four groups would be the bar's whole width. */}
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0, marginLeft: "4px" }}>{t.bulkGroupLabel}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0 }}>{t.bulkGroupLabel}</span>
                   <FilterSelect
                     value=""
                     onChange={v => applyBulkGroup(v === "__none" ? null : v)}

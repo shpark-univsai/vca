@@ -11,6 +11,7 @@ import {
 } from "@/lib/vcaStore";
 import type { ExportRecord } from "@/lib/vcaStore";
 import { useToast } from "./Toast";
+import ScoreBadge from "./shared/ScoreBadge";
 import { CircleAlert, ImageDown } from "lucide-react";
 
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
@@ -164,6 +165,14 @@ const STEP_BTN_STYLE: CSSProperties = {
   padding:"6px 12px", borderRadius:"999px", border:"1px solid var(--gray-300)", backgroundColor:"white",
   color:"var(--gray-700)", fontSize:"12px", fontWeight:700, cursor:"pointer", whiteSpace:"nowrap",
 };
+/* The hover classes in globals.css rather than a hovered flag per button. There were sixteen
+   cursor:pointer targets on this screen and four of them answered the pointer; the rest said
+   "clickable" only to a reader who had already found them. The class name says Portal because
+   that is the section it was written for, but the behaviour it carries is the console's — the
+   block wants a neutral prefix now that the app reads it too.
+   --gray-100 for a bordered control on white, which is the step that class carries; the --gray-50
+   tint stays on list rows, which is what the reel cards already use. */
+const HOVER_QUIET = "portal-btn-quiet";
 
 export interface DetailProps {
   camLabel: string;
@@ -195,8 +204,16 @@ export interface DetailProps {
  *
  * FIGMA: --type-unknown now has no reader. Drop it from the library rather than leaving a variable
  * nothing points at.
+ *
+ * ONE COPY, AND IT LIVES HERE. BestFramePage declared this same record with the same three values
+ * and a verbatim copy of this note, so the reasoning above was true twice and enforceable in
+ * neither place. It is exported from this file rather than the other because the import already
+ * runs this way (BestFramePage renders this component) — the reverse would be a cycle.
+ * NOT THE FINAL HOME: DataPage draws the same three classes from its own table and has Unknown a
+ * step lighter, so the record belongs beside the DetType union it is keyed by (types/detection.ts)
+ * or in components/shared. That file is not this task's to open.
  */
-const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", Vehicle: "var(--type-vehicle)", Unknown: "var(--gray-600)" };
+export const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", Vehicle: "var(--type-vehicle)", Unknown: "var(--gray-600)" };
 
 /**
  * SELECTION AND FOCUS: "you are here", never "this is a VIP".
@@ -573,7 +590,7 @@ function AlsoCapturedCard({ det }: { det: Detection }) {
       </p>
       <span style={{ display:"flex", alignItems:"baseline", gap:"3px" }}>
         <span style={{ fontSize:"10px", fontWeight:800, color:c, letterSpacing:"-0.2px" }}>{typeLabel(det.type, T[lang])}</span>
-        {det.type === "VIP" && <span style={{ fontSize:"9px", fontWeight:600, color:"var(--gray-600)" }}>{det.confidence}%</span>}
+        {det.type === "VIP" && <ScoreBadge score={det.confidence} size={10} />}
       </span>
     </div>
   );
@@ -675,9 +692,7 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
           <div style={{ display:"flex", alignItems:"center", gap:"4px" }}>
             <TypeIcon type={det.type} color={c} size={12} />
             <span style={{ fontSize:"12px", fontWeight:800, color:c, letterSpacing:"-0.2px" }}>{typeLabel(det.type, T[lang])}</span>
-            {det.type === "VIP" && (
-              <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)" }}>{det.confidence}%</span>
-            )}
+            {det.type === "VIP" && <ScoreBadge score={det.confidence} size={10} />}
           </div>
           {/* The identity line. Attribute chips (gender, apparel) used to sit under it — with a
               reel that can grow to a lot of cards, that's more detail than a scanning glance
@@ -766,7 +781,13 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
           not two independently-sized bars that happen to sit side by side) */}
       <div style={{ padding:"12px 16px 10px", borderBottom:BORDER, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <p style={{ fontSize:"16px", fontWeight:700, color:"var(--gray-900)", letterSpacing:"-0.32px" }}>{t.inspectionDetail}</p>
-        <button onClick={onClose} aria-label={t.close} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--gray-400)", fontSize:"16px", lineHeight:1, padding:"0 2px" }}>✕</button>
+        {/* The same drawn path as the export dialog's close below and the eleven others in the
+            app. It was a text ✕, which at 16px has the font's own stroke weight and side bearings
+            — next to a 1.5px stroked X it reads as a different control. Negative margin so the
+            hover box grows without moving the icon off the header's right edge. */}
+        <button onClick={onClose} aria-label={t.close} className="portal-icon-btn" style={{ background:"none", border:"none", cursor:"pointer", color:"var(--gray-400)", padding:"3px", margin:"-3px", display:"flex" }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+        </button>
       </div>
 
       <div style={{ flex:1, overflowY:"auto", padding:"14px" }}>
@@ -799,7 +820,8 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
               <path d="M11 12L13 10L11 8" stroke="var(--gray-400)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M13 10H3" stroke="var(--gray-400)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{det.confidence || 0}%</span>
+            {/* The number this whole panel exists to show, so it is the one that takes 13px. */}
+            <ScoreBadge score={det.confidence || 0} size={13} />
           </div>
           {/* ABSENT WITHOUT THE GRANT, not blanked (see AppAction "bestframeEnrolled"). The box
               beside it is the capture — what a camera saw in public — and this one is the
@@ -876,10 +898,10 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
           disabled: it leads somewhere, and a control that leads nowhere reachable is worse than
           no control — see the note on the jump handlers in ClientLayout. */}
       <div style={{ padding:"10px 14px", display:"grid", gridTemplateColumns: onGoRedmapTrace ? "1fr 1fr" : "1fr", gap:"8px", flexShrink:0 }}>
-        <button onClick={onClose} style={{ padding:"9px 0", borderRadius:"8px", border:BORDER, backgroundColor:"white", color:"var(--gray-700)", fontSize:"13px", fontWeight:700, cursor:"pointer" }}>
+        <button onClick={onClose} className={HOVER_QUIET} style={{ padding:"9px 0", borderRadius:"8px", border:BORDER, backgroundColor:"white", color:"var(--gray-700)", fontSize:"13px", fontWeight:700, cursor:"pointer" }}>
           {t.back}
         </button>
-        {onGoRedmapTrace && <button onClick={() => onGoRedmapTrace(det.name)} style={{ padding:"9px 0", borderRadius:"8px", border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
+        {onGoRedmapTrace && <button onClick={() => onGoRedmapTrace(det.name)} className="portal-btn-primary" style={{ padding:"9px 0", borderRadius:"8px", border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
             <path d="M16.6667 8.33333C16.6667 13.3333 10 18.3333 10 18.3333C10 18.3333 3.33333 13.3333 3.33333 8.33333C3.33333 6.56522 4.03571 4.86953 5.28596 3.61929C6.5362 2.36905 8.23189 1.66667 10 1.66667C11.7681 1.66667 13.4638 2.36905 14.714 3.61929C15.9643 4.86953 16.6667 6.56522 16.6667 8.33333Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M10 10.8333C11.3807 10.8333 12.5 9.71404 12.5 8.33333C12.5 6.95262 11.3807 5.83333 10 5.83333C8.61929 5.83333 7.5 6.95262 7.5 8.33333C7.5 9.71404 8.61929 10.8333 10 10.8333Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1295,6 +1317,7 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
                 const on = requesterKind === kind.id;
                 return (
                   <button key={kind.id} role="radio" aria-checked={on} onClick={() => setRequesterKind(kind.id)}
+                    className={on ? undefined : HOVER_QUIET}
                     style={{
                       flex: 1, padding: "8px 4px", borderRadius: "8px", cursor: "pointer",
                       // SELECTED, like every other mark on this screen — see the note on it.
@@ -1586,7 +1609,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
         {/* Breadcrumb */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 20px", borderBottom:BORDER, backgroundColor:"white", flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-            <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", cursor:"pointer", color:"var(--gray-500)", fontSize:"13px", fontWeight:600 }}>
+            <button onClick={onBack} className="portal-link" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", cursor:"pointer", color:"var(--gray-500)", fontSize:"13px", fontWeight:600 }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M10 3L5 8l5 5" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -1627,6 +1650,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
           <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
             {data.bgUrl && (
               <button onClick={() => { setDateOpen(false); setTimeOpen(false); setExportOpen(true); }}
+                className={HOVER_QUIET}
                 style={{ display:"inline-flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:"8px", padding:"6px 12px", border:"1px solid var(--gray-300)", cursor:"pointer", fontFamily:"inherit", fontSize:"12px", fontWeight:700, color:"var(--gray-900)" }}>
                 <ImageDown size={14} strokeWidth={2} aria-hidden="true" />
                 {t.exportFrame}
@@ -1660,7 +1684,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
           >
             <img src={data.bgUrl ?? ""} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", opacity:0.9 }} />
             <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"linear-gradient(to bottom,rgba(24, 17, 39,0) 50%,rgba(24, 17, 39,0.04) 50%)", backgroundSize:"100% 4px" }} />
-            <div style={{ position:"absolute", top:12, right:14, backgroundColor:"var(--label-plate)", padding:"3px 8px", fontSize:"10px", fontWeight:600, color:"rgba(255,255,255,0.8)", letterSpacing:"0.5px" }}>
+            {/* Plain white. --label-plate is already the dimming — a 0.8 alpha on top of it was
+                the only dimmed white text in the app, and it was on the one plate that carries
+                the frame's own timestamp. */}
+            <div style={{ position:"absolute", top:12, right:14, backgroundColor:"var(--label-plate)", padding:"3px 8px", fontSize:"10px", fontWeight:600, color:"white", letterSpacing:"0.5px" }}>
               {focusedDet.date.split("-").reverse().join("-")} {focusedDet.time}
             </div>
 
@@ -1693,7 +1720,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     position:"absolute", bottom:"calc(100% + 4px)", left:0,
                     backgroundColor:"white", padding:"3px 8px",
                     display:"flex", alignItems:"center", gap:"5px", whiteSpace:"nowrap",
-                    boxShadow:"0 1px 6px rgba(24, 17, 39,0.12)",
+                    // --shadow-raised: the plate sits just off the frame behind it, which is
+                    // exactly what that token is for. The literal was the same alpha and the same
+                    // 1px offset, three pixels blurrier.
+                    boxShadow:"var(--shadow-raised)",
                     opacity: isFocused ? 1 : 0.85,
                   }}>
                     <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)" }}>{targetLabel(i + 1)}</span>
@@ -1781,13 +1811,13 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 coarse. Arrow keys do the same (see the keydown effect above); Shift+arrow mirrors
                 the ±10s buttons. */}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"10px" }}>
-              <button onClick={() => stepBy(-10)} style={STEP_BTN_STYLE}>◀ 10s</button>
-              <button onClick={() => stepBy(-1)} style={STEP_BTN_STYLE}>◀ 1s</button>
+              <button onClick={() => stepBy(-10)} className={HOVER_QUIET} style={STEP_BTN_STYLE}>◀ 10s</button>
+              <button onClick={() => stepBy(-1)} className={HOVER_QUIET} style={STEP_BTN_STYLE}>◀ 1s</button>
               <span style={{ fontSize:"16px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.3px", minWidth:"92px", textAlign:"center", fontFamily:"monospace" }}>
                 {secToHHMMSS(selectedSec)}
               </span>
-              <button onClick={() => stepBy(1)} style={STEP_BTN_STYLE}>1s ▶</button>
-              <button onClick={() => stepBy(10)} style={STEP_BTN_STYLE}>10s ▶</button>
+              <button onClick={() => stepBy(1)} className={HOVER_QUIET} style={STEP_BTN_STYLE}>1s ▶</button>
+              <button onClick={() => stepBy(10)} className={HOVER_QUIET} style={STEP_BTN_STYLE}>10s ▶</button>
             </div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:"10px" }}>
               {/* Date first, then time — picking the day is the coarser, usually-first choice;
@@ -1795,7 +1825,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   gets its own calendar glyph instead of a clock face that made it read as a
                   time control at a glance. */}
               <div ref={dateDropdownRef} style={{ position:"relative" }}>
-                <button onClick={() => setDateOpen(o => !o)} style={{ display:"flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:"8px", padding:"6px 12px", border:"1px solid var(--gray-300)", cursor:"pointer" }}>
+                <button onClick={() => setDateOpen(o => !o)} className={HOVER_QUIET} style={{ display:"flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:"8px", padding:"6px 12px", border:"1px solid var(--gray-300)", cursor:"pointer" }}>
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
                     <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="var(--gray-900)" strokeWidth="1.4"/>
                     <path d="M2 6.5H14" stroke="var(--gray-900)" strokeWidth="1.4"/>
@@ -1855,8 +1885,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       nowhere in this app — but typing-only left the control looking like the date
                       dropdown beside it while doing nothing when clicked. This is the same list,
                       drawn here, so it stays in English and the typed path still works. */}
-                  <button onClick={() => setTimeOpen(o => !o)} aria-label={t.pickTime}
-                    style={{ display:"flex", padding:0, border:"none", background:"none", cursor:"pointer" }}>
+                  <button onClick={() => setTimeOpen(o => !o)} aria-label={t.pickTime} className="portal-icon-btn"
+                    style={{ display:"flex", padding:"3px", margin:"-3px", border:"none", background:"none", cursor:"pointer" }}>
                     <svg width="9" height="9" viewBox="0 0 8 8" fill="none" style={{ transform: timeOpen ? "rotate(180deg)" : "none", transition:"transform 0.15s" }}>
                       <path d="M2 3L4 5L6 3" stroke="var(--gray-900)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>

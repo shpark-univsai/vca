@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCheck, ChevronLeft, Plus, RotateCcw } from "lucide-react";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { CheckCheck, Plus, RotateCcw } from "lucide-react";
 import {
   cameraGroupsInProject, camerasInProject, hasPosition, useVcaStore, type Camera, type CameraGroup,
 } from "@/lib/vcaStore";
@@ -12,7 +11,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TextField,
-  ConfirmModal, FieldError, PanelCancel, PanelPrimary, RequiredMark, RowActionsMenu, usePortalEditAccess,
+  ConfirmModal, Drawer, FieldError, PanelCancel, PanelPrimary, RequiredMark, RowActionsMenu, usePortalEditAccess,
 } from "./PortalShared";
 
 /**
@@ -66,10 +65,6 @@ const T = {
     zoneBack: "Back to all zones",
     zoneInGroup: "In this group",
     back: "Back",
-    discardTitle: "You have unsaved changes",
-    discardBody: "Close this panel and what you have typed is gone.",
-    discardConfirm: "Close without saving",
-    discardCancel: "Keep editing",
     allPick: "Select all", allClear: "Clear selection",
     pickHeading: "Select cameras",
     inGroupUnknown: "No longer registered",
@@ -120,10 +115,6 @@ const T = {
     zoneBack: "모든 구역으로",
     zoneInGroup: "이 그룹의 카메라",
     back: "뒤로",
-    discardTitle: "작성 중인 내용이 있습니다",
-    discardBody: "닫으면 입력한 내용은 저장되지 않습니다.",
-    discardConfirm: "저장하지 않고 닫기",
-    discardCancel: "계속 작성",
     allPick: "모두 선택", allClear: "선택 초기화",
     /* 「이 그룹에 들어있는 것」이었다 (사용자: 좀더 쉽고 직관적인 단어로). 그 말은 무엇이
        담겼는지를 설명하려 했는데, 이 줄이 머리에 붙어 있는 것은 고르는 칸이고 옆의 숫자가
@@ -320,14 +311,6 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
    */
   nested?: boolean;
 }) {
-  /*
-   * THE SCRIM ASKS WHEN THERE IS SOMETHING TO LOSE (owner, 2026-09-22: 작성 중일 때 왼쪽 딤드
-   * 클릭해도 바로 삭제돼서 입력하던 데이터를 황당하게 잃어버리는 일이 없게). Same device and the
-   * same wording as the shared Drawer, which this panel predates — it draws its own scrim, so it
-   * needs its own copy of the guard rather than inheriting one. ✕ and 취소 stay immediate: they
-   * are aimed.
-   */
-  const [confirmingClose, setConfirmingClose] = useState(false);
   const creating = group === null;
   const [label, setLabel] = useState(group?.label ?? "");
   const [description, setDescription] = useState(group?.description ?? "");
@@ -427,9 +410,8 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
       || [...picked].sort().join() !== [...group.cameraIds].sort().join()
     );
 
-  /* Escape takes the same route as the scrim — ask when there is work in the panel — and is off
-     while the confirmation is up, or one keypress would be handled by both and close the lot. */
-  useEscapeKey(() => { if (dirty) setConfirmingClose(true); else onClose(); }, !confirmingClose);
+  /* Handed to the shared Drawer, which is what asks before discarding — the scrim and Escape
+     both take that route there, and ✕ and 취소 stay immediate because they are aimed. */
 
   const save = () => {
     if (!dirty) return;
@@ -529,46 +511,39 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
   );
 
   return (
-    /* Same rule as the shared Drawer, and the same guard: only a click that BEGAN on the scrim
-       closes it, or every button inside would close it too on the way out. */
-    <div onClick={e => { if (e.target === e.currentTarget) { if (dirty) setConfirmingClose(true); else onClose(); } }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 320, display: "flex", justifyContent: "flex-end" }}>
-      <div style={{
-        backgroundColor: "white",
-        /*
-          THE STACKED ONE IS AS WIDE AS THE PANEL IT COVERS (owner, 2026-09-22: 카메라 그룹 수정은
-          패널 너비가 더 넓어지는데 사용자 초대는 좁네..?).
+    /*
+      THE SHARED PANEL, NOT A COPY OF IT. This shell was written out by hand — scrim, width,
+      left border, modal shadow, the ruleless 16/20 header, the ← and its own escape and
+      dirty guard — before `Drawer` existed, and the copy then had to be kept level with it by
+      hand. Two copies of "what closes a panel" is the one difference a reader feels: a drawer
+      that discards a half-built group where every other drawer asks first.
 
-          672 was measured for the MAP: eighteen zone pills needed that much width or they sat on
-          top of each other, the same failure the in-page editor had at 394. That reason is gone —
-          the pills were deleted today and the map draws dots at every zoom — so the width is free
-          to follow its context. Over the 520px invite panel it takes 520, because a panel that
-          grows when you step into it reads as the window changing size rather than as one more
-          layer. Opened from the camera-groups tab it keeps 672: nothing is underneath it there,
-          and the list's four columns and the map both have more room to spend.
-        */
-        width: nested ? "min(520px, 100%)" : "min(672px, 100%)", height: "100%",
-        borderLeft: BORDER, boxShadow: "var(--shadow-modal)",
-        display: "flex", flexDirection: "column",
-      }}>
-        {/* Header and footer both ruleless, like the shared Drawer this panel mirrors. */}
-        <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "10px" }}>
-          {nested && (
-            <button type="button" onClick={onClose} className="portal-icon-btn"
-              aria-label={t.back} title={t.back}
-              style={{ flexShrink: 0, display: "flex", padding: "2px", marginLeft: "-4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-500)" }}>
-              <ChevronLeft size={18} strokeWidth={2.2} aria-hidden="true" />
-            </button>
-          )}
-          <p style={{ minWidth: 0, flex: 1, fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {creating ? t.drawerNew : t.drawerEdit(group.label)}
-          </p>
-          <button type="button" onClick={onClose} className="portal-icon-btn"
-            style={{ flexShrink: 0, padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          </button>
-        </div>
-
+      WIDTH IS THE ONLY THING THIS PANEL STILL ASKS FOR (owner, 2026-09-22: 카메라 그룹 수정은
+      패널 너비가 더 넓어지는데 사용자 초대는 좁네..?). Over the 520px invite panel it takes 520,
+      because a panel that grows when you step into it reads as the window changing size rather
+      than as one more layer. Opened from the camera-groups tab it keeps 672: nothing is
+      underneath it there, and the list's four columns and the map both have more room to spend.
+    */
+    <Drawer
+      title={creating ? t.drawerNew : t.drawerEdit(group.label)}
+      onClose={onClose}
+      /* Stacked, the panel covers exactly the rectangle it opened over, so the arrow is what
+         says there is something behind it. Same action as ✕ either way. */
+      onBack={nested ? onClose : undefined}
+      width={nested ? "520px" : "672px"}
+      dirty={dirty}
+      footer={
+        <>
+          <span style={{ flex: 1, fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>
+            {t.pickedCount(picked.length)}
+          </span>
+          {/* The shared pair, so this panel and every other one end the same way — see
+              PanelCancel/PanelPrimary for what was measured against twenty reference panels. */}
+          <PanelCancel onClick={onClose} label={nested ? t.back : t.cancel} />
+          <PanelPrimary onClick={save} disabled={!dirty} label={creating ? t.createSave : t.editSave} />
+        </>
+      }
+    >
         {/*
           THE BODY DOES NOT SCROLL; THE MAP TAKES WHAT IS LEFT (owner, 2026-09-22: 지도가 좀
           작아보여).
@@ -589,7 +564,11 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
           body may overflow past it: a tall window spends the slack on the map, a short one keeps
           the map readable and scrolls instead.
         */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+        {/* `minHeight: 100%` because the SHARED panel owns the scrollbar now and this is the
+            column inside it: without it the column is only as tall as its content, and the
+            picker's `flex: 1 1 auto` would have nothing to grow into — the map would sit at its
+            384px floor on every window instead of spending the slack. */}
+        <div style={{ minHeight: "100%", boxSizing: "border-box", padding: "16px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
             <label style={fieldLabel}>{t.createName}<RequiredMark /></label>
             <TextField value={label} onChange={v => { setLabel(v); setLabelError(null); }} placeholder={namePlaceholder} autoFocus />
@@ -654,16 +633,23 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
                
                 A white lozenge on a grey track rather than a bordered box: one fewer line, and the
                 segmented control every reference panel uses looks like this.
+
+                AND THE CONSOLE'S OWN ONE, TO THE TOKEN. It was drawn near this shape but not on
+                it — a --gray-100 track with no line, radius 9/7, 11.5px, and a selected shadow
+                written out as a literal rgba — while 입력 소스 and VIP 등록 both use --gray-50 +
+                BORDER, radius 10/8, 10px and PANEL_SHADOW. One gesture, "show me this
+                differently", in two sizes on two screens is the kind of difference a reader
+                cannot name and still notices.
               */}
-              <div style={{ display: "flex", gap: "4px", padding: "3px", backgroundColor: "var(--gray-100)", borderRadius: "9px", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", padding: "3px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", flexShrink: 0 }}>
                 {([["list", t.viewList], ["map", t.viewMap]] as const).map(([value, text]) => (
                   <button key={value} type="button" onClick={() => setView(value)}
                     style={{
-                      padding: "4px 11px", borderRadius: "7px", cursor: "pointer", fontFamily: "inherit",
-                      fontSize: "11.5px", fontWeight: 700, border: "none",
+                      padding: "4px 10px", borderRadius: "8px", cursor: "pointer", fontFamily: "inherit",
+                      fontSize: "10px", fontWeight: 700, border: "none",
                       backgroundColor: view === value ? "white" : "transparent",
-                      color: view === value ? "var(--gray-900)" : "var(--gray-500)",
-                      boxShadow: view === value ? "0 1px 2px rgba(24,17,39,0.10)" : "none",
+                      color: view === value ? "var(--gray-900)" : "var(--gray-400)",
+                      boxShadow: view === value ? PANEL_SHADOW : "none",
                     }}>
                     {text}
                   </button>
@@ -793,8 +779,8 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
                              * characters, 「다른 그룹 N」 is six glyphs and a digit).
                              */
                             <button key={c.id} type="button" onClick={() => toggle(c.id)}
-                              style={{ width: "100%", display: "grid", gridTemplateColumns: "17px minmax(0, 1fr) 96px 68px", alignItems: "center", columnGap: "10px", textAlign: "left", padding: "7px 6px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit" }}>
-                              <span style={{ width: "17px", height: "17px", borderRadius: "5px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white" }}>
+                              style={{ width: "100%", display: "grid", gridTemplateColumns: "16px minmax(0, 1fr) 96px 68px", alignItems: "center", columnGap: "10px", textAlign: "left", padding: "7px 6px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit" }}>
+                              <span style={{ width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white" }}>
                                 {on && (
                                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
                                     <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
@@ -828,26 +814,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
           </div>
 
         </div>
-
-        <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
-          <span style={{ flex: 1, fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>
-            {t.pickedCount(picked.length)}
-          </span>
-          {/* The shared pair, so this panel and every other one end the same way — see
-              PanelCancel/PanelPrimary for what was measured against twenty reference panels. */}
-          <PanelCancel onClick={onClose} label={nested ? t.back : t.cancel} />
-          <PanelPrimary onClick={save} disabled={!dirty} label={creating ? t.createSave : t.editSave} />
-        </div>
-      </div>
-      {confirmingClose && (
-        <ConfirmModal
-          title={t.discardTitle} body={t.discardBody}
-          confirmLabel={t.discardConfirm} cancelLabel={t.discardCancel}
-          onConfirm={() => { setConfirmingClose(false); onClose(); }}
-          onClose={() => setConfirmingClose(false)}
-        />
-      )}
-    </div>
+    </Drawer>
   );
 }
 
@@ -905,25 +872,33 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
       {groups.length > 0 && mayEdit && (() => {
         const bar = (
           <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "8px", marginBottom: actionsSlot ? 0 : "14px", minHeight: CONTROL_HEIGHT }}>
-            {/* Two cells, the same segmented shape the grant rows use for 보기 / 보기·검색 — one
-                control showing both states, rather than a button that names the mode you are not
-                in and leaves you to work out which that is. */}
-            <span role="radiogroup" aria-label={t.viewLabel} style={{ display: "inline-flex", alignItems: "center", height: CONTROL_HEIGHT, flexShrink: 0 }}>
-              {(["cards", "map"] as const).map((v, i) => {
+            {/*
+              THE CONSOLE'S VIEW SWITCH, NOT A PAIR OF BUTTONS. One control showing both states,
+              rather than a button that names the mode you are not in — that part was right. The
+              SHAPE was borrowed from the grant rows' 보기 / 보기·검색, and those are a different
+              kind of thing: a value being set on a row, inside a row, which is why they are joined
+              cells that each draw their own line.
+
+              This one asks what 입력 소스 and VIP 등록 ask — which shape of this list — and it sits
+              in the same place on the tab line that theirs do. So it is theirs: a white lozenge on
+              a --gray-50 track. It was 36px joined buttons at 12px, which beside those two made
+              the one gesture read as three different controls across the console.
+
+              It keeps the radiogroup roles the other two have yet to get: two radios is what this
+              is, and a screen reader saying "선택됨" is the state the white lozenge shows.
+            */}
+            <span role="radiogroup" aria-label={t.viewLabel}
+              style={{ display: "inline-flex", alignItems: "center", padding: "3px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", flexShrink: 0 }}>
+              {(["cards", "map"] as const).map(v => {
                 const on = view === v;
                 return (
                   <button key={v} type="button" role="radio" aria-checked={on} onClick={() => setView(v)}
                     style={{
-                      display: "inline-flex", alignItems: "center", height: "100%", boxSizing: "border-box",
-                      padding: "0 12px", fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
-                      backgroundColor: on ? "var(--gray-50)" : "white",
-                      color: on ? "var(--gray-900)" : "var(--gray-500)",
-                      border: BORDER,
-                      borderTopLeftRadius: i === 0 ? "8px" : 0, borderBottomLeftRadius: i === 0 ? "8px" : 0,
-                      borderTopRightRadius: i === 1 ? "8px" : 0, borderBottomRightRadius: i === 1 ? "8px" : 0,
-                      marginLeft: i === 0 ? 0 : "-1px",
-                      position: "relative", zIndex: on ? 1 : 0,
-                      cursor: "pointer",
+                      padding: "4px 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
+                      fontSize: "10px", fontWeight: 700,
+                      backgroundColor: on ? "white" : "transparent",
+                      color: on ? "var(--gray-900)" : "var(--gray-400)",
+                      boxShadow: on ? PANEL_SHADOW : "none",
                     }}>
                     {v === "cards" ? t.viewCards : t.viewMap}
                   </button>

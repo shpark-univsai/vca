@@ -119,8 +119,14 @@ function DateMonthCalendar({ lang, year, month, tempStart, tempEnd, onPick, onPr
           const gone = !!minDate && d < minDate;
           return (
             <button key={i} onClick={() => { if (!gone) onPick(d); }} disabled={gone} className={gone ? undefined : "vca-daterange-day"} style={{
-              width:"28px", height:"28px", borderRadius:"50%", border: today && !isStart && !isEnd ? "1px solid var(--primary-400)" : "none",
-              backgroundColor: isStart || isEnd ? "var(--primary-400)" : inRange ? "var(--primary-100)" : "transparent",
+              width:"28px", height:"28px", borderRadius:"50%", border: today && !isStart && !isEnd ? "1px solid var(--gray-900)" : "none",
+              /* SELECTION IS GREY HERE TOO (the rule in BestFrameDetailPage:201-219, commit
+                 78fcfcb: grey marks what is selected, purple means a person). The chosen days and
+                 the band between them were purple, which made a date range read as the same kind
+                 of thing as a traced person. One line, and it lands on all four screens that
+                 share this picker. `--gray-100` for the band rather than a tint of gray-900,
+                 because the band is a backdrop the day numbers have to stay readable on. */
+              backgroundColor: isStart || isEnd ? "var(--gray-900)" : inRange ? "var(--gray-100)" : "transparent",
               color: gone ? "var(--gray-300)" : isStart || isEnd ? "white" : "var(--gray-900)",
               fontSize:"12px", fontWeight: isStart || isEnd ? 700 : 500, cursor: gone ? "not-allowed" : "pointer",
               boxSizing:"border-box",
@@ -275,7 +281,10 @@ export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size =
     ? { flex:1, display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 8px", border: open ? "1px solid var(--primary-300)" : CONTROL_BORDER, borderRadius:"6px", backgroundColor:"white", cursor:"pointer" }
     : { flex:1, display:"flex", alignItems:"center", gap:"8px", height:"36px", padding:"0 12px", border: open ? "1px solid var(--primary-300)" : CONTROL_BORDER, borderRadius:"8px", backgroundColor:"white", cursor:"pointer" };
   const textStyle = (has: boolean): React.CSSProperties => ({
-    fontSize: compact ? "12px" : "13px", fontWeight:600, color: has ? "var(--primary-400)" : "var(--gray-400)",
+    /* A filled-in date is an active value, which the note right below already says should be
+       dark like any other — and the recorded rule is that purple means a person, not a chosen
+       thing. The two lines disagreed; this one was the odd one. Empty stays the muted grey. */
+    fontSize: compact ? "12px" : "13px", fontWeight:600, color: has ? "var(--gray-900)" : "var(--gray-400)",
   });
   // The collapsed emptyText state ("Last 7 days") is a REAL default already in effect on the
   // search, not an unfilled placeholder like "Start date" — so it shouldn't read in the same

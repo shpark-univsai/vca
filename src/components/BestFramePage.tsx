@@ -5,7 +5,8 @@ import { Search } from "lucide-react";
 import { useVcaStore, useActiveProjectId, useProjectCameras, holdsAppAction, handlingFor, type Camera as StoreCamera, type UploadedMedia, type DetectionHandling } from "@/lib/vcaStore";
 import { formatTimeAgo } from "@/lib/mockData";
 import { runStateOf } from "@/lib/realtime/cameraStatus";
-import BestFrameDetailPage from "./BestFrameDetailPage";
+import BestFrameDetailPage, { DET_COLOR } from "./BestFrameDetailPage";
+import ScoreBadge from "./shared/ScoreBadge";
 import { useToast } from "./Toast";
 import type { DetType, MonitorState, Camera, Detection, CamData, HUDState } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -222,24 +223,16 @@ function FilterIcon({ type, color, active, size = 14 }: { type: DetType; color: 
 }
 
 /* ── Colors ────────────────────────────────────────────────────── */
-// VIP is brand purple everywhere else in the app (Sidebar's VIP badges, VIP icons) —
-// matches that instead of the sky-blue this page used to use on its own.
-/**
- * The dot, the legend swatch and the HUD accent for a detection's type.
- *
- * UNKNOWN IS GREY, AND THAT IS THE POINT. It was --type-unknown (#976400), a dark gold: on a 10px
- * dot ringed in white it read as a smudge rather than a category, and beside a vivid purple and a
- * vivid sky it was the one colour that looked like a mistake.
- *
- * Grey is also the honest answer. "Unknown" is the ABSENCE of an identification, and it is the
- * majority of what a camera sees — a saturated colour on the common case spends the map's loudest
- * signal on "nothing was established here". Purple marks a person the register knows, sky marks a
- * thing that is not a person, and grey marks neither. Same rule the map's quiet camera dots follow.
- *
- * FIGMA: --type-unknown now has no reader. Drop it from the library rather than leaving a variable
- * nothing points at.
- */
-const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", Vehicle: "var(--type-vehicle)", Unknown: "var(--gray-600)" };
+// DET_COLOR (the dot, the legend swatch and the HUD accent for a detection's type) was declared
+// here as well, with the same three values and a verbatim copy of its note. It is imported from
+// BestFrameDetailPage now; the reasoning, and what the record's real home should be, is written
+// where it is declared.
+
+// Hover for this screen's buttons, from globals.css rather than a hovered flag per button. There
+// were seventeen cursor:pointer targets here and four of them answered the pointer. --gray-100 for
+// a bordered control on white (portal-btn-quiet); the --gray-50 tint stays on list rows, which is
+// what the camera rows and the reel rows already use.
+const HOVER_QUIET = "portal-btn-quiet";
 
 /**
  * The detection class, in the reader's language. "VIP" is the same word in both.
@@ -663,7 +656,10 @@ function CameraCard({
               padding:"10px 20px", borderRadius:"12px", border:"1px solid rgba(255,255,255,0.15)",
               backgroundColor:"var(--scrim-media)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
               color:"white", fontSize:"13px", fontWeight:700,
-              cursor:"pointer", boxShadow:"0 4px 12px rgba(24, 17, 39,0.25)",
+              // --shadow-raised, not a fourth literal. It floats off the feed by a hair, which
+              // is what that token is for; the directional ones below stay written out because
+              // globals.css keeps those out of the scale on purpose.
+              cursor:"pointer", boxShadow:"var(--shadow-raised)",
             }}
           >
             <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
@@ -732,7 +728,8 @@ function CameraCard({
               <button
                 onClick={e => { e.stopPropagation(); setPinned(p => !p); }}
                 aria-label={pinned ? t.unpinPanel : t.pinPanel}
-                style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex" }}
+                className="portal-icon-btn"
+                style={{ background:"none", border:"none", padding:"3px", margin:"-3px", cursor:"pointer", display:"flex" }}
               >
                 <PinIcon active={pinned} />
               </button>
@@ -793,11 +790,12 @@ function CameraCard({
                     <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-900)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", letterSpacing:"-0.24px" }}>
                       {det.name}
                     </span>
-                    {showConfidence && (
-                      <span style={{ fontSize:"10px", fontWeight:800, color:"var(--primary-400)", flexShrink:0, letterSpacing:"-0.2px" }}>
-                        {det.confidence}%
-                      </span>
-                    )}
+                    {/* A SCORE IS NOT A PERSON. This was --primary-400 — the purple that means
+                        "the register knows this face" everywhere else on the screen, including the
+                        dot three pixels to the left of it — so a confident match and a VIP wore
+                        the same colour, and 72% wore it just as brightly as 98%. ScoreBadge spends
+                        a colour only above 90 and greys the rest. */}
+                    {showConfidence && <ScoreBadge score={det.confidence} size={10} />}
                   </div>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"4px" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"4px", overflow:"hidden" }}>
@@ -904,6 +902,7 @@ function HandlingBlock({ det, camId }: { det: Detection; camId: string }) {
             <button
               disabled={note.trim().length === 0}
               onClick={() => { write("closed", note.trim()); setNote(""); setNoteOpen(false); }}
+              className="portal-btn-primary"
               style={{
                 ...HUD_HANDLING_BTN, border:"none",
                 backgroundColor: note.trim() ? "var(--gray-900)" : "var(--gray-200)",
@@ -911,7 +910,7 @@ function HandlingBlock({ det, camId }: { det: Detection; camId: string }) {
                 cursor: note.trim() ? "pointer" : "not-allowed",
               }}
             >{t.closeConfirm}</button>
-            <button onClick={() => { setNote(""); setNoteOpen(false); }} style={HUD_HANDLING_BTN}>{t.cancel}</button>
+            <button onClick={() => { setNote(""); setNoteOpen(false); }} className="portal-btn-outline" style={HUD_HANDLING_BTN}>{t.cancel}</button>
           </div>
         </>
       ) : (
@@ -920,11 +919,11 @@ function HandlingBlock({ det, camId }: { det: Detection; camId: string }) {
               closure — the store keeps one row per event, so the closure it replaces stops being
               readable here and the server that owns these has to keep the history. */}
           {handling?.state === "closed" ? (
-            <button onClick={() => clearDetectionHandling(eventId)} style={HUD_HANDLING_BTN}>{t.reopen}</button>
+            <button onClick={() => clearDetectionHandling(eventId)} className="portal-btn-outline" style={HUD_HANDLING_BTN}>{t.reopen}</button>
           ) : (
             <>
-              {!handling && <button onClick={() => write("acknowledged")} style={HUD_HANDLING_BTN}>{t.acknowledge}</button>}
-              <button onClick={() => setNoteOpen(true)} style={HUD_HANDLING_BTN}>{t.closeOut}</button>
+              {!handling && <button onClick={() => write("acknowledged")} className="portal-btn-outline" style={HUD_HANDLING_BTN}>{t.acknowledge}</button>}
+              <button onClick={() => setNoteOpen(true)} className="portal-btn-outline" style={HUD_HANDLING_BTN}>{t.closeOut}</button>
             </>
           )}
         </div>
@@ -975,17 +974,16 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
             <FilterIcon type={det.type} color="var(--gray-700)" size={16} />
             <span style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-700)" }}>{typeLabel(det.type, lang)}</span>
           </div>
-          {det.type === "VIP" && (
-            <div style={{ backgroundColor:"var(--primary-100)", borderRadius:"12px", padding:"2px 6px" }}>
-              <span style={{ fontSize:"12px", fontWeight:800, color:"var(--primary-400)" }}>{det.confidence}%</span>
-            </div>
-          )}
+          {/* The same badge the reel row and the frame screen draw, one step up because this is a
+              popup header rather than a row. It was a purple chip on a purple tint — the strongest
+              mark in the HUD spent on a number, in the colour the HUD's subject already owns. */}
+          {det.type === "VIP" && <ScoreBadge score={det.confidence} size={12} />}
         </div>
-        <button onClick={onClose} aria-label={t.close} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--gray-500)", padding:0, display:"flex" }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M4 4L12 12" stroke="var(--gray-500)" strokeWidth="1.5" strokeLinecap="round"/>
-            <path d="M12 4L4 12" stroke="var(--gray-500)" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
+        {/* One path, like the eleven other closes in the app. Two paths draw the same X but each
+            end gets its own round cap, so the crossing is a shade heavier — and it is the shape
+            that drifts when somebody changes one line and not the other. */}
+        <button onClick={onClose} aria-label={t.close} className="portal-icon-btn" style={{ background:"none", border:"none", cursor:"pointer", color:"var(--gray-500)", padding:"3px", margin:"-3px", display:"flex" }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
       </div>
 
@@ -1052,14 +1050,14 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
 
       {/* Actions */}
       <div style={{ display:"flex", gap:"8px" }}>
-        {onTrackOnMap && <button onClick={onTrackOnMap} style={{ flex:1, padding:"12px 0", borderRadius:"12px", border:"1px solid var(--gray-900)", backgroundColor:"white", color:"var(--gray-900)", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
+        {onTrackOnMap && <button onClick={onTrackOnMap} className={HOVER_QUIET} style={{ flex:1, padding:"12px 0", borderRadius:"12px", border:"1px solid var(--gray-900)", backgroundColor:"white", color:"var(--gray-900)", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M16.6667 8.33333C16.6667 13.3333 10 18.3333 10 18.3333C10 18.3333 3.33333 13.3333 3.33333 8.33333C3.33333 6.56522 4.03571 4.86953 5.28596 3.61929C6.5362 2.36905 8.23189 1.66667 10 1.66667C11.7681 1.66667 13.4638 2.36905 14.714 3.61929C15.9643 4.86953 16.6667 6.56522 16.6667 8.33333Z" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M10 10.8333C11.3807 10.8333 12.5 9.71404 12.5 8.33333C12.5 6.95262 11.3807 5.83333 10 5.83333C8.61929 5.83333 7.5 6.95262 7.5 8.33333C7.5 9.71404 8.61929 10.8333 10 10.8333Z" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           {t.trackOnMap}
         </button>}
-        <button onClick={onAnalyze} style={{ flex:1, padding:"12px 0", borderRadius:"12px", border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
+        <button onClick={onAnalyze} className="portal-btn-primary" style={{ flex:1, padding:"12px 0", borderRadius:"12px", border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M15.2701 1.77009L16.2301 2.73009C16.3163 2.81396 16.3848 2.91425 16.4315 3.02503C16.4783 3.13581 16.5024 3.25484 16.5024 3.37509C16.5024 3.49535 16.4783 3.61438 16.4315 3.72516C16.3848 3.83594 16.3163 3.93623 16.2301 4.02009L4.02009 16.2301C3.93623 16.3163 3.83594 16.3848 3.72516 16.4315C3.61438 16.4783 3.49535 16.5024 3.37509 16.5024C3.25484 16.5024 3.13581 16.4783 3.02503 16.4315C2.91425 16.3848 2.81396 16.3163 2.73009 16.2301L1.77009 15.2701C1.68483 15.1857 1.61715 15.0853 1.57095 14.9745C1.52476 14.8638 1.50098 14.7451 1.50098 14.6251C1.50098 14.5051 1.52476 14.3864 1.57095 14.2757C1.61715 14.1649 1.68483 14.0645 1.77009 13.9801L13.9801 1.77009C14.0645 1.68483 14.1649 1.61715 14.2757 1.57095C14.3864 1.52476 14.5051 1.50098 14.6251 1.50098C14.7451 1.50098 14.8638 1.52476 14.9745 1.57095C15.0853 1.61715 15.1857 1.68483 15.2701 1.77009Z" stroke="white" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M10.5 5.25L12.75 7.5" stroke="white" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1163,8 +1161,15 @@ function Chevron({ expanded }: { expanded: boolean }) {
 }
 
 function SidebarSection({ label, count, badge, expanded, onToggle, activeLabel }: { label:string; count?:number; badge?:number; expanded:boolean; onToggle:()=>void; activeLabel?: (n: number) => string }) {
+  // --gray-50, the same fill CameraItem uses directly below it: a section header and the camera
+  // rows it opens are one list, and only the rows answered the pointer. Inline rather than a class
+  // because the resting `background` is inline here, and an inline declaration cancels :hover.
+  const [hovered, setHovered] = useState(false);
   return (
-    <button onClick={onToggle} style={{ display:"flex", alignItems:"center", gap:"6px", padding:"10px 12px", width:"100%", border:"none", background:"none", cursor:"pointer" }}>
+    <button onClick={onToggle}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ display:"flex", alignItems:"center", gap:"6px", padding:"10px 12px", width:"100%", border:"none", background: hovered ? "var(--gray-50)" : "none", cursor:"pointer" }}>
       <Chevron expanded={expanded} />
       <FolderIcon open={expanded} />
       <span style={{ flex:1, fontSize:"14px", fontWeight:800, color:"var(--gray-800)", letterSpacing:"-0.28px", whiteSpace:"nowrap", textAlign:"left" }}>{label}</span>
@@ -1669,28 +1674,32 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
           <button
             onClick={() => { setCollapsed(false); wantsSearchFocusRef.current = true; }}
             aria-label={t.expandAndSearch}
-            style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex" }}
+            className="portal-icon-btn"
+            style={{ background:"none", border:"none", padding:"4px", cursor:"pointer", display:"flex" }}
           >
             <CollapsedIcon type="search" />
           </button>
           <button
             onClick={() => { setCollapsed(false); setCamTypeFilter("Network"); setExpanded(p => ({ ...p, normal:true })); }}
             aria-label={t.showLiveList}
-            style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex" }}
+            className="portal-icon-btn"
+            style={{ background:"none", border:"none", padding:"4px", cursor:"pointer", display:"flex" }}
           >
             <CollapsedIcon type="camera" badge={activeCams.length} active={activeCams.length > 0} />
           </button>
           <button
             onClick={() => { setCollapsed(false); setCamTypeFilter("File"); setExpanded(p => ({ ...p, video:true })); }}
             aria-label={t.showVideoList}
-            style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex" }}
+            className="portal-icon-btn"
+            style={{ background:"none", border:"none", padding:"4px", cursor:"pointer", display:"flex" }}
           >
             <CollapsedIcon type="video"  badge={checkedVideoCams.length} active={checkedVideoCams.length > 0} />
           </button>
           <button
             onClick={() => { setCollapsed(false); setCamTypeFilter("File"); setExpanded(p => ({ ...p, image:true })); }}
             aria-label={t.showImageList}
-            style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex" }}
+            className="portal-icon-btn"
+            style={{ background:"none", border:"none", padding:"4px", cursor:"pointer", display:"flex" }}
           >
             <CollapsedIcon type="image"  badge={checkedImageCams.length} active={checkedImageCams.length > 0} />
           </button>
@@ -1719,7 +1728,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
             {CAM_TYPE_FILTERS.map(id => {
               const active = camTypeFilter === id;
               return (
-                <button key={id} onClick={() => setCamTypeFilter(id)} style={{
+                <button key={id} onClick={() => setCamTypeFilter(id)} className={active ? undefined : HOVER_QUIET} style={{
                   padding:"6px 14px", borderRadius:"999px", cursor:"pointer",
                   border: active ? "1px solid var(--gray-700)" : "1px solid var(--gray-300)",
                   backgroundColor: active ? "var(--gray-100)" : "white",
@@ -1796,6 +1805,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
             {gridCams.length > 0 && (
               <button
                 onClick={clearAllCams}
+                className="portal-link"
                 style={{ display:"flex", alignItems:"center", gap:"4px", background:"none", border:"none", cursor:"pointer", padding:0, fontSize:"12px", fontWeight:600, color:"var(--primary-400)" }}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -1811,7 +1821,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
               const active = filterType === f.id;
               if (f.id === "All") {
                 return (
-                  <button key="All" onClick={() => setFilterType("All")} style={{
+                  <button key="All" onClick={() => setFilterType("All")} className={active ? undefined : HOVER_QUIET} style={{
                     padding:"6px 16px", borderRadius:"999px", cursor:"pointer",
                     border: active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
                     backgroundColor: active ? "var(--gray-900)" : "white",
@@ -1822,7 +1832,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
               }
               const c = f.color!;
               return (
-                <button key={f.id} onClick={() => setFilterType(f.id)} style={{
+                <button key={f.id} onClick={() => setFilterType(f.id)} className={active ? undefined : HOVER_QUIET} style={{
                   display:"flex", alignItems:"center", gap:"6px",
                   padding:"6px 12px", borderRadius:"999px", cursor:"pointer",
                   border: active ? `1px solid ${c}` : "1px solid var(--gray-300)",
