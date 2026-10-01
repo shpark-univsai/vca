@@ -1888,6 +1888,21 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   /* The starting page size is measured, not fixed at 25 — see useFitRowsPerPage. 69px is this
      table's row height (a 48px face plus the row's own padding), measured in the browser. */
   const { listRef, rowsPerPage, setRowsPerPage, perPageOptions } = useFitRowsPerPage(69);
+  /*
+   * THE GRID PAGES BY WHOLE ROWS, which the table's measured page size cannot do for it.
+   *
+   * `useFitRowsPerPage` counts how many 69px ROWS fit the window, and one row is one person in
+   * the table. In the grid a row is six people, so the number it returns is an item count that
+   * divides into the columns at random: it fitted 7 on a 1440 window, which drew six faces and
+   * then one on a line of its own — the orphan this repo's own card rules forbid.
+   *
+   * 24, 48 and 96 rather than a measurement, because the column count is the browser's to decide
+   * (auto-fill) and is not knowable here. All three fill whole rows at one, two, three, four and
+   * six columns — every width the grid actually produces except five — so the reader still
+   * chooses how long a page is, and every choice comes out square.
+   */
+  const [gridPageSize, setGridPageSize] = useState(24);
+  const pageSize = view === "table" ? rowsPerPage : gridPageSize;
   // Any narrowing changes what page 1 even means, so a filter or a tab switch goes back to it —
   // otherwise searching from page 5 answers with an empty table.
   // Sort belongs in this key too: re-sorting while on page 3 keeps the offset and shows a slice
@@ -1895,9 +1910,9 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
   const pagingKey = `${vipTab}|${q}|${groupFilter ?? ""}|${priorityFilter}|${healthFilter ?? ""}|${view}|${sort.key}|${sort.direction}`;
   const [lastPagingKey, setLastPagingKey] = useState(pagingKey);
   if (lastPagingKey !== pagingKey) { setLastPagingKey(pagingKey); setPage(1); }
-  const totalPages = Math.max(1, Math.ceil(sortedPersons.length / rowsPerPage));
+  const totalPages = Math.max(1, Math.ceil(sortedPersons.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const projectPersons = sortedPersons.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  const projectPersons = sortedPersons.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   /**
    * Bulk selection, for the one job this list cannot do a row at a time: answering the expiry
@@ -2239,10 +2254,17 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
       </div>
         {/* Not on the Groups tab: a party has no face, so a wall of cards would be a wall of empty
             squares. Same segmented control Input Sources uses, so the one gesture for "show me
-            this differently" looks the same in both places. */}
+            this differently" looks the same in both places.
+
+            TABLE FIRST (owner, 2026-10-01: 「토글에 테이블을 앞에 두는게 더 좋지않을까?」).
+            It was grid-first, from 2026-09-03 when the grid was also the view this screen opened
+            on. The default moved to the table and the order never followed, which left the
+            segment reading 「그리드 | 테이블」 with the second one selected — and left this
+            control the only one in the console that leads with the view you are not in. Input
+            Sources is ["table", "map"], so the same gesture now has the same order in both. */}
         {vipTab !== "groups" && (
           <div style={{ display: "flex", alignItems: "center", marginBottom: "8px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px", flexShrink: 0 }}>
-            {(["grid", "table"] as const).map(v => (
+            {(["table", "grid"] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
                 style={{
                   padding: "4px 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
@@ -2929,7 +2951,27 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
         /* gridAutoRows 1fr on top of the fixed slots inside each card. The slots are what make the
            heights match; this is the guard that keeps a row level if something in a card ever
            grows anyway. */
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gridAutoRows: "1fr", gap: "8px" }}>
+        /*
+         * THE FACE IS THE CARD (owner, 2026-10-01: 「vip 등록에 그리드가 꼭 필요할까?」 → ②).
+         *
+         * It nearly was not needed, and the measurement is why: the card was 240px wide and the
+         * face inside it was 60px — twelve pixels more than the table's 48px row. For those
+         * twelve pixels the view gave up sortable headings, the per-row group select and every
+         * column the table lays side by side. This file's own note on the detail sheet said the
+         * quiet part: a 60px thumbnail 「is a locator, not a likeness」, and an operator asking
+         * 「is this the person in front of me」 cannot answer it from one. So the view that exists
+         * to be read by face could not be.
+         *
+         * The grid kept its place by becoming what 2026-09-03 said it was for — 「감시 대상
+         * 명단은 얼굴부터 보는 화면」 — rather than by being defended. The face now fills the
+         * card and the name sits under it.
+         *
+         * 176px minimum, not 240: the question this view answers is "which of these is the person
+         * I am looking at", which wants as many RECOGNISABLE faces on screen as fit. At 176 the
+         * portal's content column takes six across, so each face lands near 190px — about three
+         * times the old thumbnail — and a screenful still holds two dozen of them.
+         */
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(176px, 1fr))", gridAutoRows: "1fr", gap: "8px" }}>
           {/* 8px between tiles, down from 12. With the shadow gone the gap is the only thing
               separating one card from the next, and at 12 a hundred of them read as a hundred
               islands — tightening it lets the grid read as one surface with rules through it. */}
@@ -2949,19 +2991,21 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 // texture — the wall of faces reads as cluttered before it reads as a list. The
                 // hairline is enough to say where a card ends when there are this many of them.
                 backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px",
-                // 12 top and bottom against 16 at the sides. The card holds three short lines and
-                // a 60px thumbnail, and at 16 all round the space above the name read as more
-                // than the space between the lines it separates.
-                padding: "10px 16px",
-                display: "flex", gap: "12px", alignItems: "flex-start", cursor: "pointer",
+                /* No padding on the card any more, and `overflow: hidden` instead: the picture
+                   runs to the card's own edges and is clipped by its radius, so the face is as
+                   large as the card can make it. The text block below carries the padding. */
+                overflow: "hidden",
+                display: "flex", flexDirection: "column", cursor: "pointer",
               }}>
-              {/* 60, not 44. At 44 the thumbnail told you which card was whose and nothing more —
-                  a face that small cannot be compared to a person standing in front of you, which
-                  is what a vipRegistry is for. The detail sheet behind the card carries the size that
-                  actually answers that; this is the largest the grid can give without the tags and
-                  the name losing their line. */}
-              <FacePhoto src={person.photoUrl} size={60} radius="10px" style={{ flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
+              {/* 4:5, the shape a face is photographed in — a square crops a portrait's chin or
+                  its hair, and this picture is the one thing on the card that has to be right.
+                  No `size`: FacePhoto sizes itself from `style` when asked to fill (the detail
+                  sheet's full-bleed picture does the same), so the face follows the column width
+                  instead of a number that would stop matching it. */}
+              <FacePhoto src={person.photoUrl} radius="0"
+                style={{ width: "100%", aspectRatio: "4 / 5", flexShrink: 0 }}
+                hiddenStyle={{ borderWidth: "0 0 1px 0" }} />
+              <div style={{ minWidth: 0, padding: "8px 12px 10px" }}>
                 {/* Name first. The tags used to sit above it, which put a pill where the eye goes
                     for the thing a vipRegistry card is actually scanned for — a face and a name. The
                     group and the priority qualify that name, so they read after it. */}
@@ -3048,10 +3092,12 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
         <TablePagination
           total={sortedPersons.length}
           page={currentPage}
-          rowsPerPage={rowsPerPage}
+          rowsPerPage={pageSize}
           onPage={setPage}
-          onRowsPerPage={setRowsPerPage}
-          perPageOptions={perPageOptions}
+          /* The grid keeps the control and changes what it offers: its sizes are the ones that
+             divide into the columns, so a longer page is still whole rows. */
+          onRowsPerPage={view === "table" ? setRowsPerPage : setGridPageSize}
+          perPageOptions={view === "table" ? perPageOptions : [24, 48, 96]}
         />
       )}
 
