@@ -322,7 +322,7 @@ const T = {
 
     // Temporary password modal — confirm step
     tempModalTitle: "Generate temporary password",
-    tempForLabel: "FOR",
+    tempForLabel: "Recipient",
     // Not "is sent" — nothing leaves the building yet (see the HANDOFF note in `generate`), and
     // the toast that follows already says so. The console asks the relay; the relay delivers.
     mailConsequenceSend: (email: string) => `A reset code is requested for ${email}. You never see it.`,
@@ -342,7 +342,7 @@ const T = {
     tempShownOnce: "This is the only time it is shown. Close this box and it is gone.",
     tempCopy: "Copy",
     tempCopied: "Copied",
-    tempHandoverTitle: "HANDING IT OVER",
+    tempHandoverTitle: "Handover",
     tempHandover: "Read it out on the internal line, or hand it over in person or on internal messenger.",
     resetPassword: "Reset password",
     sendCode: "Request code",
@@ -365,7 +365,7 @@ const T = {
     setupGenerate: "Issue code",
     setupResultTitle: "Setup code",
     setupShownOnce: "You can look this up again from the row menu while it is unused.",
-    setupHandoverTitle: "HANDING IT OVER",
+    setupHandoverTitle: "Handover",
     setupHandover: "Print it or hand it over on paper. It is not a password and cannot be used to sign in — but whoever holds it sets the first password, so treat it like one.",
     setupIssuedTitle: "Setup code issued",
     setupIssuedDesc: (name: string) => `${name} sets their own password with it at /register`,
@@ -401,7 +401,7 @@ const T = {
     // Recovery-mode notice (deployment with no outbound mail)
     recoveryNoticeTitle: "Self-service password reset is off for this installation",
     recoveryNoticeBody: "There is no outbound mail here, so no reset code can be sent to anyone. A locked-out user calls the contact below, and an administrator hands them a way back in from the row actions — a temporary password read out on the line, or a setup code on paper.",
-    recoveryNoticeContactLabel: "THEY CALL",
+    recoveryNoticeContactLabel: "Who to contact",
     recoveryNoticeContactFallback: "Your security operations team",
 
     // Invite modal
@@ -2200,7 +2200,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }
           <>
             <div style={MODAL_BODY}>
               <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
-                <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{t.tempForLabel}</p>
+                <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px", textTransform: "uppercase" }}>{t.tempForLabel}</p>
                 <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", marginTop: "4px" }}>{user.name}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{user.email}</p>
               </div>
@@ -2290,7 +2290,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }
               </div>
 
               <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: c.showExpiry ? "var(--warning-100)" : "var(--info-100)" }}>
-                <p style={{ fontSize: "10px", fontWeight: 700, color: c.showExpiry ? "var(--warning-500)" : "var(--info-500)", letterSpacing: "0.4px" }}>{c.handoverTitle}</p>
+                <p style={{ fontSize: "10px", fontWeight: 700, color: c.showExpiry ? "var(--warning-500)" : "var(--info-500)", letterSpacing: "0.4px", textTransform: "uppercase" }}>{c.handoverTitle}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.5, marginTop: "4px" }}>{c.handover}</p>
               </div>
             </div>
@@ -2562,7 +2562,7 @@ function RecoveryModeNotice({ supportContact }: { supportContact: string | null 
       <div>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.recoveryNoticeTitle}</p>
         <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5, marginTop: "4px" }}>{t.recoveryNoticeBody}</p>
-        <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px", marginTop: "10px" }}>{t.recoveryNoticeContactLabel}</p>
+        <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px", marginTop: "10px", textTransform: "uppercase" }}>{t.recoveryNoticeContactLabel}</p>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-800)", marginTop: "2px" }}>
           {supportContact ?? t.recoveryNoticeContactFallback}
         </p>

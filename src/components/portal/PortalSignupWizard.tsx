@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useVcaStore } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -20,19 +20,14 @@ const T = {
       done: "Done",
     },
     step1: {
-      backToLogin: "Back to log in",
+      backToLogin: "Back to sign in",
       title: "Create your account",
       subtitle: "This account becomes your team's admin and receives system notifications.",
       emailLabel: "Email",
       // Placeholders carry no example prefix ("e.g." / "예:") anywhere in the portal: grey text in
       // an empty field already reads as an example, the prefix eats width, and people type it in.
       emailPlaceholder: "name@example.com",
-      checkAvailability: "Check availability",
-      taken: "Taken",
-      available: "Available",
       emailInvalidError: "Enter a valid email address.",
-      emailTakenError: "This email is already registered. Log in instead.",
-      emailNotCheckedError: "Check availability to confirm this email.",
       passwordLabel: "Password",
       passwordPlaceholder: "At least 8 characters",
       passwordError: "Password does not meet the requirements below.",
@@ -66,13 +61,10 @@ const T = {
       completeButton: "Create team",
     },
     done: {
-      welcomeFallbackName: "there",
-      welcome: (name: string) => `Welcome, ${name}.`,
-      body1: "Your team is ready.",
-      body2: "Projects are created inside it.",
-      redirecting: "Redirecting in a few seconds.",
-      startButton: "Create first project",
-      skipButton: "Go to dashboard",
+      title: "Check your email",
+      body: (email: string) => `We sent a link to ${email}. Open it to finish setting up your team.`,
+      notArrived: "If it hasn't arrived in a few minutes, check your spam folder.",
+      backToLogin: "Back to sign in",
     },
   },
   ko: {
@@ -88,12 +80,7 @@ const T = {
       subtitle: "이 계정이 로그인 ID이자 시스템 알림을 받는 마스터 관리자가 됩니다.",
       emailLabel: "이메일 주소 (로그인 ID)",
       emailPlaceholder: "name@example.com",
-      checkAvailability: "중복 확인",
-      taken: "✗ 사용 불가",
-      available: "✓ 사용 가능",
       emailInvalidError: "올바른 이메일 주소를 입력해주세요.",
-      emailTakenError: "이미 등록된 이메일입니다 — 로그인을 이용해주세요.",
-      emailNotCheckedError: "“중복 확인”을 눌러 이메일을 확인해주세요.",
       passwordLabel: "비밀번호",
       passwordPlaceholder: "영문, 숫자, 특수문자 포함 8자 이상",
       passwordError: "영문 대소문자, 숫자, 특수문자를 포함해 8자 이상 입력해주세요.",
@@ -124,16 +111,13 @@ const T = {
       tosLabel: "서비스 이용약관 및 개인정보처리방침에 동의합니다.",
       tosError: "계속하려면 서비스 이용약관에 동의해야 합니다.",
       marketingLabel: "제품 업데이트 소식을 이메일로 받겠습니다.",
-      completeButton: "가입 완료 — 시작하기 ✓",
+      completeButton: "팀 만들기",
     },
     done: {
-      welcomeFallbackName: "회원",
-      welcome: (name: string) => `🎉 ${name}님, 환영합니다!`,
-      body1: "팀이 생성되었습니다.",
-      body2: "첫 AI 감시 프로젝트를 시작해보세요.",
-      redirecting: "→ 첫 프로젝트 생성 화면으로 자동 이동합니다",
-      startButton: "프로젝트 만들기 시작",
-      skipButton: "나중에 하기 — 대시보드로 이동",
+      title: "메일을 확인해주세요",
+      body: (email: string) => `링크를 ${email} 주소로 보냈습니다. 링크를 열면 팀 만들기가 끝납니다.`,
+      notArrived: "몇 분 안에 오지 않으면 스팸함을 확인해주세요.",
+      backToLogin: "로그인으로 돌아가기",
     },
   },
 } as const;
@@ -231,9 +215,6 @@ const inputStyle: React.CSSProperties = { ...FIELD_STYLE, color: "var(--gray-900
 
 export default function PortalSignupWizard() {
   const router = useRouter();
-  const portalUsers = useVcaStore(s => s.portalUsers);
-  const addTeam = useVcaStore(s => s.addTeam);
-  const addPortalUser = useVcaStore(s => s.addPortalUser);
   const [lang] = usePortalLanguage();
   const t = T[lang];
 
@@ -241,8 +222,6 @@ export default function PortalSignupWizard() {
 
   // Step 1
   const [email, setEmail] = useState("");
-  const [emailChecked, setEmailChecked] = useState(false);
-  const [emailTaken, setEmailTaken] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -261,22 +240,17 @@ export default function PortalSignupWizard() {
   });
   const markTouched2 = (field: Step2Field) => setTouched2(t => ({ ...t, [field]: true }));
 
-  const [createdOrgId, setCreatedOrgId] = useState("");
-
   const emailFormatValid = isEmailFormatValid(email);
   const passwordValid = isPasswordValid(password);
   const confirmValid = confirmPassword.length > 0 && confirmPassword === password;
   const nameValid = fullName.trim().length > 0;
-  const step1Valid = emailFormatValid && emailChecked && !emailTaken && passwordValid && confirmValid && nameValid;
+  const step1Valid = emailFormatValid && passwordValid && confirmValid && nameValid;
 
   const orgNameValid = orgName.trim().length >= 2;
   const channelCountValid = isChannelCountValid(channelCount);
   const step2Valid = orgNameValid && channelCountValid && agreedToS;
 
-  const emailError = !touched.email ? "" :
-    !emailFormatValid ? t.step1.emailInvalidError :
-    emailChecked && emailTaken ? t.step1.emailTakenError :
-    !emailChecked ? t.step1.emailNotCheckedError : "";
+  const emailError = touched.email && !emailFormatValid ? t.step1.emailInvalidError : "";
   const passwordError = touched.password && !passwordValid
     ? t.step1.passwordError : "";
   const confirmError = touched.confirmPassword && confirmPassword.length > 0 && !confirmValid
@@ -286,14 +260,6 @@ export default function PortalSignupWizard() {
   const orgNameError = touched2.orgName && !orgNameValid ? t.step2.orgNameError : "";
   const channelCountError = touched2.channelCount && !channelCountValid ? t.step2.channelError : "";
   const tosError = touched2.agreedToS && !agreedToS ? t.step2.tosError : "";
-
-  const checkAvailability = () => {
-    markTouched("email");
-    if (!emailFormatValid) return;
-    const taken = portalUsers.some(u => u.email.toLowerCase() === email.trim().toLowerCase());
-    setEmailTaken(taken);
-    setEmailChecked(true);
-  };
 
   const handleContinueStep1 = () => {
     setTouched({ email: true, password: true, confirmPassword: true, fullName: true });
@@ -307,11 +273,24 @@ export default function PortalSignupWizard() {
     setOrgName(label.charAt(0).toUpperCase() + label.slice(1));
   };
 
+  /*
+   * ONE OUTCOME, WHOEVER TYPED THE ADDRESS.
+   *
+   * This screen is public, so it cannot say whether an address already has an account — the same
+   * leak the login and recovery screens were closed against, and this was the last way in:
+   * 「중복 확인」 answered it before a single credential had been submitted, and Continue stayed
+   * locked until it was pressed, so the screen made everyone use it.
+   *
+   * So the team and the account are not made here. Create team sends a link to the address and
+   * shows the screen below, and that same screen appears whether the address was free or already
+   * taken. The owner of an existing account is the only one who learns anything, in their inbox.
+   *
+   * Which is why nothing lands in the console any more: there is no account to land in until the
+   * link is opened. The screen that link leads to is not drawn — self-signup is off on an
+   * on-premise installation, where the first administrators are handed over at install time.
+   */
   const completeSignup = () => {
     if (!step2Valid) return;
-    const teamId = addTeam({ name: orgName.trim(), region: "" });
-    addPortalUser({ name: fullName.trim(), email: email.trim(), teamId, projectIds: [], permission: "admin", appAccess: true, status: "active" });
-    setCreatedOrgId(teamId);
     setStep("done");
   };
 
@@ -319,27 +298,6 @@ export default function PortalSignupWizard() {
     setTouched2({ orgName: true, channelCount: true, agreedToS: true });
     if (step2Valid) completeSignup();
   };
-
-  // No `type` in the link any more. Which solution a project uses is the project wizard's own first
-  // question, asked with both templates on screen as cards — pre-answering it from a question on the
-  // team was asking the same thing twice, and a team legitimately holds both kinds.
-  const goToFirstProject = () => {
-    router.push(`/portal?newProject=1&teamId=${createdOrgId}`);
-  };
-
-  // Lets someone who just wants to look around land on the Projects dashboard (empty-state
-  // gallery) instead of being pushed straight into the New Project Wizard.
-  const goToDashboard = () => {
-    router.push(`/portal?teamId=${createdOrgId}`);
-  };
-
-  // Honors the "redirecting automatically" copy — the button below still lets the user skip the wait.
-  useEffect(() => {
-    if (step !== "done") return;
-    const timer = setTimeout(goToFirstProject, 2500);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--gray-50)", display: "flex", flexDirection: "column" }}>
@@ -358,27 +316,13 @@ export default function PortalSignupWizard() {
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               <div>
                 <FieldLabel>{t.step1.emailLabel}<RequiredMark /></FieldLabel>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <input
-                    value={email}
-                    onChange={e => { setEmail(e.target.value); setEmailChecked(false); setEmailTaken(false); }}
-                    onBlur={() => markTouched("email")}
-                    placeholder={t.step1.emailPlaceholder}
-                    style={{ ...inputStyle, flex: 1, border: emailError ? "1px solid var(--danger-500)" : inputStyle.border }}
-                  />
-                  <button
-                    onClick={checkAvailability}
-                    disabled={!email.trim()}
-                    style={{
-                      width: "124px", height: "40px", borderRadius: "8px", border: "none", flexShrink: 0,
-                      backgroundColor: emailChecked ? (emailTaken ? "var(--danger-100)" : "var(--gray-100)") : "var(--gray-900)",
-                      color: emailChecked ? (emailTaken ? "var(--danger-500)" : "var(--success-400)") : "white",
-                      fontSize: "12px", fontWeight: 700, cursor: email.trim() ? "pointer" : "not-allowed",
-                    }}
-                  >
-                    {emailChecked ? (emailTaken ? t.step1.taken : t.step1.available) : t.step1.checkAvailability}
-                  </button>
-                </div>
+                <input
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onBlur={() => markTouched("email")}
+                  placeholder={t.step1.emailPlaceholder}
+                  style={{ ...inputStyle, border: emailError ? "1px solid var(--danger-500)" : inputStyle.border }}
+                />
                 <FieldError text={emailError} />
               </div>
 
@@ -537,30 +481,21 @@ export default function PortalSignupWizard() {
               }}>
                 ✓
               </span>
-              <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)", marginTop: "20px" }}>{t.done.welcome(fullName || t.done.welcomeFallbackName)}</p>
+              <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)", marginTop: "20px" }}>{t.done.title}</p>
               <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", marginTop: "12px", lineHeight: "18px" }}>
-                {t.done.body1}<br />{t.done.body2}
+                {t.done.body(email.trim())}
               </p>
-              <div style={{ width: "100%", backgroundColor: "var(--primary-100)", borderRadius: "10px", padding: "12px 0", marginTop: "24px" }}>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", textAlign: "center" }}>{t.done.redirecting}</p>
-              </div>
-              <button className="portal-btn-primary"
-                onClick={goToFirstProject}
+              <p style={{ fontSize: "12px", color: "var(--gray-400)", marginTop: "10px", lineHeight: "18px" }}>
+                {t.done.notArrived}
+              </p>
+              <button className="portal-btn-quiet"
+                onClick={() => router.push("/login")}
                 style={{
-                  width: "100%", height: "48px", marginTop: "20px", borderRadius: "8px", border: "none",
-                  backgroundColor: "var(--gray-900)", color: "white", fontSize: "14px", fontWeight: 700, cursor: "pointer",
-                }}
-              >
-                {t.done.startButton}
-              </button>
-              <button
-                onClick={goToDashboard}
-                style={{
-                  width: "100%", height: "40px", marginTop: "10px", borderRadius: "8px", border: "none",
+                  width: "100%", height: "40px", marginTop: "24px", borderRadius: "8px", border: "none",
                   backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "12px", fontWeight: 700, cursor: "pointer",
                 }}
               >
-                {t.done.skipButton}
+                {t.done.backToLogin}
               </button>
             </div>
           </StepCard>

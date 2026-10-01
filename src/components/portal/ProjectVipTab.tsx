@@ -317,7 +317,7 @@ const T: Record<"en" | "ko", VipDict> = {
     healthRegisteredWhy: "Everybody on this project's matching list right now. Released rows are not counted; expired ones are, because they are still being matched.",
     healthShowAll: "Show all",
     healthImportErrors: "import errors",
-    healthImportErrorsWhy: "Rows a bulk upload left unusable: no photo at all, a photo the model could not read a face out of, or a suspected duplicate of somebody already listed. Open them and fix the file. A single registration cannot end up here — that form refuses a photo it cannot enrol.",
+    healthImportErrorsWhy: "Rows a bulk upload left unusable: no photo at all, a photo the model could not read a face out of, or a suspected duplicate of somebody already listed. Open them and fix the file — except a duplicate, where the file may be right and the call is whether the two records are the same person. A single registration cannot end up here — that form refuses a photo it cannot enrol.",
     healthExpired: "end date passed",
     // These sentences stop at the list on purpose. Expiry and release take a person off the
     // matching list, which is a fact about this registry and true the moment it is saved. Whether
@@ -524,7 +524,7 @@ const T: Record<"en" | "ko", VipDict> = {
     healthRegisteredWhy: "지금 이 프로젝트의 대조 명단에 있는 사람 전부입니다. 해제된 사람은 빠지고, 만료된 사람은 들어갑니다 — 아직 대조되고 있으니까요.",
     healthShowAll: "전체 보기",
     healthImportErrors: "일괄 업로드 오류",
-    healthImportErrorsWhy: "일괄 업로드가 남긴 쓸 수 없는 행입니다: 사진이 아예 없거나, 사진에서 얼굴을 읽어내지 못했거나, 이미 명단에 있는 사람과 중복으로 의심되는 행. 열어서 파일을 고치면 됩니다. 단건 등록은 여기 들어올 수 없습니다 — 그 폼은 등록할 수 없는 사진을 거절합니다.",
+    healthImportErrorsWhy: "일괄 업로드가 남긴 쓸 수 없는 행입니다: 사진이 아예 없거나, 사진에서 얼굴을 읽어내지 못했거나, 이미 명단에 있는 사람과 중복으로 의심되는 행. 열어서 파일을 고치면 됩니다 — 중복만 예외로, 파일은 맞을 수 있고 두 기록이 같은 사람인지 판단하는 일입니다. 단건 등록은 여기 들어올 수 없습니다 — 그 폼은 등록할 수 없는 사진을 거절합니다.",
     healthExpired: "만료일 지남",
     healthExpiredWhy: "만료일이 지났습니다. 아직 대조되고 있습니다 — 날짜가 사람을 명단에서 내리지는 않습니다. 계속 둘지(만료일 새로 지정) 내릴지(해제) 한 건씩 정해야 합니다.",
     healthExpiredWhyNoRelease: "만료일이 지났습니다. 아직 대조되고 있습니다 — 날짜가 사람을 명단에서 내리지는 않습니다. 계속 둘지(만료일 새로 지정) 내릴지(삭제) 한 건씩 정해야 합니다.",
@@ -2679,15 +2679,19 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
              * row. The reader had the count and the rows and no way to tell which of the three each
              * row was, so "open them and fix the file" meant opening each one to find out.
              *
-             * Ordered, because a row can be more than one: a photoless row is also a name clash
-             * often enough. The photo comes first because it is the one that stops the person being
-             * matched at all; the duplicate is a question about the register, not about whether it
-             * works.
+             * ALL of them, because a row can be more than one and a photoless row is also a name
+             * clash often enough. This used to stop at the first and the photo won, so a row that
+             * was both said only 「사진 없음」 — hiding the half the card's instruction does not
+             * cover. The photo still comes first in the reading order, because it is the one that
+             * stops the person being matched at all; the duplicate is a question about the
+             * register, not about whether it works. At most two can land: a row has no photo or an
+             * unreadable one, never both.
              */
-            const defect = healthIds.missingPhoto.has(person.id) ? t.healthMissingPhoto
-              : healthIds.embeddingFailed.has(person.id) ? t.healthEmbeddingFailed
-              : healthIds.duplicates.has(person.id) ? t.healthDuplicates
-              : null;
+            const defects = [
+              healthIds.missingPhoto.has(person.id) ? t.healthMissingPhoto : null,
+              healthIds.embeddingFailed.has(person.id) ? t.healthEmbeddingFailed : null,
+              healthIds.duplicates.has(person.id) ? t.healthDuplicates : null,
+            ].filter(Boolean);
             return (
               /*
                * THE WHOLE ROW OPENS THE PERSON, and lights up under the pointer — the same
@@ -2761,9 +2765,9 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                       give. Amber like every other outstanding defect in Portal, and 「중복 의심」
                       carries no number — the check is a name match, and a score printed here would
                       be a figure nobody can act on. */}
-                  {defect && (
+                  {defects.length > 0 && (
                     <span style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--warning-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {defect}
+                      {defects.join(" · ")}
                     </span>
                   )}
                 </span>
