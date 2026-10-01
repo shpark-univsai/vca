@@ -692,6 +692,36 @@ interface RegisterValues {
   enrolmentPhotoUrls?: string[];
 }
 
+/*
+ * HOW BIG A FACE HAS TO BE TO JUDGE IT (owner, 2026-10-01: 「사진이 중요한데 사진이 너무 작게
+ * 보여 첨부하고 나서」).
+ *
+ * 72px came over from the previous product without anybody asking what the operator does with
+ * the tile. What they do is decide whether the picture is usable — frontal, sharp, the right
+ * person — and that is the one decision this form exists to get right: every later screen draws
+ * this face, and a photo the model cannot read comes back as 「사진 인식 실패」 days later, once
+ * whoever registered it has walked away.
+ *
+ * EVERY tile grows, not just the first. The hint under the row says a SET improves recognition,
+ * so each picture in the set has to be judgeable — a large primary beside five thumbnails would
+ * say the opposite of what the sentence says.
+ *
+ * Sized to the drawer rather than picked, and the drawer was MEASURED rather than assumed: the
+ * content column is 479px (the name field spans exactly that, from the same left edge as this
+ * row). Three across with the 8px gap the row already used — (479 - 2×8) / 3 = 154 — fills the
+ * line exactly, and six photos still make two tidy rows.
+ *
+ * Four across was the first attempt at 112px and the owner's answer was 「여백 많은데 더 키우면
+ * 안돼?」 — correct: with one photo and the add button, four columns left ~240px of the row
+ * empty, so the field was paying for columns nothing was going to stand in. Three columns is the
+ * largest a face can be here without the set of six turning into a third row.
+ *
+ * NOT grown to fill when there are fewer photos. A tile that is 235px with one picture and 154px
+ * with two would resize the face the operator is looking at, at the moment they add another.
+ */
+const PHOTO_TILE = 154;
+const PHOTO_GAP = 8;
+
 /**
  * Register a face, or edit one already registered — the same five fields either way, so the same
  * form. Editing did not exist: a VIP could be registered and removed and nothing in between, so a
@@ -736,6 +766,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
   const categoriesEnabled = compliance.vipCategories;
   const [categoryId, setCategoryId] = useState(person?.categoryId ?? "");
   const [basis, setBasis] = useState(person?.basis ?? "");
+
   /* NO EXPIRY FIELD, AND NO EXPIRY STATE.
      The form used to seed a date from the site's retention rule and let the registrar depart from
      it. How long a face is kept is the institution's rule, not a decision for whoever happens to
@@ -963,14 +994,14 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
             the whole point here is that there can be several. Wraps, so a set of six does not
             push the form sideways.
           */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: `${PHOTO_GAP}px` }}>
             {photos.map((photo, index) => (
               <span
                 key={photo.url}
                 onMouseEnter={() => setPhotoHoverIndex(index)}
                 onMouseLeave={() => setPhotoHoverIndex(-1)}
                 title={photo.fileName}
-                style={{ position: "relative", display: "flex", width: "72px", height: "72px", borderRadius: "10px", overflow: "hidden", border: BORDER, flexShrink: 0 }}>
+                style={{ position: "relative", display: "flex", width: `${PHOTO_TILE}px`, height: `${PHOTO_TILE}px`, borderRadius: "10px", overflow: "hidden", border: BORDER, flexShrink: 0 }}>
                 <img src={photo.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 {/* WHICH ONE THE REST OF THE PRODUCT SHOWS. Marked rather than left to be
                     inferred from position: the table, the cards and the app all draw this face,
@@ -979,7 +1010,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                   <span style={{
                     position: "absolute", left: 0, right: 0, bottom: 0, padding: "2px 0",
                     backgroundColor: "rgba(24,17,39,0.62)", color: "white",
-                    fontSize: "9px", fontWeight: 700, textAlign: "center",
+                    fontSize: "10px", fontWeight: 700, textAlign: "center",
                   }}>
                     {t.representativePhoto}
                   </span>
@@ -991,7 +1022,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                     title={t.removePhoto}
                     style={{
                       position: "absolute", top: "3px", right: "3px", display: "flex",
-                      width: "18px", height: "18px", alignItems: "center", justifyContent: "center",
+                      width: "20px", height: "20px", alignItems: "center", justifyContent: "center",
                       borderRadius: "50%", border: "none", backgroundColor: "rgba(24,17,39,0.72)",
                       color: "white", cursor: "pointer", padding: 0,
                     }}>
@@ -1005,7 +1036,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               onClick={() => photoInputRef.current?.click()}
               style={{
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px",
-                width: "72px", height: "72px", borderRadius: "10px", flexShrink: 0,
+                width: `${PHOTO_TILE}px`, height: `${PHOTO_TILE}px`, borderRadius: "10px", flexShrink: 0,
                 border: "1px dashed var(--gray-300)", backgroundColor: "var(--gray-50)",
                 cursor: "pointer", fontFamily: "inherit",
               }}>
