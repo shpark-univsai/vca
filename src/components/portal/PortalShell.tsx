@@ -22,7 +22,7 @@ import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
 
 const T = {
   en: {
-    noTeam: "No Team", expand: "Expand sidebar", collapse: "Collapse sidebar",
+    noTeam: "No team", expand: "Expand sidebar", collapse: "Collapse sidebar",
     teamGoneTitle: "That link's team is not here",
     teamGoneDesc: (name: string) => `Showing ${name} instead. Anything the link pointed at will not be on this screen.`,
     newProject: "New project", settingsCrumb: "Settings", close: "Close",

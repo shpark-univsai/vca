@@ -55,7 +55,7 @@ const T = {
     presetGrantsField: "Permissions",
     presetNoScreens: "Tick at least one screen \u2014 an account following a preset with none cannot open the app",
     presetFollowers: (n: number) => `In use · ${n}`,
-    presetFollowersNone: "Unused",
+    presetFollowersNone: "No accounts follow this yet",
     presetEditReach: (n: number) => `Saving changes what these ${n} can open, at once.`,
     presetEdit: "Edit",
     presetNoActions: "A preset with nothing ticked cannot be given to anyone.",
@@ -63,7 +63,7 @@ const T = {
     presetCycleHint: "Click to change",
     presetGroupAll: "All",
     presetGroupSome: "Some",
-    presetRetire: "Delete",
+    presetRetire: "Retire",
     presetRetireAsk: "Retire this preset?",
     presetRetireBody: (n: number) => n === 0
       ? "It stops being offered on the invite form. Nothing else changes."
@@ -739,7 +739,16 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
         width: boxed ? "18px" : "14px", height: boxed ? "18px" : "14px", borderRadius: "50%",
         backgroundColor: boxed ? "var(--gray-900)" : "transparent",
         color: boxed ? "white" : "var(--gray-900)", flexShrink: 0,
-      }}><Check size={boxed ? 11 : 12} strokeWidth={3.2} /></span>
+      }}>
+        {/* OPTICALLY CENTRED, NOT BOX-CENTRED (owner, 2026-10-01: 원 안에 체크 표시가 살짝
+            오른쪽으로 가 있어서 어색해 보이거든).
+            Measured first: the ink's centre sat 0.00px off the disc's centre horizontally and
+            0.23px above it, so nothing was misaligned — a tick is just not a symmetrical shape.
+            Its long arm runs up and to the right, so the mass reads right-of-centre even when the
+            bounding box is exactly centred. The nudge is against the eye, not against the numbers,
+            which is why it is a fraction of a pixel rather than a whole one. */}
+        <Check size={boxed ? 11 : 12} strokeWidth={3.2} style={{ transform: "translate(-0.5px, 0.5px)" }} />
+      </span>
     ) : (
       <Minus size={12} strokeWidth={2.6} aria-hidden="true"
         style={{ color: "var(--gray-300)", flexShrink: 0 }} />

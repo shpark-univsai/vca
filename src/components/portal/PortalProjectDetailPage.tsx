@@ -38,7 +38,7 @@ const T = {
     chipAccessSplit: (portal: number, app: number) => `${portal} portal · ${app} app`,
     statAvailable: (n: number) => `${n} available`,
     statOnlineShare: (pct: number) => `${pct}% online`,
-    approveAccessRequests: "Approve Access Requests",
+    approveAccessRequests: "Approve access requests",
     reasonNotOwner: "Only an owner can change access.",
     cameraConnectivity: "Camera connectivity",
     connectedSuffix: (n: number) => `/ ${n} connected`,
@@ -47,7 +47,7 @@ const T = {
     /* Verbatim from Input Sources, which is where a reader goes next. See the three-state note on
        the status cell. */
     refusing: "Refusing the connection",
-    licenseSubscription: "License subscription",
+    licenseSubscription: "Licence subscription",
     channelsUsedSuffix: (limit: number | string) => `/ ${limit} channels used`,
     vipTargetDb: "VIP / target database",
     todayBadge: (n: number) => `${n} today`,
@@ -77,8 +77,8 @@ const T = {
     attnListingsExpired: (n: number) => `${n} VIP listing(s) have expired`,
     attnListingsExpiring: (n: number, days: number) => `${n} VIP listing(s) expire within ${days} days`,
     attnListingsUnanswered: (n: number) => `${n} VIP listing(s) have no end date set`,
-    attnExpiringSoon: (d: number) => `License expires in ${d} day${d === 1 ? "" : "s"}`,
-    attnExpired: "License has expired",
+    attnExpiringSoon: (d: number) => `Licence expires in ${d} day${d === 1 ? "" : "s"}`,
+    attnExpired: "Licence has expired",
     attnNoMail: "No mail server configured — nobody can be invited",
     attnSoleOwner: "Only one owner account — getting back in would need server access",
     attnNoCoords: (n: number) => `${n} camera${n === 1 ? "" : "s"} not on the map — no coordinates`,
@@ -119,14 +119,14 @@ const T = {
     dropNoteFull: (n: number) => `Dropped its stream ${n} times in the last 7 days`,
     viewAllCameras: (n: number) => `View all ${n} camera${n === 1 ? "" : "s"}`,
     viewAllVips: "Open the registry",
-    recentVipsTitle: "Recently Registered VIPs",
+    recentVipsTitle: "Recently registered VIPs",
     registerVipLink: "Register VIP",
     noVipsYet: "No VIPs registered yet.",
-    accessRequestsTitle: "Access Requests",
+    accessRequestsTitle: "Access requests",
     approve: "Approve",
     dismiss: "Dismiss",
     viewMore: (n: number) => `View ${n} more →`,
-    recentAdminActivity: "Recent Admin Activity",
+    recentAdminActivity: "Recent admin activity",
     noAdminActivity: "No admin activity yet.",
     agoSuffix: " ago",
     toastApprovedTitle: "Access approved — account created",
@@ -360,7 +360,11 @@ function SectionHead({ title, subtitle, action }: {
              -2px nudge put its centre on the title's centre. */
           style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", padding: "2px", marginTop: "-2px", borderRadius: "6px", cursor: "pointer", color: "var(--gray-500)", flexShrink: 0 }}
         >
-          {action.icon}
+          {/* HORIZONTAL OPTICAL NUDGE (2026-10-01). An up-right arrow carries its mass in the
+              corner it points at: measured by ink centroid, 0.60px right of its box centre. The
+              vertical is deliberately NOT corrected here — the -2px above was tuned by eye against
+              the title's line, and moving the glyph down would undo that. */}
+          <span style={{ display: "flex", transform: "translateX(-0.5px)" }}>{action.icon}</span>
         </button>
       )}
     </div>

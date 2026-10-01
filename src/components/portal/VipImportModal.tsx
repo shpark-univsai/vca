@@ -32,7 +32,7 @@ import {
 const T = {
   en: {
     title: "Import VIPs",
-    subtitle: "One person per row. Nothing is replaced; every row is added to this project.",
+    subtitle: "One person per row. Nothing is replaced — every row is added.",
     dropHere: "Drop a CSV or ZIP file here",
     orBrowse: "or choose a file",
     formatNote: "In Excel: File → Save As → CSV UTF-8.",
@@ -66,7 +66,7 @@ const T = {
     emptyFileTitle: "Nothing to import",
     emptyFileBody: "The file has no rows under its header.",
     missingColumnsTitle: "Wrong file, or missing columns",
-    missingColumnsBody: "This file names its columns and none of them is a name. Head the column of names 이름 or Name, or remove the header row and the first column will be read as the name.",
+    missingColumnsBody: "No column is named Name. Rename the name column to Name, or delete the header row — then the first column is read as the name.",
     colLine: "Line", colName: "Name", colMemo: "Memo", colReason: "Reason",
     readyCount: (n: number) => `${n} ready`,
     errorCount: (n: number) => `${n} with errors`,

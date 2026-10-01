@@ -24,7 +24,12 @@ interface IconProps {
 /** The panel-with-a-rail mark every console uses for "collapse the sidebar". */
 function RailToggleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    /* OPTICALLY CENTRED (2026-10-01). The frame is symmetric — x 2.25 to 15.75, centre 9.0 — but
+       the rail line at x=6.75 is ink on the left only, so the mark's weight sits left of its box.
+       Measured by rendering the glyph and taking the centroid of its ink: 0.47px left of centre in
+       its 28px target. The asymmetry IS the mark (a panel with a rail), so the glyph is not
+       changed; it is moved back by what the rail costs. */
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ transform: "translateX(0.5px)" }}>
       <rect x="2.25" y="2.75" width="13.5" height="12.5" rx="3" stroke="currentColor" strokeWidth="1.2"/>
       <path d="M6.75 3.25V14.75" stroke="currentColor" strokeWidth="1.2"/>
     </svg>
@@ -173,10 +178,10 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
   { id: "overview", group: "workspace", label: { en: "Overview", ko: "개요" }, icon: OverviewIcon },
   // VIP above the sources (asked for 2026-09-03): what the project watches FOR is the list an
   // operator maintains day to day; the camera and upload list is the plumbing under it.
-  { id: "vip", group: "workspace", label: { en: "VIP Registry", ko: "VIP 등록" }, icon: VipIcon },
+  { id: "vip", group: "workspace", label: { en: "VIP registry", ko: "VIP 등록" }, icon: VipIcon },
   // The id stays "cameras" — it is a route key, and renaming it would only churn every call site.
   // The label changed because the tab now lists uploaded footage alongside cameras.
-  { id: "cameras", group: "workspace", label: { en: "Input Sources", ko: "입력 소스" }, icon: CamerasIcon },
+  { id: "cameras", group: "workspace", label: { en: "Input sources", ko: "입력 소스" }, icon: CamerasIcon },
   // Servers sit with the cameras (moved out of MANAGE 2026-09-15), one step further down the same
   // plumbing: a camera is assigned to a server, so setting the fleet up needs both and they were
   // in different groups. The Overview had already stopped keeping them apart — its attention band
@@ -220,7 +225,7 @@ export const PROJECT_TABS: { id: DetailTab; group: NavGroup; label: { en: string
      table uses for a column and the invite form uses for a field, so in the rail it read as a
      filter on people rather than as a place. 설정 says it is where the thing is defined. */
   { id: "grants", group: "manage", label: { en: "Permission settings", ko: "권한 설정" }, icon: PermissionsIcon },
-  { id: "license", group: "manage", label: { en: "License", ko: "라이선스" }, icon: LicenseIcon },
+  { id: "license", group: "manage", label: { en: "Licence", ko: "라이선스" }, icon: LicenseIcon },
 
   // The records, after the things that change: you act, then you read what the acting left behind.
   // "What changed" and "who looked" are the two an access review runs on and they are read

@@ -280,7 +280,7 @@ interface VipDict {
 
 const T: Record<"en" | "ko", VipDict> = {
   en: {
-    bulkUpload: "Bulk Upload",
+    bulkUpload: "Bulk upload",
     registerVip: "Register VIP",
     searchPlaceholder: "Search by VIP name",
     sortByPriority: "Priority first",
@@ -416,7 +416,7 @@ const T: Record<"en" | "ko", VipDict> = {
     vipRemovedTitle: "VIP removed",
     undoRemove: "Undo",
     vipRestoredTitle: "Restored to the registry",
-    modalTitle: "Add new person",
+    modalTitle: "Register VIP",
     editModalTitle: (name: string) => `Edit — ${name}`,
     saveEdit: "Save",
     noteLabel: "Note",
@@ -441,7 +441,7 @@ const T: Record<"en" | "ko", VipDict> = {
     currentPhoto: "Current photo",
     cancel: "Cancel",
     register: "Register",
-    priorityText: { normal: "Normal", high: "High", very_high: "Very High" } as Record<NonNullable<Person["priorityLabel"]>, string>,
+    priorityText: { normal: "Normal", high: "High", very_high: "Very high" } as Record<NonNullable<Person["priorityLabel"]>, string>,
     bulkTemplate: "Template",
     bulkTemplateHint: "One person per row: a name, and a note if there is one. Photos are picked in the import step and found by file name. Name them after the person, and only fill the photo column where a file is called something else. A file of bare names works too.",
     bulkTemplateMemoHeader: "Memo",

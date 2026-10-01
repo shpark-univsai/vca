@@ -49,9 +49,9 @@ export type AuditArea =
  */
 export const AUDIT_AREA_LABEL: Record<AuditArea, { en: string; ko: string }> = {
   // PROJECT_TABS "vip"
-  vip: { en: "VIP Registry", ko: "VIP 등록" },
+  vip: { en: "VIP registry", ko: "VIP 등록" },
   // PROJECT_TABS "cameras" — the label says Input Sources because the tab carries uploads too.
-  cameras: { en: "Input Sources", ko: "입력 소스" },
+  cameras: { en: "Input sources", ko: "입력 소스" },
   // PROJECT_TABS "server". Mail settings and API keys live on this tab; see its own note.
   server: { en: "Server & API", ko: "서버 및 API" },
   // PROJECT_TABS "users" + USER_TABS "accounts" / "roster"

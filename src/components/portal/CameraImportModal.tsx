@@ -23,7 +23,7 @@ import {
 const T = {
   en: {
     title: "Import cameras",
-    subtitle: "One row per camera. Nothing is replaced — every row is added to this project.",
+    subtitle: "One row per camera. Nothing is replaced — every row is added.",
     modeQuestion: "What is this file for?",
     modeAdd: "Register new cameras",
     modeAddWhy: "Every row becomes a camera. A code already in the register is refused as a collision.",

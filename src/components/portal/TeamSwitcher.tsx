@@ -11,9 +11,9 @@ import { useToast } from "@/components/Toast";
 
 const T = {
   en: {
-    noTeam: "No Team",
+    noTeam: "No team",
     switchTeam: "Switch team",
-    teamsHeading: "TEAMS",
+    teamsHeading: "Teams",
     newTeam: "New team",
     projectCount: (n: number) => (n === 1 ? "1 project" : `${n} projects`),
 

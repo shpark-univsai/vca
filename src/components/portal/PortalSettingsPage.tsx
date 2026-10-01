@@ -158,7 +158,7 @@ const T = {
     presetLabelPlaceholder: "Operator \u00b7 Investigator \u00b7 Supervisor",
     presetDescField: "What it is for",
     presetDescPlaceholder: "One line. Somebody chooses between these by reading it.",
-    presetGrantsField: "What it grants",
+    presetGrantsField: "Permissions",
     presetNoScreens: "Tick at least one screen \u2014 an account following a preset with none cannot open the app",
     presetFollowers: (n: number) => `${n} account${n === 1 ? "" : "s"} follow this`,
     presetFollowersNone: "No accounts follow this yet",

@@ -102,7 +102,7 @@ const T = {
   en: {
     selectProject: "Select project",
     requestProject: "Add a project",
-    noTeam: "No Team",
+    noTeam: "No team",
     // "folders" came from the GCP picker this borrowed its shape from. Portal has no folders,
     // and a placeholder naming something the product does not have is a promise it cannot keep.
     searchPlaceholder: "Search projects",

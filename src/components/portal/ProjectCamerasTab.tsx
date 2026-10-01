@@ -171,7 +171,7 @@ const T = {
     fieldPassword: "Password",
     fieldPasswordPlaceholder: "Stream password",
     fieldPasswordEditHint: "Leave blank to keep the current password.",
-    fieldServerNoneAvailable: "This project has no server registered yet — add one under Servers & API. A camera can be registered before then.",
+    fieldServerNoneAvailable: "No server on this project yet — add one under Server & API. You can still register the camera now.",
     passwordNotStoredHint: "Sent to the server with the camera and never read back — it is not kept in this browser.",
     fieldServer: "Associated server",
     fieldServerNone: "Select a server",
@@ -238,7 +238,7 @@ const T = {
     kindNormalWhy: "Hands over a stream for a Face Recognition or Normal Camera node to analyse.",
     kindAiWhy: "Runs the analysis on the device and reports results, so it reports to an AI Camera node.",
     fieldServerNoneForKind: "This project has no server that takes this kind of camera yet.",
-    fieldMaker: "Maker",
+    fieldMaker: "Make",
     cancel: "Cancel",
     // One word, both languages. Every other save in Portal is "Save" / "저장" — the server form,
     // the roster, the categories — and this was the only 변경사항 저장 among nine plain 저장.
