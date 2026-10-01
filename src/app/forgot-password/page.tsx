@@ -24,7 +24,7 @@ const T = {
     // screens name the same desk. Generic on purpose: an invented extension is worse than none.
     securityTeam: "Your security operations team",
     adminRemedies: "They’ll give you a temporary password or a setup code.",
-    backToLogin: "Back to log in",
+    backToLogin: "Back to sign in",
     haveCode: "Already have a code?",
     activateAccount: "Activate your account",
     emailTitle: "Forgot your password?",
@@ -37,7 +37,7 @@ const T = {
     noAddressFallback: "contact your security operations team",
     sendCode: "Request code",
     rememberedIt: "Remembered it?",
-    logIn: "Log in",
+    logIn: "Sign in",
     throttledTitle: "Too many attempts",
     throttledSub: "Code entry is locked for now",
     throttledBody: "Try again in a few minutes, or contact your administrator.",
@@ -737,7 +737,7 @@ function ForgotPasswordFlow() {
           {step === "done" && (
             <>
               {heading(t.doneTitle, [t.doneSub])}
-              {/* "Back to log in", not "Log in": nothing was changed, so there is no new password
+              {/* "Back to sign in", not "Sign in": nothing was changed, so there is no new password
                   to sign in with. */}
               {primaryButton(t.backToLogin, true, () => router.push("/login"))}
             </>

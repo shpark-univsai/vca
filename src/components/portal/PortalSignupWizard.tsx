@@ -14,7 +14,7 @@ const STEP_PILL_KEYS: (SignupStep | "landing")[] = ["landing", "account", "team"
 const T = {
   en: {
     progress: {
-      landing: "Log in",
+      landing: "Sign in",
       account: "Create account",
       team: "Create team",
       done: "Done",

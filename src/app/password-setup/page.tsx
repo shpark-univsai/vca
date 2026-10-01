@@ -34,7 +34,7 @@ const T = {
     deadBodyTemp: (hours: number) => `A temporary password lasts ${hours} hours, and stops working once it has been changed. Ask your administrator for a new one.`,
     whoToContact: "WHO TO CONTACT",
     securityTeam: "Your security operations team",
-    backToLogin: "Back to log in",
+    backToLogin: "Back to sign in",
     paperCodeInstead: "Given a code on paper instead?",
     activateAccount: "Activate your account",
     titleTemp: "Choose your own password",

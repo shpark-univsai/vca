@@ -10,7 +10,7 @@ import { BORDER, SupportContactModal } from "./PortalShared";
 import { SUPPORT_CONTACT } from "@/lib/vcaStore";
 
 const T = {
-  en: { toApp: "Go to app", settings: "Settings", support: "Contact support", logOut: "Log out" },
+  en: { toApp: "Go to app", settings: "Settings", support: "Contact support", logOut: "Sign out" },
   ko: { toApp: "앱으로 이동", settings: "설정", support: "고객 지원", logOut: "로그아웃" },
 } as const;
 

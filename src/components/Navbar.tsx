@@ -56,7 +56,7 @@ const T = {
     sidebar: "Sidebar",
     left: "Left",
     right: "Right",
-    logOut: "Log out",
+    logOut: "Sign out",
   },
   ko: {
     goToDashboard: "대시보드로 이동",

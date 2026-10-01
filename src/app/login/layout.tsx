@@ -4,8 +4,8 @@ import type { Metadata } from "next";
    The page itself is a client component and cannot export metadata, which is what this thin route
    layout is for. */
 export const metadata: Metadata = {
-  title: "Log in – VCA",
-  description: "Log in to VCA.",
+  title: "Sign in – VCA",
+  description: "Sign in to VCA.",
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {

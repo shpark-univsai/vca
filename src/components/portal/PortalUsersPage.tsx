@@ -331,7 +331,7 @@ const T = {
     mailConsequenceInvalidates: "Any reset code already on its way to them stops working.",
     tempConsequenceInvalidate: "Their current password stops working the moment you generate this.",
     tempConsequenceOnce: "The new password is shown once, on the next screen. It is never stored and cannot be looked up again.",
-    tempConsequenceMustChange: "They must set a password of their own the first time they log in with it.",
+    tempConsequenceMustChange: "They must set a password of their own the first time they sign in with it.",
     tempConsequenceExpiry: (hours: number) => `It stops working after ${hours} hours, used or not.`,
     tempConsequenceExpiryDays: (days: number) => `It stops working after ${days} days, used or not.`,
     tempGenerate: "Generate",

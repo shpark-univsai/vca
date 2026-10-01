@@ -144,7 +144,7 @@ const T = {
     states: { active: "Active", invited: "Never activated", suspended: "Suspended" },
     goPortal: "Go to Portal",
     goApp: "Go to the monitoring app",
-    logOut: "Log out",
+    logOut: "Sign out",
     activateWithCode: "Activate with a registration code",
     contactNamed: (who: string) => <>For an account or access, contact <strong style={{ color: "var(--gray-600)" }}>{who}</strong>.</>,
     contactGeneric: "For an account or access, contact your security operations team.",

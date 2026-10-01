@@ -19,7 +19,7 @@ const T = {
     sentTitle: "Request sent",
     sentReview: "Your administrator will review it.",
     sentInvite: "If it is approved you will get an invitation at",
-    backToLogin: "Back to log in",
+    backToLogin: "Back to sign in",
     title: "Request access",
     subtitle: "You do not have permission for this project yet",
     project: "Project",
@@ -34,7 +34,7 @@ const T = {
     reasonPlaceholder: "What do you need access for?",
     send: "Send request",
     haveAccess: "Already have access?",
-    logIn: "Log in",
+    logIn: "Sign in",
   },
   ko: {
     errName: "이름을 입력해주세요.",

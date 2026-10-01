@@ -271,7 +271,7 @@
    smearing the glyphs, which is visibly heavier and muddier than SUIT's real variable axis.
 
    Measured 2026-09-16 against the backend team's port of this app: its login buttons compute
-   `Arial` at weights 600/700/800 ("Log in", "한국어", "Forgot password?"), and "the font looks
+   `Arial` at weights 600/700/800 ("Sign in", "한국어", "Forgot password?"), and "the font looks
    oddly thick" was how it was reported. The port is not at fault — it dropped nothing. This rule
    never existed; the codebase compensated with `fontFamily: "inherit"` written inline a hundred
    times, so any screen whose author forgot it had the bug, and a port that rewrote those screens

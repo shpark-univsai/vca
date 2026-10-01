@@ -17,7 +17,7 @@ import { useLanguage } from "@/lib/i18n";
 // lib/authErrors.ts beside the contract they belong to.
 const T = {
   en: {
-    title: "Log in",
+    title: "Sign in",
     welcome: "Welcome to VCA",
     activateWithCode: "Activate with a registration code",
     securityTeam: "Your security operations team",
