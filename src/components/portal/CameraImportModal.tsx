@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useVcaStore, projectChannelLimit } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
-import { BORDER, Drawer } from "./PortalShared";
+import { FormLabel, BORDER, Drawer } from "./PortalShared";
 import {
   buildCameraImportRows, decodeSpreadsheetBytes, importableRows, isBlocking, looksLikeXlsx, parseDelimited,
   type CameraImportIssue, type CameraImportMode, type ParsedCameraRow,
@@ -464,7 +464,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
             stream URL and credentials of everything already registered under a matching code.
             See CameraImportMode.
           */}
-          <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.modeQuestion}</p>
+          <FormLabel as="span" style={{ marginBottom: "8px" }}>{t.modeQuestion}</FormLabel>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
             {([
               { value: "add" as CameraImportMode, label: t.modeAdd, why: t.modeAddWhy },

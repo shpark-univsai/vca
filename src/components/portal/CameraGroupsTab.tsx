@@ -10,6 +10,7 @@ import CameraMapView from "./CameraMapView";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
+  FormLabel,
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TextField,
   ConfirmModal, Drawer, FieldError, PanelCancel, PanelPrimary, RequiredMark, RowActionsMenu, usePortalEditAccess,
 } from "./PortalShared";
@@ -419,9 +420,6 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
     if (refusal === "duplicate-label") setLabelError(t.duplicate);
   };
 
-  const fieldLabel: React.CSSProperties = {
-    fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px",
-  };
   /* The two whole-selection controls, marked (owner: 전부고르기랑 초기화앞에 각각 텍스트랑
      어울리는 아이콘 넣어줘). CheckCheck for 모두 선택 — the double tick is the one mark that
      already means "all of them ticked" — and RotateCcw for 선택 초기화, which is the reset arrow
@@ -570,7 +568,7 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
             384px floor on every window instead of spending the slack. */}
         <div style={{ minHeight: "100%", boxSizing: "border-box", padding: "16px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
-            <label style={fieldLabel}>{t.createName}<RequiredMark /></label>
+            <FormLabel as="span">{t.createName}<RequiredMark /></FormLabel>
             <TextField value={label} onChange={v => { setLabel(v); setLabelError(null); }} placeholder={namePlaceholder} autoFocus />
             {labelError && <FieldError>{labelError}</FieldError>}
           </div>
@@ -581,10 +579,10 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
               recognisable from the name and the camera names, and this line earns its place on a
               site with forty of them, telling 오차드 라인 from 오차드 외곽. */}
           <div>
-            <label style={fieldLabel}>
+            <FormLabel as="span">
               {t.descField}
               <span style={{ fontWeight: 600, color: "var(--gray-400)", marginLeft: "5px" }}>{t.descOptional}</span>
-            </label>
+            </FormLabel>
             <TextField value={description} onChange={setDescription} />
           </div>
 

@@ -9,7 +9,7 @@ import { getComplianceConfig } from "@/lib/complianceConfig";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
-import { ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, TableSkeleton, TableLoadFailed, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto, FloatingBulkBar, BulkBarDivider } from "./PortalShared";
+import { FormLabel, BulkBarSubject, BulkBarExit, ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, TableSkeleton, TableLoadFailed, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto, FloatingBulkBar, BulkBarDivider } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 import VipImportModal from "./VipImportModal";
 import { DateRangeTrigger, dateKeyOf } from "../shared/DateRangePicker";
@@ -977,7 +977,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
             bottom of a form people fill top to bottom, after four fields that are only useful
             once it works. */}
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+          <FormLabel as="span">
             {/* Starred when editing too (owner's ask, 2026-09-18: "이름에는 필수표시 있으니까
                 사진에도 필수표시가 있어야할것같구"). The mark says what the RECORD needs, not
                 what you have to retype right now — the name field carries it over a name that is
@@ -986,7 +986,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                 It used to drop the star while editing, which made the one form show a starred
                 name beside an unstarred photo and left the reader guessing which rule applied. */}
             {t.facePhotoLabelRequired}
-          </label>
+          </FormLabel>
           <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoChange} style={{ display: "none" }} />
           {/*
             A ROW OF TILES AND A + AT THE END, which is the shape the previous product used for
@@ -1069,7 +1069,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
           )}
         </div>
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}</label>
+          <FormLabel as="span">{t.nameLabel}</FormLabel>
           <TextField value={name} onChange={setName} placeholder={t.namePlaceholder} />
         </div>
         {/* Classification, then what backs it, then when it ends — the three questions an audit
@@ -1079,7 +1079,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
             Behind complianceConfig.vipCategories: with it off the select is gone, `categoryId`
             stays empty, and the basis below is therefore always optional on its own. */}
         {categoriesEnabled && <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.categoryLabel}</label>
+          <FormLabel as="span">{t.categoryLabel}</FormLabel>
           <FilterSelect
             value={categoryId}
             onChange={pickCategory}
@@ -1109,9 +1109,9 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
          * now, and only the label changes.
          */}
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+          <FormLabel as="span">
             {basisRequired ? t.basisLabelRequired : t.basisLabel}
-          </label>
+          </FormLabel>
           <TextField value={basis} onChange={setBasis} placeholder={t.basisPlaceholder} />
         </div>
         {/*
@@ -1149,7 +1149,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
           </button>
           {moreOpen && <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "14px" }}>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.priorityLabel}</label>
+              <FormLabel as="span">{t.priorityLabel}</FormLabel>
               <FilterSelect
                 value={priorityLabel}
                 onChange={v => setPriorityLabel(v as typeof priorityLabel)}
@@ -1160,7 +1160,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                 editable thing on a sheet whose other four values were read-only, next to an Edit
                 item in the menu — which read as "the group is all you may change". */}
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.colGroup}</label>
+              <FormLabel as="span">{t.colGroup}</FormLabel>
               {newGroupName === null ? (
                 <FilterSelect
                   value={groupId}
@@ -1192,7 +1192,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               )}
             </div>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.noteLabel}</label>
+              <FormLabel as="span">{t.noteLabel}</FormLabel>
               <TextField value={description} onChange={setDescription} placeholder={t.notePlaceholder} />
             </div>
           </div>}
@@ -1302,7 +1302,7 @@ function GroupModal({ t, group, projectId, onClose }: {
   };
 
   const label = (text: string) => (
-    <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{text}</label>
+    <FormLabel as="span">{text}</FormLabel>
   );
 
   return (
@@ -2572,9 +2572,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               positioning is relative to the window and a band would run under the rail. */}
           {visibleSelectedIds.length > 0 && (
             <FloatingBulkBar>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>
-                {t.selectedCount(visibleSelectedIds.length)}
-              </span>
+              <BulkBarSubject>{t.selectedCount(visibleSelectedIds.length)}</BulkBarSubject>
               <BulkBarDivider />
               {/* Selecting is still allowed for a read-only account — it is how you count a
                   subset. What they lose is the thing that changes rows, and the bar says so
@@ -2645,12 +2643,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                   {t.bulkDelete}
                 </button>
               )}
-              <button
-                onClick={clearSelection}
-                style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}
-              >
-                {t.bulkClearSelection}
-              </button>
+              <BulkBarExit onClick={clearSelection}>{t.bulkClearSelection}</BulkBarExit>
             </FloatingBulkBar>
           )}
           {/* The column headings stay while the rows go under them. position:sticky against the
@@ -3174,7 +3167,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           onClose={() => { setReleasing(null); setReleaseReason(""); }}
         >
           <div style={{ marginTop: "14px" }}>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.releaseReasonLabel}</label>
+            <FormLabel as="span">{t.releaseReasonLabel}</FormLabel>
             <TextField value={releaseReason} onChange={setReleaseReason} placeholder={t.releaseReasonPlaceholder} autoFocus />
           </div>
         </ConfirmModal>
@@ -3197,7 +3190,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
           {/* A reason, the same as releasing asks for. Putting somebody back under watch is not
               a lighter act than taking them off it. */}
           <div style={{ marginTop: "14px" }}>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.releaseReasonLabel}</label>
+            <FormLabel as="span">{t.releaseReasonLabel}</FormLabel>
             <TextField value={reinstateReason} onChange={setReinstateReason} placeholder={t.reinstateReasonPlaceholder} autoFocus />
           </div>
         </ConfirmModal>

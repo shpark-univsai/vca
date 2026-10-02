@@ -10,7 +10,7 @@ import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password
 import { SETUP_CODE_TTL_DAYS, codeDaysRemaining, formatCode } from "@/lib/staffRoster";
 import { getAuthConfig, hasOutboundMail } from "@/lib/authConfig";
 import { useToast } from "../Toast";
-import { SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, StatusBadge, type StatusTone, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL, ActiveFilterCount } from "./PortalShared";
+import { FormLabel, SummaryStrip, TABLE_HEADER_COLOR, TextField, FIELD_STYLE, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, ConfirmModal, Drawer, Tooltip, usePortalEditAccess, AppGrantList, useGrantNames, presetSummary, StatusBadge, type StatusTone, RequiredMark, PanelCancel, PanelPrimary, PICKED_LINE, PICKED_FILL, ActiveFilterCount } from "./PortalShared";
 import { usePortalLanguage } from "@/lib/i18n";
 import CameraGroupsTab from "./CameraGroupsTab";
 import AccessPresetsTab from "./AccessPresetsTab";
@@ -1691,7 +1691,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             one field nobody can guess for you — the name, this form can.
           */}
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailLabel}<RequiredMark /></label>
+            <FormLabel as="span">{t.emailLabel}<RequiredMark /></FormLabel>
             {/* THE PLACEHOLDER HAS TO BE AN ADDRESS THIS FORM WOULD ACCEPT. It was a fixed
                 "name@univs.ai" — our own domain, not the customer's — while the field below it
                 refuses anything off the installation's domain. Same mailDomain the validation
@@ -1713,7 +1713,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               NO "filled in from the address" LINE ANY MORE (owner, 2026-09-21: 필드 밑 회색
               설명줄 다 없앤다) — the name appearing as the address is typed says it by happening. */}
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.nameLabel}<RequiredMark /></label>
+            <FormLabel as="span">{t.nameLabel}<RequiredMark /></FormLabel>
             <TextField value={name} onChange={v => { setNameTouched(true); setName(v); }} placeholder={t.namePlaceholder} />
           </div>
 
@@ -1757,7 +1757,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             <div>
               <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                 <div>
-                  <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.projectsLabel}<RequiredMark /></label>
+                  <FormLabel as="span">{t.projectsLabel}<RequiredMark /></FormLabel>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                     {teamProjects.map(p => {
                       const active = projectIds.includes(p.id);
@@ -1787,7 +1787,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                   )}
                 </div>
                 <div>
-                  <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.accessLabel}</label>
+                  <FormLabel as="span">{t.accessLabel}</FormLabel>
                   {/* type="button" ON EVERY CONTROL INSIDE THE FORM. A <button> in a form is a
                       SUBMIT button unless it says otherwise, and this dialog is a real <form> so
                       Enter sends it (c0f5747). Measured after that change: filling the address and
@@ -1818,7 +1818,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                 </div>
                 {accessMode !== "appOnly" && (
                   <div>
-                    <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.permissionLabel}</label>
+                    <FormLabel as="span">{t.permissionLabel}</FormLabel>
                     <FilterSelect
                       value={permission}
                       onChange={v => setPermission(v as PortalPermission)}
@@ -1877,7 +1877,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               form that never shows the team would put somebody in the wrong one silently.
             */}
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.foldTeam}</label>
+              <FormLabel as="span">{t.foldTeam}</FormLabel>
               <FilterSelect value={teamId} onChange={changeTeam} options={teams.map(o => ({ value: o.id, label: o.name }))} />
             </div>
           </div>
@@ -1992,14 +1992,14 @@ function ChangeEmailPanel({ user, mailDomain, onClose, onBack }: {
       }>
       <div style={{ padding: "4px 20px 20px", display: "flex", flexDirection: "column", gap: "16px" }}>
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailPanelCurrent}</label>
+          <FormLabel as="span">{t.emailPanelCurrent}</FormLabel>
           {/* The address being replaced, stated rather than left to memory: the field below opens
               pre-filled with it, so without this line there is nothing to compare a typed change
               against. */}
           <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", wordBreak: "break-all" }}>{user.email}</p>
         </div>
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.emailPanelNew}</label>
+          <FormLabel as="span">{t.emailPanelNew}</FormLabel>
           <TextField value={value} onChange={setValue} type="email" placeholder={mailDomain ? `name@${mailDomain}` : "name@example.com"} autoFocus />
           {error && <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>{error}</p>}
         </div>
@@ -2379,10 +2379,10 @@ function FormSection({ label, required, children }: {
 }) {
   return (
     <div>
-      <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "8px" }}>
+      <FormLabel as="span" style={{ marginBottom: "8px" }}>
         {label}
         {required && <RequiredMark />}
-      </label>
+      </FormLabel>
       {children}
     </div>
   );
@@ -3180,9 +3180,9 @@ function RosterEntryModal({ entry, projectId, onClose, onCreated, t }: {
      marginLeft — 7px where the rest of the console has 3. The mark is part of the label's text,
      not a second item beside it, so it sits in the text flow. */
   const label = (text: string, required?: boolean) => (
-    <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>
+    <FormLabel as="span">
       {text}{required && <RequiredMark />}
-    </label>
+    </FormLabel>
   );
   const inputStyle = FIELD_STYLE;
 

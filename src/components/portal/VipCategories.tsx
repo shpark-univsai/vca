@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useVcaStore, VIP_CATEGORY_COLORS, type VipCategory, type VipCategoryColor } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, CONTROL_HEIGHT, ConfirmModal, Drawer, TextField } from "./PortalShared";
+import { FormLabel, BORDER, CONTROL_HEIGHT, ConfirmModal, Drawer, TextField } from "./PortalShared";
 
 /**
  * VIP categories are a TEAM's policy, not a project's.
@@ -211,15 +211,15 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
         ) : editing !== null ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catLabelField}</label>
+              <FormLabel as="span">{t.catLabelField}</FormLabel>
               <TextField value={label} onChange={setLabel} placeholder={t.catLabelPlaceholder} autoFocus />
             </div>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catValidDays}</label>
+              <FormLabel as="span">{t.catValidDays}</FormLabel>
               <TextField value={validDays} onChange={v => setValidDays(v.replace(/[^0-9]/g, ""))} placeholder={t.catValidDaysNone} inputMode="numeric" />
             </div>
             <div>
-              <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.catColor}</label>
+              <FormLabel as="span">{t.catColor}</FormLabel>
               <div style={{ display: "flex", gap: "8px" }}>
                 {VIP_CATEGORY_COLORS.map(name => (
                   <button key={name} onClick={() => setColor(name)} title={name}

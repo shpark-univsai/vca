@@ -33,6 +33,7 @@ import { PROJECT_TIME_ZONE } from "@/lib/time";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import {
+  FormLabel,
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TextField,
   ConfirmModal, FieldError, RequiredMark, RowActionsMenu, StatusBadge, TableEmpty, Drawer,
 } from "./PortalShared";
@@ -235,7 +236,7 @@ function IssueKeyModal({ projectId, onClose }: { projectId: string; onClose: () 
       ) : (
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldName}<RequiredMark /></label>
+            <FormLabel as="span">{t.fieldName}<RequiredMark /></FormLabel>
             <TextField value={name} onChange={v => { setName(v); setRefusal(null); }} placeholder={t.fieldNamePlaceholder} />
             <p style={{ fontSize: "10px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.fieldNameHint}</p>
             {refusal && <FieldError>{refusal}</FieldError>}
@@ -244,7 +245,7 @@ function IssueKeyModal({ projectId, onClose }: { projectId: string; onClose: () 
           {/* Two cards rather than a select: what a key may do is the decision on this dialog
               worth reading twice, and a collapsed list hides the half that matters. */}
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldScope}<RequiredMark /></label>
+            <FormLabel as="span">{t.fieldScope}<RequiredMark /></FormLabel>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {([["read", t.scopeRead, t.scopeReadDesc], ["readwrite", t.scopeWrite, t.scopeWriteDesc]] as const).map(([value, label, desc]) => (
                 <label key={value} style={{
@@ -265,7 +266,7 @@ function IssueKeyModal({ projectId, onClose }: { projectId: string; onClose: () 
           </div>
 
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldExpiry}<RequiredMark /></label>
+            <FormLabel as="span">{t.fieldExpiry}<RequiredMark /></FormLabel>
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
               {EXPIRY_CHOICES.map(choice => {
                 const selected = expiryDays === choice.days;

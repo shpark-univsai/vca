@@ -13,7 +13,7 @@ import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, TABLE_RULE, CARD_BORDER, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Tooltip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, FloatingBulkBar, BulkBarDivider, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
+import { FormLabel, BulkBarSubject, BulkBarExit, useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, TABLE_RULE, CARD_BORDER, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Tooltip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, FloatingBulkBar, BulkBarDivider, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
 import CameraDetailPanel from "./CameraDetailPanel";
 
 const T = {
@@ -858,7 +858,7 @@ function CameraFormModal({
     opts?: { type?: string; inputMode?: "decimal"; error?: string; remountKey?: number; autoFocus?: boolean },
   ) => (
     <div>
-      <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{label}</label>
+      <FormLabel as="span">{label}</FormLabel>
       {/* TextField, not a bare input: it carries the shared height and the shared focus ring, so a
           field and the select next to it in this same form stop being two different controls. */}
       <TextField
@@ -879,7 +879,7 @@ function CameraFormModal({
 
   const selectField = (label: React.ReactNode, value: string, options: { value: string; label: string }[], onChange: (v: string) => void) => (
     <div>
-      <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{label}</label>
+      <FormLabel as="span">{label}</FormLabel>
       <FilterSelect value={value} onChange={onChange} options={options} />
     </div>
   );
@@ -966,7 +966,7 @@ function CameraFormModal({
             Each says what it is under its name — "AI camera" is not self-explanatory to somebody
             holding an installer's invoice. */}
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.fieldSourceType}<RequiredMark /></label>
+          <FormLabel as="span">{t.fieldSourceType}<RequiredMark /></FormLabel>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             {([
               { value: "normal" as CameraKind, label: t.kindNormal, why: t.kindNormalWhy },
@@ -2292,9 +2292,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       */}
       {visibleSelectedIds.length > 0 && (
         <FloatingBulkBar>
-          <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>
-            {t.selectedCount(visibleSelectedIds.length)}
-          </span>
+          <BulkBarSubject>{t.selectedCount(visibleSelectedIds.length)}</BulkBarSubject>
           <BulkBarDivider />
           {/* Selecting rows is still allowed — it is how you count a subset. The two things
               that change them are what a read-only account loses, and the bar says so rather
@@ -2326,12 +2324,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           )}
           {/* The way out of the mode, and the reason the bar can be this assertive: nothing here
               is reachable by accident, and one click puts the page back. */}
-          <button
-            onClick={clearSelection}
-            style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}
-          >
-            {t.bulkClearSelection}
-          </button>
+          <BulkBarExit onClick={clearSelection}>{t.bulkClearSelection}</BulkBarExit>
         </FloatingBulkBar>
       )}
 
@@ -2977,7 +2970,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           onClose={() => { setGroupingSelection(false); setGroupName(""); setGroupError(null); }}
         >
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.groupNameLabel}<RequiredMark /></label>
+            <FormLabel as="span">{t.groupNameLabel}<RequiredMark /></FormLabel>
             <TextField value={groupName} onChange={v => { setGroupName(v); setGroupError(null); }} placeholder={t.groupNamePlaceholder} />
             {groupError && <FieldError>{groupError}</FieldError>}
           </div>

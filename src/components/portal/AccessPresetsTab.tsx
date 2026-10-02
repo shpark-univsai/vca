@@ -10,6 +10,7 @@ import {
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
+  FormLabel, BulkBarSubject, BulkBarExit,
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, AppGrantList, FloatingBulkBar, BulkBarDivider,
   TextField, Drawer, GRANT_TREE, GrantGroupIcon, type GrantRowDef, type GrantGroupDef,
 } from "./PortalShared";
@@ -475,17 +476,14 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
         <FloatingBulkBar>
           {/* The bar says what mode you are in, the way the camera list's bar says what the
               selection is — without it a dark pill holding two buttons has no subject. */}
-          <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>{t.presetEditing}</span>
+          <BulkBarSubject>{t.presetEditing}</BulkBarSubject>
           <BulkBarDivider />
           <button onClick={save} disabled={!dirty || emptyDraft}
             title={emptyDraft ? t.presetNoActions : undefined}
             style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: dirty && !emptyDraft ? "white" : "var(--gray-700)", color: dirty && !emptyDraft ? "var(--gray-900)" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: dirty && !emptyDraft ? "pointer" : "not-allowed", flexShrink: 0, fontFamily: "inherit" }}>
             {t.presetSave}
           </button>
-          <button onClick={stopEditing}
-            style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}>
-            {t.presetCancel}
-          </button>
+          <BulkBarExit onClick={stopEditing}>{t.presetCancel}</BulkBarExit>
         </FloatingBulkBar>
       )}
 
@@ -1032,11 +1030,11 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
       }>
     <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "20px" }}>
       <div>
-        <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.presetLabelField}</label>
+        <FormLabel as="span">{t.presetLabelField}</FormLabel>
         <TextField value={label} onChange={setLabel} placeholder={t.presetLabelPlaceholder} autoFocus />
       </div>
       <div>
-        <label style={{ fontSize: "12px", color: "var(--gray-500)", display: "block", marginBottom: "6px" }}>{t.presetGrantsField}</label>
+        <FormLabel as="span">{t.presetGrantsField}</FormLabel>
         {/* White ground for a ticked row, not the default --gray-50: this editor is itself a
             --gray-50 card, and a ticked row on it would be the same colour as the card it sits in
             — the tick would be the only thing saying the row is on. */}

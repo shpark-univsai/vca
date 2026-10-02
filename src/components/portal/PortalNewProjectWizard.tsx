@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useVcaStore, canManageAccess, currentPortalUser, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { BORDER, CONTROL_HEIGHT, FieldError, RequiredMark } from "./PortalShared";
+import { FormLabel, BORDER, CONTROL_HEIGHT, FieldError, RequiredMark } from "./PortalShared";
 
 const TEMPLATES: { type: ProjectType; icon: string }[] = [
   { type: "smart_city", icon: "/icons/portal-smart-city.png" },
@@ -233,7 +233,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
             {t.title}
           </p>
         </div>
-        <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "12px" }}>{t.step1}</p>
+        <FormLabel as="span" style={{ marginBottom: "12px" }}>{t.step1}</FormLabel>
         <div style={{ display: "flex", gap: "16px" }}>
           {TEMPLATES.map(tpl => {
             const selected = selectedType === tpl.type;
@@ -285,8 +285,9 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
 
         {/* No rule between the steps. The numbered labels already say where one ends and the
             next begins, and a line under a row of bordered cards is a line sitting on lines. */}
-        <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginTop: "20px", marginBottom: "8px" }}>{t.step2}</p>
+        <FormLabel htmlFor="new-project-name" style={{ marginTop: "20px", marginBottom: "8px" }}>{t.step2}</FormLabel>
         <input
+          id="new-project-name"
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder={t.namePlaceholder}
@@ -300,7 +301,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
           }}
         />
 
-        <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "4px" }}>{t.step3}</p>
+        <FormLabel as="span" style={{ marginBottom: "4px" }}>{t.step3}</FormLabel>
         {/* Said out loud, because the step numbers imply all three are required and this one is
             not. A project with no sources is a normal way to start — the hardware often arrives
             after the paperwork. */}
@@ -332,7 +333,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
             disabled boxes under it would read as work somebody forgot to do. */}
         {wantsCamera && (
           <div style={{ marginTop: "12px" }}>
-            <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "4px" }}>{t.coordsLabel}<RequiredMark /></p>
+            <FormLabel as="span" style={{ marginBottom: "4px" }}>{t.coordsLabel}<RequiredMark /></FormLabel>
             <p style={{ fontSize: "12px", color: "var(--gray-400)", marginBottom: "8px", lineHeight: 1.45 }}>{t.coordsWhy}</p>
             <div style={{ display: "flex", gap: "12px" }}>
               {([

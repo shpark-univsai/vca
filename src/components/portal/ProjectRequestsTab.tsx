@@ -9,7 +9,7 @@ import {
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import { Eraser, Video } from "lucide-react";
-import { BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP, TableEmpty, SortableHeader, TextField, FilterSelect, ConfirmModal, HelpTip, usePortalEditAccess, MEASURE, Drawer } from "./PortalShared";
+import { FormLabel, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP, TableEmpty, SortableHeader, TextField, FilterSelect, ConfirmModal, HelpTip, usePortalEditAccess, MEASURE, Drawer } from "./PortalShared";
 
 /**
  * One register for everything the outside world asks of this project.
@@ -538,7 +538,7 @@ function ErasureDetail({ t, req, mayDecide, undecided, onSet, onClose }: {
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: "block", fontSize: "12px", color: "var(--gray-500)", marginBottom: "6px" }}>{label}</label>
+      <FormLabel as="span">{label}</FormLabel>
       {children}
       {hint && <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "6px" }}>{hint}</p>}
     </div>

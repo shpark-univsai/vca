@@ -8,7 +8,7 @@ import ProjectApiPanel from "./ProjectApiPanel";
 import { useToast } from "../Toast";
 import { usePortalLanguage } from "@/lib/i18n";
 import { ipv4Problem, portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { TablePagination, SummaryStrip, CARD_RADIUS, TABLE_RULE, CARD_BORDER, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError, StatusBadge, ActiveFilterCount, Drawer } from "./PortalShared";
+import { FormLabel, TablePagination, SummaryStrip, CARD_RADIUS, TABLE_RULE, CARD_BORDER, TextField, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, TableEmpty, TableSkeleton, TableLoadFailed, CONTROL_HEIGHT, PANEL_SHADOW, RowActionsMenu, FilterSelect, SortableHeader, sortRows, useTableSort, usePortalEditAccess, ConfirmModal, FieldError, StatusBadge, ActiveFilterCount, Drawer } from "./PortalShared";
 
 /* The table's columns, in one place. There were two copies of this string — the heading row and
    the data row — and the skeleton would have made a third; a grid that is written out per user is
@@ -238,14 +238,14 @@ function ServerFormModal({
       </>}>
       <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverName}</label>
+          <FormLabel as="span">{t.serverName}</FormLabel>
           <TextField value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder={t.serverNamePlaceholder} />
         </div>
         <div>
           {/* Starred now, and the star is honest: an unanswered type blocks the save (see
               ServerFormValues.type). Before this it was the one field on the form that looked
               answered without anybody answering it. */}
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverTypeRequired}</label>
+          <FormLabel as="span">{t.serverTypeRequired}</FormLabel>
           <FilterSelect value={form.type} onChange={v => setForm(f => ({ ...f, type: v as ServerType }))}
             options={[
               /* The prompt is an option rather than a placeholder because FilterSelect draws its
@@ -262,18 +262,18 @@ function ServerFormModal({
             other one already asks for back to back. */}
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "12px" }}>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverIp}</label>
+            <FormLabel as="span">{t.serverIp}</FormLabel>
             <TextField value={form.ip} onChange={v => setForm(f => ({ ...f, ip: v }))} placeholder={t.serverIpPlaceholder} />
             {ipProblem && <FieldError>{FIELD_CHECK_T[lang][ipProblem]}</FieldError>}
           </div>
           <div>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.serverPort}</label>
+            <FormLabel as="span">{t.serverPort}</FormLabel>
             <TextField value={form.port} onChange={v => setForm(f => ({ ...f, port: v.replace(/[^0-9]/g, "") }))} placeholder={t.serverPortPlaceholder} />
             {portIssue && <FieldError>{FIELD_CHECK_T[lang][portIssue]}</FieldError>}
           </div>
         </div>
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.specification}</label>
+          <FormLabel as="span">{t.specification}</FormLabel>
           <TextField value={form.specification} onChange={v => setForm(f => ({ ...f, specification: v }))} placeholder={t.specificationPlaceholder} />
         </div>
       </div>

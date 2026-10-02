@@ -6,7 +6,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { Building2, Settings2 } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH, ConfirmModal, Drawer, PanelCancel, PanelPrimary, SelectedCheckIcon, TextField } from "./PortalShared";
+import { FormLabel, BORDER, BREADCRUMB_TEAM_MAX_WIDTH, ConfirmModal, Drawer, PanelCancel, PanelPrimary, SelectedCheckIcon, TextField } from "./PortalShared";
 import { useToast } from "@/components/Toast";
 
 const T = {
@@ -475,7 +475,7 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
     >
       <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>{t.renameLabel}</label>
+          <FormLabel as="span">{t.renameLabel}</FormLabel>
           <TextField value={name} onChange={setName} autoFocus />
         </div>
 
@@ -570,10 +570,11 @@ export function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCr
     >
       <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+          <FormLabel htmlFor="team-create-name">
             {t.nameLabel} <span style={{ color: "var(--danger-400)" }}>*</span>
-          </label>
+          </FormLabel>
           <input
+            id="team-create-name"
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder={t.namePlaceholder}

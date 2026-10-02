@@ -6,7 +6,7 @@ import { usePortalLanguage, type AppLanguage } from "@/lib/i18n";
 import { useVcaStore, currentPortalUser, canEnterApp, canManageAccess, canSetPolicy, SIGNED_IN_USER, type SearchPurpose } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { portProblem, FIELD_CHECK_T } from "@/lib/fieldChecks";
-import { BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, Drawer, PanelCancel, PanelPrimary, Switch, usePortalEditAccess, useTypeLabel } from "./PortalShared";
+import { FormLabel, BORDER, CARD_BORDER, CONTROL_HEIGHT, PANEL_SHADOW, CardSection, FilterSelect, PairGrid, PairItem, TextField, ConfirmModal, FieldError, Drawer, PanelCancel, PanelPrimary, Switch, usePortalEditAccess, useTypeLabel } from "./PortalShared";
 import { VipCategoryModal } from "./VipCategories";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useToast } from "@/components/Toast";
@@ -1458,7 +1458,7 @@ function ChangePasswordModal({ t, lang, onClose }: {
   /** `trailing` puts a control on the field's own line — see the verify step. */
   const field = (label: string, value: string, onChange: (v: string) => void, autoComplete: string, hint?: React.ReactNode, onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>, trailing?: React.ReactNode) => (
     <div>
-      <label style={{ display: "block", marginBottom: "6px", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{label}</label>
+      <FormLabel as="span">{label}</FormLabel>
       {trailing ? (
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <div style={{ flex: 1, minWidth: 0 }}>

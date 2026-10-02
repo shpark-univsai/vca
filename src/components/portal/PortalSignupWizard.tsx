@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useVcaStore } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
-import { FIELD_STYLE, BORDER, RequiredMark } from "./PortalShared";
+import { FormLabel, FIELD_STYLE, BORDER, RequiredMark } from "./PortalShared";
 
 type SignupStep = "account" | "team" | "done";
 
@@ -206,7 +206,7 @@ function StepCard({ children, width = 520 }: { children: React.ReactNode; width?
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px" }}>{children}</p>;
+  return <FormLabel as="span">{children}</FormLabel>;
 }
 
 // Was 40px tall with 13px side padding and a 12px/600 face of its own — every other field in

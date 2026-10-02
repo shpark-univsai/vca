@@ -3199,6 +3199,49 @@ export function FloatingBulkBar({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** The bar's subject — what it is about. A count sentence, or the name of a mode. */
+export function BulkBarSubject({ children }: { children: React.ReactNode }) {
+  return <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>{children}</span>;
+}
+
+/** The way out of the mode. Always the last thing in the bar, a word with no box. */
+export function BulkBarExit({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} style={{
+      border: "none", background: "none", padding: "0 8px", cursor: "pointer",
+      fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0,
+    }}>
+      {children}
+    </button>
+  );
+}
+
+/**
+ * THE LABEL OVER A FIELD.
+ *
+ * The same three declarations — 12px, 700, `--gray-600` — were written inline in 18 files, and
+ * that is how one screen came to label its fields in `--gray-500` at no weight at all without
+ * anybody noticing: there was nothing for it to be inconsistent WITH. A label is the most
+ * repeated object in a console, so it is the one most worth having a single answer for.
+ *
+ * `as` because some of these sit over a real `<input>` and some over a composed control that has
+ * no `id` to point at. A `<label>` with nothing to label is worse than a `<span>`.
+ */
+export function FormLabel({ children, as = "label", htmlFor, style }: {
+  children: React.ReactNode;
+  as?: "label" | "span";
+  htmlFor?: string;
+  style?: React.CSSProperties;
+}) {
+  const Tag = as;
+  return (
+    <Tag htmlFor={as === "label" ? htmlFor : undefined}
+      style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "6px", ...style }}>
+      {children}
+    </Tag>
+  );
+}
+
 /** The hairline between a bulk bar's groups. Drawn here so three screens cannot disagree about it. */
 export function BulkBarDivider() {
   return <span style={{ width: "1px", alignSelf: "stretch", backgroundColor: "var(--gray-700)" }} />;

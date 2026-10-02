@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ListChecks, Users } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
-import { BORDER } from "./PortalShared";
+import { FormLabel, BORDER } from "./PortalShared";
 
 const T = {
   en: {
@@ -179,10 +179,11 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
           </p>
 
           <div style={{ width: "100%", marginTop: "28px" }}>
-            <label style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", display: "block", marginBottom: "6px" }}>
+            <FormLabel htmlFor="first-team-name">
               {t.teamNameLabel} <span style={{ color: "var(--danger-400)" }}>*</span>
-            </label>
+            </FormLabel>
             <input
+              id="first-team-name"
               value={teamName}
               onChange={e => setTeamName(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") submit(); }}
