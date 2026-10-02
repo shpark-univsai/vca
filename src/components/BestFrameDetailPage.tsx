@@ -165,13 +165,19 @@ const STEP_BTN_STYLE: CSSProperties = {
   padding:"6px 12px", borderRadius:"999px", border:"1px solid var(--gray-300)", backgroundColor:"white",
   color:"var(--gray-700)", fontSize:"12px", fontWeight:700, cursor:"pointer", whiteSpace:"nowrap",
 };
-/* The hover classes in globals.css rather than a hovered flag per button. There were sixteen
+/* Hover comes from a class, never from a hovered flag per button. There were sixteen
    cursor:pointer targets on this screen and four of them answered the pointer; the rest said
-   "clickable" only to a reader who had already found them. The class name says Portal because
-   that is the section it was written for, but the behaviour it carries is the console's — the
-   block wants a neutral prefix now that the app reads it too.
-   --gray-100 for a bordered control on white, which is the step that class carries; the --gray-50
-   tint stays on list rows, which is what the reel cards already use. */
+   "clickable" only to a reader who had already found them.
+   --gray-100 for a bordered control on white, which is the step this class carries; the --gray-50
+   tint stays on list rows, which is what the reel cards already use. The class name says Portal
+   because that is the section it was written for, but the behaviour it carries is the console's.
+
+   The rest of this screen uses the five neutral .vca-hover-* classes (row / quiet / outline /
+   card / darken) that DataPage and RedmapPage share. Two rules decide which:
+     - a control whose SELECTED state is a fill (gray-900, a type colour, SELECTED) gets
+       vca-hover-darken in that state, because a neutral tint would paint the selection away;
+     - nothing may tint, outline or dim the frame itself, the detection boxes, or their labels —
+       a shift anywhere inside the picture is read as something the camera saw. */
 const HOVER_QUIET = "portal-btn-quiet";
 
 export interface DetailProps {
@@ -500,7 +506,13 @@ function ReelFilterBar({ filter, onChange, counts }: { filter: ReelFilter; onCha
         const empty = n === 0;
         if (f.id === "All") {
           return (
-            <button key="All" onClick={() => onChange("All")} disabled={empty} style={{
+            <button key="All" onClick={() => onChange("All")} disabled={empty}
+              // Two classes because the pill has two fills. Unselected it is white inside a
+              // gray-300 edge, which the outline hover was written for; selected it is gray-900,
+              // and the row/outline tint would paint that selected fill away. Both classes carry
+              // :not(:disabled), so a zero chip stays silent under the pointer.
+              className={active ? "vca-hover-darken" : "vca-hover-outline"}
+              style={{
               display:"flex", alignItems:"center", gap:"5px",
               padding:"6px 14px", borderRadius:"999px", cursor: empty ? "default" : "pointer",
               border: active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
@@ -515,7 +527,11 @@ function ReelFilterBar({ filter, onChange, counts }: { filter: ReelFilter; onCha
         }
         const c = f.color!;
         return (
-          <button key={f.id} onClick={() => onChange(f.id)} disabled={empty} style={{
+          <button key={f.id} onClick={() => onChange(f.id)} disabled={empty}
+            // Selected, this pill's fill is the detection type's own colour — purple for VIP —
+            // which no neutral tint can sit on top of without changing what the colour says.
+            className={active ? "vca-hover-darken" : "vca-hover-outline"}
+            style={{
             display:"flex", alignItems:"center", gap:"5px",
             padding:"6px 10px", borderRadius:"999px", cursor: empty ? "default" : "pointer",
             border: active ? `1px solid ${c}` : "1px solid var(--gray-300)",
@@ -958,11 +974,11 @@ function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (da
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"8px", width:"224px", padding:"12px" }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", height:"24px" }}>
-        <button onClick={prevMonth} disabled={atFloorMonth} style={{ width:"24px", height:"24px", display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor: atFloorMonth ? "default" : "pointer", visibility: atFloorMonth ? "hidden" : "visible", color:"var(--gray-700)" }}>
+        <button onClick={prevMonth} disabled={atFloorMonth} className="vca-hover-quiet" style={{ width:"24px", height:"24px", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor: atFloorMonth ? "default" : "pointer", visibility: atFloorMonth ? "hidden" : "visible", color:"var(--gray-700)" }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{monthLabel}</span>
-        <button onClick={nextMonth} disabled={isCurrentMonth} style={{ width:"24px", height:"24px", display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor: isCurrentMonth ? "default" : "pointer", visibility: isCurrentMonth ? "hidden" : "visible", color:"var(--gray-700)" }}>
+        <button onClick={nextMonth} disabled={isCurrentMonth} className="vca-hover-quiet" style={{ width:"24px", height:"24px", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor: isCurrentMonth ? "default" : "pointer", visibility: isCurrentMonth ? "hidden" : "visible", color:"var(--gray-700)" }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
       </div>
@@ -979,7 +995,12 @@ function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (da
           const gone = !!floorKey && key < floorKey;
           const barred = isFuture || gone;
           return (
-            <button key={i} disabled={barred} onClick={() => onPick(key)} style={{
+            <button key={i} disabled={barred} onClick={() => onPick(key)}
+              // A day is a list item, so the gray-50 tint — except the picked one, whose whole
+              // cell is the SELECTED fill the tint would erase. Barred days are disabled, and
+              // both classes stop at :not(:disabled), so a day outside retention stays dead.
+              className={isSelected ? "vca-hover-darken" : "vca-hover-row"}
+              style={{
               // Both marks are positional — the day you picked, and where today is — so both are
               // SELECTED. Purple here would be the third thing on this screen wearing the VIP colour.
               width:"28px", height:"28px", borderRadius:"50%", border: isToday && !isSelected ? `1px solid ${SELECTED}` : "none",
@@ -1290,7 +1311,10 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
 
         <div style={{ padding: "14px 16px", borderBottom: BORDER, backgroundColor: "var(--gray-50)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.exportFrame}</p>
-          <button onClick={onCancel} disabled={busy} aria-label={t.exportCancel}
+          {/* Same class as the Inspection Detail close above, which the note there already
+              points at — two identical drawn X's answering the pointer two different ways would
+              be the thing that note was written to stop. */}
+          <button onClick={onCancel} disabled={busy} aria-label={t.exportCancel} className="portal-icon-btn"
             style={{ padding: "4px", border: "none", background: "none", cursor: busy ? "default" : "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
@@ -1317,7 +1341,9 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
                 const on = requesterKind === kind.id;
                 return (
                   <button key={kind.id} role="radio" aria-checked={on} onClick={() => setRequesterKind(kind.id)}
-                    className={on ? undefined : HOVER_QUIET}
+                    // Selected, the chip is the SELECTED fill; a neutral tint on it would read
+                    // as the selection letting go.
+                    className={on ? "vca-hover-darken" : HOVER_QUIET}
                     style={{
                       flex: 1, padding: "8px 4px", borderRadius: "8px", cursor: "pointer",
                       // SELECTED, like every other mark on this screen — see the note on it.
@@ -1365,7 +1391,7 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
         </div>
 
         <div style={{ padding: "12px 16px", borderTop: BORDER, flexShrink: 0, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button onClick={onCancel} disabled={busy}
+          <button onClick={onCancel} disabled={busy} className="vca-hover-outline"
             style={{ padding: "9px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "13px", fontWeight: 700, cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}>
             {t.exportCancel}
           </button>
@@ -1376,6 +1402,9 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
               onConfirm({ requesterKind: requesterKind!, recipient: recipient.trim(), reason: reason.trim(), legalBasis: legalBasis.trim() });
             }}
             disabled={!ready || busy}
+            // Only the live button darkens: unfilled and mid-export it is disabled, and the
+            // class stops there, so the grey state never pretends it is about to do something.
+            className="vca-hover-darken"
             style={{
               padding: "9px 18px", borderRadius: "8px", border: "none",
               backgroundColor: ready && !busy ? "var(--gray-900)" : "var(--gray-200)",
@@ -1742,7 +1771,11 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 that view is inspecting one specific captured instant (boxes for everyone else are
                 hidden too), not scrubbing through footage, so "play" has nothing to mean there. */}
             {cameraHovered && data.sourceType !== "image" && !selectedPerson && (
-              <button onClick={() => setIsPlaying(p => !p)} style={{
+              /* Darken, not a tint. The button has no box — it is the purple disc itself,
+                 sitting on the picture — so any fill a hover added would be a new shape drawn
+                 over the frame. brightness() acts on the disc's own paint and leaves the video
+                 behind it untouched. */
+              <button onClick={() => setIsPlaying(p => !p)} className="vca-hover-darken" style={{
                 position:"absolute", bottom:"20px", left:"50%", transform:"translateX(-50%)",
                 zIndex:20, background:"none", border:"none", cursor:"pointer", padding:0,
               }}>
@@ -1959,6 +1992,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 const vipCount = vipByThumb.get(i) ?? 0;
                 return (
                   <div key={i} ref={el => { thumbRefs.current[i] = el; }} onClick={() => setSelectedSec(sec)}
+                    // An outline around the cell, which is drawn outside its box: the thumbnail
+                    // keeps its own 3px SELECTED border as the "you are here" mark, and nothing
+                    // lands on the picture — no tint, no dim, no second edge on the image.
+                    className="vca-hover-card"
                     style={{
                     position:"relative", width:"128px", flexShrink:0,
                     display:"flex", flexDirection:"column", alignItems:"center", gap:"6px", cursor:"pointer",
