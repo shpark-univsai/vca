@@ -929,7 +929,7 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
                     fontSize:"13px", fontWeight: cam.code===camId ? 700:500, color: cam.code===camId ? "var(--gray-900)":"var(--gray-700)",
                   }}>
                     {cam.code}
-                    <span style={{ fontSize:"10px", fontWeight:800, color: runStateOf(cam.status)==="running" ? "var(--success-400)" : "var(--gray-400)" }}>
+                    <span style={{ fontSize:"10px", fontWeight:800, color: runStateOf(cam.status)==="running" ? "var(--success-400)" : "var(--warning-500)" }}>
                       {runStateOf(cam.status)==="running" ? "ON" : "OFF"}
                     </span>
                   </button>
@@ -940,8 +940,11 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
         </div>
         {camera && (
           <>
-            <span style={{ fontSize:"10px", fontWeight:800, color: runStateOf(camera.status)==="running" ? "var(--success-400)" : "var(--gray-400)",
-              backgroundColor: runStateOf(camera.status)==="running" ? "var(--success-100)" : "var(--gray-100)", padding:"4px 10px", borderRadius:"999px" }}>
+            {/* Amber for a camera that is not running, the tone the rest of the product uses for
+                a fault (Portal `TONE_STYLE.fault`). It was grey here while the map and the sidebar
+                said red — a third answer to the same fact, and grey reads as "no data". */}
+            <span style={{ fontSize:"10px", fontWeight:800, color: runStateOf(camera.status)==="running" ? "var(--success-400)" : "var(--warning-500)",
+              backgroundColor: runStateOf(camera.status)==="running" ? "var(--success-100)" : "var(--warning-100)", padding:"4px 10px", borderRadius:"999px" }}>
               {runStateOf(camera.status)==="running" ? t.camOnline : t.camOffline}
             </span>
             <span style={{ fontSize:"12px", color:"var(--gray-400)" }}>IP {camera.ip} · {t.rtspConnected}</span>

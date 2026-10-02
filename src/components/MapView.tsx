@@ -315,7 +315,7 @@ function cameraDotTooltipHtml(cam: Camera, lang: AppLanguage, people: number): s
     <div style="font-family:'SUIT',system-ui,sans-serif;padding:8px 10px;display:flex;flex-direction:column;gap:3px;min-width:120px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;white-space:nowrap">${escapeHtml(cam.name)}</span>
-        <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;flex-shrink:0;color:${isLive ? "var(--success-400)" : "var(--danger-400)"};background:${isLive ? "var(--success-100)" : "var(--danger-100)"}">
+        <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;flex-shrink:0;color:${isLive ? "var(--success-400)" : "var(--warning-500)"};background:${isLive ? "var(--success-100)" : "var(--warning-100)"}">
           ${isLive ? t.live : t.offline}
         </span>
       </div>
@@ -796,7 +796,7 @@ function getDevicePopupHTML(device: Device, cam: Camera | undefined, lang: AppLa
     <div style="font-family:'SUIT',system-ui,sans-serif;width:200px;padding:12px 14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-right:18px;gap:8px">
         <span style="font-size:13px;font-weight:800;color:var(--gray-900);letter-spacing:-0.26px">${escapeHtml(device.name)}</span>
-        <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;color:${isLive ? "var(--success-400)" : "var(--danger-400)"};background:${isLive ? "var(--success-100)" : "var(--danger-100)"};flex-shrink:0">
+        <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;color:${isLive ? "var(--success-400)" : "var(--warning-500)"};background:${isLive ? "var(--success-100)" : "var(--warning-100)"};flex-shrink:0">
           ${isLive ? t.live : t.out}
         </span>
       </div>
@@ -807,8 +807,8 @@ function getDevicePopupHTML(device: Device, cam: Camera | undefined, lang: AppLa
       </div>`}
       ${outSince !== null ? `
       <div style="display:flex;align-items:center;gap:5px">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="var(--danger-400)" stroke-linecap="round"/><path d="M6 3v3l2 1.5" stroke="var(--danger-400)" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span style="font-size:11px;font-weight:600;color:var(--danger-400)">${t.outSince(outSince)}</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="var(--warning-500)" stroke-linecap="round"/><path d="M6 3v3l2 1.5" stroke="var(--warning-500)" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:11px;font-weight:600;color:var(--warning-500)">${t.outSince(outSince)}</span>
       </div>` : !isLive || !canGoLive || !cam ? "" : `
       <button onclick="window.__vcaGoLiveCam && window.__vcaGoLiveCam('${escapeOnclickArg(cam.name)}')"
         style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
@@ -822,7 +822,7 @@ function getDevicePopupHTML(device: Device, cam: Camera | undefined, lang: AppLa
 }
 
 function getDeviceMarkerHTML(name: string, isLive: boolean): string {
-  const color = isLive ? "var(--success-400)" : "var(--danger-400)";
+  const color = isLive ? "var(--success-400)" : "var(--warning-400)";
   return `
     <div style="display:flex;flex-direction:column;align-items:center">
       <div style="display:flex;align-items:center;gap:5px;background:var(--gray-900);border-radius:999px;padding:5px 10px;box-shadow:0 2px 10px rgba(24, 17, 39,0.2);white-space:nowrap">

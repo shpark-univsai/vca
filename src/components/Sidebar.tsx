@@ -406,10 +406,12 @@ function AvailabilityDonut({ pct, size = 92, hasCameras }: { pct?: number; size?
   // would say it in the window before the answer comes back. No figure, no arc, and a dash.
   const known = pct !== undefined && hasCameras;
   // Neutral gray by default; only shift to a semantic signal color when availability is
-  // genuinely low (matches the red/green convention already used elsewhere in this file for
-  // LIVE/OUT status). A site with no cameras registered is not a site at 0% — nothing is down
+  // genuinely low (matches the amber/green convention already used elsewhere in this file for
+  // LIVE/OUT status). Amber and not red: this figure is nothing but cameras that dropped off by
+  // themselves, and red in this product is reserved for what a person did — see Navbar's note.
+  // A site with no cameras registered is not a site at 0% — nothing is down
   // there, there is nothing there — so it reads as a dash in gray rather than an alarm.
-  const ringColor = known && pct < 50 ? "var(--danger-400)" : "var(--gray-400)";
+  const ringColor = known && pct < 50 ? "var(--warning-500)" : "var(--gray-400)";
   const cx = 46, cy = 40, r = 34, strokeWidth = 10;
   const sweep = known ? 180 * (Math.max(0, Math.min(100, pct)) / 100) : 0;
   const trackPath = describeArc(cx, cy, r, 270, 450);
@@ -489,11 +491,11 @@ function StatusBadge({ status }: { status: string }) {
     <div style={{
       display:"inline-flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
       padding:"4px 8px", borderRadius:"12px", backgroundColor:"white",
-      border: isLive ? "1px solid var(--success-200)" : "1px solid var(--danger-100)",
+      border: isLive ? "1px solid var(--success-200)" : "1px solid var(--warning-200)",
     }}>
       <div style={{ display:"flex", alignItems:"center", gap:"4px" }}>
-        <div style={{ width: isLive ? 2 : 5, height: isLive ? 2 : 5, borderRadius:"50%", backgroundColor: isLive ? "var(--success-400)" : "var(--danger-400)", flexShrink:0 }} />
-        <span style={{ fontSize:"10px", fontWeight:800, color: isLive ? "var(--success-400)" : "var(--danger-400)", letterSpacing:"-0.2px" }}>{isLive ? t.live : t.out}</span>
+        <div style={{ width: isLive ? 2 : 5, height: isLive ? 2 : 5, borderRadius:"50%", backgroundColor: isLive ? "var(--success-400)" : "var(--warning-500)", flexShrink:0 }} />
+        <span style={{ fontSize:"10px", fontWeight:800, color: isLive ? "var(--success-400)" : "var(--warning-500)", letterSpacing:"-0.2px" }}>{isLive ? t.live : t.out}</span>
       </div>
     </div>
   );
@@ -2027,17 +2029,17 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
             // Only once there is a figure to judge; no figure is not a low figure. `cameras`
             // comes from the store and is populated on the first render while `availability`
             // comes from a request that resolves a moment later, so with `?? 0` this test was
-            // true for that window on every mount: the panel opened with a red AVAIL 0% — every
+            // true for that window on every mount: the panel opened with an alarmed AVAIL 0% — every
             // camera on the site is down — and then corrected itself to 96%.
             const low = availability !== undefined && cameras.length > 0 && availability < 50;
             const shown = availability !== undefined && cameras.length > 0 ? `${availability}%` : "—";
             return (
               <div style={{
                 width:"38px", height:"38px", borderRadius:"10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-                backgroundColor: low ? "var(--danger-100)" : "var(--gray-100)", border: low ? "1px solid var(--danger-200)" : "1px solid var(--gray-200)",
+                backgroundColor: low ? "var(--warning-100)" : "var(--gray-100)", border: low ? "1px solid var(--warning-200)" : "1px solid var(--gray-200)",
               }}>
-                <span style={{ fontSize:"10px", fontWeight:600, color: low ? "var(--danger-400)" : "var(--gray-400)", letterSpacing:"0.3px" }}>{t.avail}</span>
-                <span style={{ fontSize:"13px", fontWeight:700, color: low ? "var(--danger-400)" : "var(--gray-400)", lineHeight:1 }}>{shown}</span>
+                <span style={{ fontSize:"10px", fontWeight:600, color: low ? "var(--warning-500)" : "var(--gray-400)", letterSpacing:"0.3px" }}>{t.avail}</span>
+                <span style={{ fontSize:"13px", fontWeight:700, color: low ? "var(--warning-500)" : "var(--gray-400)", lineHeight:1 }}>{shown}</span>
               </div>
             );
           })()
@@ -2076,10 +2078,10 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
                 <div key={device.id}
                   onMouseEnter={e => handleMouseEnter(e, device.id, device)}
                   onClick={() => onPinDevice?.(isPinned ? null : device)}
-                  style={{ width:"40px", height:"40px", borderRadius:"10px", backgroundColor: isLive ? "var(--gray-900)" : "var(--gray-50)", border: isLive ? "1px solid var(--gray-700)" : "1px solid var(--danger-200)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", position:"relative", flexShrink:0,
+                  style={{ width:"40px", height:"40px", borderRadius:"10px", backgroundColor: isLive ? "var(--gray-900)" : "var(--gray-50)", border: isLive ? "1px solid var(--gray-700)" : "1px solid var(--warning-200)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", position:"relative", flexShrink:0,
                     boxShadow: isPinned ? "0 0 0 2px var(--primary-400)" : "none" }}>
-                  <span style={{ fontSize:"10px", fontWeight:600, color: isLive ? "white" : "var(--danger-400)", fontFamily:"monospace", textAlign:"center" }}>{device.name}</span>
-                  <div style={{ position:"absolute", bottom:"3px", right:"3px", width:"6px", height:"6px", borderRadius:"50%", backgroundColor: isLive ? "var(--success-400)" : "var(--danger-400)" }} />
+                  <span style={{ fontSize:"10px", fontWeight:600, color: isLive ? "white" : "var(--warning-500)", fontFamily:"monospace", textAlign:"center" }}>{device.name}</span>
+                  <div style={{ position:"absolute", bottom:"3px", right:"3px", width:"6px", height:"6px", borderRadius:"50%", backgroundColor: isLive ? "var(--success-400)" : "var(--warning-500)" }} />
                 </div>
               );
             })
@@ -2122,7 +2124,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
               {zone && <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"3px" }}>{zone}</div>}
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontSize:"12px", fontWeight:800, color:"white" }}>{device.name}</span>
-                <span style={{ fontSize:"10px", fontWeight:600, color: isLive ? "var(--success-400)" : "var(--danger-400)", backgroundColor: "var(--gray-800)", padding:"2px 6px", borderRadius:"4px" }}>
+                <span style={{ fontSize:"10px", fontWeight:600, color: isLive ? "var(--success-400)" : "var(--warning-500)", backgroundColor: "var(--gray-800)", padding:"2px 6px", borderRadius:"4px" }}>
                   {isLive ? "● LIVE" : "○ OFF"}
                 </span>
               </div>

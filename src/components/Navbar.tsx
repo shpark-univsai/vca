@@ -428,18 +428,20 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
           {/* Was flickering on a 3s loop, permanently, in every screen's header. In a
               thousand-camera network a few cameras being down is the normal state, so an operator
               learns that flicker as background within a week — and then stops seeing every other
-              red on the screen too. Red is the only thing this product has to say "go now" with;
-              it cannot also be the wallpaper. */}
+              alarm on the screen too. The icon and the figure say it without moving.
+              Amber, not red (2026-10-02): a camera that dropped off broke by itself, and red in
+              this product means a person did it — a suspended account, a revoked key. Same tone
+              table as the Portal's `TONE_STYLE.fault`. */}
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style={{ flexShrink:0 }}>
             <g clipPath="url(#clip0_253_6684)">
-              <path d="M5.83337 15.0007V10.0007C5.83337 8.89558 6.27236 7.83577 7.05376 7.05437C7.83516 6.27297 8.89497 5.83398 10 5.83398C11.1051 5.83398 12.1649 6.27297 12.9463 7.05437C13.7277 7.83577 14.1667 8.89558 14.1667 10.0007V15.0007" stroke="var(--danger-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M4.16669 17.5C4.16669 17.721 4.25448 17.933 4.41076 18.0893C4.56705 18.2455 4.77901 18.3333 5.00002 18.3333H15C15.221 18.3333 15.433 18.2455 15.5893 18.0893C15.7456 17.933 15.8334 17.721 15.8334 17.5V16.6667C15.8334 16.2246 15.6578 15.8007 15.3452 15.4882C15.0326 15.1756 14.6087 15 14.1667 15H5.83335C5.39133 15 4.9674 15.1756 4.65484 15.4882C4.34228 15.8007 4.16669 16.2246 4.16669 16.6667V17.5Z" stroke="var(--danger-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M17.5 10H18.3333" stroke="var(--danger-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M15.4167 3.75L15 4.16667" stroke="var(--danger-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M1.66669 10H2.50002" stroke="var(--danger-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M10 1.66602V2.49935" stroke="var(--danger-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M4.10748 4.10742L4.69665 4.69659" stroke="var(--danger-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M10 10V15" stroke="var(--danger-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5.83337 15.0007V10.0007C5.83337 8.89558 6.27236 7.83577 7.05376 7.05437C7.83516 6.27297 8.89497 5.83398 10 5.83398C11.1051 5.83398 12.1649 6.27297 12.9463 7.05437C13.7277 7.83577 14.1667 8.89558 14.1667 10.0007V15.0007" stroke="var(--warning-500)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M4.16669 17.5C4.16669 17.721 4.25448 17.933 4.41076 18.0893C4.56705 18.2455 4.77901 18.3333 5.00002 18.3333H15C15.221 18.3333 15.433 18.2455 15.5893 18.0893C15.7456 17.933 15.8334 17.721 15.8334 17.5V16.6667C15.8334 16.2246 15.6578 15.8007 15.3452 15.4882C15.0326 15.1756 14.6087 15 14.1667 15H5.83335C5.39133 15 4.9674 15.1756 4.65484 15.4882C4.34228 15.8007 4.16669 16.2246 4.16669 16.6667V17.5Z" stroke="var(--warning-500)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M17.5 10H18.3333" stroke="var(--warning-500)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M15.4167 3.75L15 4.16667" stroke="var(--warning-500)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M1.66669 10H2.50002" stroke="var(--warning-500)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M10 1.66602V2.49935" stroke="var(--warning-500)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M4.10748 4.10742L4.69665 4.69659" stroke="var(--warning-500)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M10 10V15" stroke="var(--warning-500)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </g>
             <defs>
               <clipPath id="clip0_253_6684">
@@ -447,9 +449,9 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               </clipPath>
             </defs>
           </svg>
-          {/* Red only when there is something to be red about. Zero cameras down is good news, and
+          {/* Coloured only when there is something to colour. Zero cameras down is good news, and
               it was being reported in alarm colour — beside a flickering alarm icon. */}
-          <span title={t.stopped(camsStopped)} style={{ fontWeight: 800, fontSize: "13px", color: typeof camsStopped === "number" && camsStopped > 0 ? "var(--danger-400)" : "var(--gray-800)", letterSpacing: "-0.26px", lineHeight: "16px", ...FIGURES }}>
+          <span title={t.stopped(camsStopped)} style={{ fontWeight: 800, fontSize: "13px", color: typeof camsStopped === "number" && camsStopped > 0 ? "var(--warning-500)" : "var(--gray-800)", letterSpacing: "-0.26px", lineHeight: "16px", ...FIGURES }}>
             {camsStopped}
           </span>
           </div>
