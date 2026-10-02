@@ -310,7 +310,8 @@ export default function RedmapMap({
         style={{
           // Read by .leaflet-tile-pane in globals.css — see MapView for why it is set here.
           ["--map-tile-filter" as string]: MAP_TILE_FILTER,
-          width: "100%", height: "100%", position: "relative", backgroundColor: "var(--gray-100)",
+          // `isolation` keeps Leaflet's 200-700 panes inside this box — see MapView for the why.
+          width: "100%", height: "100%", position: "relative", isolation: "isolate", backgroundColor: "var(--gray-100)",
         }}
       />
     </>

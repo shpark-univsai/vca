@@ -339,7 +339,16 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
     <nav style={{
       height: "62px", backgroundColor: "white", borderBottom: BORDER,
       display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "center", padding: "0 24px",
-      flexShrink: 0, zIndex: 5000, position: "relative",
+      /* 90, not 5000. The old number came from this app's first commit with nothing behind it,
+         and it put the bar ABOVE every sheet meant to cover the screen: MEASURED, with the VIP
+         list open the whole page dimmed except this bar, and 「Best Frame」 and 「Data」 were still
+         clickable behind the sheet.
+
+         90 because the lowest full-screen sheet in this app sits at 100, and a bar that covers
+         the page must lose to all of them. It still beats the page below it, including the map —
+         Leaflet numbers its own panes up to 700, but MapView and RedmapMap each keep those inside
+         their own box now, so they are not numbers this bar has to out-bid. */
+      flexShrink: 0, zIndex: 90, position: "relative",
     }}>
       {/* ── Left: logo + AI status ── */}
       {/* No ceiling any more. This carried `maxWidth: calc(50% - 236px)`, and its own note called

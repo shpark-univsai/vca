@@ -2292,6 +2292,12 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         width: "100%",
         height: "100%",
         position: "relative",
+        // Leaflet numbers its own panes 200 to 700 — tiles 200, markers 600, popups 700 — on the
+        // assumption that it owns a box. Without this it owns nothing: those seven numbers end up
+        // ranked against the whole page, so anything the app floats over the map has to out-bid a
+        // map tile, and the top bar was carrying 5000 to do it. `isolate` makes this element the
+        // world they rank inside. Same line, same reason, in RedmapMap and portal/CameraMapView.
+        isolation: "isolate",
         // Matches SkeletonDashboard's MapSkeleton background — avoids a flash of blank white
         // during the brief window between mount and Leaflet's async init finishing.
         backgroundColor: "var(--gray-100)",
