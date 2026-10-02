@@ -1226,40 +1226,9 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
         </div>
       )}
 
-      {/* ── Hover, for the things that are already clickable ────────────────────────────────
-          Measured before this block: 19 elements in this file set cursor:pointer and 7 of them
-          changed under the pointer. The cursor was the whole feedback on the other 12 — and a
-          cursor is not visible in a screenshot, on a touch screen, or to anyone scanning for what
-          is pressable.
-
-          THESE ARE DataPage's CLASSES, VERBATIM — same names, same declarations (DataPage.tsx,
-          "Hover, for the things that are already clickable"). Only one of the two screens is
-          mounted at a time, so each has to carry the tag; identical rules mean a stray double
-          mount is a no-op. They belong in globals.css and should move there as one edit to both
-          files — see the handover note.
-
-          NO NEW COLOUR. --gray-50 is the row hover globals.css already gives .vca-picker-option;
-          --gray-100 is the fill portal-btn-quiet uses for a bare button; --gray-400 is the edge
-          portal-card-clickable raises; brightness() is what portal-btn-primary does to a fill
-          nothing lighter can tint.
-
-          !important is on the fills because these controls carry backgroundColor in an inline
-          style, and an inline declaration outranks any stylesheet selector. */}
-      <style>{`
-        .vca-hover-row { transition: background-color .12s; }
-        .vca-hover-row:hover:not(:disabled) { background-color: var(--gray-50) !important; }
-
-        .vca-hover-quiet { transition: background-color .12s; }
-        .vca-hover-quiet:hover:not(:disabled) { background-color: var(--gray-100) !important; }
-
-        .vca-hover-outline { transition: background-color .12s, border-color .12s; }
-        .vca-hover-outline:hover:not(:disabled) { background-color: var(--gray-50) !important; border-color: var(--gray-400) !important; }
-
-        .vca-hover-darken { transition: filter .12s; }
-        .vca-hover-darken:hover:not(:disabled) { filter: brightness(.88); }
-
-        .vca-hover-underline:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
-      `}</style>
+      {/* The pointer responses these controls use (.vca-hover-*) live in globals.css —
+          they were declared here and copied into another screen, which is how two screens end up
+          answering the same gesture differently. */}
 
       {/* ── Search bar ──
           Always one row. The full set of person filters wants ~1710px, and on a 14" laptop

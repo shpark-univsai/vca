@@ -1090,3 +1090,42 @@ input:autofill {
   .portal-invite-grid { grid-template-columns: minmax(0, 1fr); }
   .portal-invite-grid > * + * { border-left: none; border-top: 1px solid var(--gray-200); }
 }
+
+/* ═══ THE POINTER RESPONSES THE APP'S SCREENS SHARE ═══
+ *
+ * These lived in a <style> tag inside DataPage and were copied, rule for rule, into RedmapPage —
+ * and a third screen was about to make a third copy. Two copies of a hover colour is how two
+ * screens end up responding differently to the same gesture, which the design audit found this
+ * app already doing in four different ways (--gray-50 here, --gray-100 there, a purple tint,
+ * a border change).
+ *
+ * WHY `!important` ON THE FILLS. These controls carry `backgroundColor` in an inline style —
+ * computed per instance — and an inline declaration outranks any stylesheet selector. Without it
+ * the rule parses, matches, and does nothing, which is the worst of the three.
+ *
+ * `:not(:disabled)` throughout: a control that cannot be pressed must not answer the pointer as
+ * if it could.
+ */
+.vca-hover-row { transition: background-color .12s; }
+.vca-hover-row:hover:not(:disabled) { background-color: var(--gray-50) !important; }
+
+.vca-hover-quiet { transition: background-color .12s; }
+.vca-hover-quiet:hover:not(:disabled) { background-color: var(--gray-100) !important; }
+
+.vca-hover-outline { transition: background-color .12s, border-color .12s; }
+.vca-hover-outline:hover:not(:disabled) { background-color: var(--gray-50) !important; border-color: var(--gray-400) !important; }
+
+/* A card whose whole body is the target. Outline rather than border or shadow: several of these
+   carry an inline border that is their SELECTED mark, and a shadow would put back the resting
+   layer this app took out (see --line-card's note above). */
+.vca-hover-card { outline: 1px solid transparent; transition: outline-color .12s; }
+.vca-hover-card:hover { outline-color: var(--gray-400); }
+
+/* For a fill no neutral can tint: --gray-900, --primary-400, --primary-100, a tier colour, or a
+   bare glyph that has no box to fill. */
+.vca-hover-darken { transition: filter .12s; }
+.vca-hover-darken:hover:not(:disabled) { filter: brightness(.88); }
+
+/* A word that is a button, with no box at rest. A fill box appearing around it is the "word that
+   only became a button on hover" this file warns about elsewhere. */
+.vca-hover-underline:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }

@@ -6272,46 +6272,9 @@ export default function DataPage({ onGoRedmap, onGoRedmapFrame, onGoAnalyzeFrame
   return (
     <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", backgroundColor:"var(--gray-50)" }}>
 
-      {/* ── Hover, for the things that are already clickable ────────────────────────────────
-          Measured before this block: 59 elements in this file set cursor:pointer and 15 of them
-          changed under the pointer. The cursor is the whole feedback on the other 44 — and a
-          cursor is not visible in a screenshot, on a touch screen, or to anyone scanning a dense
-          wall of cards for what is pressable.
-
-          NO NEW COLOUR. --gray-50 is the row hover globals.css already gives .vca-picker-option;
-          --gray-100 is the fill portal-btn-quiet and .portal-attention-row use for a bare button;
-          --gray-400 is the edge portal-card-clickable raises on a hovered card; brightness() is
-          what portal-btn-primary does to a fill nothing lighter can tint. Five existing answers,
-          not a sixth invented one.
-
-          !important is on the fills because these controls carry backgroundColor in an inline
-          style (computed per instance) and an inline declaration outranks any stylesheet
-          selector — the same reason ImageDropzoneHoverStyleTag carries it. */}
-      <style>{`
-        .vca-hover-row { transition: background-color .12s; }
-        .vca-hover-row:hover:not(:disabled) { background-color: var(--gray-50) !important; }
-
-        .vca-hover-quiet { transition: background-color .12s; }
-        .vca-hover-quiet:hover:not(:disabled) { background-color: var(--gray-100) !important; }
-
-        .vca-hover-outline { transition: background-color .12s, border-color .12s; }
-        .vca-hover-outline:hover:not(:disabled) { background-color: var(--gray-50) !important; border-color: var(--gray-400) !important; }
-
-        /* A card whose whole body is the target. Outline rather than border or shadow: several of
-           these carry an inline border that is their SELECTED mark, and a shadow would put back
-           the resting layer this app took out (see --line-card's note in globals.css). */
-        .vca-hover-card { outline: 1px solid transparent; transition: outline-color .12s; }
-        .vca-hover-card:hover { outline-color: var(--gray-400); }
-
-        /* For a fill no neutral can tint: --gray-900, --primary-400, --primary-100, a tier colour,
-           or a bare glyph that has no box to fill. */
-        .vca-hover-darken { transition: filter .12s; }
-        .vca-hover-darken:hover:not(:disabled) { filter: brightness(.88); }
-
-        /* A word that is a button, with no box at rest. A fill box appearing around it is the
-           "word that only became a button on hover" globals.css warns about. */
-        .vca-hover-underline:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
-      `}</style>
+      {/* The pointer responses these controls use (.vca-hover-*) live in globals.css —
+          they were declared here and copied into another screen, which is how two screens end up
+          answering the same gesture differently. */}
 
       {/* Sub-nav tabs */}
       <div style={{ backgroundColor:"white", borderBottom:BORDER, display:"flex", alignItems:"center", padding:"0 20px", height:"46px", flexShrink:0 }}>
