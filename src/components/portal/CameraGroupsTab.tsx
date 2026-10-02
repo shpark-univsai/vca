@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckCheck, Plus, RotateCcw } from "lucide-react";
 import {
-  cameraGroupsInProject, camerasInProject, hasPosition, useVcaStore, type Camera, type CameraGroup,
+  accountsWatching, cameraGroupsInProject, camerasInProject, hasPosition, presetLabel,
+  scopedCameraIds, useVcaStore, type Camera, type CameraGroup, type PortalUser,
 } from "@/lib/vcaStore";
 import CameraMapView from "./CameraMapView";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -12,7 +13,7 @@ import { useToast } from "../Toast";
 import {
   FormLabel,
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TextField,
-  ConfirmModal, Drawer, FieldError, PanelCancel, PanelPrimary, RequiredMark, RowActionsMenu, usePortalEditAccess,
+  ConfirmModal, Drawer, FieldError, PairGrid, PairItem, PanelCancel, PanelPrimary, RequiredMark, RowActionsMenu, usePortalEditAccess,
 } from "./PortalShared";
 
 /**
@@ -52,9 +53,20 @@ const T = {
     empty: "No groups on this project yet.",
     cameras: (n: number) => `${n} camera${n === 1 ? "" : "s"}`,
     camerasNone: "Empty",
-    holders: (n: number) => `Held by ${n} account${n === 1 ? "" : "s"}`,
-    holdersNone: "Held by nobody",
-    createdBy: (who: string, when: string) => `${who} · ${when}`,
+    watchThrough: "Watching through this group",
+    watchThroughNone: "Nobody watches through this group",
+    watchEvery: "Also watching — scope never narrowed",
+    andMorePeople: (n: number) => `and ${n} more`,
+    grantCustom: "Custom",
+    accountEmail: "Email",
+    accountApp: "App permission",
+    accountScope: "Cameras",
+    scopeEvery: "Every camera",
+    close: "Close",
+    lossLine: (accounts: number, cams: number) =>
+      `Saving removes ${cams} camera${cams === 1 ? "" : "s"} from the ${accounts} account${accounts === 1 ? "" : "s"} holding this group.`,
+    lossLineEmptied: (accounts: number, cams: number, emptied: number) =>
+      `Saving removes ${cams} camera${cams === 1 ? "" : "s"} from the ${accounts} account${accounts === 1 ? "" : "s"} holding this group, and ${emptied} of them will be left with no cameras at all.`,
     cardEdit: "Edit",
     remove: "Delete", cancel: "Cancel",
     goToCameras: "Go to Input Sources",
@@ -101,9 +113,20 @@ const T = {
     empty: "이 프로젝트에 아직 그룹이 없습니다.",
     cameras: (n: number) => `${n}대`,
     camerasNone: "비어 있음",
-    holders: (n: number) => `${n}개 계정이 가짐`,
-    holdersNone: "가진 계정 없음",
-    createdBy: (who: string, when: string) => `${who} · ${when}`,
+    watchThrough: "이 그룹으로 보는 계정",
+    watchThroughNone: "이 그룹으로 보는 계정 없음",
+    watchEvery: "범위를 안 좁혀 함께 보는 계정",
+    andMorePeople: (n: number) => `외 ${n}명`,
+    grantCustom: "커스텀",
+    accountEmail: "이메일",
+    accountApp: "앱 권한",
+    accountScope: "카메라 범위",
+    scopeEvery: "전체 카메라",
+    close: "닫기",
+    lossLine: (accounts: number, cams: number) =>
+      `저장하면 이 그룹을 가진 ${accounts}개 계정이 카메라 ${cams}대를 잃습니다.`,
+    lossLineEmptied: (accounts: number, cams: number, emptied: number) =>
+      `저장하면 이 그룹을 가진 ${accounts}개 계정이 카메라 ${cams}대를 잃고, 그중 ${emptied}개 계정은 볼 수 있는 카메라가 없게 됩니다.`,
     cardEdit: "편집",
     remove: "삭제", cancel: "취소",
     goToCameras: "입력 소스로 가기",
@@ -222,6 +245,9 @@ export function CameraGroupEditor({ projectId, group, onClose, onSaved, nested }
   const { showToast } = useToast();
   const allGroups = useVcaStore(s => s.cameraGroups);
   const allCameras = useVcaStore(s => s.cameras);
+  /* Handed to the panel because the panel has something to say about them: narrowing a group
+     narrows everybody holding it, and until now the footer said only how many boxes were ticked. */
+  const portalUsers = useVcaStore(s => s.portalUsers);
   const addCameraGroup = useVcaStore(s => s.addCameraGroup);
   const updateCameraGroup = useVcaStore(s => s.updateCameraGroup);
   const groups = cameraGroupsInProject(allGroups, projectId);
@@ -232,6 +258,7 @@ export function CameraGroupEditor({ projectId, group, onClose, onSaved, nested }
       group={group}
       cameras={camerasInProject(allCameras, projectId)}
       otherGroups={groups.filter(g => g.id !== group?.id)}
+      portalUsers={portalUsers}
       t={t}
       onSave={(label, description, ids) => {
         if (group) {
@@ -290,13 +317,18 @@ export function CameraGroupEditor({ projectId, group, onClose, onSaved, nested }
  * group. The shared Drawer holds the same rule — this editor keeps its own shell only because its
  * body is a picker with a map in it, not because it closes differently.
  */
-function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }: {
+function GroupDrawer({ group, cameras, otherGroups, portalUsers, t, onSave, onClose, nested }: {
   /** The group being changed, or null while one is being made. */
   group: CameraGroup | null;
   /** The project's register — full cameras, because the map needs the coordinates and the status. */
   cameras: Camera[];
   /** Every other group of this project, for the "also in" count. */
   otherGroups: CameraGroup[];
+  /**
+   * Every account, so the footer can say what UNTICKING costs — see `netLoss` below. The other
+   * group ids an account holds are resolved against `otherGroups`, which is why both are needed.
+   */
+  portalUsers: PortalUser[];
   t: Dict;
   /** Returns an error key when the name is taken, so the field can say so without closing. */
   onSave: (label: string, description: string, cameraIds: string[]) => "duplicate-label" | null;
@@ -425,6 +457,55 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
       || [...picked].sort().join() !== [...group.cameraIds].sort().join()
     );
 
+  /*
+   * WHAT UNTICKING COSTS, SAID WHILE IT IS STILL UNDOABLE.
+   *
+   * The delete dialog has always said 「1개 계정이 가지고 있습니다」 before removing a group. This
+   * panel narrows the very same scopes — untick two cameras and everybody holding the group stops
+   * seeing them — and said nothing at all. That asymmetry was never decided; it was missed.
+   *
+   * THREE RULES, AND EACH ONE EXISTS TO KEEP THE LINE RARE.
+   *
+   * Only on REMOVAL. Adding cameras takes nothing from anybody, and a line that appears on every
+   * edit is one people learn to click past — which costs the two edits that mattered.
+   *
+   * Only on a NET loss. A camera the holder still reaches through another group, or through an
+   * individual grant of their own, is not lost: their scope is recomputed WITH this group's new
+   * membership, and only what falls out of that union is counted. Ticks are not losses.
+   *
+   * And it never blocks Save. The safeguard here is undo, not a harder confirmation: every box on
+   * this panel can be ticked again before saving, and the line disappears when it is.
+   *
+   * A camera the register no longer holds is left out of the count — it is already unreachable,
+   * so removing it from the group costs nobody anything.
+   */
+  const netLoss = useMemo(() => {
+    if (!group) return null;
+    const registered = new Set(cameras.map(c => c.id));
+    const removed = group.cameraIds.filter(id => !picked.includes(id) && registered.has(id));
+    if (removed.length === 0) return null;
+    const lost = new Set<string>();
+    let accounts = 0;
+    let emptied = 0;
+    portalUsers.forEach(u => {
+      if (!(u.cameraGroupIds ?? []).includes(group.id)) return;
+      /* The scope this account WOULD have after the save: its own camera ids, plus the members of
+         every group it holds, with this group standing at its new membership. */
+      const after = new Set(u.cameraIds ?? []);
+      (u.cameraGroupIds ?? []).forEach(gid => {
+        if (gid === group.id) picked.forEach(id => after.add(id));
+        else otherGroups.find(g => g.id === gid)?.cameraIds.forEach(id => after.add(id));
+      });
+      const gone = removed.filter(id => !after.has(id));
+      if (gone.length === 0) return;
+      accounts += 1;
+      gone.forEach(id => lost.add(id));
+      if (after.size === 0) emptied += 1;
+    });
+    if (accounts === 0) return null;
+    return { accounts, cameras: lost.size, emptied };
+  }, [group, picked, cameras, otherGroups, portalUsers]);
+
   /* Handed to the shared Drawer, which is what asks before discarding — the scrim and Escape
      both take that route there, and ✕ and 취소 stay immediate because they are aimed. */
 
@@ -546,8 +627,21 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
       dirty={dirty}
       footer={
         <>
-          <span style={{ flex: 1, fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>
-            {t.pickedCount(picked.length)}
+          {/* The count, and under it the one thing the count cannot say. --warning-500 rather than
+              red: red in this console is reserved for what cannot be undone, and this is undone by
+              ticking the box again. It wraps rather than truncates — a warning with an ellipsis in
+              it is a warning nobody read. */}
+          <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>
+              {t.pickedCount(picked.length)}
+            </span>
+            {netLoss && (
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--warning-500)", lineHeight: 1.45 }}>
+                {netLoss.emptied > 0
+                  ? t.lossLineEmptied(netLoss.accounts, netLoss.cameras, netLoss.emptied)
+                  : t.lossLine(netLoss.accounts, netLoss.cameras)}
+              </span>
+            )}
           </span>
           {/* The shared pair, so this panel and every other one end the same way — see
               PanelCancel/PanelPrimary for what was measured against twenty reference panels. */}
@@ -862,6 +956,105 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
   );
 }
 
+/**
+ * How many people a footer line names before it says 「외 N명」.
+ *
+ * Three, not the chips' eighteen: a camera name is a thing you scan for, a person's name is one
+ * you recognise, and the fourth one tells a reader nothing the number does not. The rest are on
+ * the hover title, the same way the overlap mark in the picker names its groups.
+ */
+const NAME_CAP = 3;
+
+/**
+ * ONE HALF OF 「WHO CAN WATCH THESE CAMERAS」, NAMED AND PRESSABLE.
+ *
+ * A labelled sentence rather than a bare figure: of the admin consoles checked for this, none
+ * makes an integer on its own the target — Airwallex ships 「This role has 1 user」 and Linear
+ * 「Members … 1 member ›」, both of them the whole phrase. So the label names the relation and the
+ * names are the targets.
+ *
+ * THE APP PERMISSION RIDES WITH THE NAME, Vercel's row exactly (「Designers · 1 member · Saturday:
+ * Project Viewer」). This card is the only place in the console where the two permission axes
+ * stand side by side as values rather than as a sentence about how they combine: the group is the
+ * camera axis, 「조사자」 is the app axis, and an access review needs both before it can say
+ * whether this is the right person on these cameras.
+ */
+function WatcherLine({ label, empty, people, appLabelOf, moreLabel, onOpen }: {
+  label: string;
+  /** Printed instead of the label when nobody is here. Omitted where silence is the right answer. */
+  empty?: string;
+  people: PortalUser[];
+  appLabelOf: (u: PortalUser) => string;
+  moreLabel: (n: number) => string;
+  onOpen: (u: PortalUser) => void;
+}) {
+  if (people.length === 0) {
+    return empty ? <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{empty}</span> : null;
+  }
+  const shown = people.slice(0, NAME_CAP);
+  const rest = people.slice(NAME_CAP);
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "3px 8px" }}>
+      <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{label}</span>
+      {shown.map(u => (
+        /* Underlined in grey rather than coloured: this footer can hold six of these, and six
+           purple words on a card whose every other mark is grey would make the names the loudest
+           thing in the list. The underline is what says "pressable" without spending the accent. */
+        <button key={u.id} type="button" onClick={() => onOpen(u)}
+          style={{
+            border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
+            fontSize: "11px", fontWeight: 700, color: "var(--gray-900)",
+            textDecoration: "underline", textDecorationColor: "var(--gray-300)", textUnderlineOffset: "2px",
+          }}>
+          {u.name}
+          <span style={{ fontWeight: 600, color: "var(--gray-500)" }}>{` · ${appLabelOf(u)}`}</span>
+        </button>
+      ))}
+      {rest.length > 0 && (
+        <span title={rest.map(u => u.name).join(", ")} style={{ fontSize: "11px", color: "var(--gray-400)" }}>
+          {moreLabel(rest.length)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * THE ACCOUNT, OPENED FROM THE GROUP IT REACHES THROUGH.
+ *
+ * Read-only, and deliberately three facts wide. The account's own panel — the one that suspends,
+ * re-scopes and changes grants — belongs to the 「사용자」 rail row and opens from a row in that
+ * table; it is not a second editor and must not become one, because two panels writing the same
+ * account drift the first time one of them gains a field (the same rule that moved the presets
+ * tab here rather than copying it).
+ *
+ * What it answers is the question the card raises and cannot hold: this name watches these
+ * cameras — who is it, and how much else do they see. The scope line is what tells the two halves
+ * of the footer apart, in the console's own words: 「전체 카메라」 is exactly why deleting the
+ * group would take nothing from them.
+ */
+function AccountPeek({ user, groups, presetLabelOf, t, onClose }: {
+  user: PortalUser;
+  groups: CameraGroup[];
+  presetLabelOf: (u: PortalUser) => string;
+  t: Dict;
+  onClose: () => void;
+}) {
+  const scope = scopedCameraIds(user, groups);
+  return (
+    <Drawer title={user.name} width="420px" onClose={onClose}
+      footer={<PanelCancel onClick={onClose} label={t.close} />}>
+      <div style={{ padding: "20px" }}>
+        <PairGrid>
+          <PairItem label={t.accountEmail}>{user.email}</PairItem>
+          <PairItem label={t.accountApp}>{presetLabelOf(user)}</PairItem>
+          <PairItem label={t.accountScope}>{scope === null ? t.scopeEvery : t.cameras(scope.size)}</PairItem>
+        </PairGrid>
+      </div>
+    </Drawer>
+  );
+}
+
 export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot }: {
   projectId: string;
   onGoToCameras?: () => void;
@@ -875,6 +1068,7 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
   const allGroups = useVcaStore(s => s.cameraGroups);
   const allCameras = useVcaStore(s => s.cameras);
   const portalUsers = useVcaStore(s => s.portalUsers);
+  const accessPresets = useVcaStore(s => s.accessPresets);
   const removeCameraGroup = useVcaStore(s => s.removeCameraGroup);
 
   const groups = cameraGroupsInProject(allGroups, projectId);
@@ -888,9 +1082,31 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
      were looking last is not a setting, and a tab that opens in a mode you did not choose is
      worse than one that always opens the same way. */
   const [view, setView] = useState<"cards" | "map">("cards");
+  /** The account a footer name was pressed on. Read-only — see AccountPeek. */
+  const [peeking, setPeeking] = useState<PortalUser | null>(null);
   const drawerOpen = editing !== null || creating;
 
-  /** How many accounts name this group in their scope — the answer this tab exists for. */
+  /**
+   * The app half of an account's permissions, in the words the presets tab uses for it.
+   *
+   * 「커스텀」 for an account that left its preset, which is the same stand-in the accounts table
+   * prints — a custom set has no name, and inventing one here would give this card a vocabulary
+   * the rest of the console does not have.
+   */
+  const appLabelOf = (u: PortalUser) => {
+    const preset = u.grantMode === "preset" && u.presetId
+      ? accessPresets.find(pr => pr.id === u.presetId)
+      : undefined;
+    return preset ? presetLabel(preset, lang) : t.grantCustom;
+  };
+
+  /**
+   * How many accounts NAME this group in their scope — for the delete dialog, and only for it.
+   *
+   * Holding, not watching, which is the right question there: deleting the group prunes exactly
+   * these scopes (removeCameraGroup), and an account that was never narrowed loses nothing. The
+   * card's own footer asks the other question and uses accountsWatching — see its note.
+   */
   const holderCount = (group: CameraGroup) =>
     portalUsers.filter(u => (u.cameraGroupIds ?? []).includes(group.id)).length;
 
@@ -1053,7 +1269,10 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
         <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
           {groups.map(group => {
             const cams = liveCameras(group);
-            const holders = holderCount(group);
+            /* The REGISTERED members, not the stored ids: an id the register no longer holds
+               grants nobody anything, so counting a watcher through it would be a false positive
+               in the one line an access review reads. */
+            const watching = accountsWatching(cams.map(c => c.id), projectId, portalUsers, allGroups);
             return (
               <div key={group.id} style={{
                 backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW,
@@ -1110,23 +1329,71 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
                   </div>
                 )}
 
-                {/* THE REVERSE LOOKUP, ON EVERY CARD. Counted here rather than named: three names
-                    do not fit a card's footer, and the account list is where you go to find out
-                    which three. 「가진 계정 없음」 is said rather than shown as 0, because a group
-                    nobody holds is a real state worth noticing — it grants nothing to anyone. */}
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px", marginTop: "auto", paddingTop: "8px", borderTop: "1px solid var(--gray-100)" }}>
-                  <span style={{ fontSize: "11px", color: holders === 0 ? "var(--gray-400)" : "var(--gray-600)" }}>
-                    {holders === 0 ? t.holdersNone : t.holders(holders)}
-                  </span>
-                  <span style={{ fontSize: "10.5px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {t.createdBy(group.createdBy, group.createdAt.slice(0, 10))}
-                  </span>
+                {/*
+                  THE REVERSE LOOKUP, ON EVERY CARD — NAMED NOW, AND IN TWO HALVES.
+
+                  REPLACING THE NOTE OF 2026-09-22, which read: 「Counted here rather than named:
+                  three names do not fit a card's footer, and the account list is where you go to
+                  find out which three.」 Both of its premises are false today. The card went full
+                  width on 2026-09-28 — MEASURED, the footer is 1144px and the sentence it held was
+                  191px of it, so 919px sat empty — and the account list has no group filter at
+                  all: its search matches a name and an address, so 「which accounts hold
+                  오차드·부기스 라인」 cannot be typed into it. The errand the count sent you on had
+                  no destination.
+
+                  AND IT WAS ANSWERING A NARROWER QUESTION THAN IT LOOKED. It counted the accounts
+                  that NAME this group in their scope. An account that was never narrowed holds no
+                  group and no camera ids, which scopedCameraIds reads as 「every camera」 — so it
+                  watches these cameras and appeared nowhere near them. MEASURED in the seed: three
+                  cameras in 「오차드·부기스 라인」, the card printing 「1개 계정이 가짐」, and two
+                  accounts able to open them.
+
+                  SPLIT, NOT SUMMED, because the two halves answer differently to the delete button
+                  three lines above: the first loses these cameras, the second loses nothing at
+                  all. One figure of 「2」 would hide exactly that. accountsWatching keeps them apart
+                  for that reason and this footer prints them apart — see its note.
+
+                  THE CREATOR AND THE DATE LEFT WITH THE COUNT. They were the least-asked fact
+                  about a permission object sitting in the most-asked row, and Records → 활동 has
+                  the same history under area: "cameraGroups" — every change with its author,
+                  rather than only the first one.
+                */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "auto", paddingTop: "8px", borderTop: "1px solid var(--gray-100)" }}>
+                  <WatcherLine
+                    label={t.watchThrough}
+                    empty={t.watchThroughNone}
+                    people={watching.through}
+                    appLabelOf={appLabelOf}
+                    moreLabel={t.andMorePeople}
+                    onOpen={setPeeking}
+                  />
+                  {/* Silent when there is none. 「0 accounts see everything」 is a sentence about
+                      nothing, the same rule the delete dialog's holder count already follows. */}
+                  <WatcherLine
+                    label={t.watchEvery}
+                    people={watching.unrestricted}
+                    appLabelOf={appLabelOf}
+                    moreLabel={t.andMorePeople}
+                    onOpen={setPeeking}
+                  />
                 </div>
               </div>
             );
           })}
 
         </div>
+      )}
+
+      {peeking && (
+        <AccountPeek
+          /* Read from the store by id rather than from the click — the snapshot taken when the
+             name was pressed would go stale the moment anything about the account changed. */
+          user={portalUsers.find(u => u.id === peeking.id) ?? peeking}
+          groups={allGroups}
+          presetLabelOf={appLabelOf}
+          t={t}
+          onClose={() => setPeeking(null)}
+        />
       )}
 
       {drawerOpen && (

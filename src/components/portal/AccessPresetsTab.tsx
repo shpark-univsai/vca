@@ -5,14 +5,14 @@ import { createPortal } from "react-dom";
 import { Check, Minus, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import {
   APP_ACTION_CONTENT, accountsFollowingPreset, presetsForTeam, presetLabel, useVcaStore,
-  withAppActionDeps, type AccessPreset, type AppAction,
+  withAppActionDeps, type AccessPreset, type AppAction, type PortalUser,
 } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
   FormLabel, BulkBarSubject, BulkBarExit,
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, AppGrantList, FloatingBulkBar, BulkBarDivider,
-  TextField, Drawer, GRANT_TREE, GrantGroupIcon, type GrantRowDef, type GrantGroupDef,
+  TextField, Drawer, PanelCancel, GRANT_TREE, GrantGroupIcon, type GrantRowDef, type GrantGroupDef,
 } from "./PortalShared";
 import { APP_GRANT_LABELS } from "@/lib/appGrants";
 
@@ -57,6 +57,8 @@ const T = {
     presetNoScreens: "Tick at least one screen \u2014 an account following a preset with none cannot open the app",
     presetFollowers: (n: number) => `In use · ${n}`,
     presetFollowersNone: "No accounts follow this yet",
+    presetFollowersTitle: (label: string) => `Accounts following ${label}`,
+    presetClose: "Close",
     presetEditReach: (n: number) => `Saving changes what these ${n} can open, at once.`,
     presetEdit: "Edit",
     presetNoActions: "A preset with nothing ticked cannot be given to anyone.",
@@ -94,6 +96,8 @@ const T = {
     presetNoScreens: "화면을 하나 이상 골라주세요 — 화면이 없는 프리셋을 따르는 계정은 앱을 열 수 없습니다",
     presetFollowers: (n: number) => `사용중 · ${n}`,
     presetFollowersNone: "미사용",
+    presetFollowersTitle: (label: string) => `${label} 프리셋을 따르는 계정`,
+    presetClose: "닫기",
     presetEditReach: (n: number) => `저장하면 이 ${n}명이 열 수 있는 화면이 한 번에 바뀝니다.`,
     presetEdit: "편집",
     presetNoActions: "아무것도 고르지 않은 프리셋은 아무에게도 줄 수 없습니다.",
@@ -182,11 +186,16 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
   const updateAccessPreset = useVcaStore(s => s.updateAccessPreset);
   const archiveAccessPreset = useVcaStore(s => s.archiveAccessPreset);
   const presets = useMemo(() => presetsForTeam(allPresets, teamId), [allPresets, teamId]);
+  /* THE ACCOUNTS, NOT THEIR NAMES. It mapped to names, which was everything a count needed and
+     nothing a list needs — 「사용중 · 1」 now opens on the people it is counting, and a person is
+     told apart by an address when two of them share a name. */
   const followersOf = useMemo(() => {
-    const map = new Map<string, string[]>();
-    presets.forEach(pr => map.set(pr.id, accountsFollowingPreset(portalUsers, pr.id).map(u => u.name)));
+    const map = new Map<string, PortalUser[]>();
+    presets.forEach(pr => map.set(pr.id, accountsFollowingPreset(portalUsers, pr.id)));
     return map;
   }, [presets, portalUsers]);
+  /** The preset whose follower list is open. Read-only — see FollowerList. */
+  const [showingFollowers, setShowingFollowers] = useState<AccessPreset | null>(null);
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -409,7 +418,7 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
               );
             }}
             header={pr => {
-              const names = followersOf.get(pr.id) ?? [];
+              const followers = followersOf.get(pr.id) ?? [];
               const gone = removed.includes(pr.id);
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, opacity: gone ? 0.4 : 1 }}>
@@ -429,7 +438,9 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
                          the screen. 128px still takes a name twice as long as any of the three. */
                       style={{ width: "100%", maxWidth: "104px", boxSizing: "border-box", height: "28px", padding: "0 8px", borderRadius: "7px", border: BORDER, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", backgroundColor: "white" }}
                     />
-                    {pr.id !== NEW_ID && <UseChip n={names.length} t={t} plain />}
+                    {/* Not a door while the name beside it is an input: opening a panel over an
+                        unsaved edit would put the table's own 저장 behind a scrim. */}
+                    {pr.id !== NEW_ID && <UseChip n={followers.length} t={t} plain />}
                     </div>
                   ) : null}
                   {editing && !gone ? null : (
@@ -437,7 +448,8 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
                       <span title={presetLabel(pr, lang)} style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: gone ? "line-through" : undefined }}>
                         {draft[pr.id]?.label || presetLabel(pr, lang)}
                       </span>
-                      <UseChip n={names.length} t={t} />
+                      <UseChip n={followers.length} t={t}
+                        onOpen={followers.length > 0 ? () => setShowingFollowers(pr) : undefined} />
                     </div>
                   )}
 
@@ -485,6 +497,17 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
           </button>
           <BulkBarExit onClick={stopEditing}>{t.presetCancel}</BulkBarExit>
         </FloatingBulkBar>
+      )}
+
+      {showingFollowers && (
+        <FollowerList
+          preset={showingFollowers}
+          /* Read from the store by id rather than from the press — a follower who is cut loose
+             while this is open should leave the list, not sit in a snapshot of it. */
+          followers={followersOf.get(showingFollowers.id) ?? []}
+          t={t} lang={lang}
+          onClose={() => setShowingFollowers(null)}
+        />
       )}
 
       {creating && (
@@ -957,8 +980,34 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
  * making it can see how many accounts it reaches. A chip on the name's own line says it in four
  * characters instead of ten.
  */
-function UseChip({ n, t, plain }: { n: number; t: (typeof T)["en"] | (typeof T)["ko"]; plain?: boolean }) {
-  return (
+/*
+ * WHAT CARRIED OVER FROM THE CAMERA-GROUP CARD, AND WHAT DID NOT (2026-10-02).
+ *
+ * The same fault was here: a number nothing could be done with. 「사용중 · 1」 answered "how many"
+ * and left "which one" to a search this console cannot run — the accounts table matches a name and
+ * an address, not a preset. So the chip became the door, and the people are named behind it.
+ *
+ * THE SPLIT DID NOT CARRY, and it would be wrong here. A camera group has a second half because an
+ * account that was never narrowed watches its cameras without naming it; a preset has no such
+ * half. Following it is the only way to hold it — an account with its own grants holds its own
+ * set, not a looser version of this one — so there is one list and one number.
+ *
+ * NEITHER DID THE 「· 조사자」 BESIDE EACH NAME. On the group card that second value is the axis
+ * the card cannot show. Here the column the chip sits under IS that value, and printing it again
+ * on every row would be the same word twice.
+ *
+ * AND NOT A SECOND HOP. A name on the group card opens the account because the card has nothing
+ * else to say about it; this panel already carries the address, and a third panel over an edit
+ * table would be a step for nothing.
+ */
+function UseChip({ n, t, plain, onOpen }: {
+  n: number;
+  t: (typeof T)["en"] | (typeof T)["ko"];
+  plain?: boolean;
+  /** Set only on the saved table, and only when somebody follows this — see the note above. */
+  onOpen?: () => void;
+}) {
+  const body = (
     <span style={{
       flexShrink: 0, fontSize: "10.5px", fontWeight: 700,
       color: n === 0 ? "var(--gray-400)" : "var(--gray-600)",
@@ -976,6 +1025,44 @@ function UseChip({ n, t, plain }: { n: number; t: (typeof T)["en"] | (typeof T)[
     }}>
       {n === 0 ? t.presetFollowersNone : t.presetFollowers(n)}
     </span>
+  );
+  if (!onOpen) return body;
+  /* The chip itself is the target, not a digit inside it — the shape that already reads as one
+     object keeps reading as one object, and the press lands wherever the reader aims. */
+  return (
+    <button type="button" onClick={onOpen}
+      style={{ display: "inline-flex", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", minWidth: 0 }}>
+      {body}
+    </button>
+  );
+}
+
+/**
+ * The accounts following one preset, named. Read-only, for the reason the camera-group card's
+ * AccountPeek gives: the panel that changes an account belongs to the 「사용자」 rail row, and two
+ * panels writing the same account drift the first time one of them gains a field.
+ */
+function FollowerList({ preset, followers, t, lang, onClose }: {
+  preset: AccessPreset;
+  followers: PortalUser[];
+  t: (typeof T)["en"] | (typeof T)["ko"];
+  lang: "en" | "ko";
+  onClose: () => void;
+}) {
+  return (
+    <Drawer title={t.presetFollowersTitle(presetLabel(preset, lang))} width="420px" onClose={onClose}
+      footer={<PanelCancel onClick={onClose} label={t.presetClose} />}>
+      <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+        {followers.map(u => (
+          /* The address under the name, as the accounts table prints it: two people on one site
+             can share a name, and the address is what tells them apart. */
+          <div key={u.id} style={{ minWidth: 0 }}>
+            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</p>
+            <p style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</p>
+          </div>
+        ))}
+      </div>
+    </Drawer>
   );
 }
 
