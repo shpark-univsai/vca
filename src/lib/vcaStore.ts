@@ -2517,6 +2517,48 @@ export function scopedCameraIds(user: PortalUser, groups: CameraGroup[]): Set<st
   return ids;
 }
 
+/**
+ * WHO CAN ACTUALLY WATCH THESE CAMERAS — and why, because the two reasons are not the same fact.
+ *
+ * The camera-groups card used to answer this by counting the accounts that NAME the group in
+ * their scope, and that number is narrower than the question an access review asks. An account
+ * that was never narrowed holds no group and no camera ids at all, which `scopedCameraIds` reads
+ * as "every camera" — so it watches the group's cameras without appearing anywhere near it.
+ * MEASURED in the seed: three cameras in 「오차드·부기스 라인」, the card printing 「1개 계정이
+ * 가짐」, and two active accounts able to open them — Marcus Lee through the group, Grace Tan
+ * through having no scope at all. The sentence was true about holding and wrong about watching,
+ * which is the shape of failure this repo keeps paying for: no error, a plausible number, and a
+ * reader who now believes something false.
+ *
+ * Split rather than summed, because the two halves behave differently: delete the group and the
+ * `through` half loses the cameras while the `unrestricted` half loses nothing. A single total
+ * would hide that. Genetec keeps the same two sets on separate tabs and says in its own docs that
+ * one is not the other; Eagle Eye prints a warning that a camera reachable another way is not in
+ * its list. Saying it is the convention; hiding it is not.
+ *
+ * Only accounts that could open the app today are counted — a suspended or not-yet-accepted
+ * account is a grant, not a viewer, and an access review is asking who is watching.
+ */
+export function accountsWatching(
+  cameraIds: string[],
+  projectId: string,
+  users: PortalUser[],
+  groups: CameraGroup[],
+): { through: PortalUser[]; unrestricted: PortalUser[] } {
+  const wanted = new Set(cameraIds);
+  const through: PortalUser[] = [];
+  const unrestricted: PortalUser[] = [];
+  if (wanted.size === 0) return { through, unrestricted };
+  users.forEach(u => {
+    if (!u.projectIds.includes(projectId)) return;
+    if (!canUseAppNow(u)) return;
+    const allowed = scopedCameraIds(u, groups);
+    if (allowed === null) { unrestricted.push(u); return; }
+    if ([...wanted].some(id => allowed.has(id))) through.push(u);
+  });
+  return { through, unrestricted };
+}
+
 /** The groups of one project, which is the only place a group means anything. */
 export function cameraGroupsInProject(groups: CameraGroup[], projectId: string): CameraGroup[] {
   return groups.filter(g => g.projectId === projectId);
@@ -4503,6 +4545,60 @@ function pruneCameraScopes(users: PortalUser[], removedIds: Set<string>): { user
 function scopeNote(touched: number): string {
   return touched === 0 ? "" : ` · removed from ${touched} account${touched === 1 ? "'s" : "s'"} camera scope`;
 }
+
+/** The cameras an account can actually reach: its scope, intersected with its own projects. */
+function effectiveScopeSize(user: PortalUser, cameras: Camera[], groups: CameraGroup[]): number | null {
+  const allowed = scopedCameraIds(user, groups);
+  if (allowed === null) return null;
+  return cameras.filter(c => user.projectIds.includes(c.projectId) && allowed.has(c.id)).length;
+}
+
+/**
+ * ONE ROW PER ACCOUNT THAT LOST CAMERAS, because a permissions record is read by subject.
+ *
+ * Deleting a camera wrote a single line — 「Novena / Removed」 — and that line cannot answer the
+ * question an access review actually asks, which is when and why THIS ACCOUNT's reach narrowed.
+ * Worse, the count beside it only ever saw accounts holding the camera INDIVIDUALLY: the seeded
+ * holder reaches it through a group, so the note was empty every time while somebody really did
+ * lose a camera.
+ *
+ * 고시 제5조제3항 requires the record of a 권한 변경·말소 to exist and to be kept three years
+ * (the duty itself sits a level up, in 시행령 제30조제1항제2호가목). It does NOT enumerate the
+ * fields — before/after is ours, chosen because 「범위가 좁아졌다」 refuses to say from what to
+ * what, which is the one thing "was this allowed" turns on. Retention is a server requirement:
+ * this log is capped in memory and nothing here keeps three years of anything.
+ *
+ * Unrestricted accounts get no row. Their scope did not change — the register did, and the
+ * camera's own line already says so.
+ */
+function scopeNarrowingRows(args: {
+  usersBefore: PortalUser[]; usersAfter: PortalUser[];
+  groupsBefore: CameraGroup[]; groupsAfter: CameraGroup[];
+  camerasBefore: Camera[]; camerasAfter: Camera[];
+  reason: string; at: string;
+}): AuditEvent[] {
+  const { usersBefore, usersAfter, groupsBefore, groupsAfter, camerasBefore, camerasAfter, reason, at } = args;
+  const rows: AuditEvent[] = [];
+  usersBefore.forEach(u => {
+    const before = effectiveScopeSize(u, camerasBefore, groupsBefore);
+    if (before === null) return;
+    const now = usersAfter.find(x => x.id === u.id);
+    if (!now) return;
+    const after = effectiveScopeSize(now, camerasAfter, groupsAfter);
+    if (after === null || after >= before) return;
+    rows.push(clientAudit({
+      projectId: u.projectIds[0],
+      area: "accounts",
+      target: u.name,
+      action: `Camera scope narrowed — ${reason}`,
+      message: `${u.name}'s camera scope narrowed — ${reason}`,
+      before: `${before} camera${before === 1 ? "" : "s"}`,
+      after: `${after} camera${after === 1 ? "" : "s"}`,
+      actor: SIGNED_IN_USER.name, at,
+    }));
+  });
+  return rows;
+}
 let accessRequestSeq = ACCESS_REQUESTS.length;
 
 function auditAt(minutesAgo: number): string {
@@ -5224,13 +5320,25 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   removeCamera: (cameraId) =>
     set(state => {
       const cam = state.cameras.find(c => c.id === cameraId);
+      const name = cam?.name ?? cameraId;
       const scopes = pruneCameraScopes(state.portalUsers, new Set([cameraId]));
-      const auditEntry: AuditEvent = clientAudit({ projectId: cam?.projectId, area: "cameras", target: `${cam?.name ?? cameraId}`, action: `Removed${scopeNote(scopes.touched)}`, message: `Camera ${cam?.name ?? cameraId} removed${scopeNote(scopes.touched)}`, actor: SIGNED_IN_USER.name, at: new Date().toISOString() });
+      const groupsAfter = pruneCameraGroupMembers(state.cameraGroups, new Set([cameraId]));
+      const camerasAfter = state.cameras.filter(c => c.id !== cameraId);
+      const at = new Date().toISOString();
+      /* The accounts are worked out BEFORE the note is written, because the note's count is now
+         the same fact the rows carry — one place computes it, one place can be wrong. */
+      const rows = scopeNarrowingRows({
+        usersBefore: state.portalUsers, usersAfter: scopes.users,
+        groupsBefore: state.cameraGroups, groupsAfter,
+        camerasBefore: state.cameras, camerasAfter,
+        reason: `${name} removed`, at,
+      });
+      const auditEntry: AuditEvent = clientAudit({ projectId: cam?.projectId, area: "cameras", target: name, action: `Removed${scopeNote(rows.length)}`, message: `Camera ${name} removed${scopeNote(rows.length)}`, actor: SIGNED_IN_USER.name, at });
       return {
-        cameras: state.cameras.filter(c => c.id !== cameraId),
-        cameraGroups: pruneCameraGroupMembers(state.cameraGroups, new Set([cameraId])),
+        cameras: camerasAfter,
+        cameraGroups: groupsAfter,
         portalUsers: scopes.users,
-        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+        auditLog: [auditEntry, ...rows, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   removeCameras: (cameraIds) =>
@@ -5239,21 +5347,31 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       const removed = state.cameras.filter(c => ids.has(c.id));
       if (removed.length === 0) return {};
       const scopes = pruneCameraScopes(state.portalUsers, ids);
+      const groupsAfter = pruneCameraGroupMembers(state.cameraGroups, ids);
+      const camerasAfter = state.cameras.filter(c => !ids.has(c.id));
+      const at = new Date().toISOString();
+      const rows = scopeNarrowingRows({
+        usersBefore: state.portalUsers, usersAfter: scopes.users,
+        groupsBefore: state.cameraGroups, groupsAfter,
+        camerasBefore: state.cameras, camerasAfter,
+        reason: removed.length === 1 ? `${removed[0].name} removed` : `${removed.length} cameras removed`,
+        at,
+      });
       const auditEntry: AuditEvent = clientAudit({
         projectId: removed[0].projectId,
         area: "cameras",
         target: removed.length === 1 ? removed[0].name : `${removed.length} cameras (${removed.map(c => c.code).join(", ")})`,
-        action: `Removed${scopeNote(scopes.touched)}`,
+        action: `Removed${scopeNote(rows.length)}`,
         message: (removed.length === 1
           ? `Camera ${removed[0].name} removed`
-          : `${removed.length} cameras removed (${removed.map(c => c.code).join(", ")})`) + scopeNote(scopes.touched),
-        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+          : `${removed.length} cameras removed (${removed.map(c => c.code).join(", ")})`) + scopeNote(rows.length),
+        actor: SIGNED_IN_USER.name, at,
       });
       return {
-        cameras: state.cameras.filter(c => !ids.has(c.id)),
-        cameraGroups: pruneCameraGroupMembers(state.cameraGroups, ids),
+        cameras: camerasAfter,
+        cameraGroups: groupsAfter,
         portalUsers: scopes.users,
-        auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+        auditLog: [auditEntry, ...rows, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
   setCamerasZone: (cameraIds, zone) =>
@@ -6747,13 +6865,36 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         added.length ? `+${added.join(", ")}` : "",
         removed.length ? `−${removed.join(", ")}` : "",
       ].filter(Boolean).join(" ");
+      /*
+         THE CAMERA SCOPE RIDES ALONG, because moving somebody between sites silently changes what
+         they can watch and the line above never said so.
+
+         A scope resolves through the register at read time, so taking a site away leaves the group
+         ids in place and the account simply reaches nothing — and putting the site back LATER
+         RESTORES CAMERAS NOBODY GRANTED AGAIN. Nothing is pruned here on purpose: a reassignment
+         next week is ordinary, and dropping the groups would be an unrecoverable guess about what
+         somebody meant. What was missing is the record, so the record is what this adds.
+
+         Said as a count and not as names: the group names are already the account's own row, and
+         what the reviewer needs here is that the number moved and where it moved to.
+      */
+      const next = { ...user, projectIds };
+      const scopeBefore = effectiveScopeSize(user, state.cameras, state.cameraGroups);
+      const scopeAfter = effectiveScopeSize(next, state.cameras, state.cameraGroups);
+      const scopeMoved = scopeBefore !== null && scopeAfter !== null && scopeBefore !== scopeAfter;
       const auditEntry: AuditEvent = clientAudit({
         projectId: user.projectIds[0],
-        area: "accounts", target: user.name, action: `Projects changed: ${parts}`, message: `${user.name}'s projects changed: ${parts}`,
+        area: "accounts", target: user.name,
+        action: `Projects changed: ${parts}`,
+        message: `${user.name}'s projects changed: ${parts}`,
+        ...(scopeMoved ? {
+          before: `${scopeBefore} camera${scopeBefore === 1 ? "" : "s"}`,
+          after: `${scopeAfter} camera${scopeAfter === 1 ? "" : "s"}`,
+        } : {}),
         actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
       });
       return {
-        portalUsers: state.portalUsers.map(u => (u.id === userId ? { ...u, projectIds } : u)),
+        portalUsers: state.portalUsers.map(u => (u.id === userId ? next : u)),
         auditLog: [auditEntry, ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
       };
     }),
