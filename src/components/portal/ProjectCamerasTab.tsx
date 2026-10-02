@@ -14,7 +14,7 @@ import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
 import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, TABLE_RULE, CARD_BORDER, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Tooltip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
-import CameraStreamModal from "./CameraStreamModal";
+import CameraDetailPanel from "./CameraDetailPanel";
 
 const T = {
   en: {
@@ -1096,7 +1096,7 @@ function csvEscape(value: string): string {
 }
 
 /**
- * @param openCameraId  A camera to open the detail modal on as soon as this tab mounts — set by the
+ * @param openCameraId  A camera to open the detail panel on as soon as this tab mounts — set by the
  *   Overview's camera panel, whose rows now open the camera rather than dumping the reader at the
  *   top of this list. Cleared through onCameraOpened so a later visit to the tab opens plain.
  */
@@ -1163,8 +1163,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const [showAdd, setShowAdd] = useState(false);
   const [editingCamera, setEditingCamera] = useState<Camera | null>(null);
   // Holds just the id — the live Camera object is looked up from `cameras` below on every render,
-  // so actions taken inside the modal (e.g. Reconnect) are reflected immediately instead of
-  // showing a stale snapshot captured at the moment the modal opened.
+  // so an edit made elsewhere while the panel is open is reflected immediately instead of showing
+  // a stale snapshot captured at the moment it opened.
   const [inspectingCameraId, setInspectingCameraId] = useState<string | null>(null);
   /* The file row's equivalent of the camera preview. Same gesture, different subject: one is a
      stream somebody is watching, the other a recording that waits to be played. */
@@ -1660,7 +1660,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
    * it with "this attempts to reconnect", which was untrue the same way — nothing was attempted
    * either; there was no request, no RTSP handshake and nothing waiting for an answer.
    *
-   * CameraStreamModal deleted its copy of this button for exactly these reasons, and its comment
+   * CameraDetailPanel deleted its copy of this button for exactly these reasons, and its comment
    * says "the page-level one went for the same reason". It had not gone. This is that removal.
    *
    * What survives is the half a person can honestly witness: somebody stood in front of a monitor,
@@ -2895,8 +2895,13 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           t={t}
         />
       )}
+      {/* A right-hand panel, not a centre dialog — see the rule over Drawer in PortalShared. The
+          list behind it is the context: the reader picked one row and is likely to open the next.
+          No `onOpenInCameras` here: that header link is for the Overview, where this panel is a
+          preview of a list living elsewhere. This IS that list, and a link to the screen you are
+          standing on is furniture. */}
       {inspectingCameraId && cameras.find(c => c.id === inspectingCameraId) && (
-        <CameraStreamModal camera={cameras.find(c => c.id === inspectingCameraId) as Camera} onClose={() => setInspectingCameraId(null)} />
+        <CameraDetailPanel camera={cameras.find(c => c.id === inspectingCameraId) as Camera} onClose={() => setInspectingCameraId(null)} />
       )}
       {confirmingRemoveUpload && (
         <ConfirmModal

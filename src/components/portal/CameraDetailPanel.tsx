@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, Clock, Crosshair, Cpu, Link2, Map as MapIcon, MapPin, Network, Play, Server as ServerIcon } from "lucide-react";
+import { Activity, ArrowUpRight, Clock, Crosshair, Cpu, Link2, Map as MapIcon, MapPin, Network, Play, Server as ServerIcon } from "lucide-react";
 import { useVcaStore, type Camera } from "@/lib/vcaStore";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { BORDER } from "./PortalShared";
+import { BORDER, Drawer } from "./PortalShared";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import ViewerWatermark from "@/components/ViewerWatermark";
@@ -34,7 +33,7 @@ const T = {
     // would be — so it has to stay the length of a timestamp in every language. The caption beside
     // it already names the field; the value only has to say there is none.
     noRecentDetections: "None yet",
-    close: "Close",
+    openInCameras: "Open in Input sources",
   },
   ko: {
     live: "실시간",
@@ -57,16 +56,23 @@ const T = {
     detectionCount: "기록된 탐지",
     detectionCountValue: (n: number) => `${n}건`,
     noRecentDetections: "아직 없음",
-    close: "닫기",
+    openInCameras: "입력 소스에서 열기",
   },
 } as const;
 
-export default function CameraStreamModal({ camera, onClose }: { camera: Camera; onClose: () => void }) {
-  useEscapeKey(onClose);
+export default function CameraDetailPanel({ camera, onClose, onOpenInCameras }: {
+  camera: Camera;
+  onClose: () => void;
+  /**
+   * Offered only where this panel is NOT already on the camera list — the Overview. It is the
+   * reader's choice to leave, not something the detail does to them on the way in.
+   */
+  onOpenInCameras?: () => void;
+}) {
   const events = useVcaStore(s => s.events);
   const servers = useVcaStore(s => s.servers);
   // The camera's own project, not the one the monitoring app happens to have selected — this
-  // modal opens from a Portal screen, and siteTimeZone() answers for the app's selection.
+  // panel opens from a Portal screen, and siteTimeZone() answers for the app's selection.
   const projectZone = useVcaStore(s => s.projects.find(p => p.id === camera.projectId)?.timeZone) ?? PROJECT_TIME_ZONE;
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -75,7 +81,7 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
   /**
    * Whether the reader has asked for the live stream.
    *
-   * The frame is a still — the last thumbnail the server sent — and this modal is called Preview,
+   * The frame is a still — the last thumbnail the server sent — and this panel is called Preview,
    * so it needs the control that starts a preview. Pressing it cannot produce video yet: nothing
    * in the browser can open an RTSP stream, and the endpoint that would transcode it does not
    * exist. So it moves to a waiting state that says so, with the URL it would be playing, rather
@@ -106,31 +112,45 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
 
   return (
     /*
-      CENTRED ON PURPOSE, AND IT STAYS THAT WAY (2026-09-22). A frame from a camera is the one
-      thing on this screen you look AT rather than work beside, and a 520px panel would hand a
-      16:9 still about 290px of height. Media viewers are centred everywhere for that reason. The
-      facts sheet under it is there because the picture alone cannot say which camera, when, or
-      whether the feed is live.
+      A PANEL, AND 640px WIDE — the two halves of one decision.
+    
+      This was a centred dialog, argued for on 2026-09-22 like this: a frame is the one thing on
+      the screen you look AT rather than work beside, and a 520px panel would hand a 16:9 still
+      about 290px of height, so media viewers are centred everywhere. The owner overruled the
+      placement on 2026-10-02 — 「상세 정보들이면 … 가운데 팝업이 아니라 오른쪽 패널로」 — and
+      the objection was answered rather than dismissed: at 640 instead of the Drawer's 520 the
+      still measures 599×337, against 600×337 in the old dialog. The picture did not shrink; it
+      moved.
+    
+      The old argument was also answering the wrong question. What a centred dialog buys is that
+      NOTHING BEHIND IT CAN BE TOUCHED, and nothing here needs that — every field is read. The
+      thing it costs is the list this camera came from, which is exactly what the reader wants
+      back when they close. See the rule in PortalShared's Drawer.
+    
+      The facts sheet under the picture stays for its own reason: the image alone cannot say which
+      camera, when, or whether the feed is live.
     */
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "640px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--shadow-modal)" }}>
-        {/* No rule under the title. The sheet below it is already a stack of ruled rows, and a
-            heavier line above them made the header a section of its own — the name of the camera
-            does not need to be fenced off from the camera's own facts. The gap does the work. */}
-        <div style={{ padding: "16px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ width: "8px", height: "8px", borderRadius: "50%", /* Quiet when it is fine, like every other well state in Portal. */
-              backgroundColor: online ? "var(--gray-300)" : "var(--warning-500)", flexShrink: 0 }} />
-            <div>
-              <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{camera.name}</p>
-              <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{camera.code}</p>
-            </div>
-          </div>
-          <button className="portal-icon-btn" onClick={onClose} style={{ padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-          </button>
-        </div>
+    <Drawer
+      width="640px"
+      onClose={onClose}
+      title={
+        <span style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+          <span style={{ width: "8px", height: "8px", borderRadius: "50%", /* Quiet when it is fine, like every other well state in Portal. */
+            backgroundColor: online ? "var(--gray-300)" : "var(--warning-500)", flexShrink: 0 }} />
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
+            <span style={{ display: "block", fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", fontFamily: "monospace" }}>{camera.code}</span>
+          </span>
+        </span>
+      }
+      headerAction={onOpenInCameras && (
+        <button className="portal-btn-quiet" onClick={onOpenInCameras}
+          style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", borderRadius: "6px", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>
+          {t.openInCameras}
+          <ArrowUpRight size={13} strokeWidth={2.2} aria-hidden="true" />
+        </button>
+      )}>
+      <div>
 
         {/* The rule that used to divide these two blocks was carrying the space between them; with
             it gone the header's 20px and the body's 20px stacked into a gap the size of a missing
@@ -207,8 +227,9 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
                 bottom-left is the free corner (the LIVE/LAST FRAME badge has top-left, the play
                 button and the connecting panel are centred).
                 It follows the project Portal has open — ViewerWatermark reads activeProjectId,
-                which PortalShell keeps pointed at whatever project you are inside, and this modal
-                only opens from that project's own camera list. */}
+                which PortalShell keeps pointed at whatever project you are inside, and this panel
+                only opens from inside that project — the Overview and its camera list are both
+                inside one, so the two places it opens from agree about which one. */}
             {camera.thumbnail && <ViewerWatermark />}
           </div>
 
@@ -287,19 +308,18 @@ export default function CameraStreamModal({ camera, onClose }: { camera: Camera;
           </div>
         </div>
 
-        {/* Close, and nothing else.
-            There was a Reconnect button here that wrote "online" onto the camera and toasted
+        {/* NO FOOTER, and no Close button in it.
+            The panel has no verbs — everything in it is read — and the ✕ the Drawer draws is the
+            way out, as it is on every other panel. A footer holding one button that repeats the ✕
+            is a row of furniture.
+
+            There was a Reconnect button here once. It wrote "online" onto the camera and toasted
             "Angmokio 3 is back online" — a sentence this console cannot know is true. Nothing in
             the browser can make an RTSP stream come back, so the button's only real effect was to
             mark a camera as working while it was still dark, which is worse than no button. The
             page-level one went for the same reason; when the camera API can actually ask a device
             to reconnect, this is where it comes back. */}
-        <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-            {t.close}
-          </button>
-        </div>
       </div>
-    </div>
+    </Drawer>
   );
 }

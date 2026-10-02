@@ -11,6 +11,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { getAuthConfig } from "@/lib/authConfig";
 import type { DetailTab } from "./ProjectSidebar";
 import ProjectCamerasTab from "./ProjectCamerasTab";
+import CameraDetailPanel from "./CameraDetailPanel";
 import ProjectVipTab, { type VipHealthFilter } from "./ProjectVipTab";
 import ProjectLicenseTab from "./ProjectLicenseTab";
 import ProjectServerTab from "./ProjectServerTab";
@@ -478,6 +479,22 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
    * reopen a modal nobody asked for.
    */
   const [inspectCameraId, setInspectCameraId] = useState<string | null>(null);
+  /**
+   * The camera whose detail is open ON THIS SCREEN, in the right-hand panel.
+   *
+   * Separate from inspectCameraId above, and the two are not interchangeable: that one is a
+   * handoff OUT of the Overview and this one is a panel that opens where the reader already is.
+   * A camera row used to set inspectCameraId and switch tabs in the same gesture — one click that
+   * changed the screen and then covered it with a centre dialog, so closing the dialog left you
+   * on Input Sources instead of the Overview you were reading (owner, 2026-10-02: 「상세
+   * 정보들이면 오버뷰 화면 안에서 뜨는게 맞을 것 같구 가운데 팝업이 아니라 오른쪽 패널로」; the
+   * rule it is measured against is written over Drawer in PortalShared).
+   *
+   * The handoff itself is kept, because a detail panel that previews something with a fuller home
+   * offers that home rather than being it — it is now behind 「입력 소스에서 열기」 in the panel's
+   * header, which is the reader choosing to leave rather than the detail taking them.
+   */
+  const [overviewCameraId, setOverviewCameraId] = useState<string | null>(null);
   /**
    * Which registry-health bucket the VIP tab should open narrowed to, set by an errand in the
    * strip below and cleared by the tab once it has applied it.
@@ -1162,6 +1179,31 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
             </Drawer>
           )}
 
+          {/*
+            ONE CAMERA'S DETAIL, ON THE OVERVIEW.
+
+            The same panel the Input Sources tab opens, rendered here — the camera list it was
+            chosen from stays on screen behind it, and ✕ / Escape / the scrim put the reader back
+            on the Overview with the tab untouched. Nothing is looked up from the clicked row: the
+            id goes through `projectCameras`, so the panel reads the store's camera and a row
+            deleted while the panel is open closes it instead of showing a stale copy.
+
+            `onOpenInCameras` is the old click, kept and made optional: setInspectCameraId plus the
+            tab change land on this camera's own row in Input Sources, which is exactly where the
+            row used to take everybody unasked.
+          */}
+          {(() => {
+            const cam = overviewCameraId ? projectCameras.find(c => c.id === overviewCameraId) : undefined;
+            if (!cam) return null;
+            return (
+              <CameraDetailPanel
+                camera={cam}
+                onClose={() => setOverviewCameraId(null)}
+                onOpenInCameras={() => { setInspectCameraId(cam.id); setOverviewCameraId(null); onTabChange("cameras"); }}
+              />
+            );
+          })()}
+
           {/* Metric cards — camera connectivity / license usage / VIP DB / accounts & permissions,
               each grounded in real store data (no fabricated failure-reason breakdowns the data
               model doesn't have).
@@ -1695,7 +1737,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                       const downMs = nowMs !== null && c.lastSeenAt ? nowMs - new Date(c.lastSeenAt).getTime() : null;
                       const downPastWindow = downMs !== null && downMs >= 7 * 86_400_000;
                       const drops = dropsByCamera.get(c.id) ?? 0;
-                      const openCamera = () => { setInspectCameraId(c.id); onTabChange("cameras"); };
+                      /* Opens the detail here. It does NOT change the tab — see overviewCameraId. */
+                      const openCamera = () => setOverviewCameraId(c.id);
                       return (
                         /*
                           THE WHOLE ROW OPENS THE CAMERA, not just the chevron at its end.
@@ -1810,10 +1853,10 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                             )}
                           </span>
                           {/* A chevron, no word. "View" repeated on all eleven rows and said
-                              nothing the arrow did not; asked for 2026-09-08. It opens the camera
-                              itself — the Input Sources tab with that camera's detail already up —
-                              rather than dropping you at the top of a list of fifty-nine to find
-                              the row you just clicked. */}
+                              nothing the arrow did not; asked for 2026-09-08. It opens this
+                              camera's detail in the panel beside the list, so the next row is
+                              still there to read — rather than dropping you at the top of a list
+                              of fifty-nine to find the row you just clicked. */}
                           {/* Kept, and it is now the affordance rather than the mechanism: the arrow
                               is what tells a reader the row leads somewhere, and the row is what
                               they press. */}

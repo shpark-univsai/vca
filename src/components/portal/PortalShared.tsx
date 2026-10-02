@@ -3165,7 +3165,37 @@ const DRAWER_DISCARD_T = {
   },
 } as const;
 
-export function Drawer({ title, onClose, onBack, footer, width = "520px", escapeEnabled = true, dirty = false, children }: {
+/*
+ * ═══ WHEN A THING OPENS IN THIS PANEL, AND WHEN IT OPENS IN A DIALOG ═══
+ *
+ * Written down because the answer kept being decided one screen at a time, and the camera detail
+ * ended up as a centre dialog that covered the very list it was about (owner, 2026-10-01: 「상세
+ * 정보들이면 오버뷰 화면 안에서 뜨는게 맞을 것 같구 가운데 팝업이 아니라 오른쪽 패널로」).
+ *
+ * THE TEST IS WHAT HAS TO BE BLOCKED, not how much there is to show.
+ *
+ * THIS PANEL — detail about ONE thing chosen from a list, where the list is the context and the
+ * reader is likely to look at the next one. The list stays on screen behind it. Camera detail,
+ * a VIP, an account, one row of a log, a group editor.
+ *
+ * A CENTRE DIALOG (ConfirmModal and the import modals) — only when what is behind MUST NOT be
+ * acted on: an irreversible confirmation, a task that has to be finished or abandoned (an import,
+ * issuing a code), a secret shown once (a temporary password). If the list may stay visible, it is
+ * not one of these.
+ *
+ * A WHOLE SCREEN — what does not fit a panel: an editor with a map in it, a sheet meant to print.
+ *
+ * One question settles nearly all of it: WHERE DOES CLOSING RETURN THE READER? Back to the list
+ * to look at the next row — this panel. Nowhere, because they had to answer first — a dialog.
+ *
+ * And two rules that follow from it: a detail view must not navigate somewhere else to show
+ * itself (open the panel where the reader already is), and when the panel is a preview of
+ * something with a fuller home, it says so with `headerAction` rather than taking them there
+ * uninvited. Checked against Vapi, Navattic, Twenty, TheyDo, Squarespace, Maze, Midday and
+ * Supabase: all eight open a chosen row in a right-hand panel, none in a centre dialog, and the
+ * two with a fuller view (Vapi, Twenty) put that link in the panel's header.
+ */
+export function Drawer({ title, onClose, onBack, headerAction, footer, width = "520px", escapeEnabled = true, dirty = false, children }: {
   title: React.ReactNode;
   onClose: () => void;
   /**
@@ -3177,6 +3207,14 @@ export function Drawer({ title, onClose, onBack, footer, width = "520px", escape
    * the arrow is what says "there is something behind this".
    */
   onBack?: () => void;
+  /**
+   * One quiet control beside the title — for "this is a preview; its full home is over there".
+   *
+   * In the header and not the footer because it is navigation, not an action on the thing: the
+   * footer is where a panel's own verbs live, and a reader scanning for "what can I do to this"
+   * should not find a way out of the screen among them. Vapi and Twenty both put it here.
+   */
+  headerAction?: React.ReactNode;
   /** The row of buttons. Kept out of the scrolling body, so it cannot fall off the bottom. */
   footer?: React.ReactNode;
   width?: string;
@@ -3244,6 +3282,7 @@ export function Drawer({ title, onClose, onBack, footer, width = "520px", escape
           <div style={{ minWidth: 0, flex: 1, fontSize: "15px", fontWeight: 800, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {title}
           </div>
+          {headerAction && <span style={{ flexShrink: 0, display: "flex" }}>{headerAction}</span>}
           <button type="button" onClick={onClose} className="portal-icon-btn"
             style={{ flexShrink: 0, padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
