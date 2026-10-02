@@ -3178,12 +3178,20 @@ const DRAWER_DISCARD_T = {
  * floats, how wide it may grow, and the fact that the page behind stays clickable except where
  * the bar itself is (`pointerEvents` none on the frame, auto on the bar).
  *
- * THE SHADOW IS A RAW VALUE AND STAYS ONE FOR NOW. `0 12px 32px rgba(24,17,39,0.28)` is a fourth
- * elevation this product uses and the library does not name: --shadow-modal is 0 20px 60px/0.18,
- * --shadow-popover 0 8px 24px/0.12, --shadow-raised 0 1px 3px/0.12. Inventing --shadow-float here
- * would put a step in the code that is not in the design library, which is the owner's call and
- * not this file's. It is written once now instead of three times, so adding the token later is
- * one edit. HANDOFF: if the library gains a float elevation, this is its only caller.
+ * THE SHADOW IS --shadow-popover, AND THERE IS NO FOURTH ELEVATION (owner, 2026-10-02). The
+ * earlier raw `0 12px 32px rgba(24,17,39,0.28)` argued for itself as a float step the library had
+ * not named yet. It was not a missing step, it was the wrong one: at 0.28 alpha it was HEAVIER
+ * than --shadow-modal (0 20px 60px/0.18), so a bar that must never outrank a dialog was casting
+ * the deepest shadow on the screen. Every elevation system puts a floating bar below a dialog —
+ * Material has the snackbar at 6dp and the bottom app bar at 8dp against a dialog's 24dp, z-index
+ * 60 against 240 — and ours had it the other way up.
+ *
+ * --shadow-popover (0 8px 24px/0.12) is the step that already means "floats over the page, under
+ * the modal", it is what the dropdowns and tooltips in this console use, and it keeps the ramp's
+ * 1:3 offset-to-blur ratio. Toast.tsx carried the same raw value and moved with it.
+ *
+ * DO NOT re-add --shadow-float. If the bar ever reads as flat, the fix is measured against the
+ * modal first — not a heavier value here.
  */
 export function FloatingBulkBar({ children }: { children: React.ReactNode }) {
   return (
@@ -3191,7 +3199,7 @@ export function FloatingBulkBar({ children }: { children: React.ReactNode }) {
       <div style={{
         pointerEvents: "auto", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
         backgroundColor: "var(--gray-900)", borderRadius: "12px", padding: "10px 12px 10px 18px",
-        boxShadow: "0 12px 32px rgba(24,17,39,0.28)", maxWidth: "calc(100% - 48px)",
+        boxShadow: "var(--shadow-popover)", maxWidth: "calc(100% - 48px)",
       }}>
         {children}
       </div>

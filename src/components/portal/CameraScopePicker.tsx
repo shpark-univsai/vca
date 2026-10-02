@@ -163,7 +163,7 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
    * It is SAID, at the moment it would be saved, with the way out named: the first option.
    *
    * Found by the zones-closed change (2026-09-21): with the zones open, at least the ticks were on
-   * screen. Closed, the reader saw eighteen zone headers reading "5대 고름" and no reason to think
+   * screen. Closed, the reader saw eighteen zone headers reading "5대 선택됨" and no reason to think
    * anything was frozen.
    */
   const wouldFreezeAll = mode === "some" && cameras.length > 0 && resolvedCount === cameras.length;
@@ -522,7 +522,7 @@ const T = {
     pickEvery: "Select all", clearEvery: "Clear selection",
     searchNone: "No camera on these projects matches that.",
     freezeWarning: "Every camera is ticked. Saved like this the list is frozen, and cameras added later are left out — pick the first option to include them.",
-    zonePicked: (n: number) => `${n} picked`,
+    zonePicked: (n: number) => `${n} selected`,
     summaryGroups: (names: string, n: number, total: number) => `Watches ${n} of ${total} cameras, through ${names}.`,
     summaryGroupsMore: (first: string, rest: number) => rest === 0 ? `“${first}”` : `“${first}” and ${rest} other group${rest === 1 ? "" : "s"}`,
     summaryPlus: (n: number) => ` Plus ${n} picked one by one.`,
@@ -562,7 +562,9 @@ const T = {
     pickEvery: "모두 선택", clearEvery: "선택 초기화",
     searchNone: "그 조건에 맞는 카메라가 없습니다.",
     freezeWarning: "전부 체크돼 있습니다. 이대로 저장하면 목록이 굳어서 나중에 추가되는 카메라는 빠집니다 — 함께 주려면 위의 첫 번째를 고르세요.",
-    zonePicked: (n: number) => `${n}대 고름`,
+    /* 그룹 편집기(CameraGroupsTab)의 같은 줄과 한 말로 — 제품이 선택을 부르는 말은 「선택됨」
+       하나입니다(일괄 바의 「N대 선택됨」). */
+    zonePicked: (n: number) => `${n}대 선택됨`,
     /* 주어를 쓰지 않습니다. 이 창의 첫 줄이 이미 누구에 대한 것인지 말하고, 이름을 주어로
        세우면 「Marcus Lee은(는)」처럼 조사 두 개를 괄호로 내보이게 됩니다 — 그건 제품이 그
        이름을 모른다는 뜻입니다(삭제 확인창의 같은 메모). */

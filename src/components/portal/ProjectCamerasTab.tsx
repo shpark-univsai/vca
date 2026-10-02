@@ -2313,9 +2313,17 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             >
               {t.bulkGroup}
             </button>
+            {/* OUTLINE, NOT FILLED. This was the only filled red trigger in Portal — about
+                twenty destructive triggers, and the one that shouted was the one you reach by
+                ticking boxes. Red at rest makes the thing you almost never want the first thing
+                the eye lands on; the real red is the ConfirmModal behind it, which does not
+                change (16 of 24 confirms are danger). Same form as the VIP registry's bulk
+                delete, to the token. Padding stays at this bar's own 14px so it matches the two
+                controls beside it. */}
             <button
               onClick={() => setConfirmingBulkDelete(true)}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+              className="portal-btn-outline-danger"
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "1px solid var(--danger-400)", backgroundColor: "transparent", color: "var(--danger-400)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}
             >
               {t.bulkDelete}
             </button>

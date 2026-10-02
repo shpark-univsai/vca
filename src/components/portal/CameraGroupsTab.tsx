@@ -88,7 +88,7 @@ const T = {
     savedToast: "Camera group saved",
     inOtherGroups: (n: number) => `in ${n} other`,
     inOtherGroupsTitle: (names: string) => `Also in: ${names}`,
-    pickedCount: (n: number) => `${n} picked`,
+    pickedCount: (n: number) => `${n} selected`,
     duplicate: "Another group on this project already has that name.",
     removeTitle: (label: string) => `Delete ${label}?`,
     removeBody: "Every account holding this group loses those cameras, unless another group or an individual camera still covers them. The cameras themselves are untouched.",
@@ -140,7 +140,10 @@ const T = {
     savedToast: "카메라 그룹을 저장했습니다",
     inOtherGroups: (n: number) => `다른 그룹 ${n}`,
     inOtherGroupsTitle: (names: string) => `여기에도 있음: ${names}`,
-    pickedCount: (n: number) => `${n}대 체크됨`,
+    /* 「체크됨」도 「고름」도 아닌 「선택됨」 — 이 제품이 선택을 부르는 말이 하나여야 합니다.
+       일괄 바가 「N대 선택됨」, 전체 선택 체크박스가 「보이는 행 전체 선택」이라고 말하는 쪽에
+       맞춥니다. 계정 범위 고르기(CameraScopePicker)의 같은 줄도 같은 말입니다. */
+    pickedCount: (n: number) => `${n}대 선택됨`,
     duplicate: "이 프로젝트에 같은 이름의 그룹이 이미 있습니다.",
     /* 을(를) 없이 — 조사 두 개를 괄호로 내보이는 문장은 제품이 이름을 모른다는 뜻입니다. */
     removeTitle: (label: string) => `「${label}」 삭제할까요?`,

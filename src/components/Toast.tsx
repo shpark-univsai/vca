@@ -109,7 +109,9 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
       display: "flex", alignItems: "center", gap: "10px",
       padding: "10px 12px 10px 14px", borderRadius: "10px", boxSizing: "border-box",
       backgroundColor: "var(--gray-900)", border: "1px solid rgba(255, 255, 255, 0.08)",
-      boxShadow: "0 12px 32px rgba(24, 17, 39, 0.28)",
+      // Below a dialog, above the page — same step as the selection bar, and for the same reason
+      // (see FloatingBulkBar): the old raw 0.28 outweighed --shadow-modal's 0.18.
+      boxShadow: "var(--shadow-popover)",
       minWidth: "240px", maxWidth: "420px", flexShrink: 0,
       // The stack around these is pointer-transparent so its empty margins stop swallowing clicks
       // meant for the page; the card itself still has an action and a ✕ to press.
