@@ -768,7 +768,28 @@ export default function CameraMapView({
         )}
       </div>
 
-        <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
+        {/*
+          `isolation` IS THE WHOLE FIX FOR THE BAR THAT KEPT SINKING INTO THE MAP.
+
+          Leaflet numbers its own panes 200 to 700 — tiles 200, markers 600, popups 700 — and it
+          is entitled to, because it assumes it owns a box. It does not own one here: this
+          wrapper is `position: relative` with no z-index of its own, so it creates no stacking
+          context and those seven panes end up competing with the WHOLE PAGE. Anything the app
+          floats over the map on a sensible number loses to a map tile.
+
+          MEASURED, 1715x1010, picking mode with one camera picked: the bulk bar (fixed, z 40)
+          was painted under the map, and the only part of it you could see was the 16px that hung
+          below the map's bottom edge. The pointer still found it — `elementFromPoint` returned
+          the bar at every probe — so it was invisible and clickable at once, which is the worse
+          half of the bug.
+
+          `isolation: isolate` says "this box is a world"; the panes keep their 200-700 relative
+          to each other and stop being numbers the page has to out-bid. The alternative was to
+          raise the bar above 700, which wins this round and loses the next one, because the next
+          thing to float over a map would have to out-bid it in turn. There are 22 different
+          z-index values in this repo and no scale; this is how that happens.
+        */}
+        <div style={{ position: "relative", flex: 1, minHeight: 0, isolation: "isolate" }}>
           <div
             ref={mapRef}
             style={{
