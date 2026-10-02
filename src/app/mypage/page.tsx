@@ -666,9 +666,26 @@ export default function MyPage() {
   const cameraGroups = useVcaStore(s => s.cameraGroups);
   const visibleCameras = useProjectCameras();
   const cameraScope = me ? scopedCameraIds(me, cameraGroups) : null;
+  /*
+   * ONLY THE GROUPS THAT ACTUALLY HAND OVER A CAMERA HERE.
+   *
+   * This printed every group label the account holds, and a group is a thing on ONE project: an
+   * account left holding 「오차드·부기스 라인」 after that project went elsewhere got a red
+   * 「지정된 카메라가 없습니다」 with the group's name directly underneath it — one line stating a
+   * limit and the next naming something that contradicts it. Same failure as the camera-count
+   * banner fixed in 068cd4f.
+   *
+   * Intersected against the cameras the app is actually drawing, not against the group's project
+   * id: a group can also be empty, or hold only cameras that have since been deleted, and all
+   * three of those are the same fact to the reader — this group is not why you can see anything.
+   * With none of them left the line is not drawn at all, because the empty version of it would be
+   * a sentence about nothing.
+   */
+  const visibleCameraIds = new Set(visibleCameras.map(c => c.id));
   const scopeGroupNames = (me?.cameraGroupIds ?? [])
-    .map(id => cameraGroups.find(g => g.id === id)?.label)
-    .filter((n): n is string => Boolean(n));
+    .map(id => cameraGroups.find(g => g.id === id))
+    .filter((g): g is NonNullable<typeof g> => !!g && g.cameraIds.some(cid => visibleCameraIds.has(cid)))
+    .map(g => g.label);
   // Only one session is ever listed here (this mock has no other-device data to actually
   // terminate) — the confirmation is honest about that rather than pretending to have revoked
   // something. Auto-clears the same way BestFramePage's highlightCamId does.

@@ -6,9 +6,9 @@ import CameraImportModal from "./CameraImportModal";
 import CameraMapView from "./CameraMapView";
 import UploadPreviewModal from "./UploadPreviewModal";
 import { CircleAlert, Cpu, FileInput, Gauge, FileOutput, MapPin, ServerOff, Table2, Film as FilmIcon, Image as ImageIcon, MapPinOff, ShieldCheck, Unplug, Video as VideoIcon, VideoOff } from "lucide-react";
-import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, type Camera, type CameraAddRefusal, type CameraKind, type ServerType, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
+import { useVcaStore, hasPosition, isAwaitingFirstContact, projectChannelLimit, accountsWatching, scopedCameraIds, type Camera, type CameraAddRefusal, type CameraKind, type ServerType, type CameraStatus, type UploadedMedia, type UploadStatus, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { usePortalLanguage } from "@/lib/i18n";
+import { usePortalLanguage, josa } from "@/lib/i18n";
 import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
@@ -54,6 +54,21 @@ const T = {
     // bugs against, so they are gone rather than kept in step with the live pair.
     confirmDeleteCamTitle: (name: string) => `Remove ${name}?`,
     confirmDeleteCamBody: "The camera comes off this project along with its zone, its server assignment and its place on the map. Recorded detections stay.",
+    /* WHO LOSES SIGHT OF SOMETHING, said before the button rather than discovered afterwards.
+       The dialog listed the camera's zone, its server and its place on the map — three things
+       about the camera — and nothing about the people whose app is about to show them less.
+       MEASURED: removing Novena took Marcus Lee from 3 cameras to 2, and the only note beside the
+       record stayed blank every time, because it counted accounts holding the camera INDIVIDUALLY
+       and this one reaches it through a group.
+       Counted by accountsWatching's `through` half only: an account with no scope at all watches
+       this camera too, but a scope that was never narrowed does not narrow when a camera goes, so
+       naming them here would be a loss nobody suffers. */
+    scopeLossHead: (accounts: number, cams: number) =>
+      `${accounts} account${accounts === 1 ? " is" : "s are"} scoped through ${cams === 1 ? "this camera" : "these cameras"}`,
+    scopeLossEach: (name: string, before: number, after: number) => `${name} goes from ${before} to ${after}`,
+    /* Its own clause, because zero is not a smaller one: the app opens on nothing for them, and a
+       figure ending in 0 inside a list of figures is the easiest thing on a dialog to read past. */
+    scopeLossEmptied: (names: string) => `${names} will be left with no cameras at all.`,
     /* NAMES WHAT THE NUMBER COUNTS, not a state. "connected" under a figure reads as the status
        of one camera — the same word this table's status column puts on a row — so the cell looked
        like a state with a number stuck to it (owner, 2026-09-18: 연결됨은 저 숫자를 설명하는 말이
@@ -296,6 +311,10 @@ const T = {
     errLng: "경도는 -180에서 180 사이입니다.",
     confirmDeleteCamTitle: (name: string) => `${name}을(를) 삭제할까요?`,
     confirmDeleteCamBody: "이 프로젝트에서 카메라가 빠지고, 존·서버 배정·지도 위 위치도 함께 사라집니다. 기록된 탐지는 남습니다.",
+    scopeLossHead: (accounts: number, cams: number) =>
+      `${cams === 1 ? "이 카메라를" : "이 카메라들을"} 거쳐 보는 계정 ${accounts}개`,
+    scopeLossEach: (name: string, before: number, after: number) => `${name}${josa(name, "이", "가")} ${before}대에서 ${after}대로 줄어듭니다`,
+    scopeLossEmptied: (names: string) => `${names}${josa(names, "은", "는")} 볼 수 있는 카메라가 하나도 남지 않습니다.`,
     healthConnected: "연결된 카메라",
     healthConnectedWhy: "마지막 연결 시도에 응답했습니다. 스트림에 닿는다는 뜻이지, 누가 보고 있다는 뜻은 아닙니다.",
     healthOfFleet: (total: number) => `/ ${total}대`,
@@ -1231,6 +1250,51 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
   const [dragging, setDragging] = useState(false);
 
   const projectCameras = cameras.filter(c => c.projectId === projectId);
+
+  /*
+   * WHAT A DELETION TAKES AWAY FROM PEOPLE — the half of the confirmation that is not about the
+   * camera. The store writes the audit row after the fact (removeCamera/removeCameras); this is
+   * the sentence before it, and it has to agree with the store's own answer rather than count for
+   * itself, which is why both halves go through accountsWatching and scopedCameraIds.
+   *
+   * Registered-and-in-this-project is the denominator: a scope can name a camera that has already
+   * been deleted, and «3대에서 2대로» has to mean cameras that exist on the site the reader is
+   * looking at. Accounts that would lose nothing are dropped, so the sentence only ever describes
+   * a loss that is really about to happen.
+   */
+  const portalUsers = useVcaStore(s => s.portalUsers);
+  const cameraGroups = useVcaStore(s => s.cameraGroups);
+  const scopeLossOf = (ids: string[]) => {
+    const going = new Set(ids);
+    const registered = new Set(projectCameras.map(c => c.id));
+    return accountsWatching(ids, projectId, portalUsers, cameraGroups).through
+      .map(u => {
+        const allowed = scopedCameraIds(u, cameraGroups) ?? new Set<string>();
+        const before = [...allowed].filter(id => registered.has(id));
+        return { name: u.name, before: before.length, after: before.filter(id => !going.has(id)).length };
+      })
+      .filter(l => l.after < l.before);
+  };
+  /* One block, two dialogs — the row's Remove and the bulk bar's are the same promise about the
+     same people, and a second hand-written copy is how the two drift apart (see ConfirmModal). */
+  const scopeLossNote = (loss: ReturnType<typeof scopeLossOf>, camCount: number) => {
+    if (loss.length === 0) return null;
+    const emptied = loss.filter(l => l.after === 0).map(l => l.name);
+    const joinNames = (names: string[]) =>
+      lang === "ko" ? names.join("·")
+      : names.length < 2 ? names.join("")
+      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+        <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>
+          {`${t.scopeLossHead(loss.length, camCount)} — ${loss.map(l => t.scopeLossEach(l.name, l.before, l.after)).join(", ")}.`}
+        </p>
+        {emptied.length > 0 && (
+          <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.scopeLossEmptied(joinNames(emptied))}</p>
+        )}
+      </div>
+    );
+  };
   /*
    * The licensed ceiling, enforced rather than only drawn.
    *
@@ -2916,17 +2980,29 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         />
       )}
 
-      {confirmingDeleteCam && (
-        <ConfirmModal
-          title={t.confirmDeleteCamTitle(confirmingDeleteCam.name)}
-          body={t.confirmDeleteCamBody}
-          confirmLabel={t.removeAction}
-          cancelLabel={t.cancel}
-          danger
-          onConfirm={confirmDeleteCam}
-          onClose={() => setConfirmingDeleteCam(null)}
-        />
-      )}
+      {confirmingDeleteCam && (() => {
+        /* Says it, does not stop it. Who loses what is the administrator's to weigh — a camera
+           that has to go still goes, and a confirmation that refuses is a confirmation people
+           learn to route around. */
+        const loss = scopeLossOf([confirmingDeleteCam.id]);
+        return (
+          <ConfirmModal
+            title={t.confirmDeleteCamTitle(confirmingDeleteCam.name)}
+            body={t.confirmDeleteCamBody}
+            confirmLabel={t.removeAction}
+            cancelLabel={t.cancel}
+            danger
+            /* Only when the body grew: the card is 400px wide and the loss block wraps, so on a
+               short window the buttons were the part that went off the bottom. No select inside
+               this dialog, which is the condition PortalShared puts on the prop. */
+            bodyScrolls={loss.length > 0}
+            onConfirm={confirmDeleteCam}
+            onClose={() => setConfirmingDeleteCam(null)}
+          >
+            {scopeLossNote(loss, 1)}
+          </ConfirmModal>
+        );
+      })()}
       {/* Confirms one direction, because there is only one. This took a `nextStatus` and carried a
           second set of strings for going the other way — "Reconnect camera?", "This attempts to
           reconnect ... and marks it online" — which described an attempt that never happened; see
@@ -2991,17 +3067,23 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
           other destructive confirm in Portal is danger-400, and it never bound Escape at all, so
           the one dialog in this tab you could not back out of with the keyboard was the one that
           deletes a whole selection. Both come free from ConfirmModal. */}
-      {confirmingBulkDelete && (
-        <ConfirmModal
-          title={t.bulkDeleteConfirm(visibleSelectedIds.length)}
-          body={t.bulkDeleteBody}
-          confirmLabel={t.bulkDelete}
-          cancelLabel={t.cancel}
-          danger
-          onConfirm={bulkDelete}
-          onClose={() => setConfirmingBulkDelete(false)}
-        />
-      )}
+      {confirmingBulkDelete && (() => {
+        const loss = scopeLossOf(visibleSelectedIds);
+        return (
+          <ConfirmModal
+            title={t.bulkDeleteConfirm(visibleSelectedIds.length)}
+            body={t.bulkDeleteBody}
+            confirmLabel={t.bulkDelete}
+            cancelLabel={t.cancel}
+            danger
+            bodyScrolls={loss.length > 0}
+            onConfirm={bulkDelete}
+            onClose={() => setConfirmingBulkDelete(false)}
+          >
+            {scopeLossNote(loss, visibleSelectedIds.length)}
+          </ConfirmModal>
+        );
+      })()}
     </div>
   );
 }
