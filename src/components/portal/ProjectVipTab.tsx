@@ -9,7 +9,7 @@ import { getComplianceConfig } from "@/lib/complianceConfig";
 import { usePortalLanguage } from "@/lib/i18n";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn, formatElapsed } from "@/lib/time";
 import { useToast } from "../Toast";
-import { ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, TableSkeleton, TableLoadFailed, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto } from "./PortalShared";
+import { ActiveFilterCount, TextField, BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, PANEL_SHADOW, SearchInput, TABLE_COLUMN_GAP, TOOLBAR_GAP, ConfirmModal, Drawer, FilterSelect, RowActionsMenu, SortableHeader, SummaryStrip, TablePagination, TableEmpty, TableSkeleton, TableLoadFailed, useFitRowsPerPage, Tooltip, sortRows, useTableSort, usePortalEditAccess, FacePhoto, FloatingBulkBar, BulkBarDivider } from "./PortalShared";
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 import VipImportModal from "./VipImportModal";
 import { DateRangeTrigger, dateKeyOf } from "../shared/DateRangePicker";
@@ -2571,93 +2571,87 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               where they were when they were picked. A centred pill, not a full-width band — fixed
               positioning is relative to the window and a band would run under the rail. */}
           {visibleSelectedIds.length > 0 && (
-            <div style={{ position: "fixed", left: 0, right: 0, bottom: "24px", zIndex: 40, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-              <div style={{
-                pointerEvents: "auto", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
-                backgroundColor: "var(--gray-900)", borderRadius: "12px", padding: "10px 12px 10px 18px",
-                boxShadow: "0 12px 32px rgba(24,17,39,0.28)", maxWidth: "calc(100% - 48px)",
-              }}>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>
-                  {t.selectedCount(visibleSelectedIds.length)}
-                </span>
-                <span style={{ width: "1px", alignSelf: "stretch", backgroundColor: "var(--gray-700)" }} />
-                {/* Selecting is still allowed for a read-only account — it is how you count a
-                    subset. What they lose is the thing that changes rows, and the bar says so
-                    rather than showing a dead date field. */}
-                {mayEdit ? (<>
-                  {/* Group and priority, the other two values a set of rows can share. The bar
-                      had only the expiry, which read as a single odd errand — see applyBulkGroup.
-                      Selects rather than buttons: the answer is one of a list, and a list of
-                      buttons for four groups would be the bar's whole width. */}
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0 }}>{t.bulkGroupLabel}</span>
-                  <FilterSelect
-                    value=""
-                    onChange={v => applyBulkGroup(v === "__none" ? null : v)}
-                    options={[
-                      { value: "__none", label: t.bulkGroupNone },
-                      ...projectGroupsAll.map(g => ({ value: g.id, label: g.name })),
-                    ]}
-                    fitContent
+            <FloatingBulkBar>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>
+                {t.selectedCount(visibleSelectedIds.length)}
+              </span>
+              <BulkBarDivider />
+              {/* Selecting is still allowed for a read-only account — it is how you count a
+                  subset. What they lose is the thing that changes rows, and the bar says so
+                  rather than showing a dead date field. */}
+              {mayEdit ? (<>
+                {/* Group and priority, the other two values a set of rows can share. The bar
+                    had only the expiry, which read as a single odd errand — see applyBulkGroup.
+                    Selects rather than buttons: the answer is one of a list, and a list of
+                    buttons for four groups would be the bar's whole width. */}
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0 }}>{t.bulkGroupLabel}</span>
+                <FilterSelect
+                  value=""
+                  onChange={v => applyBulkGroup(v === "__none" ? null : v)}
+                  options={[
+                    { value: "__none", label: t.bulkGroupNone },
+                    ...projectGroupsAll.map(g => ({ value: g.id, label: g.name })),
+                  ]}
+                  fitContent
+                />
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0 }}>{t.bulkPriorityLabel}</span>
+                <FilterSelect
+                  value=""
+                  onChange={v => applyBulkPriority(v as NonNullable<Person["priorityLabel"]>)}
+                  options={PRIORITY_LABELS.map(pl => ({ value: pl, label: t.priorityText[pl] }))}
+                  fitContent
+                />
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0 }}>{t.bulkExpiryLabel}</span>
+                {/* The app's own picker, not `<input type="date">` — that drew the BROWSER's
+                    control, the one white box on this bar that came from somewhere else and
+                    looked different in every browser. `single` because an end date is one day,
+                    not a span; it hands back {start,end} set to the same day and we keep start. */}
+                <div style={{ width: "150px", flexShrink: 0 }}>
+                  <DateRangeTrigger
+                    lang={lang}
+                    mode="single"
+                    size="sm"
+                    value={{ start: bulkExpiry ? new Date(bulkExpiry + "T00:00:00") : null, end: null }}
+                    onApply={v => setBulkExpiry(v.start ? dateKeyOf(v.start) : "")}
+                    emptyText={t.bulkExpiryPick}
                   />
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0 }}>{t.bulkPriorityLabel}</span>
-                  <FilterSelect
-                    value=""
-                    onChange={v => applyBulkPriority(v as NonNullable<Person["priorityLabel"]>)}
-                    options={PRIORITY_LABELS.map(pl => ({ value: pl, label: t.priorityText[pl] }))}
-                    fitContent
-                  />
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", flexShrink: 0 }}>{t.bulkExpiryLabel}</span>
-                  {/* The app's own picker, not `<input type="date">` — that drew the BROWSER's
-                      control, the one white box on this bar that came from somewhere else and
-                      looked different in every browser. `single` because an end date is one day,
-                      not a span; it hands back {start,end} set to the same day and we keep start. */}
-                  <div style={{ width: "150px", flexShrink: 0 }}>
-                    <DateRangeTrigger
-                      lang={lang}
-                      mode="single"
-                      size="sm"
-                      value={{ start: bulkExpiry ? new Date(bulkExpiry + "T00:00:00") : null, end: null }}
-                      onApply={v => setBulkExpiry(v.start ? dateKeyOf(v.start) : "")}
-                      emptyText={t.bulkExpiryPick}
-                    />
-                  </div>
-                  <button
-                    onClick={() => bulkExpiry && applyBulkExpiry(bulkExpiry)}
-                    disabled={!bulkExpiry}
-                    style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: bulkExpiry ? "var(--primary-400)" : "var(--gray-700)", color: bulkExpiry ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: bulkExpiry ? "pointer" : "not-allowed", flexShrink: 0 }}
-                  >
-                    {t.bulkExpiryApply}
-                  </button>
-                  {/* "No end date" is an answer too, and it has to be reachable here — otherwise
-                      the only way to clear the unanswered warning in bulk is to invent a date. */}
-                  <button
-                    onClick={() => applyBulkExpiry(null)}
-                    style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "1px solid var(--gray-700)", backgroundColor: "transparent", color: "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
-                  >
-                    {t.bulkExpiryNone}
-                  </button>
-                </>) : (
-                  <span style={{ fontSize: "12px", color: "var(--gray-400)", flexShrink: 0 }}>{readOnlyReason}</span>
-                )}
-                {/* Delete, at the far end and in danger colour — the one thing on this bar that
-                    cannot be re-typed. It asks first and offers an undo afterwards, the same pair
-                    the single-row delete uses. */}
-                {mayEdit && (
-                  <button
-                    onClick={() => setConfirmingBulkDelete(true)}
-                    style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "1px solid var(--danger-400)", backgroundColor: "transparent", color: "var(--danger-400)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
-                  >
-                    {t.bulkDelete}
-                  </button>
-                )}
+                </div>
                 <button
-                  onClick={clearSelection}
-                  style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}
+                  onClick={() => bulkExpiry && applyBulkExpiry(bulkExpiry)}
+                  disabled={!bulkExpiry}
+                  style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: bulkExpiry ? "var(--primary-400)" : "var(--gray-700)", color: bulkExpiry ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: bulkExpiry ? "pointer" : "not-allowed", flexShrink: 0 }}
                 >
-                  {t.bulkClearSelection}
+                  {t.bulkExpiryApply}
                 </button>
-              </div>
-            </div>
+                {/* "No end date" is an answer too, and it has to be reachable here — otherwise
+                    the only way to clear the unanswered warning in bulk is to invent a date. */}
+                <button
+                  onClick={() => applyBulkExpiry(null)}
+                  style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "1px solid var(--gray-700)", backgroundColor: "transparent", color: "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                >
+                  {t.bulkExpiryNone}
+                </button>
+              </>) : (
+                <span style={{ fontSize: "12px", color: "var(--gray-400)", flexShrink: 0 }}>{readOnlyReason}</span>
+              )}
+              {/* Delete, at the far end and in danger colour — the one thing on this bar that
+                  cannot be re-typed. It asks first and offers an undo afterwards, the same pair
+                  the single-row delete uses. */}
+              {mayEdit && (
+                <button
+                  onClick={() => setConfirmingBulkDelete(true)}
+                  style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "1px solid var(--danger-400)", backgroundColor: "transparent", color: "var(--danger-400)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                >
+                  {t.bulkDelete}
+                </button>
+              )}
+              <button
+                onClick={clearSelection}
+                style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}
+              >
+                {t.bulkClearSelection}
+              </button>
+            </FloatingBulkBar>
           )}
           {/* The column headings stay while the rows go under them. position:sticky against the
               shell's scroller, at top:0 — no measuring, no fixed positioning, and it works because

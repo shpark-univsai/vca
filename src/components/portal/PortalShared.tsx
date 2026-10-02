@@ -3165,6 +3165,45 @@ const DRAWER_DISCARD_T = {
   },
 } as const;
 
+/**
+ * THE BAR THAT APPEARS WHEN ROWS ARE SELECTED.
+ *
+ * Three screens drew this by hand — access presets, input sources, the VIP registry — and they
+ * had already drifted apart (one used a 10px gap where the others used 12) before anybody noticed.
+ * A floating bar is the most noticeable furniture in the console: it covers the page, and three
+ * versions of it means three answers to "what does selecting things look like here".
+ *
+ * WHAT THE CALLER OWNS is what the selection means and what can be done to it — the count
+ * sentence, the dividers, the controls. What this owns is the shell: where it sits, how far it
+ * floats, how wide it may grow, and the fact that the page behind stays clickable except where
+ * the bar itself is (`pointerEvents` none on the frame, auto on the bar).
+ *
+ * THE SHADOW IS A RAW VALUE AND STAYS ONE FOR NOW. `0 12px 32px rgba(24,17,39,0.28)` is a fourth
+ * elevation this product uses and the library does not name: --shadow-modal is 0 20px 60px/0.18,
+ * --shadow-popover 0 8px 24px/0.12, --shadow-raised 0 1px 3px/0.12. Inventing --shadow-float here
+ * would put a step in the code that is not in the design library, which is the owner's call and
+ * not this file's. It is written once now instead of three times, so adding the token later is
+ * one edit. HANDOFF: if the library gains a float elevation, this is its only caller.
+ */
+export function FloatingBulkBar({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ position: "fixed", left: 0, right: 0, bottom: "24px", zIndex: 40, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+      <div style={{
+        pointerEvents: "auto", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
+        backgroundColor: "var(--gray-900)", borderRadius: "12px", padding: "10px 12px 10px 18px",
+        boxShadow: "0 12px 32px rgba(24,17,39,0.28)", maxWidth: "calc(100% - 48px)",
+      }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** The hairline between a bulk bar's groups. Drawn here so three screens cannot disagree about it. */
+export function BulkBarDivider() {
+  return <span style={{ width: "1px", alignSelf: "stretch", backgroundColor: "var(--gray-700)" }} />;
+}
+
 /*
  * ═══ WHEN A THING OPENS IN THIS PANEL, AND WHEN IT OPENS IN A DIALOG ═══
  *

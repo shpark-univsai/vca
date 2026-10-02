@@ -13,7 +13,7 @@ import { formatElapsed } from "@/lib/time";
 import { forgetUploadFile, rememberUploadFile } from "@/lib/uploadBlobs";
 import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
-import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, TABLE_RULE, CARD_BORDER, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Tooltip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
+import { useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, TABLE_RULE, CARD_BORDER, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Tooltip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, FloatingBulkBar, BulkBarDivider, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
 import CameraDetailPanel from "./CameraDetailPanel";
 
 const T = {
@@ -2291,54 +2291,48 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
         and a band across it would run under the rail, which belongs to no page.
       */}
       {visibleSelectedIds.length > 0 && (
-        <div style={{ position: "fixed", left: 0, right: 0, bottom: "24px", zIndex: 40, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-          <div style={{
-            pointerEvents: "auto", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
-            backgroundColor: "var(--gray-900)", borderRadius: "12px", padding: "10px 12px 10px 18px",
-            boxShadow: "0 12px 32px rgba(24,17,39,0.28)", maxWidth: "calc(100% - 48px)",
-          }}>
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>
-              {t.selectedCount(visibleSelectedIds.length)}
-            </span>
-            <span style={{ width: "1px", alignSelf: "stretch", backgroundColor: "var(--gray-700)" }} />
-            {/* Selecting rows is still allowed — it is how you count a subset. The two things
-                that change them are what a read-only account loses, and the bar says so rather
-                than showing two dead buttons. */}
-            {mayEdit ? (<>
-              <FilterSelect
-                fitContent
-                value=""
-                onChange={zone => { if (zone) bulkMoveToZone(zone); }}
-                options={[{ value: "", label: t.bulkMoveToZone }, ...zones.map(z => ({ value: z, label: z }))]}
-              />
-              {/* GROUPING IS A BULK ACTION, because the selection IS the group. Somebody who
-                  wants "the north gate ones" ticks them here and names them, rather than picking
-                  the same twelve again inside a permission dialog. See CameraGroup. */}
-              <button
-                onClick={() => setGroupingSelection(true)}
-                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}
-              >
-                {t.bulkGroup}
-              </button>
-              <button
-                onClick={() => setConfirmingBulkDelete(true)}
-                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
-              >
-                {t.bulkDelete}
-              </button>
-            </>) : (
-              <span style={{ fontSize: "12px", color: "var(--gray-400)", flexShrink: 0 }}>{readOnlyReason}</span>
-            )}
-            {/* The way out of the mode, and the reason the bar can be this assertive: nothing here
-                is reachable by accident, and one click puts the page back. */}
+        <FloatingBulkBar>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>
+            {t.selectedCount(visibleSelectedIds.length)}
+          </span>
+          <BulkBarDivider />
+          {/* Selecting rows is still allowed — it is how you count a subset. The two things
+              that change them are what a read-only account loses, and the bar says so rather
+              than showing two dead buttons. */}
+          {mayEdit ? (<>
+            <FilterSelect
+              fitContent
+              value=""
+              onChange={zone => { if (zone) bulkMoveToZone(zone); }}
+              options={[{ value: "", label: t.bulkMoveToZone }, ...zones.map(z => ({ value: z, label: z }))]}
+            />
+            {/* GROUPING IS A BULK ACTION, because the selection IS the group. Somebody who
+                wants "the north gate ones" ticks them here and names them, rather than picking
+                the same twelve again inside a permission dialog. See CameraGroup. */}
             <button
-              onClick={clearSelection}
-              style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}
+              onClick={() => setGroupingSelection(true)}
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}
             >
-              {t.bulkClearSelection}
+              {t.bulkGroup}
             </button>
-          </div>
-        </div>
+            <button
+              onClick={() => setConfirmingBulkDelete(true)}
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--danger-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+            >
+              {t.bulkDelete}
+            </button>
+          </>) : (
+            <span style={{ fontSize: "12px", color: "var(--gray-400)", flexShrink: 0 }}>{readOnlyReason}</span>
+          )}
+          {/* The way out of the mode, and the reason the bar can be this assertive: nothing here
+              is reachable by accident, and one click puts the page back. */}
+          <button
+            onClick={clearSelection}
+            style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}
+          >
+            {t.bulkClearSelection}
+          </button>
+        </FloatingBulkBar>
       )}
 
       {/* Table's own column header stays fixed with everything above it — only the data rows

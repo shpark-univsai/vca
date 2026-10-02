@@ -10,7 +10,7 @@ import {
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import {
-  BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, AppGrantList,
+  BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, AppGrantList, FloatingBulkBar, BulkBarDivider,
   TextField, Drawer, GRANT_TREE, GrantGroupIcon, type GrantRowDef, type GrantGroupDef,
 } from "./PortalShared";
 import { APP_GRANT_LABELS } from "@/lib/appGrants";
@@ -472,27 +472,21 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
         a preset and acting on ticked cameras are the same kind of moment, so they look the same.
       */}
       {editing && (
-        <div style={{ position: "fixed", left: 0, right: 0, bottom: "24px", zIndex: 40, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
-          <div style={{
-            pointerEvents: "auto", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
-            backgroundColor: "var(--gray-900)", borderRadius: "12px", padding: "10px 12px 10px 18px",
-            boxShadow: "0 12px 32px rgba(24,17,39,0.28)", maxWidth: "calc(100% - 48px)",
-          }}>
-            {/* The bar says what mode you are in, the way the camera list's bar says what the
-                selection is — without it a dark pill holding two buttons has no subject. */}
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>{t.presetEditing}</span>
-            <span style={{ width: "1px", alignSelf: "stretch", backgroundColor: "var(--gray-700)" }} />
-            <button onClick={save} disabled={!dirty || emptyDraft}
-              title={emptyDraft ? t.presetNoActions : undefined}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: dirty && !emptyDraft ? "white" : "var(--gray-700)", color: dirty && !emptyDraft ? "var(--gray-900)" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: dirty && !emptyDraft ? "pointer" : "not-allowed", flexShrink: 0, fontFamily: "inherit" }}>
-              {t.presetSave}
-            </button>
-            <button onClick={stopEditing}
-              style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}>
-              {t.presetCancel}
-            </button>
-          </div>
-        </div>
+        <FloatingBulkBar>
+          {/* The bar says what mode you are in, the way the camera list's bar says what the
+              selection is — without it a dark pill holding two buttons has no subject. */}
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "white", flexShrink: 0 }}>{t.presetEditing}</span>
+          <BulkBarDivider />
+          <button onClick={save} disabled={!dirty || emptyDraft}
+            title={emptyDraft ? t.presetNoActions : undefined}
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: dirty && !emptyDraft ? "white" : "var(--gray-700)", color: dirty && !emptyDraft ? "var(--gray-900)" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: dirty && !emptyDraft ? "pointer" : "not-allowed", flexShrink: 0, fontFamily: "inherit" }}>
+            {t.presetSave}
+          </button>
+          <button onClick={stopEditing}
+            style={{ border: "none", background: "none", padding: "0 8px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-300)", fontFamily: "inherit", flexShrink: 0 }}>
+            {t.presetCancel}
+          </button>
+        </FloatingBulkBar>
       )}
 
       {creating && (

@@ -640,6 +640,14 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
             // No figure: the two rules become one, and the card still shows that these two
             // pictures are the same match. A "0%" here would say the system matched this face at
             // no confidence at all, which is a specific claim and a false one.
+            //
+            // NOT the shared ScoreBadge, and a design audit flagged it as one (2026-10-02). The
+            // badge is a chip that sits on a row among other chips; this is a LABEL ON A
+            // CONNECTOR — a dashed rule, the figure, another dashed rule — and the three together
+            // are what say "these two faces are one match". Dropping a filled pill into the
+            // middle of that breaks the device and leaves the rules pointing at nothing. The
+            // tooltip figure elsewhere in this file is not a score at all; it is a count of
+            // people seen today.
             ? `<div style="width:44px;border-top:1.5px dashed var(--gray-300)"></div>`
             : `<div style="width:44px;border-top:1.5px dashed var(--gray-300)"></div>
                <span style="font-size:11px;font-weight:700;color:var(--gray-500);letter-spacing:-0.22px">${confidence}</span>
