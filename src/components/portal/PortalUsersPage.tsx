@@ -428,6 +428,9 @@ const T = {
     scopeLabel: "Cameras",
     scopeHeldAll: (n: number) => `Every camera on their projects — ${n} today, and any added later.`,
     scopeHeldSome: (n: number, total: number) => `${n} of ${total} cameras.`,
+    /* The same fact as scopeHeldAll, on the form, plus where it gets answered. One line, not a
+       block: the invite panel is 531px of form and this is the only thing it was not saying. */
+    inviteScopeStart: (n: number) => `Every camera on their projects — ${n} today, and any added later. You can narrow it in the next step.`,
     /* Names the GROUP too (owner, 2026-09-28: 카메라 그룹 만들고, 만든걸 활용해야하는뎅 지금
        계정 초대에는 그게 없는것같은뎅?). The picker behind this button has led with camera groups
        since it was built, and an account's scope can be nothing but groups — but this button, the
@@ -451,6 +454,12 @@ const T = {
     projectsPickedCount: (n: number, total: number) => `${n} of ${total} selected`,
     projectsModalIntro: (name: string) => `Which of this team's projects ${name} may open. A project they are not given stops appearing in their app.`,
     projectsModalNoneWarning: "At least one project. An account with no projects signs in to an empty app with no sign that anything was taken away — suspend the account instead.",
+    /* Said BEFORE the save, because afterwards nothing on this page says it: a scope resolves
+       through the register when it is read, so a group left behind on another site is not an
+       error anywhere — the account simply opens nothing. The save still goes through; see the
+       note at the render. */
+    projectsZeroCameras: ({ name, groupCount, from, to }: { name: string; groups: string; groupCount: number; from: string; to: string }) =>
+      `Saving leaves ${name} with no cameras — the group${groupCount === 1 ? "" : "s"} they hold belong${groupCount === 1 ? "s" : ""} to ${from} and reach${groupCount === 1 ? "es" : ""} nothing on ${to}.`,
     projectsUpdatedTitle: "Projects updated",
     sendInvite: "Create invite link",
     inviteCreatedTitle: "Account created",
@@ -845,6 +854,7 @@ const T = {
     scopeLabel: "카메라 범위",
     scopeHeldAll: (n: number) => `담당 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다.`,
     scopeHeldSome: (n: number, total: number) => `${total}대 중 ${n}대.`,
+    inviteScopeStart: (n: number) => `담당 프로젝트의 카메라 전부 — 지금 ${n}대, 나중에 추가되는 것도 포함합니다. 다음 단계에서 좁힐 수 있습니다.`,
     scopePick: "그룹·카메라 고르기",
     /* 「…에는」 rather than 「…는」: a project's name can end in either a vowel or a consonant —
        and half of them are English — so no single subject particle is correct for all of them.
@@ -859,6 +869,8 @@ const T = {
     projectsPickedCount: (n: number, total: number) => `${total}곳 중 ${n}곳 선택`,
     projectsModalIntro: (name: string) => `${name} 님이 열 수 있는 이 팀의 프로젝트입니다. 주지 않은 프로젝트는 앱에서 보이지 않습니다.`,
     projectsModalNoneWarning: "최소 한 개는 있어야 합니다. 프로젝트가 없는 계정은 아무것도 없는 앱에 로그인하게 되고, 무엇이 회수됐는지 알 방법이 없습니다. 그럴 땐 계정을 정지하세요.",
+    projectsZeroCameras: ({ name, groups, from, to }: { name: string; groups: string; groupCount: number; from: string; to: string }) =>
+      `저장하면 ${name}가 열 수 있는 카메라가 0대가 됩니다 — 가진 「${groups}」은 ${from}의 그룹이라 ${to}에선 아무것도 안 열립니다.`,
     projectsUpdatedTitle: "프로젝트가 변경되었습니다",
     sendInvite: "초대 링크 만들기",
     inviteCreatedTitle: "계정이 만들어졌습니다",
@@ -1566,9 +1578,10 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
      * A draft has no id, so reusing the picker on the form would have produced a control that
      * ticks, saves, toasts and changes nothing — the one outcome worse than not offering it.
      * The alternative was a second picker with its own list, grouping and empty rule, drifting
-     * from the real one the day either is corrected. So the form states where the account starts
-     * (see the row in the left column) and the answer is collected one step later, against the
-     * account that now exists, by the same picker the row menu opens. The person inviting never
+     * from the real one the day either is corrected. So the form STATES where the account starts
+     * — the line under the 프로젝트 chips, counted off the same register as this one — and the
+     * answer is collected one step later, against the account that now exists, by the same picker
+     * the row menu opens. The person inviting never
      * has to find the row in the table, which is what they were doing before.
      *
      * The audit log comes along for free: `setCameraScope` writes an entry, and a scope handed to
@@ -1782,6 +1795,32 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                       );
                     })}
                   </div>
+                  {/*
+                    WHAT THE ACCOUNT WILL BE ABLE TO WATCH, SAID ON THE FORM (the line the slimming
+                    took with the chips — see the note above `selectedProjects`).
+
+                    The form asked six questions and none of them was about cameras, so the first
+                    time anybody was told that an invite hands over EVERY camera on the ticked
+                    projects was a panel that appears after the account exists. A field here would
+                    be the wrong fix twice over: it was turned down on 2026-09-23 (초대창이 너무
+                    헤비해보여) and again on 2026-09-28, and a required picker makes the answer
+                    worse — an administrator in a hurry ticks all of them and freezes the list, so
+                    next month's cameras are silently excluded, which is what CameraScopePicker's
+                    own freeze warning is for.
+
+                    So: a line, not a block, and it is the sentence the result step already prints
+                    (scopeHeldAll) plus where the narrowing happens.
+
+                    The number is counted off the register against the ticked projects — the same
+                    `scopableCameras` the result step and the row menu use — so it moves with the
+                    chips instead of being a constant that is right on one site only. Drawn only
+                    when there is an app door to walk through and at least one project to count.
+                  */}
+                  {accessMode !== "portalOnly" && projectIds.length > 0 && (
+                    <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "8px" }}>
+                      {t.inviteScopeStart(scopableCameras(allCameras, projectIds).length)}
+                    </p>
+                  )}
                   {mailTransportNote && (
                     <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "8px" }}>{mailTransportNote}</p>
                   )}
@@ -2797,6 +2836,11 @@ function UserProjectsModal({ user, teamProjects, onClose, onBack, onSave }: {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const [picked, setPicked] = useState<string[]>(user.projectIds);
+  // Read here rather than passed in: the warning below has to resolve the account's groups through
+  // the register, and the register is the store's, not this panel's caller's.
+  const allCameras = useVcaStore(s => s.cameras);
+  const cameraGroups = useVcaStore(s => s.cameraGroups);
+  const projects = useVcaStore(s => s.projects);
   /* NO useEscapeKey HERE — the Drawer owns Escape. A second listener closed this panel AND the
      card behind it with one keypress, which is the same bug the invite form's editor had. */
   const toggle = (id: string) =>
@@ -2806,6 +2850,50 @@ function UserProjectsModal({ user, teamProjects, onClose, onBack, onSave }: {
   // how you stop somebody, and it says so.
   const canSave = picked.length > 0;
 
+  /*
+   * THE OTHER WAY TO END UP WITH NOTHING, AND IT IS NOT REFUSED (MEASURED: Marcus Lee holds
+   * 「오차드·부기스 라인」, three cameras on Marina Bay; tick Riverside alone and his reach is 0).
+   *
+   * A camera scope resolves through the register when it is READ, so taking a project away leaves
+   * the group ids on the account and the account simply opens nothing. No error, no empty state,
+   * nothing on this page — the account looks narrowed and is in fact blind.
+   *
+   * SAID, NOT BLOCKED, AND NOTHING IS STRIPPED. Moving somebody between sites for a week is
+   * ordinary and the groups have to survive it: dropping them here would be an unrecoverable
+   * guess about what somebody meant, and refusing the save would stop a legitimate reassignment.
+   * --warning-500, not danger: this is a consequence, not a mistake.
+   *
+   * The count comes from `scopedCameraIds` intersected with what the account could be scoped to
+   * after the change — the same pair the table's 카메라 cell uses — so it cannot disagree with the
+   * number the row will show the moment this is saved.
+   *
+   * Only when a group is STRANDED by this particular change (its project is being unticked).
+   * A scope that comes out at zero for another reason — an empty group, individual cameras — is
+   * not what the sentence below describes, and a true sentence about the wrong cause is the
+   * failure this repo keeps paying for.
+   */
+  const zeroWarning = (() => {
+    if (!user.appAccess || picked.length === 0) return null;
+    const scoped = scopedCameraIds(user, cameraGroups);
+    if (scoped === null) return null; // never narrowed: it picks up the new projects' cameras
+    const scopable = new Set(scopableCameras(allCameras, picked).map(c => c.id));
+    if ([...scoped].some(id => scopable.has(id))) return null; // still reaches something
+    const stranded = (user.cameraGroupIds ?? [])
+      .flatMap(id => {
+        const g = cameraGroups.find(gr => gr.id === id);
+        return g && !picked.includes(g.projectId) ? [g] : [];
+      });
+    if (stranded.length === 0) return null;
+    const nameOf = (id: string) => projects.find(pr => pr.id === id)?.name ?? id;
+    return t.projectsZeroCameras({
+      name: user.name,
+      groups: stranded.map(g => g.label).join(", "),
+      groupCount: stranded.length,
+      from: [...new Set(stranded.map(g => nameOf(g.projectId)))].join(", "),
+      to: teamProjects.filter(pr => picked.includes(pr.id)).map(pr => pr.name).join(", "),
+    });
+  })();
+
   return (
     /* A panel, like the rest of this page's editors. Which sites a person may open is a decision
        taken against the row that shows what they hold now. */
@@ -2814,6 +2902,11 @@ function UserProjectsModal({ user, teamProjects, onClose, onBack, onSave }: {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
           {!canSave && (
             <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{t.projectsModalNoneWarning}</p>
+          )}
+          {/* Over the button that does it, where the count already sits. The two never show at
+              once — no project ticked is the case above. */}
+          {zeroWarning && (
+            <p style={{ fontSize: "12px", color: "var(--warning-500)", lineHeight: 1.5 }}>{zeroWarning}</p>
           )}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
             {/* 취소 goes BACK when there is a card behind, not away. */}
@@ -3963,9 +4056,22 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
     const scopable = new Set(scopableCamerasFor(u).map(c => c.id));
     return [...ids].filter(id => scopable.has(id)).length;
   };
-  const groupNamesFor = (u: PortalUser) => (u.cameraGroupIds ?? [])
-    .map(id => cameraGroups.find(g => g.id === id)?.label)
-    .filter(Boolean).join(", ");
+  /* THE NAMES BESIDE THAT NUMBER, FILTERED THE SAME WAY IT IS.
+     This listed every group id the account holds, with no project filter, while `scopeCountFor`
+     four lines up intersects — 다른 프로젝트 그룹이 숫자를 부풀리지 못하게. So the hover text
+     printed 「0 / 3 · 오차드·부기스 라인」: a correct number next to the name of a group that
+     reaches none of it, which reads as the one thing the account CAN open. A group survives here
+     only if it contributes a camera the account could actually be scoped to; when none do, this
+     is empty and the caller draws nothing. */
+  const groupNamesFor = (u: PortalUser) => {
+    const scopable = new Set(scopableCamerasFor(u).map(c => c.id));
+    return (u.cameraGroupIds ?? [])
+      .flatMap(id => {
+        const g = cameraGroups.find(gr => gr.id === id);
+        return g && g.cameraIds.some(cid => scopable.has(cid)) ? [g.label] : [];
+      })
+      .join(", ");
+  };
   // Raw slice out of the selector, lookup built in a memo — a selector that returns a new object
   // every call re-renders forever, which is how this page last broke.
   const allPresetsHere = useVcaStore(s => s.accessPresets);
