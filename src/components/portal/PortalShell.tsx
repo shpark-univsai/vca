@@ -659,11 +659,17 @@ export default function PortalShell() {
                     <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--gray-900)" }} />
                     {fleetOnline}
                   </span>
-                  {/* The offline figure is the only red left in the bar, and it earns it here: on
-                      these pages nothing else would tell you a camera is down. A zero is grey,
-                      because "none offline" is not news. */}
-                  <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 700, color: fleetOffline > 0 ? "var(--danger-400)" : "var(--gray-400)" }}>
-                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: fleetOffline > 0 ? "var(--danger-400)" : "var(--gray-300)" }} />
+                  {/* The offline figure is the only coloured thing left in the bar, and it earns
+                      it here: on these pages nothing else would tell you a camera is down.
+
+                      AMBER, not red. The two warm tones say different things in this product —
+                      amber is "it broke by itself", red is "a person stopped it" (TONE_STYLE in
+                      PortalShared). A camera that dropped off chose nothing, so it is a fault,
+                      and it is painted the same warning-500 the camera lists paint their dot.
+
+                      A zero is grey, because "none offline" is not news. */}
+                  <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 700, color: fleetOffline > 0 ? "var(--warning-500)" : "var(--gray-400)" }}>
+                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: fleetOffline > 0 ? "var(--warning-500)" : "var(--gray-300)" }} />
                     {fleetOffline}
                   </span>
                 </button>

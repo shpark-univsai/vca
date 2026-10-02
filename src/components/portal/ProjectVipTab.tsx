@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
-import { AlertTriangle, ArrowDownWideNarrow, CalendarX, Eye, FileDown, FileInput, FileOutput, RefreshCw, Users } from "lucide-react";
+import { AlertTriangle, ArrowDownWideNarrow, ArrowUpRight, CalendarX, Eye, FileDown, FileInput, FileOutput, RefreshCw, Users } from "lucide-react";
 import { canSetPolicy, currentPortalUser, isExpired, registryHealth, useVcaStore, type Person, type PersonGroup, type VipCategory } from "@/lib/vcaStore";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { usePortalLanguage } from "@/lib/i18n";
@@ -272,6 +272,8 @@ interface VipDict {
   groupDeleteMembers: (members: number) => string;
   groupRemovedWithMembersTitle: (members: number) => string;
   close: string;
+  /** The panel's header link, shown only where the panel is NOT already on the registry. */
+  openInRegistry: string;
   detailNoNote: string;
   moreDetails: string;
   expiryPolicyNote: (days: number) => string;
@@ -480,6 +482,7 @@ const T: Record<"en" | "ko", VipDict> = {
     groupDeleteMembers: (members: number) => `Delete ${members} too`,
     groupRemovedWithMembersTitle: (members: number) => `Group and ${members} member(s) removed`,
     close: "Close",
+    openInRegistry: "Open in VIP registry",
     detailNoNote: "No note",
     moreDetails: "More details",
     expiryPolicyNote: (days: number) => `Default retention — ${days} days from today.`,
@@ -669,6 +672,7 @@ const T: Record<"en" | "ko", VipDict> = {
     groupDeleteMembers: (members: number) => `${members}명도 삭제`,
     groupRemovedWithMembersTitle: (members: number) => `그룹과 ${members}명을 삭제했습니다`,
     close: "닫기",
+    openInRegistry: "VIP 등록에서 열기",
     detailNoNote: "메모 없음",
     moreDetails: "추가 정보",
     expiryPolicyNote: (days: number) => `기본 보유기간 — 오늘부터 ${days}일.`,
@@ -1380,16 +1384,42 @@ function registeredLong(value: string, zone: string): string {
   return `${day} ${clockMinutesIn(at, zone)}`;
 }
 
-function PersonDetailModal({ t, person, zone, groups, onClose, onEdit, onRemove }: {
-  t: VipDict;
+/**
+ * ONE PERSON'S DETAIL, WHEREVER THE ROW WAS CLICKED.
+ *
+ * Exported, and shaped like CameraDetailPanel: the registry renders it with its verbs, the
+ * Overview renders the same component with none. It was private to this file and called a Modal,
+ * which was never true — it has always drawn the shared Drawer, and the Overview's 「최근 등록
+ * VIP」 rows had a face, a name and a chevron but could only answer them by changing the screen to
+ * ?tab=vip with nothing opened. A detail view must not navigate somewhere else to show itself —
+ * the rule is written over Drawer in PortalShared.
+ *
+ * It takes no dictionary: the two callers are in different files and would have had to agree on
+ * one, so it reads the language itself like every other self-contained panel.
+ */
+export function VipDetailPanel({ person, zone, groups, onClose, onEdit, onRemove, onOpenInRegistry }: {
   person: Person;
   /** The site's zone — the registration stamp below is a fact about the site's clock, not the reader's. */
   zone: string;
   groups: PersonGroup[];
   onClose: () => void;
-  onEdit: () => void;
-  onRemove: () => void;
+  /**
+   * The registry's two verbs. Optional, and absent together: on the Overview this panel is a
+   * preview of a record whose home is somewhere else, so there is nothing to do to it here and
+   * the ⋯ that would offer 편집 / 삭제 is not drawn at all. A menu holding two disabled items is
+   * a worse answer than no menu.
+   */
+  onEdit?: () => void;
+  onRemove?: () => void;
+  /**
+   * Offered only where this panel is NOT already on the registry — the Overview. It is the
+   * reader's choice to leave, not something the detail does to them on the way in. On the
+   * registry itself it is omitted: a link to the screen you are standing on is furniture.
+   */
+  onOpenInRegistry?: () => void;
 }) {
+  const [lang] = usePortalLanguage();
+  const t = T[lang];
   const { mayEdit, reason: readOnlyReason } = usePortalEditAccess();
   const group = groups.find(g => g.id === person.groupId);
 
@@ -1419,16 +1449,22 @@ function PersonDetailModal({ t, person, zone, groups, onClose, onEdit, onRemove 
       title={person.name}
       onClose={onClose}
       width="520px"
-      footer={
-        /* Outlined, not filled. A dark Close next to a red Remove was two saturated blocks
-           arguing on a sheet whose job is to show a photograph, and neither of them was the
-           action anybody came for. The only filled button here is Save, and only while there is
-           something to save. */
-        <button className="portal-btn-outline" onClick={onClose}
-          style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-          {t.close}
+      /* In the header, not the footer: it is navigation, not an action on this person — the same
+         place, and the same quiet treatment, as CameraDetailPanel's 「입력 소스에서 열기」. */
+      headerAction={onOpenInRegistry && (
+        <button className="portal-btn-quiet" onClick={onOpenInRegistry}
+          style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", borderRadius: "6px", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>
+          {t.openInRegistry}
+          <ArrowUpRight size={13} strokeWidth={2.2} aria-hidden="true" />
         </button>
-      }
+      )}
+      /* NO FOOTER, same as CameraDetailPanel.
+         There was an outlined Close here, and the comment defending it argued about its weight:
+         a dark Close beside a red Remove was two saturated blocks arguing on a sheet whose job
+         is to show a photograph. That argument settled the COLOUR of a button whose reason for
+         existing has since gone — Remove moved into the ⋯ menu, so the footer was left holding
+         one button that repeats the ✕ the Drawer already draws. On the Overview, where this
+         panel is read-only and has no ⋯ at all, it was a row of furniture under a portrait. */
     >
       {/* Square, edge to edge, and square-cornered now that the panel supplies its own header
           above it — rounded corners inside a square panel read as a picture that does not quite
@@ -1468,10 +1504,12 @@ function PersonDetailModal({ t, person, zone, groups, onClose, onEdit, onRemove 
             panel worth copying does it this way (Front, folk, Lightfield, HubSpot): the one thing
             on the sheet that cannot be undone is the one thing that should not be a step away
             from a stray click, and red belongs in the confirmation, not in the furniture. */}
-        <RowActionsMenu actions={[
-          { label: t.editPerson, onClick: onEdit, disabled: !mayEdit, reason: readOnlyReason },
-          { label: t.removeAction, onClick: onRemove, danger: true, disabled: !mayEdit, reason: readOnlyReason },
-        ]} />
+        {onEdit && onRemove && (
+          <RowActionsMenu actions={[
+            { label: t.editPerson, onClick: onEdit, disabled: !mayEdit, reason: readOnlyReason },
+            { label: t.removeAction, onClick: onRemove, danger: true, disabled: !mayEdit, reason: readOnlyReason },
+          ]} />
+        )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: BORDER, paddingTop: "12px" }}>
           {/* A dash, not the word "개인". No group is the absence of a value, and this product
@@ -1536,10 +1574,17 @@ function useListState(): [ListState, () => void] {
   return [state, () => setState("ready")];
 }
 
-export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFilterOpened }: {
+export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFilterOpened, openPersonId, onPersonOpened }: {
   projectId: string;
   openHealthFilter?: VipHealthFilter | null;
   onHealthFilterOpened?: () => void;
+  /**
+   * Which person this tab should open showing — the Overview's preview panel handing its reader
+   * over through 「VIP 등록에서 열기」. Same handoff, and for the same reasons, as openHealthFilter
+   * above: a prop rather than a query string, cleared by the callback once it has been used.
+   */
+  openPersonId?: string | null;
+  onPersonOpened?: () => void;
 }) {
   const [listState, retryList] = useListState();
   const persons = useVcaStore(s => s.persons);
@@ -1615,6 +1660,23 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
       onHealthFilterOpened?.();
     });
   }, [openHealthFilter, onHealthFilterOpened]);
+  /**
+   * The same errand for one person: arrive with their panel already open.
+   *
+   * 「VIP 등록에서 열기」 on the Overview's preview means "show me this person where they live",
+   * so landing on the registry with nothing open would answer a narrower question than the one
+   * asked. Looked up in this tab's own list, so a row released or deleted in between simply
+   * leaves the reader on the registry rather than opening a panel over a record that is gone.
+   */
+  useEffect(() => {
+    if (!openPersonId) return;
+    const id = openPersonId;
+    queueMicrotask(() => {
+      const target = useVcaStore.getState().persons.find(p => p.id === id && p.projectId === projectId);
+      if (target) setDetailFor(target);
+      onPersonOpened?.();
+    });
+  }, [openPersonId, onPersonOpened, projectId]);
   /**
    * All / Individuals / Groups. Same underlined tab row Input Sources and Users & Permissions use.
    *
@@ -2638,6 +2700,11 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               {mayEdit && (
                 <button
                   onClick={() => setConfirmingBulkDelete(true)}
+                  /* The class, not a second set of colours: the outline form was already right
+                     here, but nothing happened when the pointer landed on it — measured, all
+                     three of background, colour and border unchanged. The cameras tab's twin
+                     carries the same class. */
+                  className="portal-btn-outline-danger"
                   style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "1px solid var(--danger-400)", backgroundColor: "transparent", color: "var(--danger-400)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
                 >
                   {t.bulkDelete}
@@ -3196,8 +3263,8 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
         </ConfirmModal>
       )}
       {detailFor && (
-        <PersonDetailModal
-          t={t}
+        <VipDetailPanel
+          /* No 「VIP 등록에서 열기」 here: this IS the registry. */
           person={persons.find(p => p.id === detailFor.id) ?? detailFor}
           zone={projectZone}
           groups={personGroups.filter(g => g.projectId === projectId)}
@@ -3214,7 +3281,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
         또 있으면 고쳐줘).
 
         Both are Drawers flush to the right edge, so the LATER one paints on top. This block used
-        to sit above PersonDetailModal in the tree, which put the editor UNDER the panel it opens
+        to sit above VipDetailPanel in the tree, which put the editor UNDER the panel it opens
         from — measured: the ← was at x=937 and elementFromPoint returned the detail panel's box,
         so the arrow was there and unclickable. Stacking order is render order here.
       */}

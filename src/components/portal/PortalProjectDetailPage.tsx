@@ -12,7 +12,7 @@ import { getAuthConfig } from "@/lib/authConfig";
 import type { DetailTab } from "./ProjectSidebar";
 import ProjectCamerasTab from "./ProjectCamerasTab";
 import CameraDetailPanel from "./CameraDetailPanel";
-import ProjectVipTab, { type VipHealthFilter } from "./ProjectVipTab";
+import ProjectVipTab, { VipDetailPanel, type VipHealthFilter } from "./ProjectVipTab";
 import ProjectLicenseTab from "./ProjectLicenseTab";
 import ProjectServerTab from "./ProjectServerTab";
 import PortalUsersPage from "./PortalUsersPage";
@@ -119,9 +119,11 @@ const T = {
     downPastWindowFull: "Last seen more than 7 days ago and has not come back, so the 7-day drop count cannot see this outage",
     dropNoteFull: (n: number) => `Dropped its stream ${n} times in the last 7 days`,
     viewAllCameras: (n: number) => `View all ${n} camera${n === 1 ? "" : "s"}`,
-    viewAllVips: "Open the registry",
+    /* Beside the card's title, where it now reads as a word rather than a tooltip. "Open the
+       registry" named the destination; against rows that each open one person, what the head has
+       to say is how many it covers. */
+    viewAllVips: "View all",
     recentVipsTitle: "Recently registered VIPs",
-    registerVipLink: "Register VIP",
     noVipsYet: "No VIPs registered yet.",
     accessRequestsTitle: "Access requests",
     approve: "Approve",
@@ -211,9 +213,8 @@ const T = {
     downPastWindowFull: "마지막 접속이 7일보다 앞서고 그 뒤로 돌아오지 않았습니다. 7일 끊김 횟수로는 이 장애가 보이지 않습니다.",
     dropNoteFull: (n: number) => `지난 7일 동안 ${n}회 끊겼습니다`,
     viewAllCameras: (n: number) => `카메라 ${n}대 전체 보기`,
-    viewAllVips: "VIP 목록 열기",
+    viewAllVips: "전체 보기",
     recentVipsTitle: "최근 등록된 VIP",
-    registerVipLink: "VIP 등록",
     noVipsYet: "등록된 VIP가 아직 없습니다.",
     accessRequestsTitle: "접근 요청",
     approve: "승인",
@@ -264,8 +265,8 @@ function ArrowUpIcon() { return <ArrowUp size={10} strokeWidth={3.36} />; }
  * open with two shapes before a word. And the colour is the badge's, so the two read as one mark
  * rather than as an icon and an unrelated label that happen to share a line. The card's hue is
  * therefore doing two jobs — saying which card this is, and carrying its state — which is why the
- * camera card turns its badge red as well when something is offline, rather than leaving a green
- * icon beside a red word.
+ * camera card turns its badge amber as well when something is offline, rather than leaving a
+ * grey icon beside a coloured word.
  */
 /**
  * "2026-09-01 14:32" when the registration carries a time, "2026-09-01" when it does not.
@@ -335,7 +336,14 @@ function SectionHead({ title, subtitle, action }: {
    * that are read from the top. The row cost every panel a line of list and drew a border across
    * the bottom of a card that already has one. The label survives as the button's tooltip.
    */
-  action?: { icon: React.ReactNode; label: string; onClick: () => void };
+  /**
+   * `labelled` prints the word beside the glyph instead of hiding it in a tooltip. Set where the
+   * card's rows lead somewhere of their own and the head has to be told apart from them — see the
+   * 「최근 등록 VIP」 card. The other heads stay bare: their rows lead nowhere else, so there is
+   * nothing for the label to distinguish, and three worded links down one column would read as a
+   * toolbar.
+   */
+  action?: { icon: React.ReactNode; label: string; onClick: () => void; labelled?: boolean };
 }) {
   return (
     /* width 100%, so the action lands on the panel's right edge rather than beside the title.
@@ -351,21 +359,29 @@ function SectionHead({ title, subtitle, action }: {
       </div>
       {action && (
         <button
-          className="portal-icon-btn"
+          /* The quiet hover the other worded links in Portal use once there is a word to hover;
+             the icon-button treatment is sized for a glyph in a square. */
+          className={action.labelled ? "portal-btn-quiet" : "portal-icon-btn"}
           onClick={action.onClick}
-          title={action.label}
-          aria-label={action.label}
+          /* The tooltip and the aria-label are what carry the word when there is no word. With
+             `labelled` the button says it out loud, and repeating it in a title is a tooltip that
+             tells the reader what they are already looking at. */
+          title={action.labelled ? undefined : action.label}
+          aria-label={action.labelled ? undefined : action.label}
           /* On the title's line, not floating between the title and the line under it. The button
              is 15px of icon in 4px of padding — 23px against a 17px title line — so top-aligning
              the box left the glyph sitting a few px low, right in the gap. Tighter padding and a
              -2px nudge put its centre on the title's centre. */
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", padding: "2px", marginTop: "-2px", borderRadius: "6px", cursor: "pointer", color: "var(--gray-500)", flexShrink: 0 }}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "3px", border: "none", background: "none", padding: action.labelled ? "2px 4px" : "2px", marginTop: "-2px", borderRadius: "6px", cursor: "pointer", color: "var(--gray-500)", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}
         >
+          {action.labelled && action.label}
           {/* HORIZONTAL OPTICAL NUDGE (2026-10-01). An up-right arrow carries its mass in the
               corner it points at: measured by ink centroid, 0.60px right of its box centre. The
               vertical is deliberately NOT corrected here — the -2px above was tuned by eye against
-              the title's line, and moving the glyph down would undo that. */}
-          <span style={{ display: "flex", transform: "translateX(-0.5px)" }}>{action.icon}</span>
+              the title's line, and moving the glyph down would undo that. With a word in front of
+              the glyph there is no box to centre it in, so the nudge is dropped: the gap to the
+              label is what positions it. */}
+          <span style={{ display: "flex", transform: action.labelled ? undefined : "translateX(-0.5px)" }}>{action.icon}</span>
         </button>
       )}
     </div>
@@ -505,6 +521,19 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
    * second piece of state — the same handoff, and for the same reason, as inspectCameraId above.
    */
   const [vipHealthFocus, setVipHealthFocus] = useState<VipHealthFilter | null>(null);
+  /**
+   * The person whose detail is open ON THIS SCREEN, in the right-hand panel — the VIP mirror of
+   * overviewCameraId above, and the same pair of states for the same reason.
+   *
+   * 「최근 등록 VIP」 gave each row a face, a name and a chevron and then answered the click by
+   * switching to the registry with nothing opened: the promise of a detail, paid in a list. The
+   * row now opens the registry's own panel here, read-only (no 편집 / 삭제 — see VipDetailPanel),
+   * and the way to the fuller record is 「VIP 등록에서 열기」 in its header, which is the reader
+   * choosing to leave.
+   */
+  const [overviewVipId, setOverviewVipId] = useState<string | null>(null);
+  /** Which person the VIP tab should open showing — the handoff OUT, like inspectCameraId. */
+  const [inspectPersonId, setInspectPersonId] = useState<string | null>(null);
   const [cameraGapFocus, setCameraGapFocus] = useState(false);
   /** Which day of the detections chart the pointer is over, by daysAgo. */
   const [hoverDay, setHoverDay] = useState<number | null>(null);
@@ -1204,6 +1233,32 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
             );
           })()}
 
+          {/*
+            ONE VIP'S DETAIL, ON THE OVERVIEW — the same panel the VIP registry opens.
+
+            Read-only here: no onEdit, no onRemove, so the ⋯ is not drawn and nothing on the sheet
+            can change a record whose home is another screen. Nothing is held from the clicked row
+            either — the id goes through `projectPersons`, so a person released or deleted while
+            the panel is open closes it instead of freezing on a stale copy.
+
+            `onOpenInRegistry` is the old click, kept and made the reader's choice: it lands on the
+            registry with this person's own panel open, which is where the row used to take
+            everybody unasked and with nothing selected.
+          */}
+          {(() => {
+            const person = overviewVipId ? projectPersons.find(p => p.id === overviewVipId) : undefined;
+            if (!person) return null;
+            return (
+              <VipDetailPanel
+                person={person}
+                zone={projectZone}
+                groups={personGroups.filter(g => g.projectId === projectId)}
+                onClose={() => setOverviewVipId(null)}
+                onOpenInRegistry={() => { setInspectPersonId(person.id); setOverviewVipId(null); onTabChange("vip"); }}
+              />
+            );
+          })()}
+
           {/* Metric cards — camera connectivity / license usage / VIP DB / accounts & permissions,
               each grounded in real store data (no fabricated failure-reason breakdowns the data
               model doesn't have).
@@ -1216,13 +1271,21 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: CARD_GAP, marginBottom: CARD_GAP }}>
             {/* All four squares are grey at rest — the icon says which card this is, not how it is
                 doing, and four coloured squares in a row made the colour mark nothing. The one
-                exception is here: an offline camera turns this square red along with the chip
+                exception is here: an offline camera turns this square amber along with the chip
                 beside it and the slice in its bar, so the row has exactly one thing that can go
-                coloured and it is the one thing that can go wrong. */}
+                coloured and it is the one thing that can go wrong. The rule is unchanged; only
+                the colour is.
+
+                AMBER AND NOT RED, because the two mean different things in this product: amber
+                is a fault (it broke by itself), red is a person stopping something — see
+                TONE_STYLE in PortalShared. A camera that dropped its connection chose nothing.
+                The card said red while the camera list four lines below it already drew the
+                same camera's dot amber, so one screen was saying both. The foreground is taken
+                straight from TONE_STYLE.fault so the two cannot drift apart again. */}
             <MetricCard
               label={t.cameraConnectivity} icon={VideoIcon}
-              iconBg={offlineCount > 0 ? "var(--danger-100)" : "var(--gray-100)"}
-              iconColor={offlineCount > 0 ? "var(--danger-400)" : "var(--gray-700)"}
+              iconBg={offlineCount > 0 ? "var(--warning-100)" : "var(--gray-100)"}
+              iconColor={offlineCount > 0 ? TONE_STYLE.fault.fg : "var(--gray-700)"}
               /* Three states, not two. `offlineCount === 0` was answering "is anything wrong",
                  and a site with no cameras at all passes that test — so a brand-new project read
                  "정상 · 0 / 0대 연결됨 · 온라인 0%", the console telling somebody their empty
@@ -1231,7 +1294,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                 ? <StateChip text={t.chipNoCameras} color="var(--gray-400)" />
                 : offlineCount === 0
                 ? <StateChip text={t.chipHealthy} color="var(--gray-500)" />
-                : <StateChip text={t.chipAttention(offlineCount)} color="var(--danger-400)" />}
+                : <StateChip text={t.chipAttention(offlineCount)} color={TONE_STYLE.fault.fg} />}
               onClick={() => onTabChange("cameras")}
             >
               {/* The figure on its own line, the bar full width at the foot of the card.
@@ -1261,27 +1324,28 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                   the same rows above them, and the grid stretches the cards themselves. */}
               <div style={{ paddingTop: "2px" }}>
                 <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
-                  {/* primary-300 for the healthy share, danger only for the part that is not.
-                      It was success-400 against danger-400 — two saturated hues meeting in the
-                      middle of a white card, which read as a chart from another product — then
-                      gray-900 (the bar became the heaviest thing on the card), then gray-500. The
-                      light primary step is the product's own colour at a strength a quantity can
-                      carry, and two 8px bars are well inside the tenth of a screen the palette
-                      guidance allows purple. Only the red slice is a state, and it stays the one
-                      thing that catches. */}
+                  {/* primary-300 for the healthy share, the fault tone only for the part that is
+                      not. It was success-400 against danger-400 — two saturated hues meeting in
+                      the middle of a white card, which read as a chart from another product —
+                      then gray-900 (the bar became the heaviest thing on the card), then
+                      gray-500. The light primary step is the product's own colour at a strength
+                      a quantity can carry, and two 8px bars are well inside the tenth of a screen
+                      the palette guidance allows purple. Only the offline slice is a state, and
+                      it stays the one thing that catches — in amber, because an offline camera is
+                      a fault and not somebody's decision. */}
                   <div style={{ height: "100%", width: `${projectCameras.length ? (onlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--primary-300)" }} />
-                  <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: "var(--danger-400)" }} />
+                  <div style={{ height: "100%", width: `${projectCameras.length ? (offlineCount / projectCameras.length) * 100 : 0}%`, backgroundColor: TONE_STYLE.fault.fg }} />
                 </div>
-                {/* Left half only. The right said "8 offline", which the chip above it, the red
-                    slice in this very bar and the icon square all already say — the same figure
-                    four times inside one card. */}
+                {/* Left half only. The right said "8 offline", which the chip above it, the
+                    amber slice in this very bar and the icon square all already say — the same
+                    figure four times inside one card. */}
                 <BarStats left={t.statOnlineShare(onlineShare)} right="" />
               </div>
               </>
               )}
               {/* The online/offline legend that used to sit under a rule here is gone: "51 / 59
-                  connected" already gives both numbers, the bar's red segment shows the share, and
-                  a non-zero offline count is a line in the "things to do" strip above. */}
+                  connected" already gives both numbers, the bar's amber segment shows the share,
+                  and a non-zero offline count is a line in the "things to do" strip above. */}
             </MetricCard>
 
             <MetricCard
@@ -1890,10 +1954,15 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
                   <SectionHead
                     title={t.recentVipsTitle}
-                    // "Register a VIP" for whoever can; "Open the registry" for whoever cannot.
-                    action={mayEdit
-                      ? { icon: <Plus size={15} strokeWidth={2.4} />, label: t.registerVipLink, onClick: () => onTabChange("vip") }
-                      : { icon: <ArrowUpRight size={15} strokeWidth={2.4} />, label: t.viewAllVips, onClick: () => onTabChange("vip") }}
+                    /* LABELLED, and the only labelled head on the Overview.
+                       Now that a row opens the person it names, the card's own action has to say
+                       that it does something else — "this person" against "all of them" — and an
+                       unlabelled arrow beside three chevrons says nothing of the sort. Clerk,
+                       Asana, Evernote, Kit, Squarespace and Podia all carry one worded link on a
+                       card like this. It was 「VIP 등록」 for whoever may register and 「VIP 목록
+                       열기」 for whoever may not, and both went to the same place: the difference
+                       was a word nobody could act on differently. */
+                    action={{ icon: <ArrowUpRight size={15} strokeWidth={2.4} />, label: t.viewAllVips, onClick: () => onTabChange("vip"), labelled: true }}
                   />
                 </div>
                 {recentVips.length === 0 ? (
@@ -1902,11 +1971,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minHeight: 0, overflowY: "auto" }}>
-                    {/* The whole row opens the registry, and the chevron says so. It was a card
-                        with no target on it at all — a face, a name and a date that looked
-                        clickable and was not. */}
+                    {/* The whole row opens THIS PERSON, in a panel on this screen, and the
+                        chevron says so. It opened ?tab=vip with nothing selected — a face, a name
+                        and an arrow promising a record, answered with a list of a hundred. */}
                     {recentVips.map(p => (
-                      <button key={p.id} onClick={() => onTabChange("vip")}
+                      <button key={p.id} onClick={() => setOverviewVipId(p.id)}
                         className="portal-attention-row"
                         style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", border: BORDER, borderRadius: "12px", padding: "10px", background: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
                         <FacePhoto src={p.photoUrl} size={36} radius="8px" style={{ flexShrink: 0 }} />
@@ -2033,7 +2102,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
         </>
       )}
       {tab === "cameras" && <ProjectCamerasTab projectId={projectId} openCameraId={inspectCameraId} onCameraOpened={() => setInspectCameraId(null)} openGapFilter={cameraGapFocus} onGapFilterOpened={() => setCameraGapFocus(false)} />}
-      {tab === "vip" && <ProjectVipTab projectId={projectId} openHealthFilter={vipHealthFocus} onHealthFilterOpened={() => setVipHealthFocus(null)} />}
+      {tab === "vip" && <ProjectVipTab projectId={projectId} openHealthFilter={vipHealthFocus} onHealthFilterOpened={() => setVipHealthFocus(null)} openPersonId={inspectPersonId} onPersonOpened={() => setInspectPersonId(null)} />}
       {tab === "license" && <ProjectLicenseTab projectId={projectId} />}
       {tab === "server" && <ProjectServerTab projectId={projectId} />}
       {/* onGoToCameras: the camera-group tab's empty state has somewhere to send people, and
