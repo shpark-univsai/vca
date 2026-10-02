@@ -3,7 +3,7 @@
 // Swap the body of each function for a real fetch(`${API_BASE_URL}/...`) call later.
 
 import { dashboardStats, liveEvents, mapMarkers, DISTRICTS, hourlyDetections, formatTimeAgo, type Device, type HourlyDetection } from "@/lib/mockData";
-import { useVcaStore, camerasInProject, type Camera } from "@/lib/vcaStore";
+import { useVcaStore, camerasVisibleTo, type Camera } from "@/lib/vcaStore";
 import { runStateOf } from "@/lib/realtime/cameraStatus";
 import { mockDelay } from "./client";
 
@@ -43,9 +43,36 @@ function cameraToDevice(camera: Camera): Device {
   };
 }
 
+/**
+ * THE CAMERAS THIS ACCOUNT MAY SEE, not the cameras this site has.
+ *
+ * It read `camerasInProject` until 2026-10-02, which is the whole site, and that one word was
+ * three findings at once. MEASURED, with an account scoped to a group of two: the Dashboard's
+ * SYSTEM panel printed 「이 계정에 지정된 2대만 보입니다」 and then listed 「62건 중 1 – 7」
+ * with Orchard MRT's and Bedok MRT's names, zones and IP addresses under it — and clicking one
+ * of those rows flew the map to a camera the account had never been granted. Worse with an
+ * account whose scope resolves to NOTHING: the panel said 「이 계정에 지정된 카메라가 없습니다」
+ * and listed all six. None opened as all.
+ *
+ * The figures came from here too, so the same word put the site's size in the top bar of every
+ * screen in the app (52 / 10) and in this panel's Linked / Out / Availability. That contradicts
+ * the owner's own decision of 2026-10-01, written beside the notice in Sidebar.tsx: the site's
+ * total is deliberately absent, because what the operator needs to know is that these figures are
+ * not the whole site, and how big the site is is not theirs to be told.
+ *
+ * `camerasVisibleTo` is the same resolver the rest of the app reaches through `useProjectCameras`,
+ * so this list and the screens around it can no longer disagree. Portal deliberately does NOT go
+ * through it — an administrator manages cameras they are not scoped to watch — and Portal does not
+ * call this module.
+ *
+ * NOT a fix for the real thing. Every camera is still in the browser's store; this filters the
+ * answer rather than never having been given it. The server has to cut the same way at intake, and
+ * until it does, the app is merely polite.
+ */
 function deploymentDevices(projectId?: string): Device[] {
-  const all = useVcaStore.getState().cameras;
-  return (projectId ? camerasInProject(all, projectId) : all).map(cameraToDevice);
+  const { cameras, portalUsers, cameraGroups } = useVcaStore.getState();
+  if (!projectId) return cameras.map(cameraToDevice);
+  return camerasVisibleTo(cameras, projectId, portalUsers, cameraGroups).map(cameraToDevice);
 }
 
 export async function getDashboardStats(projectId?: string) {

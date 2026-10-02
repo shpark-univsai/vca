@@ -115,6 +115,12 @@ const T = {
     rtspConnected: "RTSP connected",
     noFeedTitle: "No feed to show",
     noFeedBody: "This camera is not running, so there is nothing being captured. The device list shows when it was last seen.",
+    /* The same screen, a different reason, and the two must not be confused: an account whose
+       camera scope resolves to nothing has no camera here to be running or not. It said 「This
+       camera is not running」 and sent the reader to the device list to find out when it was last
+       seen — blaming a device for a decision somebody made, and pointing at a list that is now
+       correctly empty too. Nothing on this screen can fix it, so it says who can. */
+    noFeedNoCameras: "No cameras are assigned to this account. An administrator grants them in the console.",
     noRedFaceTitle: "Person search permission required",
     noRedFaceBody: "RedFace matches a face against the registry and builds an association network from it, so with no search permission there is nothing it can show. An administrator can grant it in the Portal, under Users & Permissions.",
     searchVips: "Search VIPs",
@@ -305,6 +311,7 @@ const T = {
     rtspConnected: "RTSP 연결됨",
     noFeedTitle: "표시할 화면이 없습니다",
     noFeedBody: "이 카메라는 가동 중이 아니라 촬영되는 것이 없습니다. 마지막 신호 시각은 장비 목록에서 볼 수 있습니다.",
+    noFeedNoCameras: "이 계정에 지정된 카메라가 없습니다. 관리자가 콘솔에서 지정합니다.",
     noRedFaceTitle: "인물 검색 권한이 필요합니다",
     noRedFaceBody: "RedFace는 얼굴을 등록부와 대조해 동행 관계를 만드는 화면이라, 검색 권한 없이는 보여줄 것이 없습니다. 관리자에게 요청하면 Portal의 사용자 및 권한에서 열어 줄 수 있습니다.",
     searchVips: "VIP 검색",
@@ -959,7 +966,9 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
         // operator to guess whether the screen had failed.
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"72px 24px", gap:"6px" }}>
           <p style={{ margin:0, fontSize:"14px", fontWeight:700, color:"var(--gray-600)" }}>{t.noFeedTitle}</p>
-          <p style={{ margin:0, fontSize:"13px", fontWeight:500, color:"var(--gray-400)", textAlign:"center", maxWidth:"360px", lineHeight:1.6 }}>{t.noFeedBody}</p>
+          <p style={{ margin:0, fontSize:"13px", fontWeight:500, color:"var(--gray-400)", textAlign:"center", maxWidth:"360px", lineHeight:1.6 }}>
+            {cameras.length === 0 ? t.noFeedNoCameras : t.noFeedBody}
+          </p>
         </div>
       ) : (
       <div style={{ display:"flex", flexWrap:"wrap", gap:"12px" }}>
