@@ -742,9 +742,29 @@ function CameraCard({
                 A head that counts rows the body is not allowed to draw is the same shape of lie
                 as a tab badge disagreeing with its pager. `dets` is that list, filtered both
                 ways, and the arrow follows it too — an arrow that opens a detail for nothing. */}
+            {/* KEYBOARD. This header is the ONLY way into the detail screen from the grid — the
+                camera names on the left are a selection toggle, and the 「Analyze frame」 button
+                over the feed only exists while the pointer is on it. As a bare div it was not
+                reachable by Tab at all: measured 2026-10-02, the grid contributed ZERO operable
+                stops to this tab's cycle — the one stop it had was the scroll box around it. It
+                now takes 85 Tab presses from the top of the page to get here, nearly all of them
+                the sidebar's camera list, which is its own problem. role + tabIndex
+                + Enter/Space make it the button it already behaves as. The name comes from the
+                text it already shows (「대상 9명」 / 「9 targets」) — the arrow is decoration and
+                carries none. No focus style is written here: globals.css's :focus-visible rule
+                lists [tabindex], and nothing inline overrides it on this element (measured). */}
             <div
               onClick={dets.length > 0 ? onHeaderArrowClick : undefined}
-              style={{ display:"flex", alignItems:"center", gap:"4px", cursor: dets.length > 0 ? "pointer" : "default" }}
+              role={dets.length > 0 ? "button" : undefined}
+              tabIndex={dets.length > 0 ? 0 : undefined}
+              onKeyDown={dets.length > 0 ? (e => {
+                if (e.key === "Enter" || e.key === " ") {
+                  // Space scrolls the page by default, and this header sits in a scrolling grid.
+                  e.preventDefault();
+                  onHeaderArrowClick?.();
+                }
+              }) : undefined}
+              style={{ display:"flex", alignItems:"center", gap:"4px", borderRadius:"4px", cursor: dets.length > 0 ? "pointer" : "default" }}
             >
             <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.targetCount(dets.length)}</span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">

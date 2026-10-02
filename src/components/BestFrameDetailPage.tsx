@@ -632,6 +632,22 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
   return (
     <div
       onClick={onClick}
+      /* KEYBOARD. One stop per card, not a roving group: a frame holds a handful of detections
+         (nine in the busiest one measured), they are the only operable things in this panel, and
+         each one opens a different panel — a roving group would hide eight of nine behind arrow
+         keys that this screen has already given to seeking the footage (see the ArrowLeft/
+         ArrowRight listener below). role="button" because it opens Inspection Detail in place;
+         the name is the card's own text — 「P-01 VIP 98.4% Dr. Alex Wong」 — so there is no new
+         copy and nothing to keep in step with the visible label. */
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => {
+        if (e.key === "Enter" || e.key === " ") {
+          // Space scrolls the reel, which is its own scroll box, before it ever reaches here.
+          e.preventDefault();
+          onClick();
+        }
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -650,7 +666,12 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
         // pointer. The fill alone says hover, which is what the app's other lists already do
         // (rows: fill for hover, a line only for the selected one) — so a line on this screen now
         // means exactly one thing.
-        outline: isFocused ? `2px solid ${SELECTED}` : "none",
+        // `undefined`, not "none": an inline `outline: none` is what silences the shared
+        // :focus-visible ring in globals.css (that rule has no !important and inline always
+        // wins — measured). Unset here, a card that is merely keyboard-focused draws the app's
+        // standard ring (gray-900 hairline + gray-100 halo) and the focused card keeps its
+        // 2px SELECTED outline, so the two states stay distinguishable.
+        outline: isFocused ? `2px solid ${SELECTED}` : undefined,
         backgroundColor: hovered && !isFocused ? "var(--gray-50)" : "transparent",
         transition: "background-color 0.15s ease",
       }}
@@ -1729,6 +1750,15 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   // detection's card in the reel on the right. Opening Inspection Detail is a
                   // separate, deliberate step (the reel card itself, or "Analyze Frame" on the
                   // HUD elsewhere) rather than something a single click on the box already did.
+                  //
+                  // NO TAB STOP, DELIBERATELY (2026-10-02). Every box here is one of the same
+                  // `data.detections` the reel on the right draws a card for, and that card is
+                  // keyboard-operable and does MORE (it focuses and opens Inspection Detail), so
+                  // a stop per box would be a second stop for each detection that leads somewhere
+                  // smaller. And focus has to be SHOWN: the only room left is the frame itself,
+                  // and nothing may outline, tint or dim the picture. A reader who wants a box
+                  // focused takes the card; with the reel filtered to anything but 「전체」 some
+                  // boxes have no card, which is the one gap this leaves and the filter undoes.
                   onClick={() => setFocusedDet(det)}
                   style={{
                     position:"absolute", zIndex:10, cursor:"pointer",
@@ -1995,6 +2025,20 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     // An outline around the cell, which is drawn outside its box: the thumbnail
                     // keeps its own 3px SELECTED border as the "you are here" mark, and nothing
                     // lands on the picture — no tint, no dim, no second edge on the image.
+                    //
+                    // NO TAB STOP, AND NO ROVING GROUP EITHER (2026-10-02). 61 stops would bury
+                    // the hour and minute bars behind the strip; a roving group would fix the
+                    // count and then fight the ArrowLeft/ArrowRight listener above, which already
+                    // seeks from anywhere on this screen — one press would both move the roving
+                    // cursor and move the footage. It is not needed: this strip is ALREADY one
+                    // tab stop (an overflow:auto box is focusable), those arrows already walk it
+                    // at 1s/10s against the thumbnails' 2s, and the effect below scrolls whatever
+                    // they land on back into view. Measured: on the untouched screen this strip
+                    // was Tab stop 22 of 105 (29 of 114 now that the reel cards are stops), and
+                    // ←/→ from there moved the selected frame 11:34:00 → :02 → (Shift) :12.
+                    // STILL MISSING, and not inventable from here: the strip has no name, so a
+                    // screen reader reaching that stop is told nothing. It needs one word of copy
+                    // (and an aria-label on this container) from the owner.
                     className="vca-hover-card"
                     style={{
                     position:"relative", width:"128px", flexShrink:0,

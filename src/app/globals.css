@@ -1118,8 +1118,19 @@ input:autofill {
 /* A card whose whole body is the target. Outline rather than border or shadow: several of these
    carry an inline border that is their SELECTED mark, and a shadow would put back the resting
    layer this app took out (see --line-card's note above). */
-.vca-hover-card { outline: 1px solid transparent; transition: outline-color .12s; }
-.vca-hover-card:hover { outline-color: var(--gray-400); }
+/* `:not(:focus-visible)` on both, and it is not belt-and-braces.
+ *
+ * The focus ring above is written `:where(...):focus-visible`, so its selector weighs the same as
+ * a single class — and this rule comes later in the file, which means a plain `.vca-hover-card`
+ * would win on source order and paint `outline: transparent` over the ring. The symptom only
+ * appears the day somebody makes one of these focusable, which is exactly when it is hardest to
+ * trace: the element takes focus, the keyboard is on it, and nothing is drawn. Found by the
+ * engineer who made the Best Frame screens keyboard-reachable, before it could bite.
+ *
+ * Opting out of the hover outline while focused is also the right behaviour on its own: the two
+ * would otherwise draw the same 1px box in two different colours on the same element. */
+.vca-hover-card:not(:focus-visible) { outline: 1px solid transparent; transition: outline-color .12s; }
+.vca-hover-card:hover:not(:focus-visible) { outline-color: var(--gray-400); }
 
 /* For a fill no neutral can tint: --gray-900, --primary-400, --primary-100, a tier colour, or a
    bare glyph that has no box to fill. */
