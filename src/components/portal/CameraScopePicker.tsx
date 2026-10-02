@@ -399,6 +399,9 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
             )}
             {shownZones.map(([zone, group]) => {
               const allOn = group.every(c => picked.includes(c.id));
+              /* 그룹이 데려온 것까지 세는 쪽: 이 줄이 답하는 질문은 「이 구역을 줬나」이지
+                 「여기서 체크를 몇 번 눌렀나」가 아닙니다. */
+              const pickedHere = group.filter(c => picked.includes(c.id) || coveredByGroup.has(c.id)).length;
               /* A search opens what it finds: closing a zone that matched would hide the only
                  reason it is on screen. Otherwise the reader's own toggle decides. */
               const open = needle !== "" || openZones.includes(zone);
@@ -426,11 +429,34 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
                         {allOn ? t.clearGroup : t.pickGroup}
                       </button>
                     )}
-                    {/* A closed zone still has to say what it is holding, or the reader has to open
-                        it to find out whether it is already granted. */}
-                    {!open && mode === "some" && (
-                      <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>
-                        {t.zonePicked(group.filter(c => picked.includes(c.id) || coveredByGroup.has(c.id)).length)}
+                    {/*
+                        PART OF A ZONE IS A STATE, AND IT HAD NO SHAPE (owner, 2026-10-02: 위치별
+                        카메라가 몇 개가 있는데 그중 몇 개가 선택된 상태라도 변경될 때 알려줘야 할
+                        것 같아).
+
+                        There are three answers — none, some, all — and the row drew two: the
+                        action beside the name reads 전체 선택 both when nothing is ticked and when
+                        two of five are, so a half-granted zone was indistinguishable from an
+                        untouched one without opening it. Eighteen zones, eighteen openings.
+
+                        ONLY THE MIDDLE STATE SPEAKS. 0 is said by the absence of this line — and
+                        printing 「고른 것 없음」 on the seventeen zones nobody touched is the row
+                        repeating itself, not information. All-ticked is said by 해제, which only
+                        appears in that state. So the one answer the row could not give is the one
+                        it gives.
+
+                        NOT 「BEDOK · 2/5」. The ·5 after the name is the register's count and has
+                        been since this list was written; turning it into a fraction changes what a
+                        number already on screen means. A separate phrase after the action keeps
+                        the two facts apart, in the words the closed row already used.
+
+                        OPEN OR CLOSED. It used to be closed-only. The ticks under an open zone are
+                        visible but not countable at nine rows, and this is the line that has to
+                        MOVE when somebody presses 전체 선택 — which is what was asked for.
+                    */}
+                    {mode === "some" && pickedHere > 0 && !allOn && (
+                      <span style={{ fontSize: "10px", color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>
+                        {t.zonePicked(pickedHere)}
                       </span>
                     )}
                   </div>
@@ -496,7 +522,7 @@ const T = {
     pickEvery: "Select all", clearEvery: "Clear selection",
     searchNone: "No camera on these projects matches that.",
     freezeWarning: "Every camera is ticked. Saved like this the list is frozen, and cameras added later are left out — pick the first option to include them.",
-    zonePicked: (n: number) => n === 0 ? "none picked" : `${n} picked`,
+    zonePicked: (n: number) => `${n} picked`,
     summaryGroups: (names: string, n: number, total: number) => `Watches ${n} of ${total} cameras, through ${names}.`,
     summaryGroupsMore: (first: string, rest: number) => rest === 0 ? `“${first}”` : `“${first}” and ${rest} other group${rest === 1 ? "" : "s"}`,
     summaryPlus: (n: number) => ` Plus ${n} picked one by one.`,
@@ -536,7 +562,7 @@ const T = {
     pickEvery: "모두 선택", clearEvery: "선택 초기화",
     searchNone: "그 조건에 맞는 카메라가 없습니다.",
     freezeWarning: "전부 체크돼 있습니다. 이대로 저장하면 목록이 굳어서 나중에 추가되는 카메라는 빠집니다 — 함께 주려면 위의 첫 번째를 고르세요.",
-    zonePicked: (n: number) => n === 0 ? "고른 것 없음" : `${n}대 고름`,
+    zonePicked: (n: number) => `${n}대 고름`,
     /* 주어를 쓰지 않습니다. 이 창의 첫 줄이 이미 누구에 대한 것인지 말하고, 이름을 주어로
        세우면 「Marcus Lee은(는)」처럼 조사 두 개를 괄호로 내보이게 됩니다 — 그건 제품이 그
        이름을 모른다는 뜻입니다(삭제 확인창의 같은 메모). */

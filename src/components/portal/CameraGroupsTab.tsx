@@ -63,7 +63,6 @@ const T = {
     andMore: (n: number) => `and ${n} more`,
     noZone: "No zone",
     zonePick: "select all", zoneClear: "clear",
-    zoneBack: "Back to all zones",
     zoneInGroup: "In this group",
     back: "Back",
     allPick: "Select all", allClear: "Clear selection",
@@ -113,7 +112,6 @@ const T = {
     andMore: (n: number) => `외 ${n}대`,
     noZone: "구역 미지정",
     zonePick: "전체 선택", zoneClear: "해제",
-    zoneBack: "모든 구역으로",
     zoneInGroup: "이 그룹의 카메라",
     back: "뒤로",
     allPick: "모두 선택", allClear: "선택 초기화",
@@ -362,19 +360,27 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
   );
 
   /*
-   * A BIG REGISTER IS A LIST OF ZONES, AND YOU GO INTO ONE (owner, 2026-09-22: 카메라 리스트
-   * 스크롤 안 해도 되게 해줘 · 이게 기본적으로 구역(위치) 중심인 거잖아, 이걸로 먼저 보여주는 게
-   * 좋겠지?).
+   * A BIG REGISTER IS A LIST OF ZONES, AND A ZONE OPENS UNDER ITSELF (owner, 2026-09-22: 카메라
+   * 리스트 스크롤 안 해도 되게 해줘 · 이게 기본적으로 구역(위치) 중심인 거잖아, 이걸로 먼저
+   * 보여주는 게 좋겠지?).
    *
-   * Zones already started closed here — a thousand rows in one scroll box is a list nobody
-   * scrolls, and a zone is what somebody ticks. But they were an accordion, so opening two of
-   * nineteen put the box back into scrolling, which is the thing the closed state was for. Now
-   * one zone is open at a time and it REPLACES the zone list instead of expanding inside it, so
-   * both screens fit: nineteen zone rows, or one zone's cameras. The count on each row is what
-   * you choose by, and the footer keeps the running total across zones.
+   * Zones start closed — a thousand rows in one scroll box is a list nobody scrolls, and a zone
+   * is what somebody ticks.
+   *
+   * THEY USED TO DRILL IN, AND THAT IS THE PART THAT WAS WRONG (owner, 2026-10-02: 누르면 아래로
+   * 열릴 것 같이 생겼는데 새로 열려서 어색해). Opening a zone filtered the list down to that one
+   * zone, so pressing 「Bedok · 5」 took the other seventeen rows out of the document — measured,
+   * 18 rows to 1. The row is shaped like an accordion (a chevron, a name, a count), and the shape
+   * is a promise about what the press does; stepping into a screen is a different gesture and it
+   * is drawn differently. It was done to keep the box from scrolling when two zones are open,
+   * which is a smaller cost than losing your place: the list is a scroll box, scrolling is what it
+   * is for, and every other zone stays exactly where the reader left it.
+   *
+   * So: more than one zone open at a time, each opening in place. Same as the scope picker, which
+   * has always worked this way.
    *
    * Below a screenful none of this applies — the flat list IS the answer at that size, and
-   * making somebody step into a zone to reach four cameras would be a click for nothing. Same
+   * making somebody open a zone to reach four cameras would be a click for nothing. Same
    * threshold as the scope picker (owner: 실제 현장에서는 연결된 카메라 대수가 1000대이상일 수
    * 있어서).
    */
@@ -391,10 +397,15 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
    * The section's MEMBERSHIP is frozen at open (`group.cameraIds`), not read from `picked`:
    * computed live, a row would disappear the moment you unticked it, so taking a camera out by
    * mistake would also take away the way to put it back. Frozen, unticking just unticks.
+   *
+   * It is the one thing OPEN when the editor opens; the zones under it are closed, and opening
+   * one no longer closes this.
    */
   const [initialPicked] = useState<string[]>(() => group?.cameraIds ?? []);
   const inGroupSection = !flatZones && initialPicked.length > 0;
-  const [openZone, setOpenZone] = useState<string | null>(inGroupSection ? IN_GROUP : null);
+  const [openZones, setOpenZones] = useState<string[]>(inGroupSection ? [IN_GROUP] : []);
+  const toggleZoneOpen = (zone: string) =>
+    setOpenZones(prev => prev.includes(zone) ? prev.filter(z => z !== zone) : [...prev, zone]);
   const toggleZoneAll = (ids: string[]) => {
     const allOn = ids.every(id => picked.includes(id));
     setPicked(prev => allOn ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])]);
@@ -708,38 +719,42 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
                 <div style={{ maxHeight: "clamp(240px, calc(100vh - 340px), 660px)", overflowY: "auto", padding: "8px" }}>
                   {/* Searching crosses zones — a code is typed to find one camera, not to find
                       out which zone it is in — so a needle shows every zone that matches with
-                      its rows open, whichever zone you had stepped into. */}
+                      its rows open, whichever zones the reader had opened by hand. */}
                   {(() => {
                     /* Searching is a register-wide question, so a needle drops the section and
                        shows the real zones that match — including cameras already in the group,
                        ticked where they live. */
                     if (needle !== "" || flatZones) return zones;
-                    const withSection: [string, Camera[]][] = inGroupSection
-                      ? [[IN_GROUP, cameras.filter(c => initialPicked.includes(c.id))], ...zones]
+                    /* Every zone, always. Nothing here narrows the list — opening a zone adds
+                       rows under it and takes none away. See the note on `openZones`. */
+                    return inGroupSection
+                      ? [[IN_GROUP, cameras.filter(c => initialPicked.includes(c.id))], ...zones] as [string, Camera[]][]
                       : zones;
-                    return openZone === null ? withSection : withSection.filter(([zone]) => zone === openZone);
                   })().map(([zone, list]) => {
-                    const drilling = needle === "" && !flatZones;
-                    const open = !drilling || openZone === zone;
+                    const collapsible = needle === "" && !flatZones;
+                    const open = !collapsible || openZones.includes(zone);
+                    const pickedHere = list.filter(c => picked.includes(c.id)).length;
                     return (
                       /* 4px between zone rows, not 8: measured, nineteen zones came to 543px
                          inside a 777px body whose fields and strip already spend 277 — 43px over,
                          so the panel scrolled while the list itself had room. Halving the gap
                          gives back 72px and the whole site fits with nothing scrolling. A closed
-                         zone is a 26px row; inside one, there is only one zone and the gap is
-                         moot. */
+                         zone is a 26px row, and an open one is that row plus its cameras — the
+                         gap separates them from the next zone's name either way. */
                       <div key={zone || "__none"} style={{ marginBottom: "4px" }}>
                         {/* The name opens the zone; the words beside it tick the whole zone. On a
                             big site those are the two things somebody does here, and one header
                             doing both would make ticking a zone cost opening it first. */}
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 0 4px 2px" }}>
-                          <button type="button" onClick={() => { if (drilling) setOpenZone(open ? null : zone); }}
-                            title={drilling ? (open ? t.zoneBack : undefined) : undefined}
-                            style={{ display: "flex", alignItems: "center", gap: "5px", border: "none", background: "none", padding: 0, cursor: drilling ? "pointer" : "default", fontFamily: "inherit" }}>
-                            {/* Pointing back, not down, once you are inside one: the chevron is
-                                the way out of the zone, and there is no list under it to expand. */}
+                          <button type="button" onClick={() => { if (collapsible) toggleZoneOpen(zone); }}
+                            style={{ display: "flex", alignItems: "center", gap: "5px", border: "none", background: "none", padding: 0, cursor: collapsible ? "pointer" : "default", fontFamily: "inherit" }}>
+                            {/* Right when closed, down when open — it points at the thing it
+                                opened. It used to turn 180° and point back, which was honest while
+                                the press replaced the list and is a lie now that it expands one.
+                                No tooltip: a reader who can see the arrow turn does not need a
+                                sentence saying it turned. */}
                             <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true"
-                              style={{ transform: drilling && open ? "rotate(180deg)" : "none", transition: "transform 120ms", flexShrink: 0, opacity: drilling ? 1 : 0 }}>
+                              style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 120ms", flexShrink: 0, opacity: collapsible ? 1 : 0 }}>
                               <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                             {/* THE ZONE NAME IS THE DARKEST THING ON ITS ROW (owner: 맨앞에 있는 연한글씨가
@@ -758,8 +773,36 @@ function GroupDrawer({ group, cameras, otherGroups, t, onSave, onClose, nested }
                           </button>
                           <button type="button" onClick={() => toggleZoneAll(list.map(c => c.id))}
                             style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "11.5px", fontWeight: 700, color: "var(--gray-500)" }}>
-                            {list.every(c => picked.includes(c.id)) ? t.zoneClear : t.zonePick}
+                            {pickedHere === list.length ? t.zoneClear : t.zonePick}
                           </button>
+                          {/*
+                              PART OF A ZONE IS A STATE, AND IT HAD NO SHAPE (owner, 2026-10-02:
+                              위치별 카메라가 몇 개가 있는데 그중 몇 개가 선택된 상태라도 변경될
+                              때 알려줘야 할 것 같아). None / some / all are three answers and this
+                              row drew two: 전체 선택 stands beside an untouched zone and beside a
+                              zone with two of five ticked, so the half-picked state could only be
+                              found by opening eighteen zones one at a time.
+
+                              Only the middle state is written. 0 is said by this line's absence —
+                              「0」 repeated down seventeen untouched zones is noise, not an answer
+                              — and all-picked is already said by 해제, which appears only then.
+
+                              NOT 「BEDOK · 2/5」: the ·5 after the name is the register's count and
+                              has been since this list was written, and a fraction would change
+                              what a number already on screen means. A separate phrase after the
+                              action keeps the two apart — and it is the footer's own phrase,
+                              `pickedCount`, said of one zone instead of the whole drawer: a second
+                              word for the same fact would make a reader ask what the difference
+                              is.
+
+                              It stays while the zone is open, because this is the line that has to
+                              move when a tick inside changes or 전체 선택 is pressed.
+                          */}
+                          {pickedHere > 0 && pickedHere < list.length && (
+                            <span style={{ fontSize: "11px", color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>
+                              {t.pickedCount(pickedHere)}
+                            </span>
+                          )}
                         </div>
                         {open && list.map(c => {
                           const on = picked.includes(c.id);
