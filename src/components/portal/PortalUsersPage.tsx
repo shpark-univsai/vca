@@ -479,6 +479,10 @@ const T = {
        note at the render. */
     projectsZeroCameras: ({ name, groupCount, from, to }: { name: string; groups: string; groupCount: number; from: string; to: string }) =>
       `Saving leaves ${name} with no cameras — the group${groupCount === 1 ? "" : "s"} they hold belong${groupCount === 1 ? "s" : ""} to ${from} and reach${groupCount === 1 ? "es" : ""} nothing on ${to}.`,
+    /* The other cause, in its own words. Says 「picked one by one」 so the reader knows where to go
+       to undo it — the scope picker, not the group tab. */
+    projectsZeroCamerasPicked: ({ name, count, from, to }: { name: string; count: number; from: string; to: string }) =>
+      `Saving leaves ${name} with no cameras — ${count === 1 ? "the camera" : `all ${count} cameras`} picked for this account ${count === 1 ? "is" : "are"} on ${from}, and none are on ${to}.`,
     projectsUpdatedTitle: "Projects updated",
     sendInvite: "Create invite link",
     inviteCreatedTitle: "Account created",
@@ -901,6 +905,8 @@ const T = {
     projectsModalNoneWarning: "최소 한 개는 있어야 합니다. 프로젝트가 없는 계정은 아무것도 없는 앱에 로그인하게 되고, 무엇이 회수됐는지 알 방법이 없습니다. 그럴 땐 계정을 정지하세요.",
     projectsZeroCameras: ({ name, groups, from, to }: { name: string; groups: string; groupCount: number; from: string; to: string }) =>
       `저장하면 ${name}가 열 수 있는 카메라가 0대가 됩니다 — 가진 「${groups}」은 ${from}의 그룹이라 ${to}에선 아무것도 안 열립니다.`,
+    projectsZeroCamerasPicked: ({ name, count, from, to }: { name: string; count: number; from: string; to: string }) =>
+      `저장하면 ${name}가 열 수 있는 카메라가 0대가 됩니다 — 이 계정에 지정된 ${count}대가 모두 ${from}에 있고, ${to}에는 한 대도 없습니다.`,
     projectsUpdatedTitle: "프로젝트가 변경되었습니다",
     sendInvite: "초대 링크 만들기",
     inviteCreatedTitle: "계정이 만들어졌습니다",
@@ -3020,30 +3026,48 @@ function UserProjectsModal({ user, teamProjects, onClose, onBack, onSave }: {
    * after the change — the same pair the table's 카메라 cell uses — so it cannot disagree with the
    * number the row will show the moment this is saved.
    *
-   * Only when a group is STRANDED by this particular change (its project is being unticked).
-   * A scope that comes out at zero for another reason — an empty group, individual cameras — is
-   * not what the sentence below describes, and a true sentence about the wrong cause is the
-   * failure this repo keeps paying for.
+   * TWO SENTENCES, BECAUSE THERE ARE TWO CAUSES AND ONLY ONE OF THEM IS A GROUP. The first names
+   * the stranded groups. The second is for the account scoped to individual cameras, which used to
+   * get NOTHING — the save emptied it just as completely and this panel said so only when a group
+   * happened to be involved. A true sentence about the wrong cause is the failure this repo keeps
+   * paying for; the fix is a second true sentence, not one sentence stretched over both.
+   *
+   * AND ONLY WHEN THIS SAVE IS THE CAUSE. An account already at zero — an empty group, cameras
+   * deleted last week — reaches nothing before the change and nothing after it, and warning there
+   * would blame this save for a state it found.
    */
   const zeroWarning = (() => {
     if (!user.appAccess || picked.length === 0) return null;
     const scoped = scopedCameraIds(user, cameraGroups);
     if (scoped === null) return null; // never narrowed: it picks up the new projects' cameras
-    const scopable = new Set(scopableCameras(allCameras, picked).map(c => c.id));
-    if ([...scoped].some(id => scopable.has(id))) return null; // still reaches something
+    const after = new Set(scopableCameras(allCameras, picked).map(c => c.id));
+    if ([...scoped].some(id => after.has(id))) return null; // still reaches something
+    const before = scopableCameras(allCameras, user.projectIds).filter(c => scoped.has(c.id));
+    if (before.length === 0) return null; // already reached nothing — not this save's doing
+    const nameOf = (id: string) => projects.find(pr => pr.id === id)?.name ?? id;
+    const to = teamProjects.filter(pr => picked.includes(pr.id)).map(pr => pr.name).join(", ");
     const stranded = (user.cameraGroupIds ?? [])
       .flatMap(id => {
         const g = cameraGroups.find(gr => gr.id === id);
         return g && !picked.includes(g.projectId) ? [g] : [];
       });
-    if (stranded.length === 0) return null;
-    const nameOf = (id: string) => projects.find(pr => pr.id === id)?.name ?? id;
-    return t.projectsZeroCameras({
+    if (stranded.length > 0) {
+      return t.projectsZeroCameras({
+        name: user.name,
+        groups: stranded.map(g => g.label).join(", "),
+        groupCount: stranded.length,
+        from: [...new Set(stranded.map(g => nameOf(g.projectId)))].join(", "),
+        to,
+      });
+    }
+    /* The sites named are the ones being untickED that actually hold the cameras — not every site
+       leaving the account, because one of them may hold none of them and naming it would send the
+       reader to re-tick the wrong box. */
+    return t.projectsZeroCamerasPicked({
       name: user.name,
-      groups: stranded.map(g => g.label).join(", "),
-      groupCount: stranded.length,
-      from: [...new Set(stranded.map(g => nameOf(g.projectId)))].join(", "),
-      to: teamProjects.filter(pr => picked.includes(pr.id)).map(pr => pr.name).join(", "),
+      count: before.length,
+      from: [...new Set(before.map(c => nameOf(c.projectId)))].join(", "),
+      to,
     });
   })();
 
@@ -4226,15 +4250,14 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
      reaches none of it, which reads as the one thing the account CAN open. A group survives here
      only if it contributes a camera the account could actually be scoped to; when none do, this
      is empty and the caller draws nothing. */
-  const groupNamesFor = (u: PortalUser) => {
+  const liveGroupsFor = (u: PortalUser) => {
     const scopable = new Set(scopableCamerasFor(u).map(c => c.id));
-    return (u.cameraGroupIds ?? [])
-      .flatMap(id => {
-        const g = cameraGroups.find(gr => gr.id === id);
-        return g && g.cameraIds.some(cid => scopable.has(cid)) ? [g.label] : [];
-      })
-      .join(", ");
+    return (u.cameraGroupIds ?? []).flatMap(id => {
+      const g = cameraGroups.find(gr => gr.id === id);
+      return g && g.cameraIds.some(cid => scopable.has(cid)) ? [g] : [];
+    });
   };
+  const groupNamesFor = (u: PortalUser) => liveGroupsFor(u).map(g => g.label).join(", ");
   // Raw slice out of the selector, lookup built in a memo — a selector that returns a new object
   // every call re-renders forever, which is how this page last broke.
   const allPresetsHere = useVcaStore(s => s.accessPresets);
@@ -5481,11 +5504,21 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     {t.camerasSome(scopeCountFor(u) ?? 0, scopableCamerasFor(u).length)}
                   </span>
                   {/* Only when a group is in it. A scope of individual cameras says nothing here,
-                      which is the correct silence: nothing about it will move on its own. */}
-                  {(u.cameraGroupIds ?? []).length > 0 && (
+                      which is the correct silence: nothing about it will move on its own.
+
+                      COUNTED THE WAY THE NAMES BESIDE IT ARE (liveGroupsFor), not off the stored
+                      ids. It read `cameraGroupIds.length`, which counts a group that reaches
+                      nothing this account could be scoped to — another site's group, or one
+                      emptied since it was given. So the figure said 「3 / 62」 and the mark under
+                      it said 「그룹 1」 about a group contributing none of the three, while the
+                      hover text — same account, same cell — listed no group at all, because
+                      groupNamesFor had already been corrected to intersect. The mark exists to
+                      answer 「이 숫자가 저절로 늘어나는가」, and a group that reaches nothing here
+                      is not the channel it will grow through. */}
+                  {liveGroupsFor(u).length > 0 && (
                     <span title={t.camerasFromGroupsTitle}
                       style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>
-                      {t.camerasFromGroups((u.cameraGroupIds ?? []).length)}
+                      {t.camerasFromGroups(liveGroupsFor(u).length)}
                     </span>
                   )}
                 </span>
