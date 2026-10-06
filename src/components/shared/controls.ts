@@ -31,7 +31,17 @@ export const RADIUS = {
   pill: "999px",
   /** Anything with a set height in a row: input, date trigger, select, segmented track, button. */
   control: "8px",
-  /** Nested inside a control: a segment in its track, a thumbnail in a button. 8 − 2px padding. */
+  /**
+   * The 8 − 2 nest: a segment inside its track, a thumbnail inside a button.
+   *
+   * NOT a general 「inside something」 step, which is the mistake this comment exists to stop
+   * (found in review 2026-10-06, two sites 2px out). A nested radius is the PARENT'S minus the
+   * padding — Material 3 says it as 「outer radius - padding = inner radius」 and Apple's
+   * ConcentricRectangle computes it — so the right value depends on what it is nested in:
+   *   control 8 + 2px padding  → 6  (this step)
+   *   card   16 + 8px padding  → 8  (`control`'s value, used as a radius rather than as a control)
+   *   card   16 + 12px padding → 4, which this scale has no step for; the nearest is this one.
+   */
   inner: "6px",
   /** Popovers, dropdown panels, drop zones. */
   panel: "12px",

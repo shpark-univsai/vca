@@ -660,9 +660,10 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
       onMouseLeave={() => setHovered(false)}
       style={{
         minWidth:0, display:"flex", flexDirection:"column", gap:"6px", cursor:"pointer",
-        // RADIUS.card on the shape that hovers and takes the focus ring, RADIUS.inner on the
-        // picture box inside it (below): this is a card, and the box 8px in from its edge is a
-        // picture nested in it, which is the step the scale names for that.
+        // RADIUS.card on the shape that hovers and takes the focus ring; the picture box 8px in
+        // from its edge takes 16 − 8 = 8 (RADIUS.control's value, used here as the nested radius
+        // rather than as a control). This said RADIUS.inner and was 2px out: 6 is the 8 − 2 nest
+        // inside a control, not a general 「inside something」 step.
         padding:"8px", margin:"-8px", boxSizing:"border-box", borderRadius:RADIUS.card,
         // Mirrors whichever detection is focused on the camera feed — clicking a box there (or
         // this card) keeps the two in sync, matching each other's "focused" outline rather than
@@ -690,7 +691,7 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
       {/* --shadow-raised, the existing token for a surface sitting just off the one behind it. The
           card it is ported from writes its own 0 3px 8px -2px literal, which is one of the values
           the elevation tokens were introduced to replace; not this file's to change. */}
-      <div style={{ borderRadius:RADIUS.inner, overflow:"hidden", backgroundColor:"white",
+      <div style={{ borderRadius:RADIUS.control, overflow:"hidden", backgroundColor:"white",
         boxShadow:"var(--shadow-raised)" }}>
         {/* A face crop sat on top of a full-body capture here — the same stock portrait twice, the
             top one scaled 1.8x to fake a face zoom, both dealt out by the card's position in the

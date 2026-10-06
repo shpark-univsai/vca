@@ -3902,7 +3902,12 @@ function CandidateCard({ c, selected, onClick }:
       borderRadius:RADIUS.card, padding:"8px", cursor:"pointer", display:"flex", flexDirection:"column", gap:"8px",
       boxShadow: selected ? "0 4px 8px color-mix(in srgb, var(--primary-400) 11%, transparent)" : "none",
     }}>
-      <div style={{ position:"relative", width:"128px", height:"133px", borderRadius:RADIUS.inner, overflow:"hidden" }}>
+      {/* 8px, which is the NESTED value here and not the control step wearing its name: the card
+          around it is 16 and its padding is 8, and the nested radius is the parent's minus the
+          padding (Material 3's 「outer radius - padding = inner radius」, Apple's
+          ConcentricRectangle). `RADIUS.inner` is 6 because it was written for the 8 − 2 nest
+          inside a control; it is not a second name for 「whatever is inside something」. */}
+      <div style={{ position:"relative", width:"128px", height:"133px", borderRadius:RADIUS.control, overflow:"hidden" }}>
         <img src={c.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
         <span style={{ position:"absolute", top:6, right:6 }}><ScoreBadge score={c.similarity} /></span>
         <span style={{ position:"absolute", bottom:6, left:6, fontSize:"10px", fontWeight:600, color:"white",
