@@ -7,7 +7,7 @@ import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import { DateRangeTrigger, dateKeyOf, type DateRangeValue } from "../shared/DateRangePicker";
 import {
-  CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, MEASURE, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TABLE_RULE, TOOLBAR_GAP,
+  CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TABLE_RULE, TOOLBAR_GAP,
   ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TableLoadFailed, TableSkeleton, sortRows, useTableSort } from "./PortalShared";
 import { Check, CheckCircle2, FileOutput, ListChecks, UserCheck } from "lucide-react";
 
@@ -640,7 +640,14 @@ export default function ProjectHandlingLogTab({ projectId }: { projectId: string
           an untouched detection is not in it, that a row is a state and not a trail, and who is
           expected to be reading. All four are checked after reading, which is why none of them is
           a subtitle. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px", maxWidth: MEASURE }}>
+      {/* Full width, not MEASURE — the decision the 변경 기록 tab already carries (owner,
+          2026-09-28: 이거 가로폭 위에 표만큼 넓혀 줘; said again here 2026-10-06: 이거 가로폭이
+          이상해). The reading measure is for prose somebody sits down with; this is a footnote
+          under a full-width table, and held to 38em — which is 38 × its own 11px, about 418px —
+          it wrapped into a tall narrow block that read as the start of a column that was not
+          there. 반출 기록 and 조회 기록 were already full width; this tab and 접속 기록 were the
+          two that got missed. */}
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px" }}>
         {t.intro} {t.notHere} {t.oneRow} {t.ownerOnly}
       </p>
     </div>

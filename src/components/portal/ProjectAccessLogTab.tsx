@@ -7,7 +7,7 @@ import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import { DateRangeTrigger, dateKeyOf, type DateRangeValue } from "../shared/DateRangePicker";
 import {
-  CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, MEASURE, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TABLE_RULE, TOOLBAR_GAP,
+  CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TABLE_RULE, TOOLBAR_GAP,
   ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TableLoadFailed, TableSkeleton, sortRows, useTableSort} from "./PortalShared";
 import { FileOutput, Lock, LogIn, LogOut, ShieldX } from "lucide-react";
 
@@ -666,7 +666,10 @@ export default function ProjectAccessLogTab({ projectId }: { projectId: string }
           installation's, which two of 고시 제2조's five items live elsewhere, how long a row
           survives, and who is expected to be reading. All four are checked after reading, not
           before — which is why none of them is a subtitle. */}
-      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px", maxWidth: MEASURE }}>
+      {/* Full width, not MEASURE — see the same note on 처리 기록, and the owner's 2026-09-28
+          decision the 변경 기록 tab carries. 38em of 11px text is about 418px, which turned a
+          footnote under a full-width table into a tall narrow column. */}
+      <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, marginTop: "12px" }}>
         {t.intro} {t.notHeld}{" "}
         {retentionMonths === undefined ? t.retentionUnset
           : retentionMonths < RETENTION_FLOOR_MONTHS ? t.retentionShort(retentionMonths)
