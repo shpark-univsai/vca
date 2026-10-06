@@ -59,7 +59,7 @@ const T = {
     fullName: "Full name",
     emailAddress: "Email address",
     departmentTeam: "Department / team",
-    security: "Security & access control",
+    security: "Sign-in",
     passwordSettings: "Password settings",
     passwordChange: "Password change",
     // HANDOFF NOTE: no "last changed" line is drawn at all until the account record carries a
@@ -113,7 +113,7 @@ const T = {
     fullName: "이름",
     emailAddress: "이메일 주소",
     departmentTeam: "부서 / 팀",
-    security: "보안 및 접근 권한",
+    security: "로그인 수단",
     passwordSettings: "비밀번호 설정",
     passwordChange: "비밀번호 변경",
     changedDaysAgo: (n: number) => `${n}일 전에 변경했습니다`,
@@ -171,9 +171,11 @@ function ShieldIcon() {
     </svg>
   );
 }
-function LockIconSm() {
+/* Was the padlock inside the three read-only fields. Those are plain lines now, so it moves up
+   to the 로그인 수단 card's heading — 16x16, like every other CardHeader icon on this page. */
+function LockIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
       <path d="M4.08333 6.41662V4.0831C4.08333 3.30949 4.39062 2.56757 4.93761 2.02054C5.48459 1.47352 6.22645 1.1662 7 1.1662C7.77355 1.1662 8.51541 1.47352 9.06239 2.02054C9.60938 2.56757 9.91667 3.30949 9.91667 4.0831V6.41662M2.91667 6.41662H11.0833C11.7277 6.41662 12.25 6.939 12.25 7.58338V11.667C12.25 12.3114 11.7277 12.8338 11.0833 12.8338H2.91667C2.27233 12.8338 1.75 12.3114 1.75 11.667V7.58338C1.75 6.939 2.27233 6.41662 2.91667 6.41662Z" stroke="var(--gray-500)" strokeLinecap="round" strokeWidth="1.1"/>
     </svg>
   );
@@ -242,14 +244,21 @@ function CardHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
     </div>
   );
 }
+/**
+ * A FACT, NOT A FIELD.
+ *
+ * These three were drawn as filled boxes with a padlock in them, which is what every editable
+ * input on this page looks like with one icon added. MEASURED after the two-column change: each
+ * box ran 850px wide to hold 「Grace Tan」, so three boxes of mostly empty grey stood where three
+ * short lines belong, and the first thing the eye met on an account page was three things it
+ * cannot do anything with. A value nobody can change is read, so it reads as text: the label
+ * beside it, the value after it, no box and no lock to explain.
+ */
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
-      <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{label}</span>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: "8px", padding: "10px 12px" }}>
-        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.26px" }}>{value}</span>
-        <LockIconSm />
-      </div>
+    <div style={{ display: "flex", alignItems: "baseline", gap: "12px", width: "100%" }}>
+      <span style={{ flexShrink: 0, minWidth: "96px", fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{label}</span>
+      <span style={{ minWidth: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.26px", overflowWrap: "anywhere" }}>{value}</span>
     </div>
   );
 }
@@ -759,11 +768,23 @@ export default function MyPage() {
           */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "flex-start" }}>
             {/* Profile Information */}
-            <div style={{ flex: "13 1 0", minWidth: "min(420px, 100%)" }}>
+            {/*
+              EQUAL COLUMNS NOW, where it was 13:7.
+
+              That ratio was measured against a left card that held the permission chips: the
+              wider it ran, the fewer rows the chips wrapped to, and 65% was where they stopped
+              falling. The chips have their own card now, so the number it was tuned for is gone.
+              Two columns of one subject each — what is true of this account, and what the person
+              can change — and they end within 50px of each other without anything being tuned.
+            */}
+            <div style={{ flex: "1 1 0", minWidth: "min(360px, 100%)", display: "flex", flexDirection: "column", gap: "16px" }}>
               <Card>
                 <CardHeader icon={<UserCheckIcon />} title={t.profile} />
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "100%" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                {/* Left, like everything under it. Centring was invisible in a 453px column and
+                    became the card's loudest feature at 688: a centred name over two left-aligned
+                    lines reads as two cards that happen to share a border. One edge. */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "8px", width: "100%" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
                     <span style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>{SIGNED_IN_USER.name}</span>
                     <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{SIGNED_IN_USER.role}</span>
                   </div>
@@ -772,8 +793,10 @@ export default function MyPage() {
                   </div>
                 </div>
                 <div style={{ height: "1px", backgroundColor: "var(--gray-200)", width: "100%" }} />
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
-                  <ReadOnlyField label={t.fullName} value={SIGNED_IN_USER.name} />
+                {/* 이름 줄은 없다. 바로 위 블록이 이미 「Grace Tan」이라고 크게 적고 있고, 그
+                    아래 「전체 이름 · Grace Tan」은 같은 글자를 두 번 쓰는 것이다. 남는 둘은
+                    위에서 말하지 않는 사실이라 남는다. */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
                   <ReadOnlyField label={t.emailAddress} value={SIGNED_IN_USER.email} />
                   <ReadOnlyField label={t.departmentTeam} value={SIGNED_IN_USER.team} />
                 </div>
@@ -788,9 +811,23 @@ export default function MyPage() {
                   Read-only, and it says who changes it. This screen is the account's own; the
                   grants are not.
                 */}
-                <div style={{ height: "1px", backgroundColor: "var(--gray-200)", width: "100%" }} />
+              </Card>
+
+              {/*
+                A CARD OF ITS OWN, because it is not profile and it is not security.
+
+                It sat at the bottom of 프로필 정보, under the name and the address, which put the
+                two biggest facts on this page — which screens, which cameras — inside the card
+                about who somebody is. Meanwhile a separate card called 「보안 및 접근 권한」 held
+                a password. One subject was split across two cards and neither was named after it.
+                The page reads in two columns now: what is true of this account on the left, what
+                the person can change on the right.
+              */}
+              <Card>
+                <CardHeader icon={<ShieldIcon />} title={t.myGrants} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.24px" }}>{t.myGrants}</span>
+                  {/* No heading inside. The card's own title says it, and saying it twice 20px
+                      apart is the thing this repo keeps deleting. */}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                     {/*
                       THE SAME SIX ROWS THE ADMINISTRATOR TICKED (owner, 2026-09-22: 권한을 준
@@ -831,11 +868,10 @@ export default function MyPage() {
               </Card>
             </div>
 
-            {/* Security & Access Control, then System Preferences — stacked in this column in the
-                order they used to read left to right. */}
-            <div style={{ flex: "7 1 0", minWidth: "min(320px, 100%)", display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* The half the person can act on: the sign-in they hold and the preferences they set. */}
+            <div style={{ flex: "1 1 0", minWidth: "min(360px, 100%)", display: "flex", flexDirection: "column", gap: "16px" }}>
               <Card>
-                <CardHeader icon={<ShieldIcon />} title={t.security} />
+                <CardHeader icon={<LockIcon />} title={t.security} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.24px" }}>{t.passwordSettings}</span>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: "10px", padding: "12px" }}>
