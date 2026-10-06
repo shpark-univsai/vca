@@ -12,6 +12,7 @@ import { useApiData } from "@/hooks/useApiData";
 import { getDashboardStats } from "@/lib/api/dashboard";
 import { sgtClockTime, sgtDateKey } from "@/lib/time";
 import { useLanguage } from "@/lib/i18n";
+import { SegmentedControl } from "./shared/SegmentedControl";
 import { updateGateChoice } from "@/components/AccessGate";
 
 // The console's one hairline value — see --line in globals.css, which was defined for exactly
@@ -734,27 +735,17 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                     <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "6px 4px" }} />
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 8px" }}>
                       <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)" }}>{t.sidebar}</span>
-                      <div style={{ display: "flex", backgroundColor: "var(--gray-100)", borderRadius: "7px", padding: "2px", gap: "2px" }}>
-                        {(["left", "right"] as const).map((pos) => {
-                          const active = sidebarPosition === pos;
-                          return (
-                            <button
-                              key={pos}
-                              onClick={() => onSidebarPositionChange(pos)}
-                              style={{
-                                padding: "3px 9px", borderRadius: "5px", border: "none", cursor: "pointer",
-                                backgroundColor: active ? "white" : "transparent",
-                                boxShadow: active ? "var(--shadow-raised)" : "none",
-                                color: active ? "var(--gray-600)" : "var(--gray-400)",
-                                fontSize: "10px", fontWeight: 600, letterSpacing: "-0.1px",
-                                transition: "background-color 0.15s",
-                              }}
-                            >
-                              {pos === "left" ? t.left : t.right}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {/* The shared control, small variant — see shared/SegmentedControl. This was
+                          a third shape (7px track, 5px segments) for the same widget. */}
+                      <SegmentedControl<"left" | "right">
+                        value={sidebarPosition === "right" ? "right" : "left"}
+                        onChange={onSidebarPositionChange}
+                        size="sm"
+                        options={[
+                          { value: "left", label: t.left },
+                          { value: "right", label: t.right },
+                        ]}
+                      />
                     </div>
                   </>
                 )}

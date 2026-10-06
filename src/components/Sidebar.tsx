@@ -15,6 +15,7 @@ import { useApiData } from "@/hooks/useApiData";
 import { getDashboardStats, getDevices, getDistricts } from "@/lib/api/dashboard";
 
 import { useLanguage } from "@/lib/i18n";
+import { SegmentedControl } from "./shared/SegmentedControl";
 
 // See the per-file pattern note in lib/i18n.ts. Camera names, zone names and device names are the
 // customer's own labels and stay as entered — the operator matches them against a rack, not a
@@ -2196,40 +2197,35 @@ export default function Sidebar({ onEventSelect, selectedEventId, locationFilter
 
       {/* Tab toggle */}
       <div style={{ padding:"12px 20px 6px", flexShrink:0 }}>
-        <div style={{ display:"flex", backgroundColor:"var(--gray-100)", borderRadius:"12px", padding:"4px", gap:"4px" }}>
-          {/* Only the panels this account holds. Both when it holds both, which is every ordinary
-              account — the filter changes nothing for them and removes a door for the one case it
-              is there for. */}
-          {(["EVENTS","SYSTEM"] as SidebarTab[]).filter(tab => panels[tab === "SYSTEM" ? "system" : "events"]).map(tab => {
-            const active = activeTab === tab;
-            return (
-              <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                flex:1, padding:"8px 0", borderRadius:"10px", border:"none", cursor:"pointer",
-                backgroundColor: active ? "var(--primary-400)" : "transparent",
-                color: active ? "white" : "var(--gray-500)",
-                fontSize:"13px", fontWeight:700, letterSpacing:"-0.26px",
-                display:"flex", alignItems:"center", justifyContent:"center", gap:"6px",
-                transition:"background-color 0.15s",
-              }}>
-                {tab === "EVENTS" ? (
+        {/* The shared control (see shared/SegmentedControl) — this and 레드맵's 사람/차량 are one
+            widget now. Selected was --primary-400 here and white on the other two; white wins,
+            because purple is this product's "press me" and a tab you are already on is not asking
+            to be pressed. */}
+        <SegmentedControl<SidebarTab>
+          value={activeTab}
+          onChange={setActiveTab}
+          fill
+          options={(["EVENTS","SYSTEM"] as SidebarTab[])
+            .filter(tab => panels[tab === "SYSTEM" ? "system" : "events"])
+            .map(tab => ({
+              value: tab,
+              label: tab === "EVENTS" ? t.tabEvents : t.tabSystem,
+              icon: (active: boolean) => tab === "EVENTS" ? (
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M1.75 1.75V11.0833C1.75 11.3928 1.87292 11.6895 2.09171 11.9083C2.3105 12.1271 2.60725 12.25 2.91667 12.25H12.25" stroke={active ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M11.083 5.25L8.16634 8.16667L5.83301 5.83333L4.08301 7.58333" stroke={active ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M1.75 1.75V11.0833C1.75 11.3928 1.87292 11.6895 2.09171 11.9083C2.3105 12.1271 2.60725 12.25 2.91667 12.25H12.25" stroke={active ? "var(--gray-900)" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M11.083 5.25L8.16634 8.16667L5.83301 5.83333L4.08301 7.58333" stroke={active ? "var(--gray-900)" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 ) : (
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M9.87887 7.82031H12.0651C12.1677 7.82037 12.2685 7.84663 12.3581 7.89661C12.4477 7.94658 12.523 8.01862 12.5769 8.10587C12.6308 8.19313 12.6615 8.29271 12.6661 8.39517C12.6708 8.49764 12.6491 8.59958 12.6033 8.69133L11.3789 11.1406C11.3325 11.2334 11.2629 11.3127 11.1768 11.3706C11.0907 11.4286 10.9911 11.4633 10.8876 11.4714C10.7842 11.4796 10.6804 11.4608 10.5863 11.417C10.4923 11.3731 10.4111 11.3057 10.3508 11.2213L9.07227 9.43352" stroke={active ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M10.0928 6.04789C10.2354 6.11931 10.3439 6.24445 10.3944 6.39581C10.4448 6.54717 10.4331 6.71236 10.3618 6.8551L8.49219 10.5938C8.45683 10.6645 8.40788 10.7276 8.34814 10.7793C8.28841 10.8311 8.21905 10.8707 8.14403 10.8957C8.06901 10.9206 7.98981 10.9306 7.91094 10.925C7.83208 10.9193 7.75509 10.8982 7.68438 10.8628L1.96893 8.0024C1.55379 7.7933 1.23838 7.42826 1.09173 6.98717C0.945073 6.54608 0.979114 6.06486 1.1864 5.6488L2.01708 3.96938C2.12062 3.76305 2.26378 3.57913 2.43841 3.42813C2.61303 3.27713 2.81568 3.16202 3.0348 3.08935C3.25392 3.01668 3.48521 2.98789 3.71545 3.00462C3.9457 3.02135 4.17039 3.08327 4.3767 3.18685L10.0928 6.04789Z" stroke={active ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M1 12.0347H3.26331C3.48767 12.0363 3.70801 11.9751 3.89945 11.8581C4.0909 11.7411 4.24585 11.573 4.34681 11.3726L5.21361 9.62695" stroke={active ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M1 13.2398V10.832" stroke={active ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M4.00977 6.01562H4.01458" stroke={active ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M9.87887 7.82031H12.0651C12.1677 7.82037 12.2685 7.84663 12.3581 7.89661C12.4477 7.94658 12.523 8.01862 12.5769 8.10587C12.6308 8.19313 12.6615 8.29271 12.6661 8.39517C12.6708 8.49764 12.6491 8.59958 12.6033 8.69133L11.3789 11.1406C11.3325 11.2334 11.2629 11.3127 11.1768 11.3706C11.0907 11.4286 10.9911 11.4633 10.8876 11.4714C10.7842 11.4796 10.6804 11.4608 10.5863 11.417C10.4923 11.3731 10.4111 11.3057 10.3508 11.2213L9.07227 9.43352" stroke={active ? "var(--gray-900)" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M10.0928 6.04789C10.2354 6.11931 10.3439 6.24445 10.3944 6.39581C10.4448 6.54717 10.4331 6.71236 10.3618 6.8551L8.49219 10.5938C8.45683 10.6645 8.40788 10.7276 8.34814 10.7793C8.28841 10.8311 8.21905 10.8707 8.14403 10.8957C8.06901 10.9206 7.98981 10.9306 7.91094 10.925C7.83208 10.9193 7.75509 10.8982 7.68438 10.8628L1.96893 8.0024C1.55379 7.7933 1.23838 7.42826 1.09173 6.98717C0.945073 6.54608 0.979114 6.06486 1.1864 5.6488L2.01708 3.96938C2.12062 3.76305 2.26378 3.57913 2.43841 3.42813C2.61303 3.27713 2.81568 3.16202 3.0348 3.08935C3.25392 3.01668 3.48521 2.98789 3.71545 3.00462C3.9457 3.02135 4.17039 3.08327 4.3767 3.18685L10.0928 6.04789Z" stroke={active ? "var(--gray-900)" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M1 12.0347H3.26331C3.48767 12.0363 3.70801 11.9751 3.89945 11.8581C4.0909 11.7411 4.24585 11.573 4.34681 11.3726L5.21361 9.62695" stroke={active ? "var(--gray-900)" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M1 13.2398V10.832" stroke={active ? "var(--gray-900)" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M4.00977 6.01562H4.01458" stroke={active ? "var(--gray-900)" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                )}
-                {tab === "EVENTS" ? t.tabEvents : t.tabSystem}
-              </button>
-            );
-          })}
-        </div>
+                ),
+            }))}
+        />
       </div>
 
       {/* EVENTS tab */}

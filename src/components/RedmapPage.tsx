@@ -13,6 +13,8 @@ import { getComplianceConfig } from "@/lib/complianceConfig";
 import { siteTimeZone } from "@/lib/time";
 import { DateRangeTrigger, dateKeyOf } from "./shared/DateRangePicker";
 import ScoreBadge from "./shared/ScoreBadge";
+import { SegmentedControl } from "./shared/SegmentedControl";
+import { RADIUS } from "./shared/controls";
 import RemoveImageButton from "./RemoveImageButton";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
@@ -1247,43 +1249,19 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
         gap: "20px", flexShrink: 0,
       }}>
 
-        {/* Mode toggle */}
-        <div style={{
-          display: "flex", alignItems: "center", flexShrink: 0,
-          backgroundColor: "var(--gray-100)", borderRadius: "999px",
-          padding: "2px", gap: "12px", height: "36px", boxSizing: "border-box",
-        }}>
-          {(["person", "car"] as Mode[]).map((m) => {
-            const active = mode === m;
-            return (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                style={{
-                  height: "32px", padding: "0 20px", flexShrink: 0,
-                  borderRadius: "999px", border: "none",
-                  cursor: "pointer",
-                  backgroundColor: active ? "white" : "transparent",
-                  /* Grey, not purple: this marks WHICH MODE is selected, and on a screen whose
-                     subject is finding people the VIP colour cannot also mean "you are here"
-                     (78fcfcb, Sidebar.tsx). The white fill and the raised shadow already carry
-                     the selection; the colour was saying it a third time, in the one hue this
-                     product reserves. */
-                  color: active ? "var(--gray-900)" : "var(--gray-500)",
-                  fontWeight: active ? 800 : 600, fontSize: "13px", letterSpacing: "-0.26px",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-                  boxShadow: active ? "var(--shadow-raised)" : "none",
-                  transition: "all 0.15s",
-                }}
-              >
-                {m === "person"
-                  ? <PersonIcon color={active ? "var(--gray-900)" : "var(--gray-400)"} size={18} />
-                  : <VehicleIcon color={active ? "var(--gray-900)" : "var(--gray-400)"} size={18} />}
-                <span className="vca-tb-mode">{m === "person" ? t.modePerson : t.modeVehicle}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Mode toggle — the shared control now, so 사람/차량 here and EVENTS/SYSTEM on the
+            dashboard are one widget rather than two drawings of one idea. See SegmentedControl. */}
+        <SegmentedControl<Mode>
+          value={mode}
+          onChange={setMode}
+          style={{ height: "36px" }}
+          options={[
+            { value: "person", label: <span className="vca-tb-mode">{t.modePerson}</span>,
+              icon: a => <PersonIcon color={a ? "var(--gray-900)" : "var(--gray-400)"} size={18} /> },
+            { value: "car", label: <span className="vca-tb-mode">{t.modeVehicle}</span>,
+              icon: a => <VehicleIcon color={a ? "var(--gray-900)" : "var(--gray-400)"} size={18} /> },
+          ]}
+        />
 
         {mode === "car" ? (
           /* ── VEHICLE mode fields ── */

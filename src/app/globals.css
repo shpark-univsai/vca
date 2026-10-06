@@ -47,6 +47,16 @@
    테두리, success-200, 타입 색의 연한 배경) 일회성 hex를 만들지 말고
    라이브러리에 단계를 추가하는 쪽으로 올려주세요. */
 :root {
+  /* THE SHAPE SCALE — the same five values as src/components/shared/controls.ts, as custom
+     properties, because MapView draws its popups as HTML strings and no TypeScript constant can
+     reach them (owner, 2026-10-06: 예외가 생기지 않게). Keep the two in step; the .ts file carries
+     the reasoning for what each step is for. */
+  --radius-pill: 999px;
+  --radius-control: 8px;
+  --radius-inner: 6px;
+  --radius-panel: 12px;
+  --radius-card: 16px;
+
   /* Neutral — Gray
      Two hues in one ramp, on purpose (2026-09-08).
 
