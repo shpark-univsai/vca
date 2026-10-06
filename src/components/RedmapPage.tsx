@@ -1176,13 +1176,13 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           }}>
           <div style={{
             width: "730px", height: "303px", boxSizing: "border-box", backgroundColor: "white",
-            border: "1px solid var(--gray-200)", borderRadius: "8px",
+            border: "1px solid var(--gray-200)", borderRadius: RADIUS.control,
             boxShadow: "var(--shadow-modal)",
             padding: "12px", display: "flex", flexDirection: "column", gap: "10px",
           }}>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button onClick={() => setUploadFor(null)} aria-label={t.close} className="vca-hover-quiet" style={{
-                width: "37px", height: "37px", borderRadius: "8px", backgroundColor: "var(--gray-50)",
+                width: "37px", height: "37px", borderRadius: RADIUS.control, backgroundColor: "var(--gray-50)",
                 border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 <CloseIcon />
@@ -1192,12 +1192,14 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
               onDragOver={e => e.preventDefault()}
               onDrop={handleDropFile}
               style={{
-                flex: 1, borderRadius: "12px", border: "1px dashed var(--gray-300)",
+                flex: 1, borderRadius: RADIUS.panel, border: "1px dashed var(--gray-300)",
                 backgroundColor: "var(--gray-50)", display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "center", gap: "12px", padding: "20px 24px",
               }}>
               <div style={{
-                width: "48px", height: "48px", borderRadius: "24px", backgroundColor: "var(--gray-100)",
+                width: "48px", height: "48px",
+                /* A circle, not a radius step: this is the 48px icon disc inside the drop zone. */
+                borderRadius: "50%", backgroundColor: "var(--gray-100)",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 <FocusIcon />
@@ -1216,7 +1218,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                      button, Data's "Open in Redmap", the two empty-state buttons below). It was
                      the one 24px pill, and a pill is this app's shape for a FILTER — the mode
                      toggle, the plate field, the image chips in the toolbar right above. */
-                  padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer",
+                  padding: "10px 16px", borderRadius: RADIUS.control, border: "none", cursor: "pointer",
                   backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700,
                   boxShadow: "var(--shadow-raised)",
                 }}
@@ -1275,7 +1277,10 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
               <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap" }}>{t.licensePlate}</span>
               <div style={{
                 display: "flex", alignItems: "center", gap: "6px",
-                border: BORDER, borderRadius: "999px",
+                border: BORDER,
+                /* A field you type into, 36px, in a row whose date trigger is 8px — the pill said
+                   「filter chip」 about an input (owner, 2026-10-06). See shared/controls. */
+                borderRadius: RADIUS.control,
                 padding: "0 10px 0 12px", height: "36px", backgroundColor: "white",
                 minWidth: "160px",
               }}>
@@ -1325,7 +1330,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                     onMouseEnter={() => setHoverChip(key)}
                     onMouseLeave={() => setHoverChip(null)}
                     style={{
-                      position: "relative", height: "36px", borderRadius: "999px", overflow: "hidden",
+                      position: "relative", height: "36px", borderRadius: RADIUS.control, overflow: "hidden",
                       border: `1px dashed ${highlighted ? "var(--primary-400)" : "var(--gray-400)"}`,
                       backgroundColor: highlighted ? "var(--primary-100)" : "white",
                       display: "flex", alignItems: "center", flexShrink: 0,
@@ -1394,9 +1399,9 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                   purple thumb — same treatment as Data's Smart Search Similarity slider. */}
               <style>{`
                 .vca-similarity-slider { -webkit-appearance:none; appearance:none; background:transparent; outline:none; border:none; }
-                .vca-similarity-slider::-webkit-slider-runnable-track { height:4px; border-radius:999px; background:var(--gray-200); border:none; }
+                .vca-similarity-slider::-webkit-slider-runnable-track { height:4px; border-radius:var(--radius-pill); background:var(--gray-200); border:none; }
                 .vca-similarity-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--primary-400); border:none; margin-top:-5px; cursor:pointer; }
-                .vca-similarity-slider::-moz-range-track { height:4px; border-radius:999px; background:var(--gray-200); border:none; }
+                .vca-similarity-slider::-moz-range-track { height:4px; border-radius:var(--radius-pill); background:var(--gray-200); border:none; }
                 .vca-similarity-slider::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--primary-400); border:none; cursor:pointer; }
               `}</style>
               <input
@@ -1432,7 +1437,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             className="vca-hover-quiet"
             style={{
               display: "flex", alignItems: "center", gap: "8px",
-              height: "36px", padding: "0 20px", borderRadius: "8px",
+              height: "36px", padding: "0 20px", borderRadius: RADIUS.control,
               border: "none", backgroundColor: "transparent", cursor: "pointer",
               color: "var(--gray-600)", fontWeight: 700, fontSize: "13px", whiteSpace: "nowrap",
               fontFamily: "'SUIT', sans-serif", flexShrink: 0,
@@ -1445,7 +1450,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             disabled={searching}
             className="vca-hover-darken"
             style={{
-              height: "36px", padding: "0 20px", borderRadius: "8px",
+              height: "36px", padding: "0 20px", borderRadius: RADIUS.control,
               border: "none", cursor: searching ? "default" : "pointer",
               backgroundColor: searching ? "var(--gray-600)" : "var(--gray-900)", color: "white",
               fontWeight: 800, fontSize: "14px", letterSpacing: "-0.28px", whiteSpace: "nowrap",
@@ -1489,7 +1494,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                       <div key={key} style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px", minWidth: 0 }}>
                         <span style={{
                           fontSize: "12px", fontWeight: 700, color: "var(--primary-400)",
-                          backgroundColor: "var(--primary-100)", borderRadius: "6px",
+                          backgroundColor: "var(--primary-100)", borderRadius: RADIUS.inner,
                           padding: "4px 8px", alignSelf: "flex-start",
                         }}>
                           {key === "face" ? t.face : t.body}
@@ -1499,7 +1504,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                           onMouseEnter={() => setHoverUpload(key)}
                           onMouseLeave={() => setHoverUpload(null)}
                           style={{
-                            height, borderRadius: "12px", overflow: "hidden", position: "relative", cursor: "pointer",
+                            height, borderRadius: RADIUS.panel, overflow: "hidden", position: "relative", cursor: "pointer",
                             border: hoverUpload === key ? "1px dashed var(--primary-400)" : "1px dashed var(--gray-300)",
                             backgroundColor: image ? "white" : "var(--gray-100)",
                           }}
@@ -1545,7 +1550,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <h3 style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>{t.searchResults}</h3>
               <span style={{
-                width: "18px", height: "18px", borderRadius: "999px", backgroundColor: "var(--gray-100)",
+                width: "18px", height: "18px", borderRadius: "50%", backgroundColor: "var(--gray-100)",
                 color: "var(--gray-700)", fontSize: "10px", fontWeight: 600,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
@@ -1554,7 +1559,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
               {traceName && (
                 <span style={{
                   fontSize: "12px", fontWeight: 700, color: "var(--primary-400)", backgroundColor: "var(--primary-100)",
-                  borderRadius: "999px", padding: "3px 10px", whiteSpace: "nowrap",
+                  borderRadius: RADIUS.pill, padding: "3px 10px", whiteSpace: "nowrap",
                 }}>
                   {t.tracing(traceName)}
                 </span>
@@ -1582,13 +1587,13 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                          colour, and a grey tint over it would read as switched off. */
                       className={active ? undefined : "vca-hover-outline"} style={{
                       display: "flex", alignItems: "center", gap: "6px", padding: "5px 12px",
-                      borderRadius: "999px", cursor: "pointer",
+                      borderRadius: RADIUS.pill, cursor: "pointer",
                       border: active ? `1px solid ${p.color}` : "1px solid var(--gray-300)",
                       backgroundColor: active ? p.color : "white",
                       fontSize: "12px", fontWeight: active ? 700 : 600,
                       color: active ? "white" : "var(--gray-700)",
                     }}>
-                      <span style={{ width: "8px", height: "8px", borderRadius: "999px", backgroundColor: active ? "white" : p.color, flexShrink: 0 }} />
+                      <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: active ? "white" : p.color, flexShrink: 0 }} />
                       {p.personLabel}
                     </button>
                   );
@@ -1612,7 +1617,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
               </div>
             ) : searching ? (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "24px 0" }}>
-                <div className="vca-skeleton-pulse" style={{ width: "28px", height: "28px", borderRadius: "999px", backgroundColor: "var(--primary-200)" }} />
+                <div className="vca-skeleton-pulse" style={{ width: "28px", height: "28px", borderRadius: "50%", backgroundColor: "var(--primary-200)" }} />
                 <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.5, color: "var(--gray-500)", fontWeight: 700 }}>
                   {t.searching}
                 </p>
@@ -1621,7 +1626,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                     see useSearchRun in DataPage.tsx. */}
                 {mode === "person" && (
                   <button onClick={() => { stopRun(); setRunState("idle"); clearSearchOutcome(); }} className="vca-hover-outline" style={{
-                    padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--gray-300)",
+                    padding: "7px 14px", borderRadius: RADIUS.control, border: "1px solid var(--gray-300)",
                     backgroundColor: "white", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", cursor: "pointer",
                   }}>{t.cancelSearch}</button>
                 )}
@@ -1638,7 +1643,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                   {t.searchFailedBody}
                 </p>
                 <button onClick={startRun} className="vca-hover-outline" style={{
-                  padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--gray-300)",
+                  padding: "7px 14px", borderRadius: RADIUS.control, border: "1px solid var(--gray-300)",
                   backgroundColor: "white", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", cursor: "pointer",
                 }}>{t.retrySearch}</button>
               </div>
@@ -1691,7 +1696,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                     className={activeHit === index ? undefined : "vca-hover-row"}
                     style={{
                       cursor: "pointer", display: "flex", flexDirection: "column", gap: "6px",
-                      padding: "4px", borderRadius: "10px",
+                      padding: "4px", borderRadius: RADIUS.control,
                       /* The selected card's edge is grey for the same reason the mode toggle's
                          is: "this is the card you picked" is not "this is a person". */
                       border: activeHit === index ? "2px solid var(--gray-900)" : "2px solid transparent",
@@ -1700,11 +1705,15 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                     }}
                   >
                     <div style={{ display: "flex", gap: "4px" }}>
-                      <div style={{ position: "relative", width: "63px", height: "62px", borderRadius: "8px", overflow: "hidden", flexShrink: 0 }}>
+                      <div style={{ position: "relative", width: "63px", height: "62px", borderRadius: RADIUS.control, overflow: "hidden", flexShrink: 0 }}>
                         <img src={hit.faceUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} alt="" />
-                        <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "var(--label-plate)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px", borderRadius: "3px" }}>{t.face}</span>
+                        <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "var(--label-plate)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px",
+                          /* A label burned onto a thumbnail, not a control — the same family as the
+                             detection boxes drawn over video, which the shape scale excludes. 3px
+                             because a control's 6px on a 16px-tall plate reads as a button. */
+                          borderRadius: "3px" }}>{t.face}</span>
                       </div>
-                      <div style={{ position: "relative", width: "63px", height: "62px", borderRadius: "8px", overflow: "hidden", flexShrink: 0 }}>
+                      <div style={{ position: "relative", width: "63px", height: "62px", borderRadius: RADIUS.control, overflow: "hidden", flexShrink: 0 }}>
                         <img src={hit.bodyUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} alt="" />
                         <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "var(--label-plate)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px", borderRadius: "3px" }}>{t.body}</span>
                       </div>
@@ -1754,7 +1763,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                       </button>
                     ) : showPersonChips && (
                       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <span style={{ width: "6px", height: "6px", borderRadius: "999px", backgroundColor: personColor(hit.personId), flexShrink: 0 }} />
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: personColor(hit.personId), flexShrink: 0 }} />
                         <span style={{ fontSize: "10px", fontWeight: 700, color: personColor(hit.personId) }}>{personLabelOf(hit.personId)}</span>
                       </div>
                     )}
@@ -1903,10 +1912,10 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                           /* Only the rows that lead somewhere: a stop with no hit behind it is not
                              clickable, and the selected one is marked by its ring. */
                           className={node.hitIndex >= 0 && !isActive ? "vca-hover-row" : undefined}
-                          style={{ display: "flex", alignItems: "flex-start", gap: "12px", position: "relative", zIndex: 1, cursor: node.hitIndex >= 0 ? "pointer" : "default", borderRadius: "12px", transition: "background-color 0.15s" }}
+                          style={{ display: "flex", alignItems: "flex-start", gap: "12px", position: "relative", zIndex: 1, cursor: node.hitIndex >= 0 ? "pointer" : "default", borderRadius: RADIUS.panel, transition: "background-color 0.15s" }}
                         >
                           <div style={{
-                            width: "36px", height: "36px", borderRadius: "999px", flexShrink: 0,
+                            width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
                             // Selection is just this ring — a thicker one in the route's colour.
                             // Filling the circle was tried and read as a different kind of thing
                             // altogether rather than "this row is selected".
@@ -1955,7 +1964,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                   aria-label={openFrameKey === node.key ? t.hideFrame : t.showFrame}
                                   aria-expanded={openFrameKey === node.key}
                                   style={{
-                                    width: "64px", height: "56px", borderRadius: "8px", overflow: "hidden", flexShrink: 0,
+                                    width: "64px", height: "56px", borderRadius: RADIUS.control, overflow: "hidden", flexShrink: 0,
                                     padding: 0, border: "none", position: "relative", cursor: "pointer", display: "block",
                                   }}
                                 >
@@ -2039,7 +2048,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                   }}
                                   style={{
                                     position: "absolute", right: "26px", top: "50%", transform: "translateY(-50%)",
-                                    width: "22px", height: "22px", borderRadius: "999px", flexShrink: 0,
+                                    width: "22px", height: "22px", borderRadius: RADIUS.inner, flexShrink: 0,
                                     // Grey, borderless, and quiet. This is a secondary action on a
                                     // reversible change — it drops a hit from this one route, leaves
                                     // it restorable in the left list, and raises a toast with Undo.
@@ -2091,7 +2100,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                     }}
                                     style={{
                                       position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)",
-                                      width: "22px", height: "22px", borderRadius: "999px", flexShrink: 0,
+                                      width: "22px", height: "22px", borderRadius: RADIUS.inner, flexShrink: 0,
                                       border: "none",
                                       // Filled only once the call is made. At rest it matches the
                                       // exclude button beside it — neither verdict is the default,
@@ -2118,7 +2127,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                 line while open, the same way the circles sit on top of it. */}
                             {openFrameKey === node.key && (
                               <div style={{ marginLeft: "-48px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                                <div style={{ borderRadius: "8px", overflow: "hidden", border: "1px solid var(--gray-200)" }}>
+                                <div style={{ borderRadius: RADIUS.control, overflow: "hidden", border: "1px solid var(--gray-200)" }}>
                                   <img src={frameImageSrc(node.faceUrl)} alt={`Captured frame — ${node.fullLocation} ${node.date} ${node.time}`}
                                        style={{ display: "block", width: "100%", aspectRatio: "16 / 9", objectFit: "cover" }} />
                                 </div>
@@ -2131,7 +2140,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                 marker. */}
                             {(elapsedText || isLatest) && (
                               <div style={{
-                                backgroundColor: "var(--primary-100)", borderRadius: "8px",
+                                backgroundColor: "var(--primary-100)", borderRadius: RADIUS.control,
                                 padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between",
                               }}>
                                 {/* No alert tint. A hand-set flag in the data turned one row red with

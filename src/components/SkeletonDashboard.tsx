@@ -98,10 +98,13 @@ function SidebarSkeleton() {
       width: "380px", flexShrink: 0, height: "100%", backgroundColor: "white", borderRight: "1px solid var(--gray-200)",
       display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "24px", padding: "20px 24px", overflow: "hidden",
     }}>
-      <div style={{ width: "100%", display: "flex", gap: "4px", padding: "3px", backgroundColor: "var(--gray-100)", borderRadius: "999px" }}>
+      {/* The tab toggle, in the shape it will have when it arrives — 8px track, 6px segment, 2px
+          padding, matching shared/SegmentedControl. A skeleton drawing a pill makes the control
+          change shape at the moment the data lands, which reads as a layout jump. */}
+      <div style={{ width: "100%", display: "flex", gap: "2px", padding: "2px", backgroundColor: "var(--gray-100)", borderRadius: "var(--radius-control)" }}>
         <div style={{
           flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-          padding: "8px 16px", backgroundColor: "white", borderRadius: "999px", boxShadow: "0px 1px 1px rgba(24, 17, 39,0.03)",
+          padding: "8px 16px", backgroundColor: "white", borderRadius: "var(--radius-inner)", boxShadow: "0px 1px 1px rgba(24, 17, 39,0.03)",
         }}>
           <Circle size="12px" color="var(--gray-200)" />
           <Bone w="50px" h="12px" color="var(--gray-200)" radius="3px" />
@@ -129,7 +132,7 @@ function SidebarSkeleton() {
 
       <div style={{ width: "100%", display: "flex", gap: "12px" }}>
         {["50px", "55px"].map((w, i) => (
-          <div key={i} style={{ flex: 1, backgroundColor: "var(--gray-50)", borderRadius: "12px", padding: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div key={i} style={{ flex: 1, backgroundColor: "var(--gray-50)", borderRadius: "var(--radius-panel)", padding: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
             <Bone w={w} h="10px" color="var(--gray-300)" radius="2px" />
             <Bone w="32px" h="20px" />
             <Bone w="40px" h="8px" color="var(--gray-100)" radius="2px" />

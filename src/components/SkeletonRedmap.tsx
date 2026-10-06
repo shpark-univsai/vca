@@ -19,23 +19,24 @@ function SearchBarSkeleton() {
       padding: "0 24px", height: "52px",
       display: "flex", alignItems: "center", gap: "0", flexShrink: 0,
     }}>
-      {/* Mode toggle pill */}
-      <div style={{ display: "flex", alignItems: "center", backgroundColor: "var(--gray-100)", borderRadius: "999px", padding: "2px", gap: "2px" }}>
-        <Bone w="76px" h="32px" color="white" radius="999px" />
-        <Bone w="76px" h="32px" color="var(--gray-200)" radius="999px" />
+      {/* Mode toggle — 8px track, 6px segments, the shape shared/SegmentedControl draws. It was a
+          pill here and a pill there; both moved together. */}
+      <div style={{ display: "flex", alignItems: "center", backgroundColor: "var(--gray-100)", borderRadius: "var(--radius-control)", padding: "2px", gap: "2px" }}>
+        <Bone w="76px" h="32px" color="white" radius="var(--radius-inner)" />
+        <Bone w="76px" h="32px" color="var(--gray-200)" radius="var(--radius-inner)" />
       </div>
 
       <div style={{ width: "1px", height: "20px", backgroundColor: "var(--gray-200)", margin: "0 16px" }} />
 
       {/* Date range */}
-      <Bone w="180px" h="34px" color="var(--gray-100)" radius="999px" />
+      <Bone w="180px" h="34px" color="var(--gray-100)" radius="var(--radius-control)" />
 
       <div style={{ width: "1px", height: "20px", backgroundColor: "var(--gray-200)", margin: "0 16px" }} />
 
       {/* Search-by-image chips */}
       <div style={{ display: "flex", gap: "8px" }}>
-        <Bone w="120px" h="36px" color="var(--gray-100)" radius="999px" />
-        <Bone w="120px" h="36px" color="var(--gray-100)" radius="999px" />
+        <Bone w="120px" h="36px" color="var(--gray-100)" radius="var(--radius-control)" />
+        <Bone w="120px" h="36px" color="var(--gray-100)" radius="var(--radius-control)" />
       </div>
 
       <div style={{ width: "1px", height: "20px", backgroundColor: "var(--gray-200)", margin: "0 16px" }} />

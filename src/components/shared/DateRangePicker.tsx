@@ -1,5 +1,7 @@
 "use client";
 
+import { RADIUS } from "./controls";
+
 import React, { useEffect, useLayoutEffect, useState, useRef } from "react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
@@ -201,7 +203,7 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single, mi
     <>
       <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:999 }} />
       <div ref={boxRef} style={{ position:"fixed", top:pos.top, left:pos.left, zIndex:1000, backgroundColor:"white",
-        border:BORDER, borderRadius:"12px", boxShadow:"0 8px 24px rgba(24, 17, 39,0.16)",
+        border:BORDER, borderRadius:RADIUS.panel, boxShadow:"0 8px 24px rgba(24, 17, 39,0.16)",
         padding:"12px", display:"flex", gap:"16px" }}>
         {!single && <div style={{ display:"flex", flexDirection:"column", gap:"4px", width:"140px", borderRight:BORDER, paddingRight:"12px" }}>
           {/* Shared by every date filter in the app (Live Monitoring, Re-ID Analysis, RedFace) —
@@ -216,7 +218,7 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single, mi
               const start = minDate && r.start && r.start < minDate ? minDate : r.start;
               setTempStart(start); setTempEnd(r.end);
               if (start) { setViewYear(start.getFullYear()); setViewMonth(start.getMonth()); }
-            }} style={{ textAlign:"left", padding:"8px", borderRadius:"8px", border:"none", backgroundColor:"transparent", cursor:"pointer",
+            }} style={{ textAlign:"left", padding:"8px", borderRadius:RADIUS.control, border:"none", backgroundColor:"transparent", cursor:"pointer",
               fontSize:"13px", color:"var(--gray-900)", fontWeight:600, transition:"background-color 0.15s" }}>
               {q.label[lang]}
             </button>
@@ -241,9 +243,9 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single, mi
               </p>
             )}
             <span style={{ display:"flex", gap:"8px", flexShrink:0 }}>
-            <button onClick={onClose} style={{ padding:"8px 16px", borderRadius:"8px", border:BORDER,
+            <button onClick={onClose} style={{ padding:"8px 16px", borderRadius:RADIUS.control, border:BORDER,
               backgroundColor:"white", color:"var(--gray-900)", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>{t.cancel}</button>
-            <button onClick={() => onApply({ start: tempStart, end: tempEnd })} style={{ padding:"8px 16px", borderRadius:"8px", border:"none",
+            <button onClick={() => onApply({ start: tempStart, end: tempEnd })} style={{ padding:"8px 16px", borderRadius:RADIUS.control, border:"none",
               backgroundColor:"var(--primary-400)", color:"white", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>{t.apply}</button>
             </span>
           </div>
@@ -278,8 +280,8 @@ export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size =
   // sit as one consistent "filter control" language instead of two different-looking pickers
   // side by side in the same form.
   const boxStyle: React.CSSProperties = compact
-    ? { flex:1, display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 8px", border: open ? "1px solid var(--primary-300)" : CONTROL_BORDER, borderRadius:"6px", backgroundColor:"white", cursor:"pointer" }
-    : { flex:1, display:"flex", alignItems:"center", gap:"8px", height:"36px", padding:"0 12px", border: open ? "1px solid var(--primary-300)" : CONTROL_BORDER, borderRadius:"8px", backgroundColor:"white", cursor:"pointer" };
+    ? { flex:1, display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 8px", border: open ? "1px solid var(--primary-300)" : CONTROL_BORDER, borderRadius:RADIUS.control, backgroundColor:"white", cursor:"pointer" }
+    : { flex:1, display:"flex", alignItems:"center", gap:"8px", height:"36px", padding:"0 12px", border: open ? "1px solid var(--primary-300)" : CONTROL_BORDER, borderRadius:RADIUS.control, backgroundColor:"white", cursor:"pointer" };
   const textStyle = (has: boolean): React.CSSProperties => ({
     /* A filled-in date is an active value, which the note right below already says should be
        dark like any other — and the recorded rule is that purple means a person, not a chosen

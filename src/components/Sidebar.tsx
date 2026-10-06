@@ -16,6 +16,7 @@ import { getDashboardStats, getDevices, getDistricts } from "@/lib/api/dashboard
 
 import { useLanguage } from "@/lib/i18n";
 import { SegmentedControl } from "./shared/SegmentedControl";
+import { RADIUS } from "./shared/controls";
 
 // See the per-file pattern note in lib/i18n.ts. Camera names, zone names and device names are the
 // customer's own labels and stay as entered — the operator matches them against a rack, not a
@@ -220,7 +221,7 @@ function usePersistedSidebarTab(): [SidebarTab, (tab: SidebarTab) => void] {
 }
 
 const PAGE_BTN: React.CSSProperties = {
-  width:"26px", height:"26px", borderRadius:"7px",
+  width:"26px", height:"26px", borderRadius:RADIUS.control,
   border:"1px solid var(--gray-200)", background:"white",
   cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
   padding:0,
@@ -342,7 +343,7 @@ function AvatarStack({ faces }: { faces: string[] }) {
 // than drawing a broken image.
 function PersonThumb({ isSelected, photoUrl }: { isSelected:boolean; photoUrl?:string }) {
   return (
-    <div style={{ width:54, height:54, borderRadius:8, flexShrink:0, overflow:"hidden", outline: isSelected ? "2px solid var(--primary-400)" : "none", outlineOffset:2 }}>
+    <div style={{ width:54, height:54, borderRadius:RADIUS.control, flexShrink:0, overflow:"hidden", outline: isSelected ? "2px solid var(--primary-400)" : "none", outlineOffset:2 }}>
       {photoUrl && <img src={photoUrl} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} alt="" />}
     </div>
   );
@@ -491,7 +492,7 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <div style={{
       display:"inline-flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-      padding:"4px 8px", borderRadius:"12px", backgroundColor:"white",
+      padding:"4px 8px", borderRadius:RADIUS.panel, backgroundColor:"white",
       border: isLive ? "1px solid var(--success-200)" : "1px solid var(--warning-200)",
     }}>
       <div style={{ display:"flex", alignItems:"center", gap:"4px" }}>
@@ -571,7 +572,7 @@ function VipListModal({ onClose, onPersonSelect }: { onClose: () => void; onPers
   return createPortal(
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position:"fixed", inset:0, backgroundColor:"var(--scrim)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:"16px" }}>
-      <div style={{ backgroundColor:"white", borderRadius:"16px", border:BORDER, maxWidth:"360px", width:"100%", display:"flex", flexDirection:"column", maxHeight:"80vh", overflow:"hidden", boxShadow:"var(--shadow-modal)" }}>
+      <div style={{ backgroundColor:"white", borderRadius:RADIUS.card, border:BORDER, maxWidth:"360px", width:"100%", display:"flex", flexDirection:"column", maxHeight:"80vh", overflow:"hidden", boxShadow:"var(--shadow-modal)" }}>
         <div style={{ padding:"14px 16px", borderBottom:BORDER, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
             <Crown size={16} color="var(--primary-400)" />
@@ -641,7 +642,7 @@ function EventsSummary({ onPersonSelect, onToggleDetectionChart }: { onPersonSel
           onMouseLeave={() => setIsHovered(false)}
           style={{
             display:"flex", alignItems:"center", gap:"8px", background: isHovered ? "var(--gray-50)" : "none",
-            border:"none", cursor:"pointer", padding:"4px 8px", margin:"-4px -8px", borderRadius:"8px",
+            border:"none", cursor:"pointer", padding:"4px 8px", margin:"-4px -8px", borderRadius:RADIUS.control,
             transition:"background-color 0.15s",
           }}
         >
@@ -674,7 +675,7 @@ function EventsSummary({ onPersonSelect, onToggleDetectionChart }: { onPersonSel
           style={{
             flex:1, minWidth:0, cursor: onToggleDetectionChart ? "pointer" : undefined,
             backgroundColor: isDetectionsHovered ? "var(--gray-50)" : "transparent",
-            borderRadius:"8px", padding:"4px", margin:"-4px", transition:"background-color 0.15s",
+            borderRadius:RADIUS.control, padding:"4px", margin:"-4px", transition:"background-color 0.15s",
           }}
         >
           <StatCol icon={<EventsTodayStatIcon />} label={t.todaysDetections} labelColor="var(--gray-600)" labelFontSize={13} count={eventsToday.count} trend={eventsToday.trend} />
@@ -694,7 +695,7 @@ function LocationPickerModal({ current, onSelect, onClose }: { current: string |
   return createPortal(
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position:"fixed", inset:0, backgroundColor:"var(--scrim)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:"16px" }}>
-      <div style={{ backgroundColor:"white", borderRadius:"16px", border:BORDER, maxWidth:"320px", width:"100%", display:"flex", flexDirection:"column", maxHeight:"70vh", overflow:"hidden", boxShadow:"var(--shadow-modal)" }}>
+      <div style={{ backgroundColor:"white", borderRadius:RADIUS.card, border:BORDER, maxWidth:"320px", width:"100%", display:"flex", flexDirection:"column", maxHeight:"70vh", overflow:"hidden", boxShadow:"var(--shadow-modal)" }}>
         <div style={{ padding:"14px 16px", borderBottom:BORDER, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
           <p style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)" }}>{t.selectLocation}</p>
           <button onClick={onClose} aria-label={t.close} style={{ padding:"4px", border:"none", background:"none", cursor:"pointer", color:"var(--gray-400)", display:"flex" }}>
@@ -707,7 +708,7 @@ function LocationPickerModal({ current, onSelect, onClose }: { current: string |
             onMouseLeave={e => { e.currentTarget.style.backgroundColor = !current ? "var(--gray-100)" : "transparent"; }}
             style={{
               display:"flex", alignItems:"center", gap:"8px", width:"100%", textAlign:"left",
-              padding:"9px 10px", borderRadius:"8px", border:"none", cursor:"pointer",
+              padding:"9px 10px", borderRadius:RADIUS.control, border:"none", cursor:"pointer",
               // Chosen, not purple — see the note on the event row above.
               backgroundColor: !current ? "var(--gray-100)" : "transparent",
               fontSize:"13px", fontWeight:700, color: !current ? "var(--gray-900)" : "var(--gray-700)", transition:"background-color 0.1s",
@@ -720,7 +721,7 @@ function LocationPickerModal({ current, onSelect, onClose }: { current: string |
                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = active ? "var(--gray-100)" : "transparent"; }}
                 style={{
                   display:"flex", alignItems:"center", gap:"8px", width:"100%", textAlign:"left",
-                  padding:"9px 10px", borderRadius:"8px", border:"none", cursor:"pointer",
+                  padding:"9px 10px", borderRadius:RADIUS.control, border:"none", cursor:"pointer",
                   backgroundColor: active ? "var(--gray-100)" : "transparent",
                   fontSize:"13px", fontWeight: active ? 700 : 600, color: active ? "var(--gray-900)" : "var(--gray-700)", transition:"background-color 0.1s",
                 }}>
@@ -889,7 +890,7 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
               <span title={t.seenAtCameras(distinctCameraCount)} style={{
                 flexShrink:0, display:"flex", alignItems:"center", gap:"3px",
                 fontSize:"10px", fontWeight:700, color:"var(--gray-500)",
-                backgroundColor:"var(--gray-100)", padding:"1px 6px 1px 5px", borderRadius:"999px",
+                backgroundColor:"var(--gray-100)", padding:"1px 6px 1px 5px", borderRadius:RADIUS.pill,
               }}>
                 <CameraCountIcon />{distinctCameraCount}
               </span>
@@ -964,7 +965,7 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
             return (
               <div key={i} style={{ display:"flex", gap:"8px", alignItems: isLast ? "center" : "stretch" }}>
                 <div style={{ display:"flex", flexDirection:"column", alignItems:"center", width:"20px", flexShrink:0 }}>
-                  <div style={{ width:"20px", height:"16px", backgroundColor:"var(--gray-700)", borderRadius:"7px", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <div style={{ width:"20px", height:"16px", backgroundColor:"var(--gray-700)", borderRadius:RADIUS.inner, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                     <CameraTrailIcon />
                   </div>
                   {!isLast && <div style={{ ...HOP_DASH_STYLE_VERTICAL, flex:1, minHeight:"14px", marginTop:"2px" }} />}
@@ -982,7 +983,7 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
                     {visitGroups.slice(0, i).some(g => hopCameraKey(g.hop) === hopCameraKey(hop)) && (
                       <span title={t.sameCameraEarlier} style={{
                         fontSize:"9px", fontWeight:800, color:"var(--gray-500)", backgroundColor:"var(--gray-100)",
-                        padding:"1px 5px", borderRadius:"999px", letterSpacing:"0.2px", whiteSpace:"nowrap",
+                        padding:"1px 5px", borderRadius:RADIUS.pill, letterSpacing:"0.2px", whiteSpace:"nowrap",
                       }}>{t.return}</span>
                     )}
                   </span>
@@ -1037,7 +1038,7 @@ function VipEventRow({ event, isSelected, photoUrl, onClick, locationFilter, han
             </span>
             <span style={{
               fontSize:"10px", fontWeight:600, color:"var(--gray-500)", flexShrink:0,
-              border:"1px solid var(--gray-300)", borderRadius:"999px", padding:"1px 8px",
+              border:"1px solid var(--gray-300)", borderRadius:RADIUS.pill, padding:"1px 8px",
             }}>{event.confidence}%</span>
           </div>
           <div style={{ display:"flex", gap:"5px", alignItems:"center" }}>
@@ -1192,7 +1193,7 @@ function AckButton({ onAck }: { onAck: () => void }) {
       title={t.acknowledge}
       aria-label={t.acknowledge}
       style={{
-        width:"22px", height:"22px", borderRadius:"7px", padding:0, cursor:"pointer",
+        width:"22px", height:"22px", borderRadius:RADIUS.inner, padding:0, cursor:"pointer",
         border:"1px solid var(--line-control)",
         backgroundColor: hot ? "var(--gray-200)" : "white",
         display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
@@ -1205,7 +1206,7 @@ function AckButton({ onAck }: { onAck: () => void }) {
 }
 
 const STRIP_BTN: React.CSSProperties = {
-  padding:"5px 10px", borderRadius:"8px", cursor:"pointer",
+  padding:"5px 10px", borderRadius:RADIUS.control, cursor:"pointer",
   border:"1px solid var(--line-control)", backgroundColor:"white",
   fontSize:"12px", fontWeight:600, color:"var(--gray-700)", letterSpacing:"-0.24px",
   whiteSpace:"nowrap",
@@ -1288,7 +1289,7 @@ function HandlingStrip({ event, handling }: { event: LiveEvent; handling?: Detec
             onChange={e => setNote(e.target.value)}
             placeholder={t.notePlaceholder}
             style={{
-              width:"100%", resize:"none", padding:"7px 9px", borderRadius:"8px",
+              width:"100%", resize:"none", padding:"7px 9px", borderRadius:RADIUS.control,
               border:"1px solid var(--line-control)", outline:"none",
               fontSize:"12px", fontWeight:500, color:"var(--gray-900)", fontFamily:"inherit",
               letterSpacing:"-0.2px", lineHeight:1.45, boxSizing:"border-box",
@@ -1315,12 +1316,12 @@ function HandlingStrip({ event, handling }: { event: LiveEvent; handling?: Detec
               key={name}
               onClick={() => { write("assigned", { assignee: name }); setMode(null); }}
               style={{
-                ...STRIP_BTN, borderRadius:"999px",
+                ...STRIP_BTN,
                 backgroundColor: name === handling?.assignee ? "var(--gray-100)" : "white",
               }}
             >{name}</button>
           ))}
-          <button onClick={() => setMode(null)} style={{ ...STRIP_BTN, borderRadius:"999px", color:"var(--gray-500)" }}>{t.cancel}</button>
+          <button onClick={() => setMode(null)} style={{ ...STRIP_BTN, color:"var(--gray-500)" }}>{t.cancel}</button>
         </div>
       ) : closed ? (
         <div style={{ display:"flex", gap:"6px" }}>
@@ -1493,7 +1494,7 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
         {personFilter && (
           <button
             onClick={onPersonClear}
-            style={{ display:"flex", alignItems:"center", gap:"5px", background:"var(--primary-50)", border:"none", borderRadius:"999px", padding:"5px 10px", cursor:"pointer", marginBottom:"12px" }}
+            style={{ display:"flex", alignItems:"center", gap:"5px", background:"var(--primary-50)", border:"none", borderRadius:RADIUS.pill, padding:"5px 10px", cursor:"pointer", marginBottom:"12px" }}
           >
             <Crown size={11} color="var(--primary-400)" />
             <span style={{ fontSize:"12px", fontWeight:700, color:"var(--primary-400)" }}>{personFilter}</span>
@@ -1541,8 +1542,20 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
                 onMouseLeave={e => { if (!active) e.currentTarget.style.backgroundColor = "var(--gray-100)"; }}
                 style={{
                   display:"flex", alignItems:"center", gap:"4px",
-                  padding:"4px 8px", borderRadius:"999px", border:"none", cursor:"pointer",
-                  backgroundColor: active ? "var(--primary-400)" : "var(--gray-100)",
+                  padding:"4px 8px", borderRadius:RADIUS.pill, border:"none", cursor:"pointer",
+                  /* SELECTED IS GRAY-900, NOT PURPLE (owner, 2026-10-06: 칩도 흰 바탕/진한 회색으로
+                     바꿔서 「선택됨」을 한 가지로).
+
+                     Three controls sat in this one row answering 「which one am I on」 three ways:
+                     these chips in --primary-400, the Live/Out chips in --primary-400, and the
+                     미처리 toggle beside them already in --gray-900. The toggle was right — purple
+                     is this product's 「press me」, and on THIS panel it is also the VIP crown on
+                     every row below, so a selected filter wearing it is the same hue saying two
+                     things a metre apart. The segmented control above went the same way.
+
+                     The person token further up KEEPS its purple on purpose — see its own note: it
+                     names a PERSON rather than one of N options, which is the other axis. */
+                  backgroundColor: active ? "var(--gray-900)" : "var(--gray-100)",
                   color, fontSize:"12px", fontWeight:600, letterSpacing:"-0.24px", transition:"all 0.15s",
                 }}>
                 <FilterPillIcon id={id} color={color} />
@@ -1555,7 +1568,7 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
             aria-pressed={unhandledOnly}
             style={{
               marginLeft:"auto", display:"flex", alignItems:"center", gap:"5px",
-              padding:"4px 9px", borderRadius:"999px", cursor:"pointer",
+              padding:"4px 9px", borderRadius:RADIUS.pill, cursor:"pointer",
               border: unhandledOnly ? "1px solid var(--gray-900)" : "1px solid var(--line-control)",
               backgroundColor: unhandledOnly ? "var(--gray-900)" : "white",
               color: unhandledOnly ? "white" : "var(--gray-600)",
@@ -1612,7 +1625,7 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
           <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>{t.goToPage}</span>
           <input type="number" min={1} max={totalPages} value={safePage}
             onChange={e => setPage(Math.max(1, Math.min(totalPages, parseInt(e.target.value) || 1)))}
-            style={{ width:"32px", textAlign:"center", fontSize:"12px", fontWeight:700, border:"1px solid var(--gray-200)", borderRadius:"6px", padding:"2px 0", outline:"none", color:"var(--gray-900)" }} />
+            style={{ width:"32px", textAlign:"center", fontSize:"12px", fontWeight:700, border:"1px solid var(--gray-200)", borderRadius:RADIUS.control, padding:"2px 0", outline:"none", color:"var(--gray-900)" }} />
           <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>/ {totalPages}</span>
           <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={safePage===1} aria-label={t.prevPage} style={{ ...PAGE_BTN, opacity: safePage===1 ? 0.3 : 1 }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 2L4 6L8 10" stroke="var(--gray-700)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1773,7 +1786,7 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
 
       {/* Search */}
       <div style={{ padding:"20px 20px 12px", flexShrink:0 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"8px", border:BORDER, borderRadius:"8px", padding:"9px 18px", backgroundColor:"white" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"8px", border:BORDER, borderRadius:RADIUS.control, padding:"9px 18px", backgroundColor:"white" }}>
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder={t.searchDevices}
             style={{ flex:1, border:"none", background:"none", outline:"none", fontSize:"12px", fontWeight:600, color:"var(--gray-700)" }} />
           <Search size={18} color="var(--gray-600)" />
@@ -1793,8 +1806,9 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
               // in the list below, so a filter wearing them read as a row that had been selected.
               style={{
                 display:"flex", alignItems:"center",
-                padding:"4px 10px", borderRadius:"999px", border:"none", cursor:"pointer",
-                backgroundColor: active ? "var(--primary-400)" : "var(--gray-100)",
+                padding:"4px 10px", borderRadius:RADIUS.pill, border:"none", cursor:"pointer",
+                /* Gray-900 selected, with the chips above and the 미처리 toggle beside them. */
+                backgroundColor: active ? "var(--gray-900)" : "var(--gray-100)",
                 color: active ? "white" : "var(--gray-700)", fontSize:"12px", fontWeight:600, letterSpacing:"-0.24px", transition:"all 0.15s",
               }}>
               {id === "All" ? t.all : id === "Live" ? t.live : t.out}
@@ -1894,7 +1908,7 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
           <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>{t.goToPage}</span>
           <input type="number" min={1} max={totalPages} value={safePage}
             onChange={e => setPage(Math.max(1, Math.min(totalPages, parseInt(e.target.value) || 1)))}
-            style={{ width:"32px", textAlign:"center", fontSize:"12px", fontWeight:700, border:"1px solid var(--gray-200)", borderRadius:"6px", padding:"2px 0", outline:"none", color:"var(--gray-900)" }} />
+            style={{ width:"32px", textAlign:"center", fontSize:"12px", fontWeight:700, border:"1px solid var(--gray-200)", borderRadius:RADIUS.control, padding:"2px 0", outline:"none", color:"var(--gray-900)" }} />
           <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>/ {totalPages}</span>
           <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={safePage===1} aria-label={t.prevPage} style={{ ...PAGE_BTN, opacity: safePage===1 ? 0.3 : 1 }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 2L4 6L8 10" stroke="var(--gray-700)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1982,9 +1996,9 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
   return (
     <div onMouseLeave={() => setHovered(null)} style={{ width:"60px", flexShrink:0, height:"100%", backgroundColor:"white", ...(position === "right" ? { borderLeft: BORDER } : { borderRight: BORDER }), display:"flex", flexDirection:"column", alignItems:"center", padding:"12px 0", overflow:"hidden", position:"relative" }}>
       {/* Tab toggle */}
-      <div style={{ width:"44px", backgroundColor:"var(--gray-100)", borderRadius:"12px", padding:"4px", display:"flex", flexDirection:"column", gap:"4px", flexShrink:0 }}>
+      <div style={{ width:"44px", backgroundColor:"var(--gray-100)", borderRadius:RADIUS.control, padding:"4px", display:"flex", flexDirection:"column", gap:"4px", flexShrink:0 }}>
         {panels.events && (
-        <button onClick={() => setTab("EVENTS")} aria-label={t.events} style={{ width:"36px", height:"32px", borderRadius:"8px", border:"none", cursor:"pointer", backgroundColor: tab==="EVENTS" ? "var(--primary-400)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>
+        <button onClick={() => setTab("EVENTS")} aria-label={t.events} style={{ width:"36px", height:"32px", borderRadius:RADIUS.inner, border:"none", cursor:"pointer", backgroundColor: tab==="EVENTS" ? "var(--primary-400)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M1.75 1.75V11.0833C1.75 11.3928 1.87292 11.6895 2.09171 11.9083C2.3105 12.1271 2.60725 12.25 2.91667 12.25H12.25" stroke={tab==="EVENTS" ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M11.083 5.25L8.16634 8.16667L5.83301 5.83333L4.08301 7.58333" stroke={tab==="EVENTS" ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
@@ -1992,7 +2006,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
         </button>
         )}
         {panels.system && (
-        <button onClick={() => setTab("SYSTEM")} aria-label={t.system} style={{ width:"36px", height:"32px", borderRadius:"8px", border:"none", cursor:"pointer", backgroundColor: tab==="SYSTEM" ? "var(--primary-400)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>
+        <button onClick={() => setTab("SYSTEM")} aria-label={t.system} style={{ width:"36px", height:"32px", borderRadius:RADIUS.inner, border:"none", cursor:"pointer", backgroundColor: tab==="SYSTEM" ? "var(--primary-400)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M9.87887 7.82031H12.0651C12.1677 7.82037 12.2685 7.84663 12.3581 7.89661C12.4477 7.94658 12.523 8.01862 12.5769 8.10587C12.6308 8.19313 12.6615 8.29271 12.6661 8.39517C12.6708 8.49764 12.6491 8.59958 12.6033 8.69133L11.3789 11.1406C11.3325 11.2334 11.2629 11.3127 11.1768 11.3706C11.0907 11.4286 10.9911 11.4633 10.8876 11.4714C10.7842 11.4796 10.6804 11.4608 10.5863 11.417C10.4923 11.3731 10.4111 11.3057 10.3508 11.2213L9.07227 9.43352" stroke={tab==="SYSTEM" ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M10.0928 6.04789C10.2354 6.11931 10.3439 6.24445 10.3944 6.39581C10.4448 6.54717 10.4331 6.71236 10.3618 6.8551L8.49219 10.5938C8.45683 10.6645 8.40788 10.7276 8.34814 10.7793C8.28841 10.8311 8.21905 10.8707 8.14403 10.8957C8.06901 10.9206 7.98981 10.9306 7.91094 10.925C7.83208 10.9193 7.75509 10.8982 7.68438 10.8628L1.96893 8.0024C1.55379 7.7933 1.23838 7.42826 1.09173 6.98717C0.945073 6.54608 0.979114 6.06486 1.1864 5.6488L2.01708 3.96938C2.12062 3.76305 2.26378 3.57913 2.43841 3.42813C2.61303 3.27713 2.81568 3.16202 3.0348 3.08935C3.25392 3.01668 3.48521 2.98789 3.71545 3.00462C3.9457 3.02135 4.17039 3.08327 4.3767 3.18685L10.0928 6.04789Z" stroke={tab==="SYSTEM" ? "white" : "var(--gray-500)"} strokeLinecap="round" strokeLinejoin="round"/>
@@ -2010,14 +2024,14 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
           <>
             {/* Purple only when there are actual registered VIP targets — not a fixed default. */}
             <div style={{
-              width:"38px", height:"38px", borderRadius:"10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+              width:"38px", height:"38px", borderRadius:RADIUS.control, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
               backgroundColor: vipTargets > 0 ? "var(--primary-100)" : "var(--gray-100)", border: vipTargets > 0 ? "1px solid var(--primary-200)" : "1px solid var(--gray-200)",
             }}>
               <span style={{ fontSize:"10px", fontWeight:600, color: vipTargets > 0 ? "var(--primary-400)" : "var(--gray-400)", letterSpacing:"0.5px" }}>VIP</span>
               <span style={{ fontSize:"13px", fontWeight:700, color: vipTargets > 0 ? "var(--primary-400)" : "var(--gray-400)", lineHeight:1 }}>{vipTargets}</span>
             </div>
             {/* This is just today's detection count, not an alert — plain gray, no red. */}
-            <div style={{ width:"38px", height:"38px", borderRadius:"10px", backgroundColor:"var(--gray-100)", border:"1px solid var(--gray-200)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ width:"38px", height:"38px", borderRadius:RADIUS.control, backgroundColor:"var(--gray-100)", border:"1px solid var(--gray-200)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
               <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)", letterSpacing:"0.3px" }}>{t.today}</span>
               <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-700)", lineHeight:1 }}>{todayTotal}</span>
             </div>
@@ -2036,7 +2050,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
             const shown = availability !== undefined && cameras.length > 0 ? `${availability}%` : "—";
             return (
               <div style={{
-                width:"38px", height:"38px", borderRadius:"10px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                width:"38px", height:"38px", borderRadius:RADIUS.control, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
                 backgroundColor: low ? "var(--warning-100)" : "var(--gray-100)", border: low ? "1px solid var(--warning-200)" : "1px solid var(--gray-200)",
               }}>
                 <span style={{ fontSize:"10px", fontWeight:600, color: low ? "var(--warning-500)" : "var(--gray-400)", letterSpacing:"0.3px" }}>{t.avail}</span>
@@ -2057,7 +2071,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
                 <div key={event.id}
                   onMouseEnter={e => handleMouseEnter(e, event.id, event)}
                   onClick={() => onEventSelect?.(isSelected ? null : event)}
-                  style={{ width:"40px", height:"40px", borderRadius:"10px", overflow:"hidden", flexShrink:0, cursor:"pointer", position:"relative",
+                  style={{ width:"40px", height:"40px", borderRadius:RADIUS.control, overflow:"hidden", flexShrink:0, cursor:"pointer", position:"relative",
                     // The purple border says VIP — a fact about the person. The selection ring is
                     // grey, because a selected Tracking tile used to be indistinguishable from a
                     // VIP one: the same purple said two different things on the same 40px tile.
@@ -2079,7 +2093,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
                 <div key={device.id}
                   onMouseEnter={e => handleMouseEnter(e, device.id, device)}
                   onClick={() => onPinDevice?.(isPinned ? null : device)}
-                  style={{ width:"40px", height:"40px", borderRadius:"10px", backgroundColor: isLive ? "var(--gray-900)" : "var(--gray-50)", border: isLive ? "1px solid var(--gray-700)" : "1px solid var(--warning-200)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", position:"relative", flexShrink:0,
+                  style={{ width:"40px", height:"40px", borderRadius:RADIUS.control, backgroundColor: isLive ? "var(--gray-900)" : "var(--gray-50)", border: isLive ? "1px solid var(--gray-700)" : "1px solid var(--warning-200)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", position:"relative", flexShrink:0,
                     boxShadow: isPinned ? "0 0 0 2px var(--primary-400)" : "none" }}>
                   <span style={{ fontSize:"10px", fontWeight:600, color: isLive ? "white" : "var(--warning-500)", fontFamily:"monospace", textAlign:"center" }}>{device.name}</span>
                   <div style={{ position:"absolute", bottom:"3px", right:"3px", width:"6px", height:"6px", borderRadius:"50%", backgroundColor: isLive ? "var(--success-400)" : "var(--warning-500)" }} />
@@ -2100,15 +2114,17 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
           const event = hovered.item as LiveEvent;
           const photoUrl = getFacePhoto(event.id);
           return (
-            <div style={{ position:"fixed", ...(position === "right" ? { right:"64px" } : { left:"64px" }), top: clampedTop, zIndex:1000, width:"210px", backgroundColor:"white", border:BORDER, borderRadius:"12px", padding:"10px", boxShadow:"0 4px 20px rgba(24, 17, 39,0.12)", pointerEvents:"none" }}>
+            <div style={{ position:"fixed", ...(position === "right" ? { right:"64px" } : { left:"64px" }), top: clampedTop, zIndex:1000, width:"210px", backgroundColor:"white", border:BORDER, borderRadius:RADIUS.panel, padding:"10px", boxShadow:"0 4px 20px rgba(24, 17, 39,0.12)", pointerEvents:"none" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", paddingBottom:"8px", marginBottom:"8px", borderBottom:"1px solid var(--gray-100)" }}>
-                <span style={{ fontSize:"10px", fontWeight:800, color: event.type==="VIP" ? "var(--primary-400)" : "var(--type-tracking)", backgroundColor: event.type==="VIP" ? "var(--primary-100)" : "var(--type-tracking-100)", padding:"2px 6px", borderRadius:"4px" }}>
+                <span style={{ fontSize:"10px", fontWeight:800, color: event.type==="VIP" ? "var(--primary-400)" : "var(--type-tracking)", backgroundColor: event.type==="VIP" ? "var(--primary-100)" : "var(--type-tracking-100)", padding:"2px 6px",
+                  /* A label inside a hover card, not a control — see the note in RedmapPage. */
+                  borderRadius:"4px" }}>
                   {event.type==="VIP" ? `VIP · ${event.confidence}%` : "TRACKING"}
                 </span>
                 <span style={{ fontSize:"10px", color:"var(--gray-400)" }}>{formatTimeAgo(event.timestamp)}</span>
               </div>
               <div style={{ display:"flex", gap:"8px", alignItems:"center" }}>
-                <img src={photoUrl} style={{ width:"36px", height:"48px", borderRadius:"6px", objectFit:"cover", flexShrink:0 }} alt="" />
+                <img src={photoUrl} style={{ width:"36px", height:"48px", borderRadius:RADIUS.inner, objectFit:"cover", flexShrink:0 }} alt="" />
                 <div>
                   <div style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-900)" }}>{event.name}</div>
                   <div style={{ fontSize:"10px", color:"var(--gray-500)", marginTop:"3px" }}>{event.location}</div>
@@ -2121,7 +2137,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
           const isLive = device.status === "Live";
           const zone = zoneOfDevice(device.id, cameras);
           return (
-            <div style={{ position:"fixed", ...(position === "right" ? { right:"64px" } : { left:"64px" }), top: clampedTop, zIndex:1000, width:"180px", backgroundColor:"var(--gray-900)", border:"1px solid var(--gray-700)", borderRadius:"12px", padding:"10px", boxShadow:"0 4px 20px rgba(24, 17, 39,0.2)", pointerEvents:"none" }}>
+            <div style={{ position:"fixed", ...(position === "right" ? { right:"64px" } : { left:"64px" }), top: clampedTop, zIndex:1000, width:"180px", backgroundColor:"var(--gray-900)", border:"1px solid var(--gray-700)", borderRadius:RADIUS.panel, padding:"10px", boxShadow:"0 4px 20px rgba(24, 17, 39,0.2)", pointerEvents:"none" }}>
               {zone && <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"3px" }}>{zone}</div>}
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontSize:"12px", fontWeight:800, color:"white" }}>{device.name}</span>

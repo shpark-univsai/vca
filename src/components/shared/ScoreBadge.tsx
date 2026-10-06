@@ -1,5 +1,7 @@
 "use client";
 
+import { RADIUS } from "./controls";
+
 /**
  * A match score, drawn the same way everywhere it appears.
  *
@@ -30,7 +32,7 @@ export default function ScoreBadge({ score, size = 10 }: {
       fontSize: `${size}px`, fontWeight: 800, fontFamily: "monospace",
       color: high ? "var(--success-400)" : mid ? "var(--gray-600)" : "var(--gray-500)",
       backgroundColor: high ? "var(--success-100)" : "var(--gray-100)",
-      padding: size >= 12 ? "3px 8px" : "2px 6px", borderRadius: "999px",
+      padding: size >= 12 ? "3px 8px" : "2px 6px", borderRadius: RADIUS.pill,
       whiteSpace: "nowrap",
     }}>
       {/* ONE DECIMAL, ALWAYS. `{score}%` printed 99.7 with its decimal and 85.0 without, because
