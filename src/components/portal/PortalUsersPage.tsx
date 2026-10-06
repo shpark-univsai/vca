@@ -2095,10 +2095,20 @@ function ChangeEmailPanel({ user, mailDomain, mailAvailable, onClose, onBack }: 
       <div style={{ padding: "4px 20px 20px", display: "flex", flexDirection: "column", gap: "16px" }}>
         <div>
           <FormLabel as="span">{t.emailPanelCurrent}</FormLabel>
-          {/* The address being replaced, stated rather than left to memory: the field below opens
-              pre-filled with it, so without this line there is nothing to compare a typed change
-              against. */}
-          <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", wordBreak: "break-all" }}>{user.email}</p>
+          {/*
+            FILLED, LIKE THE RESET PANEL'S OWN VALUE BLOCK (owner, 2026-10-06: 비밀번호 리셋에서
+            처럼 바탕색 넣어서 구분해주면 어때).
+
+            The 새 주소 field below it is a white box with an edge, and this was bare text on the
+            panel's own ground directly above it — two addresses in the same column, one of which
+            looked like nothing in particular. The fill says the same thing the field's edge says,
+            in the other direction: this one is a value, that one is a box you type in. Same
+            12px/14px and 10px radius the reset sheet uses for its value blocks, so the two panels
+            that open over this card wear the same treatment.
+          */}
+          <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", wordBreak: "break-all" }}>{user.email}</p>
+          </div>
         </div>
         <div>
           <FormLabel as="span">{t.emailPanelNew}</FormLabel>
