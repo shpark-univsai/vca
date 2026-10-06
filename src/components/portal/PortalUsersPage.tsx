@@ -2954,6 +2954,10 @@ const PANEL_CAPTION: React.CSSProperties = {
  */
 const PANEL_GROUP: React.CSSProperties = {
   display: "flex", flexDirection: "column",
+  /* 4px, once the rows became grey plates (see PANEL_PLATE): touching plates read as one long
+     block with hairlines between them, which is the boxed group this file twice removed. 4px is
+     enough to separate two surfaces and keeps the group tighter than the 12px between groups. */
+  gap: "4px",
   /*
    * PULLED OUT BY THE ROWS' OWN PADDING (owner, 2026-10-06: 큰 제목있고 그 아래 작은제목들은
    * 들여쓰기 되어있는데 안 들여쓰는게 나은것같은데).
@@ -2970,6 +2974,27 @@ const PANEL_GROUP: React.CSSProperties = {
    */
   margin: "0 -12px",
 };
+
+/**
+ * THE SURFACE EVERY PRESSABLE THING IN THIS PANEL SHARES (owner, 2026-10-06: 상세 패널 전체에
+ * 선택할수있는 영역들은 박스나 선택박스에 회색 바탕을 쳐주던가 그러는게 좋겠는데 아래 버튼 5개도
+ * 통일감있게 같이 수정해줘).
+ *
+ * Before this the panel answered the same question three ways: the rows that open a sub-panel were
+ * transparent with a chevron, the five actions at the foot were white with a border, and the rows
+ * that cannot be opened were transparent too — so "press me" was carried by a 10px arrow in one
+ * place and by a 1px line in another, and the difference between a row you can open and a row you
+ * cannot was nothing at rest.
+ *
+ * FILL, NOT BORDER, and that is the owner's choice of the two she offered. It also settles the
+ * argument the actions block has had with itself twice (boxes added 2026-09-22, removed, added
+ * again 2026-09-28): a fill marks a control without adding an edge, so the card can mark fifteen
+ * pressable things without drawing a single new line.
+ *
+ * WHAT DOES NOT GET IT: a disabled row (nothing to press), and a row whose value IS a select —
+ * the select draws its own control, and a plate behind it would be a box inside a box.
+ */
+const PANEL_PLATE = "var(--gray-50)";
 
 /**
  * Which of the team's projects an existing account may open.
@@ -6041,7 +6066,9 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                       /* Taller than the one-line version it replaces, because the row is now two
                          lines — see the stacked block below. */
                       padding: row.hero ? "10px 12px" : "9px 12px", border: "none", borderRadius: "8px",
-                      backgroundColor: "transparent", fontFamily: "inherit",
+                      /* See PANEL_PLATE. A row that opens something wears the plate; a refused one
+                         and a select row do not, and both override this below. */
+                      backgroundColor: PANEL_PLATE, fontFamily: "inherit",
                     };
                     /*
                      * STACKED, NOT SIDE BY SIDE (owner, 2026-09-28: 가로로 저렇게 되어 있으니까
@@ -6096,11 +6123,11 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                         }}>{row.value}</span>
                       </span>
                     );
-                    if (row.disabled) return <div key={row.key} style={style}>{stacked}</div>;
+                    if (row.disabled) return <div key={row.key} style={{ ...style, backgroundColor: "transparent" }}>{stacked}</div>;
                     /* The answer IS the control — see `select` on the row type. No chevron and no
                        row click: there is nothing behind this row to go to. */
                     if (row.select) return (
-                      <div key={row.key} style={{ ...style, display: "block" }}>
+                      <div key={row.key} style={{ ...style, display: "block", backgroundColor: "transparent" }}>
                         <span style={{ display: "flex", alignItems: "center", gap: "4px", minWidth: 0, marginBottom: "5px" }}>{label}</span>
                         <FilterSelect
                           value={row.select.value}
@@ -6180,8 +6207,10 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                         title={a.disabled ? a.reason : undefined}
                         style={{
                           display: "inline-flex", alignItems: "center", gap: "6px", alignSelf: "flex-start",
-                          height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
-                          backgroundColor: "white", fontFamily: "inherit", fontSize: "12px",
+                          height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none",
+                          /* See PANEL_PLATE — this one lives inside the rows group rather than in
+                             the actions block, and it is the fifth of the five the owner counted. */
+                          backgroundColor: a.disabled ? "transparent" : PANEL_PLATE, fontFamily: "inherit", fontSize: "12px",
                           /* marginBottom because this is the LAST thing in the group and the
                              group's own padding is 4px — the button was sitting on the rounded
                              bottom edge (owner, 2026-09-28: 인물 검색 허용 버튼 아래로 공간
@@ -6316,8 +6345,12 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                       title={a.disabled ? a.reason : undefined}
                       style={{
                         display: "inline-flex", alignItems: "center", gap: "6px",
-                        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
-                        backgroundColor: "white", fontFamily: "inherit", fontSize: "12px",
+                        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none",
+                        /* See PANEL_PLATE: one surface for everything pressable in this card. The
+                           border these carried from 2026-09-28 was answering the same need — 「버튼
+                           이라고 느껴지게」 — and the fill answers it without an edge, so the rows
+                           above and these verbs stop looking like two kinds of thing. */
+                        backgroundColor: a.disabled ? "transparent" : PANEL_PLATE, fontFamily: "inherit", fontSize: "12px",
                         color: a.disabled ? "var(--gray-300)" : "var(--gray-600)",
                         fontWeight: 700, cursor: a.disabled ? "default" : "pointer",
                       }}>
@@ -6391,8 +6424,9 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                      */
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "6px",
-                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
-                      backgroundColor: "white",
+                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none",
+                      /* See PANEL_PLATE. */
+                      backgroundColor: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "transparent" : PANEL_PLATE,
                       color: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "var(--gray-300)" : "var(--gray-600)",
                       fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
                       cursor: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "default" : "pointer",
@@ -6436,8 +6470,11 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                      */
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "6px",
-                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER,
-                      backgroundColor: "white", color: (!manageAccess || lastAdmin) ? "var(--gray-300)" : "var(--gray-600)",
+                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none",
+                      /* See PANEL_PLATE. 제거 keeps its red-on-pointing class as the one action
+                         that cannot be undone — the plate is the resting state, not the warning. */
+                      backgroundColor: (!manageAccess || lastAdmin) ? "transparent" : PANEL_PLATE,
+                      color: (!manageAccess || lastAdmin) ? "var(--gray-300)" : "var(--gray-600)",
                       fontSize: "12px", fontWeight: 700, cursor: (!manageAccess || lastAdmin) ? "default" : "pointer", fontFamily: "inherit",
                     }}>
                     <Trash2 size={13} strokeWidth={2.2} aria-hidden="true" />

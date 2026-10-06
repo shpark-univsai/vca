@@ -743,6 +743,24 @@ export default function CameraMapView({
       width: fill ? "100%" : undefined,
       minWidth: fill ? 0 : undefined,
     }}>
+      {/*
+        NO HEADER WHERE THE COUNT IS ALL IT WOULD HOLD (owner, 2026-10-06: 바탕색이 없어져서 62대
+        중 61대 표시 위치가 애매해졌어 · 그게 뭘 의미하는지 정확히 이해하기 어려워).
+
+        `tintOf` means the caller paints the dots and brings its own key, so the pick button, the
+        pick hint and the status legend are all withheld — leaving one grey line in a bordered
+        strip, floating above a map with nothing beside it.
+
+        And on the account panel that line is worse than redundant. 「62대 중 61대 표시」 counts
+        what the MAP can draw of the site; the row directly above it reads 「3 / 62」 and counts
+        what the ACCOUNT may open. Two ratios out of the same 62, three lines apart, answering
+        different questions — the reader has no way to tell which is which.
+
+        Nothing is lost: the fact only matters when something is missing, and that is exactly when
+        the 「지도에 없는 N대」 chip is on the map, with the why on its hover. All drawn, nothing to
+        say.
+      */}
+      {!tintOf && (
       <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", borderBottom: BORDER, flexWrap: "wrap" }}>
         <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-600)" }}>{t.counted(placed.length, cameras.length)}</span>
         {/* The dashed zone chip went with the pills: it named the zone a pill click had ringed,
@@ -818,6 +836,7 @@ export default function CameraMapView({
         </div>
         )}
       </div>
+      )}
 
         {/*
           `isolation` IS THE WHOLE FIX FOR THE BAR THAT KEPT SINKING INTO THE MAP.
@@ -917,7 +936,12 @@ export default function CameraMapView({
             <div title={t.noPositionWhy} style={{
               position: "absolute", left: "10px", bottom: "10px", zIndex: 500,
               display: "flex", alignItems: "center", gap: "8px",
-              backgroundColor: "white", border: BORDER, borderRadius: "999px", padding: "4px 6px 4px 10px", boxShadow: "var(--shadow-popover)",
+              backgroundColor: "white", border: BORDER, borderRadius: "999px", boxShadow: "var(--shadow-popover)",
+              /* 6px on the right is the room the 보기 button's own padding needs; without that
+                 button the chip was 10px on the left and 6px on the right, which on a pill reads
+                 as a label that slid (owner, 2026-10-06: 오른쪽 마진이 없어 양쪽 똑같이 맞춰주고).
+                 So the asymmetry belongs to the case that has the button, not to the chip. */
+              padding: onShowUnpositioned ? "4px 6px 4px 10px" : "4px 10px",
             }}>
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap" }}>{t.noPosition(unplaced)}</span>
               {/* Only where there is a list to narrow. In a group editor the count still has to be
