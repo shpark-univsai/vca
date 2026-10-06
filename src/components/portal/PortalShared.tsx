@@ -3156,11 +3156,15 @@ const DRAWER_DISCARD_T = {
     body: "Close this panel and what you have typed is gone.",
     confirm: "Close without saving",
     cancel: "Keep editing",
+    /* The ✕ had no accessible name at all — a button whose whole content is an svg reads as
+       「button」 and nothing else. */
+    close: "Close",
   },
   ko: {
     title: "작성 중인 내용이 있습니다",
     body: "닫으면 입력한 내용은 저장되지 않습니다.",
     confirm: "저장하지 않고 닫기",
+    close: "닫기",
     cancel: "계속 작성",
   },
 } as const;
@@ -3373,9 +3377,21 @@ export function Drawer({ title, onClose, onBack, headerAction, footer, width = "
             {title}
           </div>
           {headerAction && <span style={{ flexShrink: 0, display: "flex" }}>{headerAction}</span>}
-          <button type="button" onClick={onClose} className="portal-icon-btn"
-            style={{ flexShrink: 0, padding: "4px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+          {/*
+            32x32, NOT 24 (owner, 2026-10-06: 엑스자 클릭 영역 조금만 더 넓혀줘).
+
+            MEASURED at 24x24 — exactly WCAG 2.2's floor for a target and nothing above it, for the
+            control every panel in this console is closed by. The mark stays 16px; what grows is
+            the padding around it, so nothing moves on screen and the area to aim at nearly
+            doubles. Apple asks 44 and Material 48, which a header this size cannot give without
+            the ✕ out-weighing the title it sits beside; 32 is what fits.
+
+            `aria-label` because the button's whole content is an svg: without it a screen reader
+            reads 「button」 and the one way out of a panel has no name.
+          */}
+          <button type="button" onClick={onClose} className="portal-icon-btn" aria-label={dt.close}
+            style={{ flexShrink: 0, width: "32px", height: "32px", padding: 0, border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           </button>
         </div>
         {/* minHeight 0, or a flex child will not shrink below its content and the panel grows past
