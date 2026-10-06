@@ -804,7 +804,22 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
           <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-600)", letterSpacing:"-0.2px" }}>{cardTimestamp(p.date, p.time)}</span>
         </div>
       </div>
-      <div style={{ position:"absolute", right:"6px", bottom:"40px", width:"60px", height:"60px",
+      {/*
+        LIFTED CLEAR OF THE FOOTER (owner, 2026-10-06: 데이터에 모니터링에 아래쪽 사진에 이름도
+        가려지넹).
+
+        MEASURED: at bottom 40 the inset reached 36px up into the 76px footer, so the last 56px of
+        the 130px identity line was painted underneath it — and the line believed it had all 130,
+        so `textOverflow: ellipsis` never fired. 「Suriani binte Kadir」 stopped mid-word behind a
+        photo with nothing saying it continued.
+
+        Reserving the space instead was tried and measured first: padding the footer 72px on the
+        right left the name 69px, which truncated 「Priya Raman」 — an eleven-character name losing
+        a character to make room for a thumbnail is a worse trade than moving the thumbnail. At
+        bottom 82 (the footer's 76 + 6 of air) the inset sits wholly on the capture, 311→371 inside
+        a photo area that runs 199→377, and the name gets the whole line back.
+      */}
+      <div style={{ position:"absolute", right:"6px", bottom:"82px", width:"60px", height:"60px",
         borderRadius:RADIUS.inner, overflow:"hidden", transform:"translateZ(0)",
         // Only VIP gets a ring (brand purple) — Unknown has nothing to call out, and RedFace
         // already gets its own dedicated "REDFACE" badge on this card (below).
@@ -3964,7 +3979,21 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
   const registry = useMemo(() => watchedPersonsInProject(persons, projectId), [persons, projectId]);
   const q = query.trim().toLowerCase();
   const matched = useMemo(() => {
-    const rows = q ? registry.filter(person => person.name.toLowerCase().includes(q)) : registry;
+    /*
+     * A NAME YOU CANNOT PICK IS NOT IN THE BROWSE LIST (owner, 2026-10-06: 여기 검색창에도 vip
+     * 얼굴을 읽을수없다는뎅 · 얼굴을 읽을수없는 칩은 안보여져도돼).
+     *
+     * Six of the forty rows on screen were greyed out with 「face not readable」 — dead weight in
+     * a list whose whole job is to be scanned. They go.
+     *
+     * BUT THEY COME BACK WHEN SOMEBODY NAMES THEM. Dropping them outright would answer 「이 사람
+     * 없습니다」 about a person who IS enrolled, and the operator's next move would be to enrol
+     * them again. Typed into, the list still shows them, greyed, with the reason — which is the
+     * only honest answer to a name that is in the register and cannot be used.
+     */
+    const rows = q
+      ? registry.filter(person => person.name.toLowerCase().includes(q))
+      : registry.filter(person => !personTargetBlock(person));
     return layout === "grid" && sortMode === "reg"
       // Newest registration first: the person somebody enrolled this morning is the one they are
       // most likely to be here to look for.
