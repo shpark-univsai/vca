@@ -1560,6 +1560,12 @@ interface VcaStoreState {
    * caller is the only thing that can tell the person why nothing happened.
    */
   changePortalUserEmail: (userId: string, email: string) => "duplicate" | "unchanged" | null;
+  /** Park an address until the new one answers. Same refusals as changing it outright. */
+  requestPortalUserEmailChange: (userId: string, email: string) => "duplicate" | "unchanged" | null;
+  /** The new address answered: it becomes the login. */
+  confirmPortalUserEmailChange: (userId: string) => void;
+  /** Drop a parked address. The login never moved, so nothing is undone — it is simply called off. */
+  cancelPortalUserEmailChange: (userId: string) => void;
   updatePortalUserPermission: (userId: string, permission: PortalPermission) => void;
   /** Portal role and app access together — the access select moves both, and one call is one audit
    *  line. Refuses a combination that leaves the account unable to reach anything. */
@@ -3430,6 +3436,24 @@ export interface PortalUser {
    * seen. Cleared the moment they set their own.
    */
   tempPasswordIssuedAt?: string;
+  /**
+   * AN ADDRESS WAITING TO BECOME THE LOGIN, where this installation can send mail.
+   *
+   * Changing the login address is handing the account to whoever owns the new address, and the
+   * checks in front of it — format, no duplicate, on the installation's own domain — all pass for
+   * a colleague's address typed by mistake. That is the one case nothing else catches: a password
+   * reset then goes to a real person who is not the account holder. So where mail can go out, the
+   * change does not take effect when it is made; it sits here until the new address answers, and
+   * `email` keeps working the whole time.
+   *
+   * Absent on a site with no outbound mail (`hasOutboundMail` false), where there is nothing to
+   * answer with and the change applies at once — the panel says so rather than offering a
+   * confirmation nobody can complete. Same division as the invitation: a code goes out where mail
+   * works, a credential is handed over where it does not.
+   */
+  pendingEmail?: string;
+  /** When the confirmation went out, so the console can say how long it has been waiting. */
+  pendingEmailAt?: string;
   /**
    * Forces the set-a-new-password step at the next login instead of letting them in. A temporary
    * password is known to whoever read it out, so an account that keeps one is an account with a
@@ -6596,6 +6620,63 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
       }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
     }));
     return null;
+  },
+  requestPortalUserEmailChange: (userId, email) => {
+    const trimmed = email.trim();
+    const state = get();
+    const user = state.portalUsers.find(u => u.id === userId);
+    if (!user || trimmed === "") return "unchanged";
+    if (trimmed.toLowerCase() === user.email.toLowerCase()) return "unchanged";
+    if (state.portalUsers.some(u => u.id !== userId && u.email.toLowerCase() === trimmed.toLowerCase())) return "duplicate";
+    const at = new Date().toISOString();
+    set(st => ({
+      portalUsers: st.portalUsers.map(u => (u.id === userId ? { ...u, pendingEmail: trimmed, pendingEmailAt: at } : u)),
+      /* Recorded when it is REQUESTED, not only when it lands. A request that is never answered is
+         the interesting one — somebody aimed this account at an address that did not reply. */
+      auditLog: [clientAudit({
+        projectId: user.projectIds[0], area: "accounts", target: user.name,
+        action: `Login address change requested — ${trimmed}`,
+        message: `Login address change for ${user.name} requested — ${user.email} to ${trimmed}, awaiting confirmation`,
+        before: user.email, after: trimmed,
+        actor: SIGNED_IN_USER.name, at,
+      }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+    return null;
+  },
+  confirmPortalUserEmailChange: (userId) => {
+    const state = get();
+    const user = state.portalUsers.find(u => u.id === userId);
+    if (!user?.pendingEmail) return;
+    const before = user.email;
+    const next = user.pendingEmail;
+    /* Same stand-in rule as changing it outright: the session is found BY EMAIL, so moving your own
+       address without moving the stand-in leaves the console unable to find you. */
+    if (before.toLowerCase() === SIGNED_IN_USER.email.toLowerCase()) SIGNED_IN_USER.email = next;
+    set(st => ({
+      portalUsers: st.portalUsers.map(u => (u.id === userId ? { ...u, email: next, pendingEmail: undefined, pendingEmailAt: undefined } : u)),
+      auditLog: [clientAudit({
+        projectId: user.projectIds[0], area: "accounts", target: user.name,
+        action: `Login address changed to ${next}`,
+        message: `Login address for ${user.name} changed from ${before} to ${next} — confirmed`,
+        before, after: next,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
+  },
+  cancelPortalUserEmailChange: (userId) => {
+    const state = get();
+    const user = state.portalUsers.find(u => u.id === userId);
+    if (!user?.pendingEmail) return;
+    const dropped = user.pendingEmail;
+    set(st => ({
+      portalUsers: st.portalUsers.map(u => (u.id === userId ? { ...u, pendingEmail: undefined, pendingEmailAt: undefined } : u)),
+      auditLog: [clientAudit({
+        projectId: user.projectIds[0], area: "accounts", target: user.name,
+        action: `Login address change called off — ${dropped}`,
+        message: `Login address change for ${user.name} called off — ${dropped} was never confirmed`,
+        actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+      }), ...st.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    }));
   },
   updatePortalUserPermission: (userId, permission) =>
     set(state => {

@@ -230,9 +230,22 @@ const T = {
     emailPanelTitle: "Change email address",
     emailPanelCurrent: "Current address",
     emailPanelNew: "New address",
-    emailPanelWhy: "This is the login ID and where a password reset is sent. Only an owner changes it, and never the account holder themselves \u2014 an address the holder can move is how somebody who has taken an account over locks the real owner out.",
-    emailPanelLog: "The search access log identifies a searcher by their address. Rows already written keep the old one; the change is recorded in the activity log with both.",
-    emailPanelNoVerify: "No confirmation mail is sent \u2014 an isolated site cannot send one. The change takes effect at once, and the person signs in with the new address from now on.",
+    /* Three paragraphs of policy stood here (owner, 2026-10-06: 설명이 너무 길어). Two of them
+       explained to an owner, mid-change, why owners are the ones who change it — a rule the reader
+       is already inside. What is left is what the screen cannot show: where the address is used,
+       what happens to rows already written, and when it takes effect. */
+    emailPanelWhy: "This address is the login, and a password reset goes to it.",
+    emailPanelLog: "Search-log rows already written keep the old address.",
+    emailPanelNoVerify: "No confirmation can be sent from here, so it applies at once.",
+    emailPanelPending: "The new address has to answer first. Until it does, this account signs in with the current one.",
+    emailPanelRepeat: "New address again",
+    emailPanelMismatch: "The two do not match.",
+    emailPanelSend: "Send confirmation",
+    emailSentToast: "Confirmation sent",
+    emailSentToastDesc: (name: string, email: string) => `${name}'s address changes once ${email} answers.`,
+    emailPendingLabel: "Waiting on a new address",
+    emailPendingCancel: "Call it off",
+    emailPendingCancelled: "Change called off",
     emailPanelApply: "Change address",
     emailPanelDuplicate: "Another account already uses that address.",
     emailPanelSame: "That is the address the account already has.",
@@ -709,9 +722,18 @@ const T = {
     emailPanelTitle: "이메일 변경",
     emailPanelCurrent: "현재 주소",
     emailPanelNew: "새 주소",
-    emailPanelWhy: "이 주소가 로그인 아이디이고, 비밀번호 재설정 메일이 가는 곳입니다. 최고관리자만 바꾸며 본인은 바꿀 수 없습니다 \u2014 본인이 옮길 수 있는 주소는, 계정을 빼앗은 사람이 원래 주인을 잠가버리는 통로입니다.",
-    emailPanelLog: "조회 기록은 조회한 사람을 이 주소로 식별합니다. 이미 남은 기록은 예전 주소를 그대로 두고, 이번 변경은 옛 주소와 새 주소를 함께 변경 기록에 남깁니다.",
-    emailPanelNoVerify: "확인 메일은 보내지 않습니다 \u2014 격리된 현장은 메일을 보낼 수 없습니다. 바꾸는 즉시 적용되고, 이후에는 새 주소로 로그인합니다.",
+    emailPanelWhy: "이 주소로 로그인하고, 비밀번호 재설정도 여기로 갑니다.",
+    emailPanelLog: "이미 남은 조회 기록은 옛 주소 그대로입니다.",
+    emailPanelNoVerify: "여기선 확인 메일을 보낼 수 없어 바로 적용됩니다.",
+    emailPanelPending: "새 주소가 답해야 바뀝니다. 그 전까지는 지금 주소로 로그인합니다.",
+    emailPanelRepeat: "새 주소 다시 입력",
+    emailPanelMismatch: "두 주소가 다릅니다.",
+    emailPanelSend: "확인 메일 보내기",
+    emailSentToast: "확인 메일을 보냈습니다",
+    emailSentToastDesc: (name: string, email: string) => `${email}이(가) 답하면 ${name}의 주소가 바뀝니다.`,
+    emailPendingLabel: "새 주소 확인 대기",
+    emailPendingCancel: "취소하기",
+    emailPendingCancelled: "변경을 취소했습니다",
     emailPanelApply: "주소 변경",
     emailPanelDuplicate: "다른 계정이 이미 쓰고 있는 주소입니다.",
     emailPanelSame: "지금 쓰고 있는 주소와 같습니다.",
@@ -1996,18 +2018,30 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
  * change takes effect directly, and the audit row carries both addresses so the swap is readable
  * afterwards — which is the control that replaces the round trip.
  */
-function ChangeEmailPanel({ user, mailDomain, onClose, onBack }: {
+function ChangeEmailPanel({ user, mailDomain, mailAvailable, onClose, onBack }: {
   user: PortalUser;
   mailDomain: string | null;
+  /** Where mail can go out, the address is parked until it answers; where it cannot, it applies. */
+  mailAvailable: boolean;
   onClose: () => void;
   onBack?: () => void;
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
   const changePortalUserEmail = useVcaStore(s => s.changePortalUserEmail);
+  const requestPortalUserEmailChange = useVcaStore(s => s.requestPortalUserEmailChange);
   const allUsers = useVcaStore(s => s.portalUsers);
   const { showToast } = useToast();
-  const [value, setValue] = useState(user.email);
+  /* Empty, not pre-filled with the current address. It opened holding the very address it is here
+     to replace, which made 「That is the address the account already has.」 the first thing the
+     panel said about a field nobody had typed in yet. The current one is stated above it. */
+  const [value, setValue] = useState("");
+  /* TYPED TWICE (owner, 2026-10-06). The checks in front of this — format, no duplicate, on the
+     installation's own domain — all pass for a colleague's address typed by mistake, and that is
+     the case where a password reset reaches a real person who is not the account holder. Where
+     mail works the confirmation catches it; this catches the ordinary slip everywhere, including
+     the isolated sites where nothing can be sent. */
+  const [repeat, setRepeat] = useState("");
 
   const typed = value.trim();
   const formatValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed);
@@ -2022,10 +2056,22 @@ function ChangeEmailPanel({ user, mailDomain, onClose, onBack }: {
     : duplicate ? t.emailPanelDuplicate
     : undeliverable && mailDomain ? t.emailPanelUndeliverable(mailDomain)
     : "";
-  const canApply = formatValid && !same && !duplicate && !undeliverable;
+  const firstOk = formatValid && !same && !duplicate && !undeliverable;
+  const mismatch = firstOk && repeat.trim() !== "" && repeat.trim().toLowerCase() !== typed.toLowerCase();
+  const canApply = firstOk && repeat.trim().toLowerCase() === typed.toLowerCase();
 
   const apply = () => {
     if (!canApply) return;
+    if (mailAvailable) {
+      const refused = requestPortalUserEmailChange(user.id, typed);
+      if (refused) {
+        showToast({ variant: "warning", title: refused === "duplicate" ? t.emailPanelDuplicate : t.emailPanelSame });
+        return;
+      }
+      showToast({ variant: "success", title: t.emailSentToast, desc: t.emailSentToastDesc(user.name, typed) });
+      onClose();
+      return;
+    }
     const problem = changePortalUserEmail(user.id, typed);
     /* The store is the only thing that can see the whole account list at write time, so a refusal
        coming back from it is reported rather than assumed away — the form's own duplicate check
@@ -2039,12 +2085,16 @@ function ChangeEmailPanel({ user, mailDomain, onClose, onBack }: {
   };
 
   return (
-    <Drawer title={t.emailPanelTitle} onClose={onClose} onBack={onBack} width="440px"
-      dirty={typed !== user.email}
+    /* NO WIDTH: it takes the Drawer's 520 and covers the account card exactly (owner, 2026-10-06:
+       이렇게 패널이 위에 겹쳐서 올라가는게 좀 어색해보여). At 440 over a 520 card it left an 80px
+       band of the card showing down the left, so a step inside one flow read as two sheets that
+       failed to line up. Same surface, different step, ← to go back. */
+    <Drawer title={t.emailPanelTitle} onClose={onClose} onBack={onBack}
+      dirty={typed !== "" || repeat !== ""}
       footer={
         <>
           <PanelCancel onClick={onBack ?? onClose} label={t.cancel} />
-          <PanelPrimary onClick={apply} label={t.emailPanelApply} disabled={!canApply} />
+          <PanelPrimary onClick={apply} label={mailAvailable ? t.emailPanelSend : t.emailPanelApply} disabled={!canApply} />
         </>
       }>
       <div style={{ padding: "4px 20px 20px", display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -2060,13 +2110,30 @@ function ChangeEmailPanel({ user, mailDomain, onClose, onBack }: {
           <TextField value={value} onChange={setValue} type="email" placeholder={mailDomain ? `name@${mailDomain}` : "name@example.com"} autoFocus />
           {error && <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>{error}</p>}
         </div>
-        {/* THE THREE THINGS A CHANGED ADDRESS DOES, before it is changed rather than after.
-            Amber for the last one: "no confirmation mail" is the sentence that decides whether an
-            owner double-checks the spelling, because a typo here is an account nobody can sign
-            into and nobody can be mailed about. */}
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.emailPanelWhy}</p>
-        <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.emailPanelLog}</p>
-        <p style={{ fontSize: "11px", color: "var(--warning-500)", lineHeight: 1.6 }}>{t.emailPanelNoVerify}</p>
+        {/* Only once the first one is a usable address. Asked for before that, it is a second
+            empty box next to an error. */}
+        {firstOk && (
+          <div>
+            <FormLabel as="span">{t.emailPanelRepeat}</FormLabel>
+            <TextField value={repeat} onChange={setRepeat} type="email" placeholder={mailDomain ? `name@${mailDomain}` : "name@example.com"} />
+            {mismatch && <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.emailPanelMismatch}</p>}
+          </div>
+        )}
+        {/* What the screen cannot show: where the address is used, what happens to rows already
+            written, and when it takes effect. The last line is the one that changes with the
+            installation, so it is the one that carries colour. */}
+        {/* ONE BLOCK, 4px apart (owner, 2026-10-06: 사이간격이 너무 떨어져있어서 디자인이
+            촘촘하지 않아보여). They were children of the panel's own 16px column, the same gap that
+            separates 현재 주소 from 새 주소 — so three lines of one note were spaced like three
+            sections, and the note read as loose text rather than as a thing. The 16px now sits
+            between the fields and this block, which is the boundary that is real. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.emailPanelWhy}</p>
+          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.emailPanelLog}</p>
+          <p style={{ fontSize: "11px", color: mailAvailable ? "var(--gray-600)" : "var(--warning-500)", lineHeight: 1.6 }}>
+            {mailAvailable ? t.emailPanelPending : t.emailPanelNoVerify}
+          </p>
+        </div>
       </div>
     </Drawer>
   );
@@ -2244,7 +2311,8 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }
      * code is already issued and the old one already retired — so the footer keeps its single
      * 완료 and the arrow goes away with the step it belonged to.
      */
-    <Drawer title={password ? c.resultTitle : c.modalTitle} onClose={onClose} onBack={password === null ? onBack : undefined} width="440px"
+    /* Same reason as ChangeEmailPanel: it covers the account card, so it is the card's width. */
+    <Drawer title={password ? c.resultTitle : c.modalTitle} onClose={onClose} onBack={password === null ? onBack : undefined}
       footer={password === null ? (
         <>
           <PanelCancel onClick={onClose} label={t.cancel} />
@@ -4240,6 +4308,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
   const authConfig = getAuthConfig();
   const recoveryOverride = useSearchParams().get("recovery");
   const mailAvailable = recoveryOverride === "adminOnly" ? false : hasOutboundMail(authConfig);
+  const cancelPortalUserEmailChange = useVcaStore(s => s.cancelPortalUserEmailChange);
   /* The domain accounts on this site live on — the same resolution the invite form makes, from the
      same helper, so a change of address is held to the rule a new address is held to. */
   const panelMailDomain = resolveMailConfig(projectId, projects, allTeams).mailDomain;
@@ -6060,6 +6129,26 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
               */}
               <div style={{ margin: "0 20px", paddingTop: "16px", paddingBottom: "22px", borderTop: BORDER }}>
                 <p style={PANEL_CAPTION}>{t.panelAccountSection}</p>
+                {/*
+                  A PARKED ADDRESS IS A STATE, so the card carries it.
+
+                  Without this the owner presses 보내기, the panel closes, and the account looks
+                  exactly as it did — the same shape as the invitation that shows 「초대됨」 until
+                  it is accepted. It says which address is waiting, and gives the way out: nothing
+                  has moved yet, so calling it off undoes nothing, it simply stops.
+                */}
+                {mu.pendingEmail && (
+                  <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)" }}>{t.emailPendingLabel}</span>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", wordBreak: "break-all" }}>{mu.pendingEmail}</span>
+                    <button
+                      onClick={() => { cancelPortalUserEmailChange(mu.id); showToast({ variant: "success", title: t.emailPendingCancelled }); }}
+                      className="portal-btn-quiet"
+                      style={{ border: "none", background: "none", padding: "2px 4px", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", textDecoration: "underline" }}>
+                      {t.emailPendingCancel}
+                    </button>
+                  </div>
+                )}
                 {/* Pulled left by the button's own 10px padding, so the first label starts on the
                     same x as the caption over it and the section reads as one block. */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
@@ -6331,7 +6420,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
       {changingEmailFor && (
         /* Opens OVER the account card, like the three editors above it, so ← 뒤로 and 취소 land
            back on the account rather than on the table. */
-        <ChangeEmailPanel user={changingEmailFor} mailDomain={panelMailDomain}
+        <ChangeEmailPanel user={changingEmailFor} mailDomain={panelMailDomain} mailAvailable={mailAvailable}
           onClose={() => setChangingEmailFor(null)} onBack={() => setChangingEmailFor(null)} />
       )}
       {viewingCodeFor?.setupCode && (
