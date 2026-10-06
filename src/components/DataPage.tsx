@@ -17,6 +17,12 @@ import { useOnValueChange } from "@/hooks/useOnValueChange";
 import RemoveImageButton from "./RemoveImageButton";
 
 import ScoreBadge from "./shared/ScoreBadge";
+/* Corners come from the scale in shared/controls, which carries the reasoning. This screen held
+   fifteen of the app's radius values on its own — 2, 3, 4, 5, 6, 8, 9, 10, 12, 16, 100px, 999px
+   and one computed as `${10 - nodeBorder}px` — so "card", "panel", "control", "inner", "pill" are
+   now the only five shapes here, and 50% stays only where the thing IS a circle. */
+import { RADIUS } from "./shared/controls";
+import { SegmentedControl } from "./shared/SegmentedControl";
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
 import { DateRangeTrigger, CalendarIconSm, dateWithinRange, fmtDate, type DateRangeValue } from "./shared/DateRangePicker";
 
@@ -526,7 +532,7 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
   return (
     <div onClick={e => { if (e.target===e.currentTarget) onClose(); }}
       style={{ position:"fixed", inset:0, backgroundColor:"var(--scrim)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:"16px" }}>
-      <div style={{ backgroundColor:"white", borderRadius:"16px", border:BORDER, maxWidth:"560px", width:"100%", display:"flex", flexDirection:"column", maxHeight:"90vh", overflow:"hidden", boxShadow:"var(--shadow-modal)" }}>
+      <div style={{ backgroundColor:"white", borderRadius:RADIUS.card, border:BORDER, maxWidth:"560px", width:"100%", display:"flex", flexDirection:"column", maxHeight:"90vh", overflow:"hidden", boxShadow:"var(--shadow-modal)" }}>
 
         {/* Header */}
         <div style={{ padding:"14px 16px", borderBottom:BORDER, backgroundColor:"var(--gray-50)", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -539,12 +545,12 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
             <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
               <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{T[lang].reidObject(String(item.id).padStart(4,"0"))}</p>
               <ScoreBadge score={item.similarity} />
-              <span style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-600)", backgroundColor:"var(--gray-100)", padding:"2px 7px", borderRadius:"999px" }}>{item.cam}</span>
-              <span style={{ fontSize:"10px", fontWeight:800, color:REID_STATUS_STYLE[item.status].text, backgroundColor:REID_STATUS_STYLE[item.status].tint, padding:"2px 7px", borderRadius:"999px" }}>{attr(item.status, lang)}</span>
+              <span style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-600)", backgroundColor:"var(--gray-100)", padding:"2px 7px", borderRadius:RADIUS.pill }}>{item.cam}</span>
+              <span style={{ fontSize:"10px", fontWeight:800, color:REID_STATUS_STYLE[item.status].text, backgroundColor:REID_STATUS_STYLE[item.status].tint, padding:"2px 7px", borderRadius:RADIUS.pill }}>{attr(item.status, lang)}</span>
             </div>
             <p style={{ fontSize:"10px", color:"var(--gray-400)", marginTop:"1px" }}>{item.time}</p>
           </div>
-          <button onClick={onClose} className="vca-hover-quiet" style={{ padding:"4px", borderRadius:"6px", border:"none", background:"none", cursor:"pointer", color:"var(--gray-400)", display:"flex" }}>
+          <button onClick={onClose} className="vca-hover-quiet" style={{ padding:"4px", borderRadius:RADIUS.inner, border:"none", background:"none", cursor:"pointer", color:"var(--gray-400)", display:"flex" }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
@@ -554,12 +560,12 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
 
           {/* Face/Body */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px" }}>
-            <div style={{ border:BORDER, borderRadius:"12px", padding:"10px", backgroundColor:"var(--gray-50)", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
-              <img src={item.face} alt="" style={{ width:"156px", height:"156px", objectFit:"cover", borderRadius:"12px", border:"2px solid var(--primary-400)" }} />
+            <div style={{ border:BORDER, borderRadius:RADIUS.panel, padding:"10px", backgroundColor:"var(--gray-50)", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
+              <img src={item.face} alt="" style={{ width:"156px", height:"156px", objectFit:"cover", borderRadius:RADIUS.inner, border:"2px solid var(--primary-400)" }} />
               <p style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"0.5px" }}>{T[lang].face}</p>
             </div>
-            <div style={{ border:BORDER, borderRadius:"12px", padding:"10px", backgroundColor:"var(--gray-50)", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
-              <img src={item.body} alt="" style={{ width:"124px", height:"186px", objectFit:"cover", borderRadius:"12px", border:"2px solid var(--primary-400)" }} />
+            <div style={{ border:BORDER, borderRadius:RADIUS.panel, padding:"10px", backgroundColor:"var(--gray-50)", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
+              <img src={item.body} alt="" style={{ width:"124px", height:"186px", objectFit:"cover", borderRadius:RADIUS.inner, border:"2px solid var(--primary-400)" }} />
               <p style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"0.5px" }}>{T[lang].fullBody}</p>
             </div>
           </div>
@@ -605,7 +611,7 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
                 ...(item.bottomColor ? [[T[lang].bottomColor, attr(item.bottomColor, lang), "var(--gray-700)"]] : []),
                 ...(item.shoesColor ? [[T[lang].shoesColor, attr(item.shoesColor, lang), "var(--gray-700)"]] : []),
               ] as [string,string,string][]).map(([label,val,color]) => (
-                <div key={label} style={{ padding:"8px 10px", borderRadius:"10px", backgroundColor:"var(--gray-50)", border:BORDER }}>
+                <div key={label} style={{ padding:"8px 10px", borderRadius:RADIUS.panel, backgroundColor:"var(--gray-50)", border:BORDER }}>
                   <p style={{ fontSize:"10px", color:"var(--gray-400)", fontWeight:600, marginBottom:"2px" }}>{label}</p>
                   <p style={{ fontSize:"10px", fontWeight:600, color }}>{val}</p>
                 </div>
@@ -622,11 +628,11 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
           <button
             onClick={() => onGoAnalyzeFrame?.(item.cam)}
             className="vca-hover-outline"
-            style={{ display:"flex", alignItems:"center", gap:"5px", padding:"7px 14px", borderRadius:"8px", border:BORDER, backgroundColor:"white", fontSize:"12px", fontWeight:600, color:"var(--gray-500)", cursor:"pointer" }}
+            style={{ display:"flex", alignItems:"center", gap:"5px", padding:"7px 14px", borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white", fontSize:"12px", fontWeight:600, color:"var(--gray-500)", cursor:"pointer" }}
           >
             {T[lang].analyzeFrame}
           </button>
-          <button onClick={onGoRedmap} className="vca-hover-darken" style={{ display:"flex", alignItems:"center", gap:"5px", padding:"7px 14px", borderRadius:"8px", backgroundColor:"var(--gray-900)", border:"none", color:"white", fontSize:"12px", fontWeight:700, cursor:"pointer" }}>
+          <button onClick={onGoRedmap} className="vca-hover-darken" style={{ display:"flex", alignItems:"center", gap:"5px", padding:"7px 14px", borderRadius:RADIUS.control, backgroundColor:"var(--gray-900)", border:"none", color:"white", fontSize:"12px", fontWeight:700, cursor:"pointer" }}>
             {T[lang].trackOnMap}
           </button>
         </div>
@@ -685,7 +691,9 @@ function HoverActionBtn({ label, icon, color, onClick }:
   return (
     <button onClick={onClick} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{
       display:"flex", alignItems:"center", justifyContent:"center", gap:"6px",
-      width:"108px", height:"28px", borderRadius:"999px", cursor:"pointer",
+      // Was a 999px pill. It has a fixed width AND a fixed height and it does something when
+      // pressed, which is the one thing the pill step is not for — see shared/controls.
+      width:"108px", height:"28px", borderRadius:RADIUS.control, cursor:"pointer",
       backgroundColor: hovered ? color : "white", border:`1.5px solid ${color}`, color: hovered ? "white" : color,
       fontSize:"12px", fontWeight:700, letterSpacing:"-0.22px",
       boxShadow: hovered ? "var(--shadow-popover)" : "var(--shadow-raised)",
@@ -720,7 +728,10 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
       // Capped flex-grow — absorbs the common case (a trailing row that's nearly full) without
       // letting a row with only 1-2 leftover cards balloon into an oversized full-width photo.
       ...(fill ? { flex:"1 1 136px", maxWidth:"160px" } : { width:"136px", flexShrink:0 }),
-      borderRadius:"8px", overflow:"hidden", backgroundColor:"white", cursor:"pointer",
+      // The card step, not the 8px it had: 8px is what the buttons sitting ON this tile use, so
+      // the tile and its own controls were drawing the same corner. The crop inside goes one
+      // step further in (RADIUS.inner, below).
+      borderRadius:RADIUS.card, overflow:"hidden", backgroundColor:"white", cursor:"pointer",
       border:"none", borderBottom:0,
       boxShadow:"var(--shadow-raised)",
       transform:"translateZ(0)",
@@ -732,13 +743,13 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
           show the camera name in their section header, so this would be a duplicate there. */}
       {showCam && (
         <div style={{ position:"absolute", top:7, left:8, fontSize:"10px", fontWeight:800, color:"white",
-          backgroundColor:"var(--label-plate)", padding:"4px 6px", borderRadius:"12px", letterSpacing:"-0.2px" }}>
+          backgroundColor:"var(--label-plate)", padding:"4px 6px", borderRadius:RADIUS.pill, letterSpacing:"-0.2px" }}>
           {p.cam}
         </div>
       )}
       {p.status === "RedFace" && (
         <div style={{ position:"absolute", bottom:"52px", left:8, fontSize:"10px", fontWeight:800, color:"white",
-          backgroundColor:"var(--danger-400)", padding:"1px 5px", borderRadius:"2px", letterSpacing:"0.3px" }}>
+          backgroundColor:"var(--danger-400)", padding:"1px 5px", borderRadius:RADIUS.pill, letterSpacing:"0.3px" }}>
           REDFACE
         </div>
       )}
@@ -794,7 +805,7 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
         </div>
       </div>
       <div style={{ position:"absolute", right:"6px", bottom:"40px", width:"60px", height:"60px",
-        borderRadius:"8px", overflow:"hidden", transform:"translateZ(0)",
+        borderRadius:RADIUS.inner, overflow:"hidden", transform:"translateZ(0)",
         // Only VIP gets a ring (brand purple) — Unknown has nothing to call out, and RedFace
         // already gets its own dedicated "REDFACE" badge on this card (below).
         boxShadow: p.status === "VIP" ? "0 0 0 2px var(--primary-400)" : "none" }}>
@@ -863,6 +874,8 @@ function ScrollToTopButton({ containerRef }: { containerRef: React.RefObject<HTM
       onClick={() => containerRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
       title={T[lang].scrollToTop}
       className="vca-hover-darken"
+      // 50% and not a radius step: a 40x40 round button is a circle, the same way an avatar or a
+      // status dot is. Turning it into an 8px box would make this the only square FAB in the app.
       style={{ position:"absolute", right:"20px", bottom:"20px", width:"40px", height:"40px", borderRadius:"50%",
         backgroundColor:"var(--gray-900)", color:"white", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
         boxShadow:"var(--shadow-popover)", zIndex:20 }}
@@ -893,12 +906,12 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
 
   return (
     <div style={{ position:"relative", flex:1, overflow:"hidden" }}>
-    <div ref={scrollRef} className="vca-hide-scrollbar" style={{ position:"absolute", inset:0, overflowY:"auto", padding:"20px 24px", backgroundColor:"white", borderRadius:"12px", boxSizing:"border-box" }}>
+    <div ref={scrollRef} className="vca-hide-scrollbar" style={{ position:"absolute", inset:0, overflowY:"auto", padding:"20px 24px", backgroundColor:"white", borderRadius:RADIUS.panel, boxSizing:"border-box" }}>
       <div style={{ display:"flex", alignItems:"center", gap:"12px", marginBottom:"12px" }}>
         <div ref={pickerRef} style={{ position:"relative", width:"152px" }}>
           <button onClick={() => setPickerOpen(o => !o)} className="vca-hover-row" style={{
             display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
-            padding:"8px 12px", borderRadius:"8px", backgroundColor:"white", border:"1px solid var(--primary-400)",
+            padding:"8px 12px", borderRadius:RADIUS.control, backgroundColor:"white", border:"1px solid var(--primary-400)",
             cursor:"pointer",
           }}>
             <span style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"14px", fontWeight:700, color:"var(--primary-400)",
@@ -911,8 +924,12 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
             </svg>
           </button>
           {pickerOpen && (
+            /* The panel step, one above the trigger that opens it — a dropdown that matched its
+               trigger's 8px read as a second box rather than something laid over the page. The
+               other two pickers on this screen (the filter select, the Re-ID camera picker) do
+               the same. */
             <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, width:"100%", backgroundColor:"white",
-              border:BORDER, borderRadius:"8px", boxShadow:"var(--shadow-popover)", zIndex:10, overflow:"hidden",
+              border:BORDER, borderRadius:RADIUS.panel, boxShadow:"var(--shadow-popover)", zIndex:10, overflow:"hidden",
               maxHeight:"320px", display:"flex", flexDirection:"column" }}>
               <button className="vca-picker-option" data-on={isAll}
                 onClick={() => { onSwitchCam(ALL_CAMERAS_ID); setPickerOpen(false); }} style={{
@@ -951,7 +968,7 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
                 a fault (Portal `TONE_STYLE.fault`). It was grey here while the map and the sidebar
                 said red — a third answer to the same fact, and grey reads as "no data". */}
             <span style={{ fontSize:"10px", fontWeight:800, color: runStateOf(camera.status)==="running" ? "var(--success-400)" : "var(--warning-500)",
-              backgroundColor: runStateOf(camera.status)==="running" ? "var(--success-100)" : "var(--warning-100)", padding:"4px 10px", borderRadius:"999px" }}>
+              backgroundColor: runStateOf(camera.status)==="running" ? "var(--success-100)" : "var(--warning-100)", padding:"4px 10px", borderRadius:RADIUS.pill }}>
               {runStateOf(camera.status)==="running" ? t.camOnline : t.camOffline}
             </span>
             <span style={{ fontSize:"12px", color:"var(--gray-400)" }}>IP {camera.ip} · {t.rtspConnected}</span>
@@ -1265,7 +1282,7 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
       `}</style>
       <button onClick={() => setOpen(o => !o)} className="vca-simple-select-trigger" style={{
         display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
-        height:"32px", padding:"0 10px", borderRadius:"8px", border:BORDER, backgroundColor:"white", cursor:"pointer",
+        height:"32px", padding:"0 10px", borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white", cursor:"pointer",
       }}>
         <span style={{ fontSize:"12px", fontWeight:600, color: value ? "var(--gray-900)" : "var(--gray-400)" }}>{value ? attr(value, lang) : t.filterAll}</span>
         <span style={{ display:"flex", color:"var(--gray-600)", transform: open ? "rotate(180deg)" : "none", transition:"transform 0.15s" }}>
@@ -1274,7 +1291,7 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
       </button>
       {open && (
         <div className="vca-hide-scrollbar" style={{ position:"absolute", top:"100%", left:0, marginTop:"4px", width:"100%", maxHeight:"220px", overflowY:"auto",
-          backgroundColor:"white", border:BORDER, borderRadius:"8px", boxShadow:"var(--shadow-popover)", zIndex:10 }}>
+          backgroundColor:"white", border:BORDER, borderRadius:RADIUS.panel, boxShadow:"var(--shadow-popover)", zIndex:10 }}>
           {["", ...options].map(o => {
             const active = value === o;
             return (
@@ -1394,13 +1411,13 @@ function SearchRunPane({ state, slow, onCancel, onRetry }:
     alignItems: "center", justifyContent: "center", gap: "12px", padding: "32px 24px", textAlign: "center",
   };
   const quietButton: React.CSSProperties = {
-    padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--gray-300)",
+    padding: "7px 14px", borderRadius: RADIUS.control, border: "1px solid var(--gray-300)",
     backgroundColor: "white", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", cursor: "pointer",
   };
   if (state === "running") {
     return (
       <div style={shell}>
-        <div className="vca-skeleton-pulse" style={{ width: "28px", height: "28px", borderRadius: "999px", backgroundColor: "var(--primary-200)" }} />
+        <div className="vca-skeleton-pulse" style={{ width: "28px", height: "28px", borderRadius: "50%", backgroundColor: "var(--primary-200)" }} />
         <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-600)" }}>{t.searchRunning}</p>
         {slow && <button onClick={onCancel} className="vca-hover-outline" style={quietButton}>{t.cancelSearch}</button>}
       </div>
@@ -1509,7 +1526,7 @@ function SlidingSearchPanel({ expanded, onExpand, sidebar }: { expanded: boolean
   return (
     <div style={{
       position:"relative", width: expanded ? "320px" : "48px", height:"100%", flexShrink:0,
-      transition:"width 0.28s cubic-bezier(0.32, 0.72, 0, 1)", overflow:"hidden", borderRadius:"12px",
+      transition:"width 0.28s cubic-bezier(0.32, 0.72, 0, 1)", overflow:"hidden", borderRadius:RADIUS.panel,
     }}>
       <div style={{ position:"absolute", inset:0, width:"320px" }}>
         {sidebar}
@@ -1529,7 +1546,7 @@ function SlidingSearchPanel({ expanded, onExpand, sidebar }: { expanded: boolean
           title={T[lang].smartSearch}
           className="vca-hover-row"
           style={{
-            width:"48px", height:"48px", borderRadius:"16px",
+            width:"48px", height:"48px", borderRadius:RADIUS.control,
             backgroundColor:"white", border:"none", display:"flex", alignItems:"center", justifyContent:"center",
             cursor:"pointer", color:"var(--gray-600)", flexShrink:0,
           }}
@@ -1652,14 +1669,14 @@ function LiveSearchSidebar({
   const filterLabelStyle: React.CSSProperties = { fontSize:"12px", fontWeight:700, color:"var(--gray-700)" };
 
   return (
-    <div style={{ width:"320px", flexShrink:0, backgroundColor:"white", borderRadius:"12px",
+    <div style={{ width:"320px", flexShrink:0, backgroundColor:"white", borderRadius:RADIUS.panel,
       display:"flex", flexDirection:"column", height:"100%", overflow:"hidden", boxSizing:"border-box" }}>
       <div style={{ padding:"20px 16px 12px", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:"8px", color:"var(--gray-900)" }}>
           <SearchIconSm size={16} />
           <span style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.28px" }}>{t.smartSearch}</span>
         </div>
-        <button onClick={onCollapse} aria-label={t.collapse} className="vca-hover-quiet" style={{ background:"none", border:"none", borderRadius:"6px", padding:"2px", cursor:"pointer", color:"var(--gray-400)", display:"flex" }}>
+        <button onClick={onCollapse} aria-label={t.collapse} className="vca-hover-quiet" style={{ background:"none", border:"none", borderRadius:RADIUS.inner, padding:"2px", cursor:"pointer", color:"var(--gray-400)", display:"flex" }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
       </div>
@@ -1716,12 +1733,12 @@ function LiveSearchSidebar({
               <div className="vca-thin-scrollbar" style={{ display:"flex", flexWrap:"nowrap", gap:"8px", overflowX:"auto", paddingBottom:"6px" }}>
                 {recentOrder.map(({ t, i }) => (
                   <button key={i} onClick={() => selectRecentTarget(i)} className="vca-hover-row" style={{
-                    flexShrink:0, display:"flex", alignItems:"center", gap:"8px", padding:"8px", borderRadius:"8px", cursor:"pointer",
+                    flexShrink:0, display:"flex", alignItems:"center", gap:"8px", padding:"8px", borderRadius:RADIUS.control, cursor:"pointer",
                     backgroundColor:"white",
                     border: selectedTarget === i ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
                     boxShadow: selectedTarget === i ? "0 2px 2px color-mix(in srgb, var(--primary-400) 10%, transparent)" : "none",
                   }}>
-                    <img src={t.face} alt="" style={{ width:"32px", height:"32px", borderRadius:"4px", objectFit:"cover" }} />
+                    <img src={t.face} alt="" style={{ width:"32px", height:"32px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
                     <div style={{ textAlign:"left" }}>
                       <p style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-900)", margin:0 }}>{t.label}</p>
                       <p style={{ fontSize:"10px", color:"var(--gray-400)", margin:0 }}>{t.time}</p>
@@ -1808,7 +1825,7 @@ function LiveSearchSidebar({
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>{t.licensePlate}</span>
             <div style={{ display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 10px",
-              borderRadius:"8px", border:BORDER, backgroundColor:"white" }}>
+              borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white" }}>
               <LicensePlateIconSm />
               <input
                 value={licensePlate}
@@ -1823,7 +1840,7 @@ function LiveSearchSidebar({
       </div>
 
       <div style={{ padding:"12px 16px 16px", display:"flex", gap:"8px", flexShrink:0 }}>
-        <button onClick={() => { reset(); setUploadedFace(null); setUploadedBody(null); }} aria-label={t.reset} className="vca-hover-outline" style={{ padding:"0 14px", height:"38px", borderRadius:"8px", border:"1px solid var(--gray-300)", backgroundColor:"white", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <button onClick={() => { reset(); setUploadedFace(null); setUploadedBody(null); }} aria-label={t.reset} className="vca-hover-outline" style={{ padding:"0 14px", height:"38px", borderRadius:RADIUS.control, border:"1px solid var(--gray-300)", backgroundColor:"white", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <ResetIconSm />
         </button>
         {/* Person search is granted per account (PortalUser.appSearch) — reconstructing where
@@ -1839,7 +1856,7 @@ function LiveSearchSidebar({
           // it in text for everyone else.
           aria-disabled={!searchAllowed}
           title={searchAllowed ? undefined : t.noSearchPermission}
-          style={{ flex:1, height:"38px", borderRadius:"8px", border:"none", backgroundColor: searchAllowed ? "var(--gray-900)" : "var(--gray-100)", color: searchAllowed ? "white" : "var(--gray-400)", fontSize:"13px", fontWeight:700, cursor: searchAllowed ? "pointer" : "not-allowed" }}>
+          style={{ flex:1, height:"38px", borderRadius:RADIUS.control, border:"none", backgroundColor: searchAllowed ? "var(--gray-900)" : "var(--gray-100)", color: searchAllowed ? "white" : "var(--gray-400)", fontSize:"13px", fontWeight:700, cursor: searchAllowed ? "pointer" : "not-allowed" }}>
           {t.search}
         </button>
       </div>
@@ -2181,7 +2198,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
       />
       {/* Matches the search sidebar's own rounding — this wide section had none at all before,
           so it sat as a sharp-cornered block next to the sidebar's 12px-rounded card. */}
-      <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", backgroundColor:"white", borderRadius:"12px" }}>
+      <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", backgroundColor:"white", borderRadius:RADIUS.panel }}>
         {searched
           ? !hasQuery
             ? <NoQueryPane vehicle={searchType === "VEHICLE"} />
@@ -2302,9 +2319,9 @@ function SimilaritySliderStyleTag() {
   return (
     <style>{`
       .vca-similarity-slider { -webkit-appearance:none; appearance:none; background:transparent; outline:none; border:none; }
-      .vca-similarity-slider::-webkit-slider-runnable-track { height:4px; border-radius:999px; background:var(--gray-200); border:none; }
+      .vca-similarity-slider::-webkit-slider-runnable-track { height:4px; border-radius:var(--radius-pill); background:var(--gray-200); border:none; }
       .vca-similarity-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--primary-400); border:none; margin-top:-5px; cursor:pointer; }
-      .vca-similarity-slider::-moz-range-track { height:4px; border-radius:999px; background:var(--gray-200); border:none; }
+      .vca-similarity-slider::-moz-range-track { height:4px; border-radius:var(--radius-pill); background:var(--gray-200); border:none; }
       .vca-similarity-slider::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--primary-400); border:none; cursor:pointer; }
     `}</style>
   );
@@ -2327,12 +2344,16 @@ function SimilarityControl({ value, onChange, height = 36, cost }: { value:numbe
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
       <SimilaritySliderStyleTag />
-      <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:"999px", padding:"2px", height }}>
+      {/* A segmented track with a set height, so it takes the track shape the shared
+          SegmentedControl draws (8px outer, 6px segments) rather than the pill it had. The pill
+          here was the slider's shape — and the track below IS a pill, which is the case the rule
+          keeps it for. */}
+      <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:RADIUS.control, padding:"2px", height }}>
         {[60,70,80,90].map(v => {
           const active = value === v;
           return (
             <button key={v} onClick={() => onChange(v)} style={{
-              flex:1, borderRadius:"999px", border:"none", cursor:"pointer",
+              flex:1, borderRadius:RADIUS.inner, border:"none", cursor:"pointer",
               backgroundColor: active ? "white" : "transparent",
               color: active ? "var(--primary-400)" : "var(--gray-400)", fontWeight: active ? 700 : 600, fontSize:"12px",
             }}>{v}%</button>
@@ -2368,7 +2389,7 @@ function AttrChip({ label, active, onClick, size = "md" }: { label:string; activ
   const compact = size === "sm";
   return (
     <button onClick={onClick} className="vca-hover-darken" style={{
-      padding: compact ? "5px 12px" : "6px 16px", borderRadius:"100px", cursor:"pointer",
+      padding: compact ? "5px 12px" : "6px 16px", borderRadius:RADIUS.pill, cursor:"pointer",
       fontSize: compact ? "12px" : "13px", whiteSpace:"nowrap",
       fontWeight: active ? 700 : 600,
       color: active ? "var(--primary-400)" : "var(--gray-700)",
@@ -2383,7 +2404,7 @@ function AttrChip({ label, active, onClick, size = "md" }: { label:string; activ
 // same kind of information (what's actually driving these results) read as two different things.
 function FilterChip({ children, icon, avatar, onRemove }: { children:React.ReactNode; icon?:React.ReactNode; avatar?:string; onRemove?:()=>void }) {
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:"6px", padding: avatar ? "4px 8px 4px 4px" : "6px 16px", borderRadius:"100px",
+    <div style={{ display:"flex", alignItems:"center", gap:"6px", padding: avatar ? "4px 8px 4px 4px" : "6px 16px", borderRadius:RADIUS.pill,
       backgroundColor:"var(--primary-100)", border:"1px solid var(--primary-400)", fontSize:"12px", fontWeight:700, color:"var(--primary-400)", whiteSpace:"nowrap", flexShrink:0 }}>
       {avatar && <img src={avatar} alt="" style={{ width:22, height:22, borderRadius:"50%", objectFit:"cover" }} />}
       {icon}{children}
@@ -2405,14 +2426,14 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
   return (
     <div onClick={onClick} className="vca-hover-card" style={{
       position:"relative", width:"100%", height:"259px",
-      borderRadius:"8px", overflow:"hidden", backgroundColor:"var(--gray-900)", cursor:"pointer",
+      borderRadius:RADIUS.card, overflow:"hidden", backgroundColor:"var(--gray-900)", cursor:"pointer",
       transform:"translateZ(0)",
     }}>
       <img src={p.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
       <div style={{ position:"absolute", left:0, right:0, bottom:"64px", height:"80px",
         background:"linear-gradient(to top, rgba(24, 17, 39,0.72), rgba(24, 17, 39,0))", pointerEvents:"none" }} />
       <div style={{ position:"absolute", top:8, left:8, fontSize:"10px", fontWeight:800, color:"white",
-        backgroundColor:"var(--label-plate)", padding:"4px 8px", borderRadius:"12px", letterSpacing:"-0.2px" }}>
+        backgroundColor:"var(--label-plate)", padding:"4px 8px", borderRadius:RADIUS.pill, letterSpacing:"-0.2px" }}>
         {p.cam}
       </div>
       {/* Similarity is a property of the match itself (how well this result answers the search),
@@ -2427,7 +2448,7 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
           that one of its hits is already flagged. */}
       {p.status === "RedFace" && (
         <div style={{ position:"absolute", bottom:"60px", left:8, fontSize:"10px", fontWeight:800, color:"white",
-          backgroundColor:"var(--danger-400)", padding:"1px 5px", borderRadius:"2px", letterSpacing:"0.3px" }}>
+          backgroundColor:"var(--danger-400)", padding:"1px 5px", borderRadius:RADIUS.pill, letterSpacing:"0.3px" }}>
           REDFACE
         </div>
       )}
@@ -2449,7 +2470,7 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
           stock-photo pool, which would show a different person's face here than the body photo
           filling the rest of the card. objectPosition "top" favors the head/shoulders area. */}
       {!p.plate && <img src={p.url} alt="" style={{ position:"absolute", right:"10px", bottom:"38px", width:"56px", height:"56px",
-        borderRadius:"8px", boxShadow:"0 0 0 2px white", transform:"translateZ(0)",
+        borderRadius:RADIUS.inner, boxShadow:"0 0 0 2px white", transform:"translateZ(0)",
         objectFit:"cover", objectPosition:"top", display:"block", backgroundColor:"white" }} />}
     </div>
   );
@@ -2513,12 +2534,12 @@ function SmartSearchResults({ state, results, emptyReason, onCardClick, onRefine
             </FilterChip>
           )}
           {activeChips.map((c, i) => <FilterChip key={i}>{c}</FilterChip>)}
-          <button onClick={onReset} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:"6px", cursor:"pointer",
+          <button onClick={onReset} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:RADIUS.control, cursor:"pointer",
             fontSize:"13px", fontWeight:600, color:"var(--gray-600)", flexShrink:0, padding:"4px 6px" }}>
             <ResetIconSm /> {t.resetFilters}
           </button>
         </div>
-        <button onClick={onRefine} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:"6px", cursor:"pointer", padding:"4px 6px",
+        <button onClick={onRefine} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:RADIUS.control, cursor:"pointer", padding:"4px 6px",
           fontSize:"13px", fontWeight:700, color:"var(--gray-900)", flexShrink:0 }}>
           <SlidersIconSm size={14} /> {t.refineSearch}
         </button>
@@ -2534,7 +2555,7 @@ function SmartSearchResults({ state, results, emptyReason, onCardClick, onRefine
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
             <span style={{ fontSize:"12px", color:"var(--gray-400)" }}>{t.resultsAsOf(refreshedAt.toLocaleTimeString(lang === "ko" ? "ko-KR" : "en-US", { hour12:false }))}</span>
-            <button onClick={() => setRefreshedAt(new Date())} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:"6px", padding:"4px 6px", cursor:"pointer", fontSize:"12px", fontWeight:700, color:"var(--gray-600)" }}>
+            <button onClick={() => setRefreshedAt(new Date())} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:RADIUS.control, padding:"4px 6px", cursor:"pointer", fontSize:"12px", fontWeight:700, color:"var(--gray-600)" }}>
               <RefreshIconSm /> {t.refresh}
             </button>
           </div>
@@ -3040,7 +3061,7 @@ function MetaDivider() {
 
 function ClusterMatchCard({ item, onClick }: { item: MatchItem; onClick?: () => void }) {
   return (
-    <div onClick={onClick} className={onClick ? "vca-hover-card" : undefined} style={{ backgroundColor:"white", borderRadius:"8px", overflow:"hidden", width:"133px", flexShrink:0, display:"flex", flexDirection:"column", gap:"8px", cursor: onClick ? "pointer" : "default" }}>
+    <div onClick={onClick} className={onClick ? "vca-hover-card" : undefined} style={{ backgroundColor:"white", borderRadius:RADIUS.card, overflow:"hidden", width:"133px", flexShrink:0, display:"flex", flexDirection:"column", gap:"8px", cursor: onClick ? "pointer" : "default" }}>
       <div style={{ position:"relative", height:"160px", overflow:"hidden" }}>
         <img src={item.body} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
         <span style={{ position:"absolute", top:6, left:6 }}><ScoreBadge score={item.similarity} /></span>
@@ -3057,15 +3078,15 @@ function ClusterMatchCard({ item, onClick }: { item: MatchItem; onClick?: () => 
 
 function ClusterCard({ cluster, onNavigateTab, onMatchClick }: { cluster: ReidCluster; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number], label?: string) => void; onMatchClick?: (id: number) => void }) {
   return (
-    <div style={{ backgroundColor:"white", borderRadius:"12px", padding:"12px 24px", display:"flex", flexDirection:"column", gap:"16px", width:"100%", boxSizing:"border-box" }}>
+    <div style={{ backgroundColor:"white", borderRadius:RADIUS.card, padding:"12px 24px", display:"flex", flexDirection:"column", gap:"16px", width:"100%", boxSizing:"border-box" }}>
       <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:"16px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"16px", minWidth:0 }}>
-          <img src={cluster.thumbnail} alt="" style={{ width:"48px", height:"48px", borderRadius:"8px", objectFit:"cover", flexShrink:0 }} />
+          <img src={cluster.thumbnail} alt="" style={{ width:"48px", height:"48px", borderRadius:RADIUS.inner, objectFit:"cover", flexShrink:0 }} />
           <div style={{ display:"flex", flexDirection:"column", gap:"4px", minWidth:0 }}>
             <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
               <span style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.28px", whiteSpace:"nowrap" }}>{cluster.title}</span>
               {cluster.isVip && (
-                <span style={{ fontSize:"10px", fontWeight:800, color:"var(--primary-400)", backgroundColor:"var(--primary-100)", padding:"2px 7px", borderRadius:"999px", letterSpacing:"-0.2px" }}>VIP</span>
+                <span style={{ fontSize:"10px", fontWeight:800, color:"var(--primary-400)", backgroundColor:"var(--primary-100)", padding:"2px 7px", borderRadius:RADIUS.pill, letterSpacing:"-0.2px" }}>VIP</span>
               )}
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:"12px", flexWrap:"wrap" }}>
@@ -3078,7 +3099,7 @@ function ClusterCard({ cluster, onNavigateTab, onMatchClick }: { cluster: ReidCl
             </div>
           </div>
         </div>
-        <button onClick={() => onNavigateTab?.(cluster.action as DataTab, cluster.subject, cluster.title)} className="vca-hover-darken" style={{ display:"flex", alignItems:"center", gap:"6px", padding:"6px 12px", borderRadius:"8px",
+        <button onClick={() => onNavigateTab?.(cluster.action as DataTab, cluster.subject, cluster.title)} className="vca-hover-darken" style={{ display:"flex", alignItems:"center", gap:"6px", padding:"6px 12px", borderRadius:RADIUS.control,
           backgroundColor:"var(--gray-100)", border:"none", cursor:"pointer", flexShrink:0 }}>
           <RedFaceIconSm />
           <span style={{ fontSize:"13px", fontWeight:600, color:"var(--gray-600)", letterSpacing:"-0.26px", whiteSpace:"nowrap" }}>{cluster.action}</span>
@@ -3303,7 +3324,8 @@ function ImageDropzoneBox({ icon, label, previewSrc, onClick, onClear, aspect }:
   return (
     <div onClick={onClick} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       className={onClick ? "vca-image-dropzone-clickable" : undefined} style={{
-      ...sizeStyle, borderRadius:"8px", border:"1px dashed var(--gray-300)", backgroundColor:"white",
+      // A drop zone is a surface you drop onto, not a control in a row — same step as a popover.
+      ...sizeStyle, borderRadius:RADIUS.panel, border:"1px dashed var(--gray-300)", backgroundColor:"white",
       display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"12px", overflow:"hidden", position:"relative",
       padding:"20px 12px", boxSizing:"border-box" }}>
       {onClick && <ImageDropzoneHoverStyleTag />}
@@ -3357,7 +3379,7 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
     <div ref={ref} style={{ position:"relative", width:"186px" }}>
       <button onClick={() => setOpen(o => !o)} className="vca-hover-row" style={{
         display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
-        padding:"8px 12px", borderRadius:"8px", backgroundColor:"white", border:"1px solid var(--primary-400)",
+        padding:"8px 12px", borderRadius:RADIUS.control, backgroundColor:"white", border:"1px solid var(--primary-400)",
         cursor:"pointer",
       }}>
         <span style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"14px", fontWeight:700, color:"var(--primary-400)",
@@ -3371,7 +3393,7 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
       </button>
       {open && (
         <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, width:"100%", backgroundColor:"white",
-          border:BORDER, borderRadius:"8px", boxShadow:"var(--shadow-popover)", zIndex:10, overflow:"hidden",
+          border:BORDER, borderRadius:RADIUS.panel, boxShadow:"var(--shadow-popover)", zIndex:10, overflow:"hidden",
           maxHeight:"320px", display:"flex", flexDirection:"column" }}>
           <button className="vca-picker-option" data-on={!value} onClick={() => { onChange(""); setOpen(false); }} style={{
             display:"flex", alignItems:"center", width:"100%", textAlign:"left", padding:"8px 12px", border:"none", cursor:"pointer", flexShrink:0,
@@ -3847,18 +3869,18 @@ function CandidateCard({ c, selected, onClick }:
       style={{
       position:"relative", width:"144px", backgroundColor:"white",
       border: selected ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
-      borderRadius:"10px", padding:"8px", cursor:"pointer", display:"flex", flexDirection:"column", gap:"8px",
+      borderRadius:RADIUS.card, padding:"8px", cursor:"pointer", display:"flex", flexDirection:"column", gap:"8px",
       boxShadow: selected ? "0 4px 8px color-mix(in srgb, var(--primary-400) 11%, transparent)" : "none",
     }}>
-      <div style={{ position:"relative", width:"128px", height:"133px", borderRadius:"6px", overflow:"hidden" }}>
+      <div style={{ position:"relative", width:"128px", height:"133px", borderRadius:RADIUS.inner, overflow:"hidden" }}>
         <img src={c.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
         <span style={{ position:"absolute", top:6, right:6 }}><ScoreBadge score={c.similarity} /></span>
         <span style={{ position:"absolute", bottom:6, left:6, fontSize:"10px", fontWeight:600, color:"white",
           fontFamily: c.plate ? "monospace" : undefined,
-          backgroundColor:"var(--label-plate)", border:"1px solid white", padding:"2px 6px", borderRadius:"4px" }}>{c.plate ?? c.cam}</span>
+          backgroundColor:"var(--label-plate)", border:"1px solid white", padding:"2px 6px", borderRadius:RADIUS.pill }}>{c.plate ?? c.cam}</span>
         {selected && (
           <span style={{ position:"absolute", top:6, left:6, display:"flex", alignItems:"center", gap:"3px",
-            backgroundColor:"var(--primary-400)", color:"white", fontSize:"10px", fontWeight:800, padding:"2px 6px", borderRadius:"4px" }}>
+            backgroundColor:"var(--primary-400)", color:"white", fontSize:"10px", fontWeight:800, padding:"2px 6px", borderRadius:RADIUS.pill }}>
             <CheckIconSm /> {t.selectedLabel}
           </span>
         )}
@@ -3966,7 +3988,7 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"8px", width:"100%" }}>
       <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-      <div style={{ flex:1, display:"flex", alignItems:"center", gap:"6px", height:"30px", padding:"0 8px", borderRadius:"6px", border:BORDER, backgroundColor:"white", minWidth:0 }}>
+      <div style={{ flex:1, display:"flex", alignItems:"center", gap:"6px", height:"30px", padding:"0 8px", borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white", minWidth:0 }}>
         <SearchIconSm />
         <input
           value={query} onChange={e => setQuery(e.target.value)} placeholder={t.searchRegistry}
@@ -3975,7 +3997,7 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
         {query && (
           <button onClick={() => setQuery("")} aria-label={t.clearSearch} className="vca-hover-darken" style={{
             display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
-            width:"16px", height:"16px", borderRadius:"999px", border:"none", backgroundColor:"var(--gray-300)", cursor:"pointer", padding:0,
+            width:"16px", height:"16px", borderRadius:RADIUS.inner, border:"none", backgroundColor:"var(--gray-300)", cursor:"pointer", padding:0,
           }}>
             <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
               <path d="M1 1L7 7M7 1L1 7" stroke="white" strokeWidth="1.4" strokeLinecap="round" />
@@ -3984,12 +4006,12 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
         )}
       </div>
         {layout === "grid" && (
-          <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:"999px", padding:"2px", flexShrink:0 }}>
+          <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:RADIUS.control, padding:"2px", flexShrink:0 }}>
             {([["reg", t.sortRegistered], ["abc", t.sortAbc]] as const).map(([id, label]) => {
               const active = sortMode === id;
               return (
                 <button key={id} onClick={() => setSortMode(id)} style={{
-                  padding:"4px 8px", borderRadius:"999px", border:"none", cursor:"pointer",
+                  padding:"4px 8px", borderRadius:RADIUS.inner, border:"none", cursor:"pointer",
                   backgroundColor: active ? "white" : "transparent",
                   color: active ? "var(--gray-900)" : "var(--gray-400)", fontWeight: active ? 700 : 600, fontSize:"10px",
                   boxShadow: active ? "var(--shadow-raised)" : "none",
@@ -4016,7 +4038,10 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
                   aria-disabled={!!block}
                   title={block ? `${person.name} — ${blockWhy[block]}` : person.name}
                   style={{
-                    display:"flex", alignItems:"center", gap:"6px", padding:"4px 12px 4px 4px", borderRadius:"999px",
+                    /* Stays a pill: its width follows the person's name, it has no set height and
+                       pressing it switches the one target condition on. The photo inside is a
+                       circle because it is a face, not because of a radius step. */
+                    display:"flex", alignItems:"center", gap:"6px", padding:"4px 12px 4px 4px", borderRadius:RADIUS.pill,
                     backgroundColor: active ? "var(--primary-100)" : block ? "var(--gray-100)" : "white",
                     border: active ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
                     cursor: block ? "default" : "pointer", flexShrink:0,
@@ -4244,7 +4269,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
     || !!dateRange.start || !!dateRange.end || licensePlate.trim() !== "" || threshold !== 70;
 
   return (
-    <div style={{ backgroundColor:"white", border:BORDER, borderRadius:"16px", boxShadow:"var(--shadow-modal)",
+    <div style={{ backgroundColor:"white", border:BORDER, borderRadius:RADIUS.card, boxShadow:"var(--shadow-modal)",
       /* 100%, not 92vh. The card does not start at the top of the window — it sits under the
          navbar and the tab strip, about 145px down — so 92vh of card from there ran off the
          bottom: measured, 21px and one button out of reach at 1440x900, and 96px with SEVEN
@@ -4254,7 +4279,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
 
       <div style={{ padding:"16px 24px", borderBottom:BORDER, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-          <div style={{ width:"34px", height:"34px", borderRadius:"8px", backgroundColor:"var(--primary-100)",
+          <div style={{ width:"34px", height:"34px", borderRadius:RADIUS.control, backgroundColor:"var(--primary-100)",
             display:"flex", alignItems:"center", justifyContent:"center", color:"var(--primary-400)", flexShrink:0 }}>
             <UserCogIconSm />
           </div>
@@ -4289,25 +4314,21 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
         <div className="vca-hide-scrollbar" style={{ flex:1, minHeight:0,
           padding:"20px", overflowY:"auto", display:"flex", flexDirection:"column", gap:"16px" }}>
 
-          {/* Same fix as Smart Search's toggle: var(--gray-100) on this panel's own var(--gray-50) background is
-              two near-identical light grays, so the whole well (and VEHICLE's inactive state)
-              barely registered against the page at all. */}
-          <div style={{ display:"flex", backgroundColor:"var(--gray-200)", border:"1px solid var(--gray-300)", borderRadius:"10px", padding:"1px", width:"100%" }}>
-            {(["PERSON","VEHICLE"] as const).map(t => {
-              const active = searchType === t;
-              return (
-                <button key={t} onClick={() => setSearchType(t)} style={{
-                  flex:1, borderRadius:"9px", border:"none", cursor:"pointer",
-                  backgroundColor: active ? "white" : "transparent",
-                  color: active ? "var(--primary-400)" : "var(--gray-600)", fontWeight: active ? 700 : 600,
-                  fontSize:"13px", letterSpacing:"-0.2px", padding:"6px 0",
-                  display:"flex", alignItems:"center", justifyContent:"center", gap:"6px",
-                }}>
-                  {t === "PERSON" ? <PersonIconSm/> : <VehicleIconSm/>} {t}
-                </button>
-              );
-            })}
-          </div>
+          {/* The shared control — 레드맵's 사람/차량, the dashboard's EVENTS/SYSTEM and this are one
+              widget now, not three drawings of one idea. See shared/SegmentedControl.
+              The grey override stays: var(--gray-100) (the component's own track) on this panel's
+              var(--gray-50) background is two near-identical light grays, so the whole well — and
+              with it VEHICLE's inactive state — barely registered against the page at all. */}
+          <SegmentedControl<"PERSON"|"VEHICLE">
+            value={searchType}
+            onChange={setSearchType}
+            fill
+            style={{ backgroundColor:"var(--gray-200)", border:"1px solid var(--gray-300)", width:"100%" }}
+            options={[
+              { value:"PERSON",  label:"PERSON",  icon:() => <PersonIconSm/> },
+              { value:"VEHICLE", label:"VEHICLE", icon:() => <VehicleIconSm/> },
+            ]}
+          />
 
           {!isVehicle && (
             <>
@@ -4327,12 +4348,12 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                 <div className="vca-thin-scrollbar" style={{ display:"flex", flexWrap:"nowrap", gap:"8px", overflowX:"auto", paddingBottom:"6px" }}>
                   {recentOrder.map(({ t, i }) => (
                     <button key={i} onClick={() => selectRecentTarget(i)} className="vca-hover-row" style={{
-                      flexShrink:0, display:"flex", alignItems:"center", gap:"8px", padding:"8px", borderRadius:"8px", cursor:"pointer",
+                      flexShrink:0, display:"flex", alignItems:"center", gap:"8px", padding:"8px", borderRadius:RADIUS.control, cursor:"pointer",
                       backgroundColor:"white",
                       border: selectedTarget === i ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
                       boxShadow: selectedTarget === i ? "0 2px 2px color-mix(in srgb, var(--primary-400) 10%, transparent)" : "none",
                     }}>
-                      <img src={t.face} alt="" style={{ width:"32px", height:"32px", borderRadius:"4px", objectFit:"cover" }} />
+                      <img src={t.face} alt="" style={{ width:"32px", height:"32px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
                       <div style={{ textAlign:"left" }}>
                         <p style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-900)", margin:0 }}>{t.label}</p>
                         <p style={{ fontSize:"10px", color:"var(--gray-400)", margin:0 }}>{t.time}</p>
@@ -4358,8 +4379,8 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                 <div style={{ display:"flex", gap:"10px" }}>
                   <div onClick={() => faceInputRef.current?.click()} className="vca-image-dropzone-clickable"
                     onMouseEnter={() => setHoverImageBox("face")} onMouseLeave={() => setHoverImageBox(null)} style={hasFace
-                    ? { flex:1, height:"84px", borderRadius:"8px", border:"1px solid var(--primary-300)", backgroundColor:"var(--primary-100)", overflow:"hidden", position:"relative", cursor:"pointer" }
-                    : { flex:1, height:"84px", borderRadius:"8px", border:"1px dashed var(--gray-300)", backgroundColor:"white", cursor:"pointer",
+                    ? { flex:1, height:"84px", borderRadius:RADIUS.panel, border:"1px solid var(--primary-300)", backgroundColor:"var(--primary-100)", overflow:"hidden", position:"relative", cursor:"pointer" }
+                    : { flex:1, height:"84px", borderRadius:RADIUS.panel, border:"1px dashed var(--gray-300)", backgroundColor:"white", cursor:"pointer",
                         display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"6px", color:"var(--gray-400)" }
                   }>
                     {hasFace ? (
@@ -4390,8 +4411,8 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                   </div>
                   <div onClick={() => bodyInputRef.current?.click()} className="vca-image-dropzone-clickable"
                     onMouseEnter={() => setHoverImageBox("body")} onMouseLeave={() => setHoverImageBox(null)} style={hasBody
-                    ? { flex:1, height:"84px", borderRadius:"8px", border:"1px solid var(--primary-300)", backgroundColor:"var(--primary-100)", overflow:"hidden", position:"relative", cursor:"pointer" }
-                    : { flex:1, height:"84px", borderRadius:"8px", border:"1px dashed var(--gray-300)", backgroundColor:"white", cursor:"pointer",
+                    ? { flex:1, height:"84px", borderRadius:RADIUS.panel, border:"1px solid var(--primary-300)", backgroundColor:"var(--primary-100)", overflow:"hidden", position:"relative", cursor:"pointer" }
+                    : { flex:1, height:"84px", borderRadius:RADIUS.panel, border:"1px dashed var(--gray-300)", backgroundColor:"white", cursor:"pointer",
                         display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"6px", color:"var(--gray-400)" }
                   }>
                     {hasBody ? (
@@ -4434,7 +4455,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
               <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.licensePlate}</span>
               <div style={{ display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 10px",
-                borderRadius:"8px", border:BORDER, backgroundColor:"white" }}>
+                borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white" }}>
                 <LicensePlateIconSm />
                 <input
                   value={licensePlate}
@@ -4510,13 +4531,13 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
               <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-800)" }}>{t.searchResults}</span>
-              <span style={{ fontSize:"10px", fontWeight:800, color:"var(--primary-400)", backgroundColor:"var(--primary-100)", padding:"2px 6px", borderRadius:"4px" }}>{candidates.length}</span>
+              <span style={{ fontSize:"10px", fontWeight:800, color:"var(--primary-400)", backgroundColor:"var(--primary-100)", padding:"2px 6px", borderRadius:RADIUS.pill }}>{candidates.length}</span>
             </div>
             {/* A muted, easy-to-miss line read as an afterthought — once candidates actually
                 exist, picking one is the ONE thing left to do, so it gets a filled, colored
                 callout instead until a card's actually clicked. */}
             {candidates.length > 0 && effectiveSelected === null && (
-              <span style={{ fontSize:"12px", fontWeight:700, color:"var(--primary-400)", backgroundColor:"var(--primary-100)", padding:"4px 10px", borderRadius:"999px" }}>
+              <span style={{ fontSize:"12px", fontWeight:700, color:"var(--primary-400)", backgroundColor:"var(--primary-100)", padding:"4px 10px", borderRadius:RADIUS.pill }}>
                 ↓ {t.clickCandidate}
               </span>
             )}
@@ -4554,7 +4575,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
       </div>
 
       <div style={{ padding:"16px 24px", borderTop:BORDER, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-        <button onClick={reset} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:"6px", padding:"4px 6px", cursor:"pointer", fontSize:"12px", fontWeight:600, color:"var(--gray-900)" }}>
+        <button onClick={reset} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:RADIUS.control, padding:"4px 6px", cursor:"pointer", fontSize:"12px", fontWeight:600, color:"var(--gray-900)" }}>
           <ResetIconSm /> {t.resetFilters}
         </button>
         <div style={{ display:"flex", gap:"8px" }}>
@@ -4566,9 +4587,9 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
               press, and nothing happened. A control that answers a click by doing nothing is
               worse than no control, because the operator concludes the screen is stuck. */}
           {onCancel && (
-            <button onClick={onCancel} className="vca-hover-outline" style={{ padding:"8px 12px", borderRadius:"8px", border:"1px solid var(--gray-300)", backgroundColor:"white", fontSize:"13px", fontWeight:700, color:"var(--gray-600)", cursor:"pointer" }}>{t.cancel}</button>
+            <button onClick={onCancel} className="vca-hover-outline" style={{ padding:"8px 12px", borderRadius:RADIUS.control, border:"1px solid var(--gray-300)", backgroundColor:"white", fontSize:"13px", fontWeight:700, color:"var(--gray-600)", cursor:"pointer" }}>{t.cancel}</button>
           )}
-          <button disabled={!selectedObj} onClick={() => selectedObj && onConfirm(selectedObj)} className="vca-hover-darken" style={{ padding:"8px 12px", borderRadius:"8px", border:"none",
+          <button disabled={!selectedObj} onClick={() => selectedObj && onConfirm(selectedObj)} className="vca-hover-darken" style={{ padding:"8px 12px", borderRadius:RADIUS.control, border:"none",
             backgroundColor: selectedObj ? "var(--primary-400)" : "var(--primary-200)", color:"white", fontSize:"13px", fontWeight:700,
             cursor: selectedObj ? "pointer" : "default" }}>
             {t.setPrimaryTarget}
@@ -4711,7 +4732,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
             display:"flex", alignItems:"flex-start", justifyContent:"space-between", padding:"24px 24px 0", boxSizing:"border-box" }}>
             <span style={{ fontSize:"10px", fontWeight:800, letterSpacing:"0.4px",
               backgroundColor: r.meta?.labelBg ?? "color-mix(in srgb, var(--gray-0) 85%, transparent)", color: r.meta?.labelColor ?? "var(--primary-400)",
-              padding:"4px 8px", borderRadius:"4px" }}>
+              padding:"4px 8px", borderRadius:RADIUS.pill }}>
               {/* Was "APEX · PRIMARY TARGET ZONE". "Apex" only named the tip of the pyramid shape
                   — geometry, not information — and the words after it already said what the band
                   holds. The tier bands name a tier because there are three of them to tell apart;
@@ -4720,7 +4741,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
             </span>
             <span style={{ fontSize:"10px", fontWeight:800, letterSpacing:"0.4px",
               backgroundColor: r.meta?.labelBg ?? "color-mix(in srgb, var(--gray-0) 85%, transparent)", color: r.meta?.labelColor ?? "var(--primary-400)",
-              padding:"4px 8px", borderRadius:"4px" }}>
+              padding:"4px 8px", borderRadius:RADIUS.pill }}>
               {/* Was "CENTRAL TARGET PROFILE", which restated the label opposite it. The tier
                   bands put their co-capture range here, so the parallel fact for this band is how
                   many associates the graph below it found. */}
@@ -4747,11 +4768,15 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
       {primaryTarget && (
         <div style={{ position:"absolute", left:"50%", top:`${apexRow.center}%`, transform:"translate(-50%,-50%)",
           display:"flex", flexDirection:"column", alignItems:"center", gap:"4px", zIndex:5 }}>
-          <div className="redface-avatar-hover" style={{ width:64, height:64, borderRadius:"12px", border:"3px solid var(--primary-400)", backgroundColor:"white",
+          {/* Frame and photo are one step apart (8 outside, 6 inside) so the inner corner sits
+              concentric inside the ring instead of floating in it. The photo's corner used to be
+              computed from the frame's — 12px and 9px here, `${10 - nodeBorder}px` on the tier
+              nodes below — which is three radius values for two pictures of the same kind. */}
+          <div className="redface-avatar-hover" style={{ width:64, height:64, borderRadius:RADIUS.control, border:"3px solid var(--primary-400)", backgroundColor:"white",
             boxSizing:"border-box", boxShadow:"0 8px 20px color-mix(in srgb, var(--primary-400) 25%, transparent)" }}>
-            <img src={primaryTarget.face} alt="" style={{ width:"100%", height:"100%", borderRadius:"9px", objectFit:"cover", display:"block" }} />
+            <img src={primaryTarget.face} alt="" style={{ width:"100%", height:"100%", borderRadius:RADIUS.inner, objectFit:"cover", display:"block" }} />
           </div>
-          <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"2px 8px", borderRadius:"999px", letterSpacing:"0.4px" }}>{t.primaryBadge}</span>
+          <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"2px 8px", borderRadius:RADIUS.pill, letterSpacing:"0.4px" }}>{t.primaryBadge}</span>
         </div>
       )}
 
@@ -4771,15 +4796,15 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
             // judgement off the screen with it — the next shift would find a graph that simply
             // never had this person in it, and no way to see that somebody already looked.
             opacity: verdictOf(n.id) === "false_positive" ? 0.4 : 1 }}>
-            <div className="redface-avatar-hover" onClick={() => onNodeClick(r.key, n)} style={{ position:"relative", width:r.meta!.nodeSize, height:r.meta!.nodeSize, borderRadius:"10px",
+            <div className="redface-avatar-hover" onClick={() => onNodeClick(r.key, n)} style={{ position:"relative", width:r.meta!.nodeSize, height:r.meta!.nodeSize, borderRadius:RADIUS.control,
               border:`${r.meta!.nodeBorder}px solid ${r.meta!.nodeColor}`, backgroundColor:"white", boxSizing:"border-box",
               boxShadow: n.id === selectedNodeId ? "0 0 0 3px color-mix(in srgb, var(--primary-400) 45%, transparent), 0 2px 8px rgba(24, 17, 39,0.15)" : "0 2px 8px rgba(24, 17, 39,0.15)" }}>
-              <img src={n.face} alt="" style={{ width:"100%", height:"100%", borderRadius:`${10 - r.meta!.nodeBorder}px`, objectFit:"cover", display:"block" }} />
+              <img src={n.face} alt="" style={{ width:"100%", height:"100%", borderRadius:RADIUS.inner, objectFit:"cover", display:"block" }} />
             </div>
             {/* The co-captures in the range on screen — the same rows the Joint Evidence panel
                 pages through when this node is opened. n.count is the pair's whole history, which
                 is what puts them in this tier but not what the date filter left. */}
-            <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor:r.meta!.nodeColor, padding:"3px 7px", borderRadius:"999px" }}>{nodeEvents.length}</span>
+            <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor:r.meta!.nodeColor, padding:"3px 7px", borderRadius:RADIUS.pill }}>{nodeEvents.length}</span>
           </div>
         );
       }))}
@@ -5118,7 +5143,7 @@ function TimelinePager({ page, pageCount, onPage }: {
     fontSize: "11px", fontWeight: active ? 800 : 600,
     color: disabled ? "var(--gray-300)" : active ? "white" : "var(--gray-600)",
     backgroundColor: active ? "var(--gray-800)" : "transparent",
-    border: active ? "none" : BORDER, borderRadius: "6px",
+    border: active ? "none" : BORDER, borderRadius: RADIUS.inner,
     cursor: disabled ? "default" : "pointer",
   });
   return (
@@ -5153,7 +5178,7 @@ function SharedFrameLightbox({ event, assocLabel, index, total, onStep, onClose,
     <button onClick={() => onStep(delta)} aria-label={label} title={label}
       disabled={delta < 0 ? index === 0 : index === total - 1}
       className="vca-hover-darken"
-      style={{ width:"32px", height:"32px", borderRadius:"8px", border:"none", flexShrink:0,
+      style={{ width:"32px", height:"32px", borderRadius:RADIUS.control, border:"none", flexShrink:0,
         display:"flex", alignItems:"center", justifyContent:"center",
         backgroundColor:"var(--gray-100)",
         // The cursor follows `disabled` too: at the first or last frame this button said
@@ -5169,7 +5194,7 @@ function SharedFrameLightbox({ event, assocLabel, index, total, onStep, onClose,
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position:"fixed", inset:0, backgroundColor:"var(--scrim-media)", zIndex:200,
         display:"flex", alignItems:"center", justifyContent:"center", padding:"24px" }}>
-      <div style={{ backgroundColor:"white", borderRadius:"16px", border:BORDER, width:"100%", maxWidth:"920px",
+      <div style={{ backgroundColor:"white", borderRadius:RADIUS.card, border:BORDER, width:"100%", maxWidth:"920px",
         display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
         <div style={{ padding:"12px 16px", borderBottom:BORDER, display:"flex", alignItems:"center", justifyContent:"space-between", gap:"12px" }}>
@@ -5181,7 +5206,7 @@ function SharedFrameLightbox({ event, assocLabel, index, total, onStep, onClose,
             <span style={{ fontSize:"11px", fontWeight:600, color:"var(--gray-400)", whiteSpace:"nowrap" }}>{index + 1} / {total}</span>
             {step(-1, T[lang].prevFrame)}
             {step(1, T[lang].nextFrame)}
-            <button onClick={onClose} aria-label={T[lang].close} className="vca-hover-quiet" style={{ width:"32px", height:"32px", padding:0, border:"none", borderRadius:"8px",
+            <button onClick={onClose} aria-label={T[lang].close} className="vca-hover-quiet" style={{ width:"32px", height:"32px", padding:0, border:"none", borderRadius:RADIUS.control,
               backgroundColor:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"var(--gray-400)" }}>
               <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
                 <path d="M4 4L14 14M14 4L4 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -5201,7 +5226,7 @@ function SharedFrameLightbox({ event, assocLabel, index, total, onStep, onClose,
             <div key={box.label} style={{ position:"absolute", left:`${box.left}%`, top:"30%", width:"14%", height:"40%",
               border:`2px solid ${box.color}`, borderRadius:"3px" }}>
               <span style={{ position:"absolute", bottom:"100%", left:-2, marginBottom:"3px", whiteSpace:"nowrap",
-                fontSize:"11px", fontWeight:800, color:"white", backgroundColor:box.color, padding:"2px 6px", borderRadius:"4px" }}>
+                fontSize:"11px", fontWeight:800, color:"white", backgroundColor:box.color, padding:"2px 6px", borderRadius:RADIUS.pill }}>
                 {box.label}
               </span>
             </div>
@@ -5214,7 +5239,7 @@ function SharedFrameLightbox({ event, assocLabel, index, total, onStep, onClose,
           {/* Carries the frame's own date and time, not just its camera: without them Best Frame
               opened on that camera's live position, which is a different frame entirely. */}
           <button onClick={() => onAnalyze?.(event.location, { date: event.date, time: event.time })} disabled={!onAnalyze}
-            style={{ display:"flex", alignItems:"center", gap:"6px", padding:"8px 14px", borderRadius:"8px",
+            style={{ display:"flex", alignItems:"center", gap:"6px", padding:"8px 14px", borderRadius:RADIUS.control,
               border:"none", backgroundColor: onAnalyze ? "var(--gray-900)" : "var(--gray-300)", color:"white",
               fontSize:"12px", fontWeight:800, cursor: onAnalyze ? "pointer" : "default", whiteSpace:"nowrap" }}>
             {T[lang].analyzeFrame}
@@ -5346,7 +5371,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
           <p title={t.sharedFramesTitle} style={{ margin:0, fontSize:"16px", fontWeight:800,
             color:"var(--gray-900)", letterSpacing:"-0.32px", cursor:"help" }}>{t.coCaptureEvidence}</p>
           <button onClick={onClose} aria-label={t.close} className="vca-hover-quiet" style={{
-            width:"26px", height:"26px", flexShrink:0, padding:0, borderRadius:"6px",
+            width:"26px", height:"26px", flexShrink:0, padding:0, borderRadius:RADIUS.inner,
             backgroundColor:"transparent", border:"none", cursor:"pointer",
             display:"flex", alignItems:"center", justifyContent:"center", color:"var(--gray-400)",
           }}>
@@ -5363,8 +5388,8 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
             size, and the rest below. The status badge rides the line under the names. */}
         <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
           <div style={{ display:"flex", gap:"3px", flexShrink:0 }}>
-            <img src={primary.face} alt="" style={{ width:"40px", height:"40px", borderRadius:"5px", objectFit:"cover" }} />
-            <img src={node.face} alt="" style={{ width:"40px", height:"40px", borderRadius:"5px", objectFit:"cover" }} />
+            <img src={primary.face} alt="" style={{ width:"40px", height:"40px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
+            <img src={node.face} alt="" style={{ width:"40px", height:"40px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:"2px", minWidth:0 }}>
             {/* "+" not an arrow: appearing in one frame together is symmetric, and an arrow would
@@ -5377,7 +5402,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
             <span style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"11px", color:"var(--gray-500)" }}>
               {meta.label[lang]} · {t.coCaptures(events.length)}
               <span style={{ fontSize:"9px", fontWeight:800, color:statusBadge.text, backgroundColor:statusBadge.bg,
-                padding:"2px 6px", borderRadius:"4px", letterSpacing:"0.2px" }}>{lang === "ko" ? attr(node.status, lang) : node.status.toUpperCase()}</span>
+                padding:"2px 6px", borderRadius:RADIUS.pill, letterSpacing:"0.2px" }}>{lang === "ko" ? attr(node.status, lang) : node.status.toUpperCase()}</span>
             </span>
           </div>
           {/* The call, at the top of the panel that holds the evidence for it — not buried under
@@ -5397,7 +5422,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                   </span>
                 </span>
                 <button onClick={() => clearJudgement("redface", String(node.id))} title={t.undoJudgement} className="vca-hover-quiet"
-                  style={{ background:"none", border:"none", borderRadius:"4px", cursor:"pointer", fontSize:"10px", fontWeight:700, color:"var(--gray-500)", padding:"2px 4px" }}>
+                  style={{ background:"none", border:"none", borderRadius:RADIUS.control, cursor:"pointer", fontSize:"10px", fontWeight:700, color:"var(--gray-500)", padding:"2px 4px" }}>
                   {t.undoJudgement}
                 </button>
               </>
@@ -5407,7 +5432,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                   onClick={() => recordJudgement({ surface:"redface", subjectId:String(node.id), targetLabel:primary.name, verdict:"confirmed" })}
                   title={t.confirmAssociate}
                   className="vca-hover-row"
-                  style={{ display:"flex", alignItems:"center", gap:"4px", padding:"5px 10px", borderRadius:"6px",
+                  style={{ display:"flex", alignItems:"center", gap:"4px", padding:"5px 10px", borderRadius:RADIUS.control,
                     border:"1px solid var(--success-400)", backgroundColor:"white", cursor:"pointer",
                     fontSize:"11px", fontWeight:700, color:"var(--success-400)", whiteSpace:"nowrap" }}>
                   <CheckIconSm /> {t.confirmed}
@@ -5416,7 +5441,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                   onClick={() => recordJudgement({ surface:"redface", subjectId:String(node.id), targetLabel:primary.name, verdict:"false_positive" })}
                   title={t.excludeAssociate}
                   className="vca-hover-row"
-                  style={{ display:"flex", alignItems:"center", gap:"4px", padding:"5px 10px", borderRadius:"6px",
+                  style={{ display:"flex", alignItems:"center", gap:"4px", padding:"5px 10px", borderRadius:RADIUS.control,
                     border:"1px solid var(--gray-300)", backgroundColor:"white", cursor:"pointer",
                     fontSize:"11px", fontWeight:700, color:"var(--danger-400)", whiteSpace:"nowrap" }}>
                   <XCircleIconSm /> {t.excluded}
@@ -5436,7 +5461,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
             same boundary drawn twice. 2px of margin on top of the column's 18px gap keeps the 20px
             of air the block had when the rules were doing the separating. */}
         <div style={{ display:"flex", flexDirection:"column", gap:"8px", margin:"2px 0",
-          backgroundColor:"var(--gray-50)", borderRadius:"8px", padding:"10px 12px" }}>
+          backgroundColor:"var(--gray-50)", borderRadius:RADIUS.control, padding:"10px 12px" }}>
           <PanelHeading title={t.whereWhenCluster} color="var(--primary-400)"
             icon={<AnalysisSparkleIcon />}>{t.relationshipAnalytics}</PanelHeading>
           <style>{`
@@ -5477,7 +5502,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
             <button className="vca-peak-card" data-on={focus === "location"}
               onClick={() => toggleFocus("location")}
               title={t.peakLocationTip(topGroup.events.length, events.length)}
-              style={{ flex:1, minWidth:0, borderRadius:"8px", padding:"6px 10px", textAlign:"left", cursor:"pointer" }}>
+              style={{ flex:1, minWidth:0, borderRadius:RADIUS.control, padding:"6px 10px", textAlign:"left", cursor:"pointer" }}>
               <p className="vca-peak-label" style={{ margin:0, fontSize:"10px" }}>{t.colPeakLocation}</p>
               {/* The glyph belongs on the value, not the label — a pin next to the words "Peak
                   location" only restates them, next to "Novena" it marks what kind of thing that is. */}
@@ -5491,7 +5516,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
             <button className="vca-peak-card" data-on={focus === "time"}
               onClick={() => toggleFocus("time")}
               title={t.peakTimeTip(bucketCount, events.length, pct, timeBucketLabel(bucket, lang))}
-              style={{ flex:1, minWidth:0, borderRadius:"8px", padding:"6px 10px", textAlign:"left", cursor:"pointer" }}>
+              style={{ flex:1, minWidth:0, borderRadius:RADIUS.control, padding:"6px 10px", textAlign:"left", cursor:"pointer" }}>
               <p className="vca-peak-label" style={{ margin:0, fontSize:"10px" }}>{t.colPeakTime}</p>
               {/* Sun or moon by the bucket itself — a sun beside "night" would be worse than no
                   glyph at all. */}
@@ -5519,7 +5544,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                 Peak counts that ARE clickable. (Set once already and lost when this row was
                 rewritten for the dashed rules; don't reintroduce it.) */}
             <span style={{ flexShrink:0, fontSize:"9px", fontWeight:800, color:"var(--gray-700)", backgroundColor:"white",
-              padding:"2px 8px", borderRadius:"999px", letterSpacing:"0.2px", whiteSpace:"nowrap" }}>
+              padding:"2px 8px", borderRadius:RADIUS.pill, letterSpacing:"0.2px", whiteSpace:"nowrap" }}>
               {t.framesCount(events.length)}
             </span>
             <span style={{ flex:1, minWidth:"12px", height:0, borderTop:"1px dashed var(--gray-300)" }} />
@@ -5543,6 +5568,8 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
               ].map(l => (
                 <span key={l.label} style={{ display:"flex", alignItems:"center", gap:"4px",
                   fontSize:"9px", fontWeight:800, color:"var(--gray-500)", letterSpacing:"0.2px", whiteSpace:"nowrap" }}>
+                  {/* 2px, left alone: this marker is a miniature of the detection box it names,
+                      and those are drawn at 2–3px on the frame. Not a control, so not a step. */}
                   <span style={{ width:"7px", height:"7px", borderRadius:"2px", backgroundColor:l.color, flexShrink:0 }} />
                   {l.label}
                 </span>
@@ -5559,7 +5586,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                 className="vca-hover-darken"
                 style={{ display:"flex", alignItems:"center", gap:"4px", border:"none", cursor:"pointer",
                   fontSize:"9px", fontWeight:800, color:"var(--primary-400)", backgroundColor:"var(--primary-100)",
-                  padding:"2px 6px", borderRadius:"999px", textTransform:"capitalize", whiteSpace:"nowrap" }}>
+                  padding:"2px 6px", borderRadius:RADIUS.pill, textTransform:"capitalize", whiteSpace:"nowrap" }}>
                 {focusLabel}
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
                   <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -5587,7 +5614,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                Scene still is the one Best Frame uses for its camera feeds. */
             <button key={rowIdx} onClick={() => setZoomIdx(rowIdx)}
               title={t.openFrameFull}
-              style={{ position:"relative", padding:0, border:"none", borderRadius:"6px", overflow:"hidden",
+              style={{ position:"relative", padding:0, border:"none", borderRadius:RADIUS.control, overflow:"hidden",
                 backgroundColor:"var(--gray-900)", cursor:"zoom-in", display:"block", width:"100%" }}>
               <img src={e.scene} alt="" style={{ width:"100%", aspectRatio:"1194 / 685", objectFit:"cover", display:"block" }} />
               {/* Burned into the frame, the way a camera stamps its own still — the caption
@@ -5597,14 +5624,14 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                   an operator reads. Date is trimmed to MM-DD for the same reason. */}
               <span style={{ position:"absolute", top:4, left:4, display:"flex", alignItems:"center", gap:"4px",
                 maxWidth:"calc(100% - 8px)", fontSize:"9px", fontWeight:700, color:"white",
-                backgroundColor:"var(--label-plate)", padding:"2px 5px", borderRadius:"3px",
+                backgroundColor:"var(--label-plate)", padding:"2px 5px", borderRadius:RADIUS.pill,
                 overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
                 <CameraGlyph size={10} /> {e.location}
               </span>
               {/* Bottom-LEFT now that the legend has moved out to the section heading — the two
                   chips read as one column down the frame's left edge instead of straddling it. */}
               <span style={{ position:"absolute", bottom:4, left:4, fontSize:"9px", fontWeight:700, color:"white",
-                backgroundColor:"var(--label-plate)", padding:"2px 5px", borderRadius:"3px", whiteSpace:"nowrap" }}>
+                backgroundColor:"var(--label-plate)", padding:"2px 5px", borderRadius:RADIUS.pill, whiteSpace:"nowrap" }}>
                 {e.date.slice(5)} {e.time.slice(0, 5)}
               </span>
               {[
@@ -5740,12 +5767,12 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, 
             padding:"10px 20px", display:"flex", gap:"8px", alignItems:"center" }}>
             <span style={{ width:"50px", flexShrink:0, fontSize:"12px", fontWeight:700, color:"var(--gray-500)" }}>{`#${String(i+1).padStart(2,"0")}`}</span>
             <div style={{ flex:1, display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
-              <img src={r.node.face} alt="" style={{ width:"28px", height:"28px", borderRadius:"999px", objectFit:"cover", flexShrink:0 }} />
+              <img src={r.node.face} alt="" style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
               <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", whiteSpace:"nowrap" }}>{t.associateNo(String(i+1).padStart(2,"0"))}</span>
               {/* Somebody's call, where the row is read — so a shift arriving at this list can see
                   what has already been decided without opening each pair's evidence. */}
               {verdictOf(r.node.id) && (
-                <span style={{ fontSize:"9px", fontWeight:800, whiteSpace:"nowrap", padding:"2px 6px", borderRadius:"4px",
+                <span style={{ fontSize:"9px", fontWeight:800, whiteSpace:"nowrap", padding:"2px 6px", borderRadius:RADIUS.pill,
                   color: verdictOf(r.node.id) === "confirmed" ? "var(--success-400)" : "var(--danger-400)",
                   backgroundColor: verdictOf(r.node.id) === "confirmed" ? "var(--success-100)" : "var(--danger-100)" }}>
                   {verdictOf(r.node.id) === "confirmed" ? t.confirmed : t.excluded}
@@ -5754,13 +5781,13 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, 
             </div>
             <div style={{ width:"44px", flexShrink:0 }}>
               <span title={badge.label[lang]} style={{ fontSize:"11px", fontWeight:800, color:badge.text, backgroundColor:badge.bg,
-                padding:"2px 8px", borderRadius:"999px", cursor:"help" }}>{r.tier.slice(-1)}</span>
+                padding:"2px 8px", borderRadius:RADIUS.pill, cursor:"help" }}>{r.tier.slice(-1)}</span>
             </div>
             {/* Same rule as the pyramid badge: what the filter left, not the whole history. */}
             <span style={{ width:"92px", flexShrink:0, fontSize:"13px", fontWeight:700, color:COCAPTURE_COLOR[r.tier] }}>{events.length}</span>
             <div style={{ width:"76px", flexShrink:0 }}>
               <span style={{ fontSize:"10px", fontWeight:800, color:statusBadge.text, backgroundColor:statusBadge.bg,
-                padding:"2px 6px", borderRadius:"4px", letterSpacing:"0.2px" }}>{lang === "ko" ? attr(r.node.status, lang) : r.node.status.toUpperCase()}</span>
+                padding:"2px 6px", borderRadius:RADIUS.pill, letterSpacing:"0.2px" }}>{lang === "ko" ? attr(r.node.status, lang) : r.node.status.toUpperCase()}</span>
             </div>
             <span style={{ width:"76px", flexShrink:0, fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{groups.length}</span>
             <span style={{ width:"160px", flexShrink:0, fontSize:"12px", fontWeight:600, color:"var(--gray-900)" }}>{`${topGroup.location} · ${topGroup.events.length}`}</span>
@@ -5779,7 +5806,7 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, 
                 button also toggles that panel shut, and the old label read the same either way:
                 only its fill changed, which tells you a state exists but not which one. */}
             <div style={{ width:"96px", flexShrink:0, display:"flex", justifyContent:"center" }}>
-              <button onClick={() => onInspect(r.tier, r.node)} className="vca-hover-darken" style={{ padding:"4px 10px", borderRadius:"6px", border:"none",
+              <button onClick={() => onInspect(r.tier, r.node)} className="vca-hover-darken" style={{ padding:"4px 10px", borderRadius:RADIUS.control, border:"none",
                 backgroundColor: r.node.id === selectedNodeId ? "var(--primary-400)" : "var(--gray-900)", color:"white", cursor:"pointer",
                 fontSize:"12px", fontWeight:700, whiteSpace:"nowrap" }}>
                 {r.node.id === selectedNodeId ? t.close : t.viewFrames}
@@ -5901,13 +5928,13 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
           <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
             {primaryTarget && (
               <>
-                <img src={primaryTarget.face} alt="" style={{ width:"44px", height:"44px", borderRadius:"6px", objectFit:"cover", border:"2px solid var(--primary-400)" }} />
+                <img src={primaryTarget.face} alt="" style={{ width:"44px", height:"44px", borderRadius:RADIUS.inner, objectFit:"cover", border:"2px solid var(--primary-400)" }} />
                 <div>
-                  <span title={t.primaryTargetHint} style={{ display:"inline-flex", fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"2px 6px", borderRadius:"4px", letterSpacing:"-0.2px", cursor:"help" }}>{t.primaryTarget}</span>
+                  <span title={t.primaryTargetHint} style={{ display:"inline-flex", fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"2px 6px", borderRadius:RADIUS.pill, letterSpacing:"-0.2px", cursor:"help" }}>{t.primaryTarget}</span>
                   <p style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", margin:"4px 0 0", letterSpacing:"-0.28px" }}>{primaryTarget.name}</p>
                 </div>
                 <button onClick={onSwitchTarget} className="vca-hover-darken" style={{ display:"flex", alignItems:"center", gap:"6px", padding:"8px 12px",
-                  borderRadius:"6px", backgroundColor:"var(--gray-100)", border:"none", cursor:"pointer", fontSize:"12px", fontWeight:600, color:"var(--gray-600)" }}>
+                  borderRadius:RADIUS.control, backgroundColor:"var(--gray-100)", border:"none", cursor:"pointer", fontSize:"12px", fontWeight:600, color:"var(--gray-600)" }}>
                   <SwapIconSm /> {t.switchPrimary}
                 </button>
               </>
@@ -5921,13 +5948,16 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
               tier cutoffs it sat under (>100 / 10-99 / <10). The tiers are the one filter this
               screen genuinely needs — 15 of 23 associates are Tier 3 — so they stay, as chips. */}
           <div style={{ display:"flex", alignItems:"center", gap:"8px", flexShrink:0 }}>
+            {/* "as chips" above means what they do, not their shape: these have a set height and
+                sit in a toolbar row beside the date trigger and Reset, so they are control boxes.
+                The pill is for the count badge inside them. */}
             {tierRows.map(row => (
               <button key={row.short} onClick={row.toggle} title={row.label} className="vca-hover-darken" style={{
-                display:"flex", alignItems:"center", gap:"6px", height:"30px", padding:"0 10px", borderRadius:"999px",
+                display:"flex", alignItems:"center", gap:"6px", height:"30px", padding:"0 10px", borderRadius:RADIUS.control,
                 backgroundColor: row.on ? row.bg : "white", border: row.on ? "none" : BORDER, cursor:"pointer", flexShrink:0,
               }}>
                 <span style={{ fontSize:"12px", fontWeight:700, color: row.on ? row.text : "var(--gray-400)", whiteSpace:"nowrap" }}>{row.short}</span>
-                <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor: row.on ? row.badgeBg : "var(--gray-300)", padding:"1px 6px", borderRadius:"999px" }}>{row.count}</span>
+                <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor: row.on ? row.badgeBg : "var(--gray-300)", padding:"1px 6px", borderRadius:RADIUS.pill }}>{row.count}</span>
               </button>
             ))}
             {/* Boxed to a fixed width: the trigger's own style is flex:1, which in a row of chips
@@ -5938,17 +5968,17 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
               <DateRangeTrigger lang={lang} minDate={retentionFloor} value={dateRange} onApply={setDateRange} mode="merged" size="sm" emptyText={t.allDates} />
             </div>
             <button onClick={reset} title={t.resetFilters} className="vca-hover-outline" style={{ display:"flex", alignItems:"center", gap:"6px",
-              height:"30px", padding:"0 10px", borderRadius:"6px", border:BORDER, backgroundColor:"white", cursor:"pointer",
+              height:"30px", padding:"0 10px", borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white", cursor:"pointer",
               fontSize:"12px", fontWeight:600, color:"var(--gray-600)", flexShrink:0, whiteSpace:"nowrap" }}>
               <ResetIconSm /> Reset
             </button>
           </div>
-          <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:"8px", padding:"4px" }}>
+          <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:RADIUS.control, padding:"4px" }}>
             {(["pyramid","grid"] as const).map(v => {
               const active = view === v;
               return (
                 <button key={v} onClick={() => setView(v)} title={v === "pyramid" ? t.viewPyramid : t.viewGrid} style={{ display:"flex", alignItems:"center", gap:"6px", padding:"6px 12px",
-                  borderRadius:"6px", border:"none", cursor:"pointer",
+                  borderRadius:RADIUS.inner, border:"none", cursor:"pointer",
                   backgroundColor: active ? "white" : "transparent", color: active ? "var(--gray-900)" : "var(--gray-500)",
                   fontSize:"12px", fontWeight: active ? 700 : 600 }}>
                   {v === "pyramid" ? <LayersIconSm/> : <TableIconSm/>} {v === "pyramid" ? t.pyramidAndZone : t.dataGrid}

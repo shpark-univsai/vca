@@ -12,6 +12,7 @@ import {
 import type { ExportRecord } from "@/lib/vcaStore";
 import { useToast } from "./Toast";
 import ScoreBadge from "./shared/ScoreBadge";
+import { RADIUS } from "./shared/controls";
 import { CircleAlert, ImageDown } from "lucide-react";
 
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
@@ -161,8 +162,11 @@ const T = {
 // this and then never reached the app: eight files each declared their own gray-200 rule instead,
 // so Portal and the app drew different lines.
 const BORDER = "1px solid var(--line)";
+/* RADIUS.control, not the pill these were: a pill is this app's shape for a condition you
+   switch on and off, and these switch nothing — they move the footage, from a row that also holds
+   the date trigger and the time field, both of which are the control step. */
 const STEP_BTN_STYLE: CSSProperties = {
-  padding:"6px 12px", borderRadius:"999px", border:"1px solid var(--gray-300)", backgroundColor:"white",
+  padding:"6px 12px", borderRadius:RADIUS.control, border:"1px solid var(--gray-300)", backgroundColor:"white",
   color:"var(--gray-700)", fontSize:"12px", fontWeight:700, cursor:"pointer", whiteSpace:"nowrap",
 };
 /* Hover comes from a class, never from a hovered flag per button. There were sixteen
@@ -496,6 +500,8 @@ function ReelFilterBar({ filter, onChange, counts }: { filter: ReelFilter; onCha
     { id:"Vehicle", label: t.vehicle,  color: DET_COLOR.Vehicle },
     { id:"Unknown", label: t.unknown,  color: DET_COLOR.Unknown },
   ];
+  // RADIUS.pill on both chips below, the one case the scale keeps that shape for: a label-only
+  // chip with no set height, whose width follows its text, switching one condition on.
   return (
     <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
       {REEL_FILTER_CFG.map(f => {
@@ -514,7 +520,7 @@ function ReelFilterBar({ filter, onChange, counts }: { filter: ReelFilter; onCha
               className={active ? "vca-hover-darken" : "vca-hover-outline"}
               style={{
               display:"flex", alignItems:"center", gap:"5px",
-              padding:"6px 14px", borderRadius:"999px", cursor: empty ? "default" : "pointer",
+              padding:"6px 14px", borderRadius:RADIUS.pill, cursor: empty ? "default" : "pointer",
               border: active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
               backgroundColor: active ? "var(--gray-900)" : "white",
               color: active ? "white" : "var(--gray-700)", fontSize:"12px", fontWeight: active ? 700 : 600,
@@ -533,7 +539,7 @@ function ReelFilterBar({ filter, onChange, counts }: { filter: ReelFilter; onCha
             className={active ? "vca-hover-darken" : "vca-hover-outline"}
             style={{
             display:"flex", alignItems:"center", gap:"5px",
-            padding:"6px 10px", borderRadius:"999px", cursor: empty ? "default" : "pointer",
+            padding:"6px 10px", borderRadius:RADIUS.pill, cursor: empty ? "default" : "pointer",
             border: active ? `1px solid ${c}` : "1px solid var(--gray-300)",
             backgroundColor: active ? c : "white",
             color: active ? "white" : "var(--gray-700)", fontSize:"12px", fontWeight: active ? 700 : 600,
@@ -574,10 +580,12 @@ function typeLabel(type: DetType, t: (typeof T)[AppLanguage]): string {
   return type === "Vehicle" ? t.vehicle : type === "Unknown" ? t.unknown : "VIP";
 }
 
-/* ── Tag chip ─────────────────────────────────────────────────── */
+/* ── Tag chip ─────────────────────────────────────────────────────
+   RADIUS.pill: nothing to click, no set height, width follows the word — the same shape the
+   score badge and the count chips take. ──────────────────────────── */
 function Tag({ label }: { label: string }) {
   return (
-    <span style={{ backgroundColor:"var(--gray-100)", borderRadius:"999px", padding:"3px 9px", fontSize:"12px", fontWeight:600, color:"var(--gray-600)", whiteSpace:"nowrap" }}>
+    <span style={{ backgroundColor:"var(--gray-100)", borderRadius:RADIUS.pill, padding:"3px 9px", fontSize:"12px", fontWeight:600, color:"var(--gray-600)", whiteSpace:"nowrap" }}>
       {label}
     </span>
   );
@@ -600,7 +608,7 @@ function AlsoCapturedCard({ det }: { det: Detection }) {
           under the comparison boxes that had already been emptied for the same reason, so the
           panel was denying it had this person's picture at the top and showing one at the bottom.
           HANDOFF NOTE: the crop the module matched on, carried on the detection by id, goes here. */}
-      <div style={{ width:"100%", aspectRatio:"1/1", borderRadius:"6px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", boxSizing:"border-box" }} />
+      <div style={{ width:"100%", aspectRatio:"1/1", borderRadius:RADIUS.inner, border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", boxSizing:"border-box" }} />
       <p style={{ fontSize:"11px", fontWeight:700, color:"var(--gray-900)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", margin:0 }}>
         {det.name}
       </p>
@@ -652,7 +660,10 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
       onMouseLeave={() => setHovered(false)}
       style={{
         minWidth:0, display:"flex", flexDirection:"column", gap:"6px", cursor:"pointer",
-        padding:"8px", margin:"-8px", boxSizing:"border-box", borderRadius:"12px",
+        // RADIUS.card on the shape that hovers and takes the focus ring, RADIUS.inner on the
+        // picture box inside it (below): this is a card, and the box 8px in from its edge is a
+        // picture nested in it, which is the step the scale names for that.
+        padding:"8px", margin:"-8px", boxSizing:"border-box", borderRadius:RADIUS.card,
         // Mirrors whichever detection is focused on the camera feed — clicking a box there (or
         // this card) keeps the two in sync, matching each other's "focused" outline rather than
         // this being its own independent selection state.
@@ -661,7 +672,7 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
         // It used to add `1px solid var(--gray-300)` on the same edge at the same radius as the
         // focus ring, so a reel with one focused card and the pointer resting on another showed
         // TWO outlined cards — measured: P-01 at 2px rgb(24,17,39) and P-02 at 1px rgb(204,213,225),
-        // same 12px radius, same 183x238 box. Two lines on one axis read as two selections, and
+        // the same radius, same 183x238 box. Two lines on one axis read as two selections, and
         // the weaker one wins the argument about which card is "current" because it is under the
         // pointer. The fill alone says hover, which is what the app's other lists already do
         // (rows: fill for hover, a line only for the selected one) — so a line on this screen now
@@ -679,7 +690,7 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
       {/* --shadow-raised, the existing token for a surface sitting just off the one behind it. The
           card it is ported from writes its own 0 3px 8px -2px literal, which is one of the values
           the elevation tokens were introduced to replace; not this file's to change. */}
-      <div style={{ borderRadius:"8px", overflow:"hidden", backgroundColor:"white",
+      <div style={{ borderRadius:RADIUS.inner, overflow:"hidden", backgroundColor:"white",
         boxShadow:"var(--shadow-raised)" }}>
         {/* A face crop sat on top of a full-body capture here — the same stock portrait twice, the
             top one scaled 1.8x to fake a face zoom, both dealt out by the card's position in the
@@ -710,7 +721,9 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
               there is nothing under it, so it stays plain grey. */}
           <div style={{ position:"absolute", top:crop ? 7 : 6, left:crop ? 8 : 6, fontSize:"10px", letterSpacing:"-0.2px",
             ...(crop
-              ? { fontWeight:800, color:"white", backgroundColor:"var(--label-plate)", padding:"4px 6px", borderRadius:"12px" }
+              // RADIUS.pill, which is what the VIP plate down on the timeline strip already
+              // drew: one plate treatment over imagery, not one shape here and another there.
+              ? { fontWeight:800, color:"white", backgroundColor:"var(--label-plate)", padding:"4px 6px", borderRadius:RADIUS.pill }
               : { fontWeight:600, color:"var(--gray-500)" }),
           }}>
             {targetLabel(targetNo)}
@@ -847,7 +860,10 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
               on, and the enrolled photo of the person it matched to, carried by id. Until both
               arrive, no picture goes in these two boxes. */}
           <div style={{ flex:"0 0 77px", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
-            <div style={{ width:"77px", height:"177px", borderRadius:"8px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)" }} />
+            {/* RADIUS.inner, like every other picture box on this screen. These two and the
+                also-captured crop below them sat side by side at 8px, 10px and 6px — three
+                radii for the same empty box, on one panel. */}
+            <div style={{ width:"77px", height:"177px", borderRadius:RADIUS.inner, border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)" }} />
             <p title={t.liveCaptureHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"-0.2px", cursor:"help" }}>{t.liveCapture}</p>
           </div>
           <div style={{ flex:1, alignSelf:"flex-end", height:"177px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"6px" }}>
@@ -867,7 +883,7 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
               stood; a greyed panel would advertise a photo it may not show. */}
           {maySeeEnrolled && (
           <div style={{ flex:"0 0 176px", display:"flex", flexDirection:"column", alignItems:"center", gap:"4px" }}>
-            <div style={{ width:"176px", height:"177px", borderRadius:"10px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", display:"flex", alignItems:"center", justifyContent:"center", padding:"12px" }}>
+            <div style={{ width:"176px", height:"177px", borderRadius:RADIUS.inner, border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", display:"flex", alignItems:"center", justifyContent:"center", padding:"12px" }}>
               <p style={{ fontSize:"11px", color:"var(--gray-400)", textAlign:"center", lineHeight:1.5, margin:0 }}>{t.photosNotWired}</p>
             </div>
             <p title={t.enrolledDbHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)", letterSpacing:"-0.2px", cursor:"help" }}>{t.enrolledDb}</p>
@@ -935,10 +951,10 @@ function AIInspectionDetail({ det, data, onClose, onGoRedmapTrace }: { det: Dete
           disabled: it leads somewhere, and a control that leads nowhere reachable is worse than
           no control — see the note on the jump handlers in ClientLayout. */}
       <div style={{ padding:"10px 14px", display:"grid", gridTemplateColumns: onGoRedmapTrace ? "1fr 1fr" : "1fr", gap:"8px", flexShrink:0 }}>
-        <button onClick={onClose} className={HOVER_QUIET} style={{ padding:"9px 0", borderRadius:"8px", border:BORDER, backgroundColor:"white", color:"var(--gray-700)", fontSize:"13px", fontWeight:700, cursor:"pointer" }}>
+        <button onClick={onClose} className={HOVER_QUIET} style={{ padding:"9px 0", borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white", color:"var(--gray-700)", fontSize:"13px", fontWeight:700, cursor:"pointer" }}>
           {t.back}
         </button>
-        {onGoRedmapTrace && <button onClick={() => onGoRedmapTrace(det.name)} className="portal-btn-primary" style={{ padding:"9px 0", borderRadius:"8px", border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
+        {onGoRedmapTrace && <button onClick={() => onGoRedmapTrace(det.name)} className="portal-btn-primary" style={{ padding:"9px 0", borderRadius:RADIUS.control, border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
             <path d="M16.6667 8.33333C16.6667 13.3333 10 18.3333 10 18.3333C10 18.3333 3.33333 13.3333 3.33333 8.33333C3.33333 6.56522 4.03571 4.86953 5.28596 3.61929C6.5362 2.36905 8.23189 1.66667 10 1.66667C11.7681 1.66667 13.4638 2.36905 14.714 3.61929C15.9643 4.86953 16.6667 6.56522 16.6667 8.33333Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M10 10.8333C11.3807 10.8333 12.5 9.71404 12.5 8.33333C12.5 6.95262 11.3807 5.83333 10 5.83333C8.61929 5.83333 7.5 6.95262 7.5 8.33333C7.5 9.71404 8.61929 10.8333 10 10.8333Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -995,11 +1011,11 @@ function TrackDateCalendar({ selected, onPick }: { selected: string; onPick: (da
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"8px", width:"224px", padding:"12px" }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", height:"24px" }}>
-        <button onClick={prevMonth} disabled={atFloorMonth} className="vca-hover-quiet" style={{ width:"24px", height:"24px", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor: atFloorMonth ? "default" : "pointer", visibility: atFloorMonth ? "hidden" : "visible", color:"var(--gray-700)" }}>
+        <button onClick={prevMonth} disabled={atFloorMonth} className="vca-hover-quiet" style={{ width:"24px", height:"24px", borderRadius:RADIUS.inner, display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor: atFloorMonth ? "default" : "pointer", visibility: atFloorMonth ? "hidden" : "visible", color:"var(--gray-700)" }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{monthLabel}</span>
-        <button onClick={nextMonth} disabled={isCurrentMonth} className="vca-hover-quiet" style={{ width:"24px", height:"24px", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor: isCurrentMonth ? "default" : "pointer", visibility: isCurrentMonth ? "hidden" : "visible", color:"var(--gray-700)" }}>
+        <button onClick={nextMonth} disabled={isCurrentMonth} className="vca-hover-quiet" style={{ width:"24px", height:"24px", borderRadius:RADIUS.inner, display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor: isCurrentMonth ? "default" : "pointer", visibility: isCurrentMonth ? "hidden" : "visible", color:"var(--gray-700)" }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
       </div>
@@ -1261,7 +1277,7 @@ async function composeFrameExport(input: FrameExportInput): Promise<Blob> {
 type RequesterKind = NonNullable<ExportRecord["requesterKind"]>;
 
 const EXPORT_FIELD_STYLE: CSSProperties = {
-  width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: "8px",
+  width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: RADIUS.control,
   border: "1px solid var(--gray-300)", outline: "none",
   fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", fontFamily: "inherit",
   backgroundColor: "white",
@@ -1328,7 +1344,7 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
   return (
     <div onClick={e => { if (e.target === e.currentTarget && !busy) onCancel(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, width: "100%", maxWidth: "468px", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "var(--shadow-modal)" }}>
+      <div style={{ backgroundColor: "white", borderRadius: RADIUS.card, border: BORDER, width: "100%", maxWidth: "468px", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "var(--shadow-modal)" }}>
 
         <div style={{ padding: "14px 16px", borderBottom: BORDER, backgroundColor: "var(--gray-50)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.exportFrame}</p>
@@ -1343,7 +1359,10 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
 
         <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
           {/* What is already known, stated rather than asked. */}
-          <div style={{ border: BORDER, borderRadius: "10px", padding: "10px 12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+          {/* RADIUS.control on this block and on the notice below it: they stand in the same
+              column as the dialog's fields, which are the control step, and a column with one
+              edge is the point. The dialog itself is the card step. */}
+          <div style={{ border: BORDER, borderRadius: RADIUS.control, padding: "10px 12px", display: "flex", flexDirection: "column", gap: "6px" }}>
             {facts.map(([label, value]) => (
               <div key={label} style={{ display: "flex", gap: "10px", alignItems: "baseline" }}>
                 <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-500)", width: "66px", flexShrink: 0 }}>{label}</span>
@@ -1366,7 +1385,7 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
                     // as the selection letting go.
                     className={on ? "vca-hover-darken" : HOVER_QUIET}
                     style={{
-                      flex: 1, padding: "8px 4px", borderRadius: "8px", cursor: "pointer",
+                      flex: 1, padding: "8px 4px", borderRadius: RADIUS.control, cursor: "pointer",
                       // SELECTED, like every other mark on this screen — see the note on it.
                       border: on ? `1px solid ${SELECTED}` : "1px solid var(--gray-300)",
                       backgroundColor: on ? SELECTED : "white",
@@ -1384,7 +1403,7 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
               with other identifiable people in it. Said, not fixed: this console has no masking
               and must not imply one is a click away. */}
           {requesterKind === "subject" && othersInFrame > 0 && (
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-200)" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "12px 14px", borderRadius: RADIUS.control, backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-200)" }}>
               <span style={{ display: "flex", flexShrink: 0, marginTop: "1px", color: "var(--warning-500)" }}>
                 <CircleAlert size={15} strokeWidth={2.2} aria-hidden="true" />
               </span>
@@ -1413,7 +1432,7 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
 
         <div style={{ padding: "12px 16px", borderTop: BORDER, flexShrink: 0, display: "flex", justifyContent: "flex-end", gap: "8px" }}>
           <button onClick={onCancel} disabled={busy} className="vca-hover-outline"
-            style={{ padding: "9px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "13px", fontWeight: 700, cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}>
+            style={{ padding: "9px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "13px", fontWeight: 700, cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}>
             {t.exportCancel}
           </button>
           <button
@@ -1427,7 +1446,7 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
             // class stops there, so the grey state never pretends it is about to do something.
             className="vca-hover-darken"
             style={{
-              padding: "9px 18px", borderRadius: "8px", border: "none",
+              padding: "9px 18px", borderRadius: RADIUS.control, border: "none",
               backgroundColor: ready && !busy ? "var(--gray-900)" : "var(--gray-200)",
               color: ready && !busy ? "white" : "var(--gray-400)",
               fontSize: "13px", fontWeight: 700, cursor: ready && !busy ? "pointer" : "default", fontFamily: "inherit",
@@ -1701,7 +1720,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             {data.bgUrl && (
               <button onClick={() => { setDateOpen(false); setTimeOpen(false); setExportOpen(true); }}
                 className={HOVER_QUIET}
-                style={{ display:"inline-flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:"8px", padding:"6px 12px", border:"1px solid var(--gray-300)", cursor:"pointer", fontFamily:"inherit", fontSize:"12px", fontWeight:700, color:"var(--gray-900)" }}>
+                style={{ display:"inline-flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:RADIUS.control, padding:"6px 12px", border:"1px solid var(--gray-300)", cursor:"pointer", fontFamily:"inherit", fontSize:"12px", fontWeight:700, color:"var(--gray-900)" }}>
                 <ImageDown size={14} strokeWidth={2} aria-hidden="true" />
                 {t.exportFrame}
               </button>
@@ -1729,7 +1748,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               // uploaded image has no timeline eating vertical space either, so it gets the same
               // treatment.
               maxWidth: (selectedPerson || data.sourceType === "image") ? "100%" : "1400px",
-              maxHeight:"100%", aspectRatio:"16/9", flexShrink:0, borderRadius:"12px", overflow:"hidden", backgroundColor:"var(--gray-900)",
+              // RADIUS.panel — the value this frame has always drawn, now named. It is not a
+              // control and not a card in a list: it is the surface the footage is on, and the
+              // scale's panel step is where a surface that holds something else sits.
+              maxHeight:"100%", aspectRatio:"16/9", flexShrink:0, borderRadius:RADIUS.panel, overflow:"hidden", backgroundColor:"var(--gray-900)",
             }}
           >
             <img src={data.bgUrl ?? ""} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", opacity:0.9 }} />
@@ -1771,6 +1793,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     // It was purple, which on a screen about VIP detection made the focus ring on
                     // a Vehicle box look like a VIP hit. Matches the reel card's outline.
                     boxShadow: isFocused ? `0 0 0 3px ${SELECTED}` : "none",
+                    // 3px, and deliberately not from the shape scale: a box drawn on the
+                    // picture is the detector's own mark, not a control, and rounding it to a
+                    // control's corner would make the camera look like it saw a button.
                     borderRadius:"3px", boxSizing:"border-box",
                     transition:"border-color 0.15s, box-shadow 0.15s",
                   }}
@@ -1888,7 +1913,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   gets its own calendar glyph instead of a clock face that made it read as a
                   time control at a glance. */}
               <div ref={dateDropdownRef} style={{ position:"relative" }}>
-                <button onClick={() => setDateOpen(o => !o)} className={HOVER_QUIET} style={{ display:"flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:"8px", padding:"6px 12px", border:"1px solid var(--gray-300)", cursor:"pointer" }}>
+                <button onClick={() => setDateOpen(o => !o)} className={HOVER_QUIET} style={{ display:"flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:RADIUS.control, padding:"6px 12px", border:"1px solid var(--gray-300)", cursor:"pointer" }}>
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
                     <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="var(--gray-900)" strokeWidth="1.4"/>
                     <path d="M2 6.5H14" stroke="var(--gray-900)" strokeWidth="1.4"/>
@@ -1899,8 +1924,11 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     <path d="M2 3L4 5L6 3" stroke="var(--gray-900)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </button>
+                {/* RADIUS.panel: a dropdown panel is a step rounder than the trigger that
+                    opens it, which is how every other popover in the app is drawn. Both of these
+                    were 8px, the trigger's own value. */}
                 {dateOpen && (
-                  <div style={{ position:"absolute", right:0, top:"calc(100% + 4px)", backgroundColor:"white", borderRadius:"8px", boxShadow:"var(--shadow-popover)", border:"1px solid var(--gray-200)", overflow:"hidden", zIndex:50 }}>
+                  <div style={{ position:"absolute", right:0, top:"calc(100% + 4px)", backgroundColor:"white", borderRadius:RADIUS.panel, boxShadow:"var(--shadow-popover)", border:"1px solid var(--gray-200)", overflow:"hidden", zIndex:50 }}>
                     <TrackDateCalendar selected={trackDate} onPick={(d) => { setTrackDate(d); setDateOpen(false); }} />
                   </div>
                 )}
@@ -1916,7 +1944,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   it misleadingly looked like a time indicator) now marks the control that's
                   actually about time. */}
               <div ref={timeDropdownRef} style={{ position:"relative" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:"8px", padding:"6px 12px", border:"1px solid var(--gray-300)" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:RADIUS.control, padding:"6px 12px", border:"1px solid var(--gray-300)" }}>
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
                     <circle cx="8" cy="8" r="6" stroke="var(--gray-500)" strokeWidth="1.4"/>
                     <path d="M8 5v3l2 2" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round"/>
@@ -1957,7 +1985,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 </div>
                 {timeOpen && (
                   <div style={{ position:"absolute", right:0, top:"calc(100% + 4px)", zIndex:20, display:"flex",
-                    backgroundColor:"white", borderRadius:"8px", border:"1px solid var(--gray-200)",
+                    backgroundColor:"white", borderRadius:RADIUS.panel, border:"1px solid var(--gray-200)",
                     boxShadow:"var(--shadow-popover)", overflow:"hidden" }}>
                     {([
                       { label: t.hour, values: Array.from({ length: HOURS_IN_DAY }, (_, h) => h), current: currentHour,
@@ -2020,6 +2048,11 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               {thumbFrames.map((sec, i) => {
                 const isSelected = i === centerThumbIdx;
                 const vipCount = vipByThumb.get(i) ?? 0;
+                // The frame's border grows when it is the one you are on, and the picture clipped
+                // inside it has to give back exactly that much radius or its corner climbs over
+                // the border's. One number, read twice — as the border and as what the inner
+                // radius subtracts (see shared/controls.ts on nesting, which is the same sum).
+                const framePx = isSelected ? 3 : 1.5;
                 return (
                   <div key={i} ref={el => { thumbRefs.current[i] = el; }} onClick={() => setSelectedSec(sec)}
                     // An outline around the cell, which is drawn outside its box: the thumbnail
@@ -2048,10 +2081,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       width:"100%", aspectRatio:"8/5", boxSizing:"border-box",
                       // The frame you are on, not a frame with a VIP in it — the crown chip and
                       // the alert marker inside the thumbnail are what say that, in purple and red.
-                      border: isSelected ? `3px solid ${SELECTED}` : "1.5px solid var(--gray-200)",
-                      borderRadius:"8px",
+                      border: `${framePx}px solid ${isSelected ? SELECTED : "var(--gray-200)"}`,
+                      borderRadius:RADIUS.inner,
                     }}>
-                      <div style={{ width:"100%", height:"100%", overflow:"hidden", borderRadius: isSelected ? "6px" : "7px", position:"relative", backgroundColor:"var(--gray-800)" }}>
+                      <div style={{ width:"100%", height:"100%", overflow:"hidden", borderRadius:`calc(${RADIUS.inner} - ${framePx}px)`, position:"relative", backgroundColor:"var(--gray-800)" }}>
                         <img src={data.bgUrl ?? ""} alt=""
                           style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", filter: isSelected ? "none" : "grayscale(100%)", opacity: isSelected ? 1 : 0.75 }} />
                         {/* How many VIPs this frame caught — the detections' own timestamps, not
@@ -2059,7 +2092,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                             is a number no camera reported and not a VIP hit either way. Absent at
                             zero: a strip of "0" chips is 58 marks saying nothing. */}
                         {vipCount > 0 && (
-                          <div style={{ position:"absolute", left:4, bottom:3, display:"flex", alignItems:"center", gap:"3px", backgroundColor:"var(--label-plate)", padding:"1px 6px", borderRadius:"999px" }}>
+                          <div style={{ position:"absolute", left:4, bottom:3, display:"flex", alignItems:"center", gap:"3px", backgroundColor:"var(--label-plate)", padding:"1px 6px", borderRadius:RADIUS.pill }}>
                             {/* Solid (active), not the outline the legend uses — at 10px on a
                                 photo the hollow crown was a few hairlines and read as noise. */}
                             <TypeIcon type="VIP" color="white" size={10} solid />
@@ -2103,7 +2136,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       onMouseLeave={() => setHoveredHour(prev => (prev === h ? null : prev))}
                       style={{
                       flex:1, height:"22px", padding:0, border: active ? `1px solid ${SELECTED}` : "none",
-                      borderRadius:"4px", backgroundColor: active ? "var(--gray-0)" : "var(--gray-200)", cursor:"pointer",
+                      // RADIUS.inner, and the minute ruler below takes the same: these are
+                      // segments of one track, which is the nested case the scale names, and one
+                      // ruler at two tiers cannot be two radii (they were 4px and 2px).
+                      borderRadius:RADIUS.inner, backgroundColor: active ? "var(--gray-0)" : "var(--gray-200)", cursor:"pointer",
                       boxSizing:"border-box",
                     }} />
                   );
@@ -2114,7 +2150,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   position:"absolute", bottom:"calc(100% + 6px)", left:`${((hoveredHour + 0.5) / HOURS_IN_DAY) * 100}%`, transform:"translateX(-50%)",
                   display:"flex", flexDirection:"column", alignItems:"center", pointerEvents:"none", zIndex:5,
                 }}>
-                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:"999px", fontFamily:"monospace", whiteSpace:"nowrap" }}>
+                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:RADIUS.pill, fontFamily:"monospace", whiteSpace:"nowrap" }}>
                     {lang === "ko" ? `${pad2(hoveredHour)}${t.hour}` : `${t.hour} ${pad2(hoveredHour)}`}
                   </span>
                   <span style={{ width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:`6px solid ${SELECTED}`, marginTop:"-2px" }} />
@@ -2138,7 +2174,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       onMouseLeave={() => setHoveredMinute(prev => (prev === m ? null : prev))}
                       style={{
                       flex:1, height:"14px", padding:0, border: active ? `1px solid ${SELECTED}` : "none",
-                      borderRadius:"2px", backgroundColor: active ? "var(--gray-0)" : "var(--gray-200)", cursor:"pointer",
+                      borderRadius:RADIUS.inner, backgroundColor: active ? "var(--gray-0)" : "var(--gray-200)", cursor:"pointer",
                       boxSizing:"border-box",
                     }} />
                   );
@@ -2149,7 +2185,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   position:"absolute", bottom:"calc(100% + 6px)", left:`${((hoveredMinute + 0.5) / MINUTES_IN_HOUR) * 100}%`, transform:"translateX(-50%)",
                   display:"flex", flexDirection:"column", alignItems:"center", pointerEvents:"none", zIndex:5,
                 }}>
-                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:"999px", fontFamily:"monospace", whiteSpace:"nowrap" }}>
+                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:RADIUS.pill, fontFamily:"monospace", whiteSpace:"nowrap" }}>
                     {lang === "ko" ? `${pad2(hoveredMinute)}${t.minute}` : `${t.minute} ${pad2(hoveredMinute)}`}
                   </span>
                   <span style={{ width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:`6px solid ${SELECTED}`, marginTop:"-2px" }} />
