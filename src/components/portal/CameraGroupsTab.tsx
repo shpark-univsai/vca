@@ -51,6 +51,11 @@ import {
 const T = {
   en: {
     empty: "No groups on this project yet.",
+    /* The ramp holds six colours and the product does not cap how many groups a site may have, so
+       past the sixth two groups wear the same one. A pressed dot says which, by name — colour runs
+       out and words do not. Same seam the account card's map uses (CameraMapView.noteOf). */
+    mapInGroup: (names: string) => `In ${names}`,
+    mapInNoGroup: "In no group",
     cameras: (n: number) => `${n} camera${n === 1 ? "" : "s"}`,
     camerasNone: "Empty",
     watchThrough: "Watching through this group",
@@ -111,6 +116,8 @@ const T = {
   },
   ko: {
     empty: "이 프로젝트에 아직 그룹이 없습니다.",
+    mapInGroup: (names: string) => `${names} 그룹`,
+    mapInNoGroup: "어느 그룹에도 없음",
     cameras: (n: number) => `${n}대`,
     camerasNone: "비어 있음",
     watchThrough: "이 그룹으로 보는 계정",
@@ -1217,6 +1224,13 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
             tintOf={cameraId => {
               const i = groups.findIndex(g => g.cameraIds.includes(cameraId));
               return i === -1 ? "var(--gray-300)" : GROUP_COLORS[i % GROUP_COLORS.length];
+            }}
+            /* The colour says WHICH ONE only while there are six or fewer, and `findIndex` above
+               paints a camera held by two groups in the first one's colour either way. Pressing a
+               dot answers both, by name, and names both when two hold it. */
+            noteOf={cameraId => {
+              const held = groups.filter(g => g.cameraIds.includes(cameraId)).map(g => `\u201c${g.label}\u201d`);
+              return held.length === 0 ? t.mapInNoGroup : t.mapInGroup(held.join(" \u00b7 "));
             }}
             overlay={
               /* THE LEGEND COUNTS DOTS, NOT MEMBERS. A group of eleven with one camera never

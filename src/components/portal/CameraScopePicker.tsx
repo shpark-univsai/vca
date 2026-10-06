@@ -325,7 +325,14 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
           {/* GROUPS FIRST: the unit somebody actually says, and the one that keeps up with the
               site. Greyed under "all" like the camera list below, for the same reason — hiding it
               answers "what would I be choosing from?" with silence. */}
-          <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "12px", opacity: mode === "all" ? 0.5 : 1 }}>
+          {/* NO RULE BETWEEN THE SECTIONS (owner, 2026-10-06: 카메라 그룹할때 라인이 사이에
+              들어가있는게 어색해). Checked against the consoles that do this job in a panel:
+              Shopify's permission picker runs one scrolling list of group rows with a count on
+              each and no section rules at all; Whop's is a flat checkbox list under a search; both
+              let the heading and the space do the separating. The uppercase caption is already
+              the loudest thing in its row, so a line above it is a second announcement of the
+              same boundary. */}
+          <div style={{ marginTop: "16px", opacity: mode === "all" ? 0.5 : 1 }}>
             <p style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)", paddingBottom: "6px" }}>
               {t.groupsHeading}
             </p>
@@ -346,7 +353,11 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
                         )}
                       </span>
                       <span style={{ minWidth: 0, fontSize: "12.5px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.label}</span>
-                      <span style={{ flexShrink: 0, fontSize: "10px", color: "var(--gray-400)" }}>{t.groupCount(g.cameraIds.length)}</span>
+                      {/* Right edge, not trailing the name. Shopify puts its 0/11 there and every
+                          row in that list ends on the same x, which is what lets an eye run down a
+                          column of counts instead of hunting for each one after a name of a
+                          different length. The zone rows below do the same now. */}
+                      <span style={{ marginLeft: "auto", flexShrink: 0, fontSize: "10px", color: "var(--gray-400)" }}>{t.groupCount(g.cameraIds.length)}</span>
                     </button>
                   );
                 })}
@@ -357,7 +368,7 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
             )}
           </div>
 
-          <div style={{ borderTop: "1px solid var(--gray-200)", paddingTop: "12px", opacity: mode === "all" ? 0.5 : 1 }}>
+          <div style={{ marginTop: "16px", opacity: mode === "all" ? 0.5 : 1 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "10px", paddingBottom: "6px" }}>
               <p style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--gray-400)" }}>
                 {t.camerasHeading}
@@ -423,6 +434,7 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
                         <span style={{ fontWeight: 600, color: "var(--gray-400)" }}> · {group.length}</span>
                       </span>
                     </button>
+                    <span style={{ flex: 1 }} />
                     {mode === "some" && (
                       <button type="button" onClick={() => toggleGroup(group.map(c => c.id))}
                         style={{ border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>
