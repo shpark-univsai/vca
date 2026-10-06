@@ -1432,10 +1432,15 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
       )}
 
       {/*
-        THE NAMES, ONE PRESS AWAY. Read-only and by name, mirroring the preset tab's FollowerList
-        for the same reason the AccountPeek below gives: the panel that CHANGES an account belongs
-        to the 사용자 rail row, and two panels writing one account drift the day either gains a
-        field. Only the accounts given this group — the unnarrowed ones are not holders of it.
+        THE NAMES, ONE PRESS AWAY — and the owner named what they are for (2026-10-06: 지우기 직전에
+        누구한테 미리 말해야 하는지. 운영자 셋에 조사자 하나면 통보 대상이 다릅니다). That is the one
+        question the count cannot answer: 「사용중 · 4」 tells you to stop, and the list tells you who
+        to tell. It is not 「이 카메라를 볼 수 있는 사람」 — an account that was never narrowed sees
+        these cameras and is not a holder of this group, which is why the title says 받은 계정.
+
+        Read-only and by name, mirroring the preset tab's FollowerList for the same reason the
+        AccountPeek below gives: the panel that CHANGES an account belongs to the 사용자 rail row,
+        and two panels writing one account drift the day either gains a field.
       */}
       {holders && (() => {
         const held = accountsWatching(
