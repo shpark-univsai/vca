@@ -7,6 +7,7 @@ import { MAP_TILE_URL, MAP_TILE_FILTER, tileLayerOptions } from "@/lib/mapTiles"
 import { hasPosition, isAwaitingFirstContact, type Camera } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, CARD_RADIUS, PANEL_SHADOW, PICKED_FILL, PICKED_LINE } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 /**
  * THE REGISTER, ON THE MAP.
@@ -778,7 +779,7 @@ export default function CameraMapView({
         <button onClick={() => setPickingMode(v => !v)}
           style={{
             display: "inline-flex", alignItems: "center", gap: "6px", height: "26px", padding: "0 10px",
-            borderRadius: "999px", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700,
+            borderRadius: RADIUS.control, cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700,
             border: picking ? "1px solid var(--gray-900)" : BORDER,
             backgroundColor: picking ? "var(--gray-900)" : "white",
             color: picking ? "white" : "var(--gray-600)",
@@ -796,7 +797,7 @@ export default function CameraMapView({
           <button onClick={() => setLassoArmed(v => !v)} aria-pressed={lassoMode} title={t.lassoHow}
             style={{
               display: "inline-flex", alignItems: "center", gap: "6px", height: "26px", padding: "0 10px",
-              borderRadius: "999px", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700,
+              borderRadius: RADIUS.control, cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700,
               border: lassoMode ? "1px solid var(--gray-900)" : BORDER,
               backgroundColor: lassoMode ? "var(--gray-900)" : "white",
               color: lassoMode ? "white" : "var(--gray-600)",
@@ -936,7 +937,7 @@ export default function CameraMapView({
             <div title={t.noPositionWhy} style={{
               position: "absolute", left: "10px", bottom: "10px", zIndex: 500,
               display: "flex", alignItems: "center", gap: "8px",
-              backgroundColor: "white", border: BORDER, borderRadius: "999px", boxShadow: "var(--shadow-popover)",
+              backgroundColor: "white", border: BORDER, borderRadius: RADIUS.panel, boxShadow: "var(--shadow-popover)",
               /* 6px on the right is the room the 보기 button's own padding needs; without that
                  button the chip was 10px on the left and 6px on the right, which on a pill reads
                  as a label that slid (owner, 2026-10-06: 오른쪽 마진이 없어 양쪽 똑같이 맞춰주고).
@@ -949,7 +950,7 @@ export default function CameraMapView({
                   fleet — but "show them" would point at nothing. */}
               {onShowUnpositioned && (
                 <button className="portal-btn-quiet" onClick={onShowUnpositioned}
-                  style={{ padding: "2px 8px", borderRadius: "999px", border: "none", backgroundColor: "var(--gray-100)", color: "var(--gray-700)", fontSize: "10.5px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                  style={{ padding: "2px 8px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--gray-100)", color: "var(--gray-700)", fontSize: "10.5px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
                   {t.showThem}
                 </button>
               )}
@@ -991,7 +992,7 @@ export default function CameraMapView({
               )}
               {onInspect && (
                 <button className="portal-btn-quiet" onClick={() => onInspect(selectedCamera.id)}
-                  style={{ marginTop: "10px", width: "100%", padding: "6px 8px", borderRadius: "6px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ marginTop: "10px", width: "100%", padding: "6px 8px", borderRadius: RADIUS.inner, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   {t.preview}
                 </button>
               )}

@@ -6,6 +6,7 @@ import { type UploadedMedia } from "@/lib/vcaStore";
 import { uploadFileUrl } from "@/lib/uploadBlobs";
 import { usePortalLanguage } from "@/lib/i18n";
 import { Drawer } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 /**
  * A REGISTERED FILE, OPENED — the same move a camera row makes, and the reason the file rows
@@ -115,7 +116,7 @@ export default function UploadPreviewModal({ upload, onClose }: { upload: Upload
       {/* The name is the panel's heading now, so what is left of that line is the kind of file and
           whose it is. */}
       <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: "12px" }}>
-        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", borderRadius: "9px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)", flexShrink: 0 }}>
+        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "34px", height: "34px", borderRadius: RADIUS.control, backgroundColor: "var(--gray-100)", color: "var(--gray-500)", flexShrink: 0 }}>
           <KindIcon size={16} strokeWidth={2.2} />
         </span>
         <p style={{ fontSize: "11px", color: "var(--gray-400)", minWidth: 0 }}>
@@ -140,7 +141,7 @@ export default function UploadPreviewModal({ upload, onClose }: { upload: Upload
               title={fileUrl ? undefined : t.notHeld}
               style={{
                 display: "flex", alignItems: "center", gap: "8px",
-                padding: "10px 18px", borderRadius: "999px", border: "none",
+                padding: "10px 18px", borderRadius: RADIUS.control, border: "none",
                 backgroundColor: fileUrl ? "white" : "rgba(255,255,255,0.14)",
                 color: fileUrl ? "var(--gray-900)" : "rgba(255,255,255,0.55)",
                 fontSize: "13px", fontWeight: 700, cursor: fileUrl ? "pointer" : "not-allowed", fontFamily: "inherit",

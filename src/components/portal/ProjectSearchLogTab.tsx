@@ -11,6 +11,7 @@ import {
   BORDER, CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
   ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TableSkeleton, TableLoadFailed, sortRows, useTableSort} from "./PortalShared";
 import { Eye, FileOutput, ShieldAlert } from "lucide-react";
+import { RADIUS } from "../shared/controls";
 
 /**
  * Who looked up whom, and why they said they were doing it.
@@ -411,7 +412,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           <button className="portal-btn-quiet" onClick={exportCsv} disabled={visible.length === 0} title={exportBlocked}
             style={{
               display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px",
-              borderRadius: "8px", border: "none", backgroundColor: "transparent",
+              borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent",
               color: visible.length === 0 ? "var(--gray-300)" : "var(--gray-600)",
               fontSize: "12px", fontWeight: 600, cursor: visible.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit",
             }}>

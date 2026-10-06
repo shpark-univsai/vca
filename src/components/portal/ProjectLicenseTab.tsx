@@ -11,6 +11,7 @@ import {
   parseLicenseFile, diffLicense, licenseAlreadyExpired,
   type ParsedLicense, type LicenseParseError,
 } from "@/lib/licenseFile";
+import { RADIUS } from "../shared/controls";
 
 // Cumulative — each tier includes everything the tier before it unlocks.
 /**
@@ -470,7 +471,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           these inside the record would have the paper commenting on itself. */}
       {(overLimit || atLimit || nearLimit) && (
         <p style={{
-          display: "block", padding: "10px 14px", borderRadius: "10px", marginBottom: "12px",
+          display: "block", padding: "10px 14px", borderRadius: RADIUS.panel, marginBottom: "12px",
           maxWidth: "820px", marginInline: "auto",
           backgroundColor: overLimit ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.5,
           fontSize: "12px", fontWeight: 700,
@@ -497,7 +498,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
           correct as written. */}
       {expiringSoon && daysRemaining !== null && (
         <p style={{
-          display: "block", padding: "10px 14px", borderRadius: "10px", marginBottom: "12px",
+          display: "block", padding: "10px 14px", borderRadius: RADIUS.panel, marginBottom: "12px",
           maxWidth: "820px", marginInline: "auto",
           backgroundColor: expiringUrgently ? "var(--danger-100)" : "var(--warning-100)", lineHeight: 1.5,
           fontSize: "12px", fontWeight: 700,
@@ -538,7 +539,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         every document reader puts one there — and the margins are the point rather than a gap.
       */}
       <div style={{
-        backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW,
+        backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.card, boxShadow: PANEL_SHADOW,
         overflow: "hidden", marginBottom: "20px", maxWidth: "820px", marginInline: "auto",
       }}>
         {/* The head names the document and stamps its state, the way the first page of an
@@ -565,7 +566,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
                     enough area to register as a grade. */}
                 <span style={{
                   display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                  width: "30px", height: "30px", borderRadius: "8px",
+                  width: "30px", height: "30px", borderRadius: RADIUS.control,
                   backgroundColor: planMeta.bg, border: planMeta.border ?? "none", color: planMeta.color,
                 }}>
                   <planMeta.Icon size={16} strokeWidth={2.1} />
@@ -573,7 +574,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
                 <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-900)", lineHeight: "28px" }}>
                   {project.licensePlan ?? t.notSet}
                 </span>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: TYPE_META[project.type].color, backgroundColor: TYPE_META[project.type].bg, padding: "3px 8px", borderRadius: "999px" }}>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: TYPE_META[project.type].color, backgroundColor: TYPE_META[project.type].bg, padding: "3px 8px", borderRadius: RADIUS.pill }}>
                   {typeLabel(project.type)}
                 </span>
               </p>
@@ -622,7 +623,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
               <p style={{ fontSize: "12px", color: overLimit ? "var(--danger-500)" : "var(--gray-500)", marginTop: "3px" }}>
                 {t.inUseNow(used, available ?? 0)}
               </p>
-              <div style={{ display: "flex", height: "5px", backgroundColor: "var(--gray-200)", borderRadius: "3px", overflow: "hidden", marginTop: "8px", maxWidth: "260px" }}>
+              <div style={{ display: "flex", height: "5px", backgroundColor: "var(--gray-200)", borderRadius: RADIUS.pill, overflow: "hidden", marginTop: "8px", maxWidth: "260px" }}>
                 <div style={{ width: `${pct(used)}%`, backgroundColor: overLimit ? "var(--danger-400)" : "var(--primary-400)" }} />
               </div>
             </>
@@ -776,7 +777,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
  */
 const OUTLINE_BTN: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: "6px",
-  height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px",
+  height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control,
   border: BORDER, backgroundColor: "white", color: "var(--gray-700)",
   fontSize: "12px", fontWeight: 700, fontFamily: "inherit", flexShrink: 0,
 };
@@ -874,7 +875,7 @@ function LicenseFileSection({ projectId, t }: {
        is the agreement and this is the instrument that delivers it, and a drop zone inside a
        document makes the document look editable. Same column, separate object. */
     <section style={{
-      backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW,
+      backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.card, boxShadow: PANEL_SHADOW,
       marginTop: "16px", padding: "24px 32px", maxWidth: "820px", marginInline: "auto",
     }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "20px", flexWrap: "wrap" }}>
@@ -929,7 +930,7 @@ function LicenseFileSection({ projectId, t }: {
             }}
             style={{
               border: `1px dashed ${dragging ? "var(--gray-900)" : "var(--gray-300)"}`,
-              borderRadius: "12px",
+              borderRadius: RADIUS.panel,
               backgroundColor: dragging ? "var(--gray-50)" : "transparent",
               padding: "16px",
             }}
@@ -939,7 +940,7 @@ function LicenseFileSection({ projectId, t }: {
               <button
                 className="portal-btn-quiet"
                 onClick={() => fileInput.current?.click()}
-                style={{ height: "28px", padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}
+                style={{ height: "28px", padding: "0 10px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}
               >
                 {t.fileChoose}
               </button>
@@ -961,7 +962,7 @@ function LicenseFileSection({ projectId, t }: {
               spellCheck={false}
               style={{
                 width: "100%", boxSizing: "border-box", minHeight: "96px", resize: "vertical",
-                border: BORDER, borderRadius: "8px", padding: "10px 12px",
+                border: BORDER, borderRadius: RADIUS.control, padding: "10px 12px",
                 fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "11px",
                 lineHeight: 1.45, color: "var(--gray-700)", backgroundColor: "white",
               }}
@@ -986,7 +987,7 @@ function LicenseFileSection({ projectId, t }: {
               </dl>
 
               <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.4px", textTransform: "uppercase", margin: "18px 0 8px" }}>{t.fileWhatChanges}</p>
-              <div style={{ border: BORDER, borderRadius: "8px", overflow: "hidden" }}>
+              <div style={{ border: BORDER, borderRadius: RADIUS.control, overflow: "hidden" }}>
                 {diff.map((row, i) => (
                   <div
                     key={row.field}
@@ -1031,7 +1032,7 @@ function LicenseFileSection({ projectId, t }: {
               onClick={apply}
               disabled={!parsed}
               style={{
-                height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none",
+                height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "none",
                 backgroundColor: parsed ? "var(--primary-400)" : "var(--gray-200)",
                 color: parsed ? "white" : "var(--gray-400)",
                 fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
@@ -1199,7 +1200,7 @@ function LicenseContactPanel({ t, manager, isolated, projectName, teamName, plan
             <a className="portal-btn-primary" href={mailHref} onClick={() => setMailTried(true)}
               style={{
                 display: "inline-flex", alignItems: "center", gap: "7px", flexShrink: 0,
-                padding: "10px 18px", borderRadius: "8px", border: "none",
+                padding: "10px 18px", borderRadius: RADIUS.control, border: "none",
                 backgroundColor: "var(--primary-400)", color: "white",
                 fontSize: "13px", fontWeight: 700, textDecoration: "none", cursor: "pointer",
               }}>
@@ -1240,7 +1241,7 @@ function LicenseContactPanel({ t, manager, isolated, projectName, teamName, plan
             {([["channels", t.topicChannels], ["renew", t.topicRenew]] as const).map(([value, text]) => (
               <button key={value} type="button" onClick={() => pickTopic(value)}
                 style={{
-                  height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px",
+                  height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control,
                   border: topic === value ? "1px solid var(--primary-300)" : BORDER,
                   backgroundColor: topic === value ? "var(--primary-100)" : "white",
                   color: topic === value ? "var(--primary-400)" : "var(--gray-600)",
@@ -1276,7 +1277,7 @@ function LicenseContactPanel({ t, manager, isolated, projectName, teamName, plan
             spellCheck={false}
             style={{
               width: "100%", boxSizing: "border-box", minHeight: "260px", resize: "vertical",
-              border: BORDER, borderRadius: "8px", padding: "12px 14px",
+              border: BORDER, borderRadius: RADIUS.control, padding: "12px 14px",
               fontFamily: "inherit", fontSize: "12px", lineHeight: 1.6,
               color: "var(--gray-700)", backgroundColor: "white",
             }}

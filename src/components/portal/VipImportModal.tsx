@@ -14,6 +14,7 @@ import {
   entryToFile, isImageEntry, isSpreadsheetArchive, isTableEntry, looksLikeZip, readZipArchive,
   type ZipProblem,
 } from "@/lib/zipArchive";
+import { RADIUS } from "../shared/controls";
 
 /**
  * A spreadsheet of names, previewed before it is registered.
@@ -449,7 +450,7 @@ export default function VipImportModal({
         {result.skipped.length > 0 && (
           <div style={{ marginTop: "16px" }}>
             <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.skippedHeading}</p>
-            <div style={{ border: BORDER, borderRadius: "12px", overflow: "hidden" }}>
+            <div style={{ border: BORDER, borderRadius: RADIUS.panel, overflow: "hidden" }}>
               {result.skipped.map((s, i) => (
                 <div key={`${s.row.line}-${i}`} style={{
                   display: "flex", gap: "10px", padding: "8px 12px", alignItems: "baseline",
@@ -473,12 +474,12 @@ export default function VipImportModal({
       <>
         {result.skipped.length > 0 && (
           <button className="portal-btn-outline" onClick={downloadSkipped}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.downloadErrors}
           </button>
         )}
         <button className="portal-btn-primary" onClick={onClose}
-          style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
           {t.close}
         </button>
       </>
@@ -510,7 +511,7 @@ export default function VipImportModal({
               the sentence it always had. */}
           <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
               <button onClick={() => photoInputRef.current?.click()}
-                style={{ display: "flex", alignItems: "center", gap: "6px", height: "30px", padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                style={{ display: "flex", alignItems: "center", gap: "6px", height: "30px", padding: "0 12px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
                 <ImagePlus size={13} strokeWidth={2.4} />
                 {photos.length === 0 ? t.pickPhotos : t.pickMorePhotos}
               </button>
@@ -602,12 +603,12 @@ export default function VipImportModal({
     footer: (
       <>
         <button className="portal-btn-outline" onClick={onClose}
-          style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
           {t.cancel}
         </button>
         <button onClick={commit} disabled={okRows.length === 0}
           style={{
-            padding: "10px 16px", borderRadius: "8px", border: "none",
+            padding: "10px 16px", borderRadius: RADIUS.control, border: "none",
             backgroundColor: okRows.length === 0 ? "var(--gray-200)" : "var(--primary-400)",
             color: okRows.length === 0 ? "var(--gray-400)" : "white",
             fontSize: "13px", fontWeight: 700, cursor: okRows.length === 0 ? "not-allowed" : "pointer",
@@ -627,7 +628,7 @@ export default function VipImportModal({
           style={{
             border: `1px dashed ${dragging ? "var(--primary-400)" : "var(--gray-200)"}`,
             backgroundColor: dragging ? "var(--primary-100)" : "var(--gray-50)",
-            borderRadius: "12px", padding: "24px 20px", textAlign: "center", cursor: "pointer",
+            borderRadius: RADIUS.panel, padding: "24px 20px", textAlign: "center", cursor: "pointer",
           }}>
           <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dropHere}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.orBrowse}</p>
@@ -641,7 +642,7 @@ export default function VipImportModal({
           onChange={e => { onPick(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
 
         {fileError && (
-          <div style={{ marginTop: "12px", padding: "12px", borderRadius: "12px", backgroundColor: "var(--danger-100)" }}>
+          <div style={{ marginTop: "12px", padding: "12px", borderRadius: RADIUS.panel, backgroundColor: "var(--danger-100)" }}>
             <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{fileError.title}</p>
             <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.5 }}>{fileError.body}</p>
           </div>
@@ -682,7 +683,7 @@ export default function VipImportModal({
             reads as another sentence — it is the one thing here somebody clicks before they
             have a file at all. */}
         <button onClick={onDownloadTemplate}
-          style={{ marginTop: "14px", display: "inline-flex", alignItems: "center", gap: "6px", height: "30px", padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit" }}>
+          style={{ marginTop: "14px", display: "inline-flex", alignItems: "center", gap: "6px", height: "30px", padding: "0 12px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit" }}>
           <FileDown size={13} strokeWidth={2.4} />
           {t.downloadTemplate}
         </button>
@@ -690,7 +691,7 @@ export default function VipImportModal({
     ),
     footer: (
       <button className="portal-btn-outline" onClick={onClose}
-        style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+        style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
         {t.cancel}
       </button>
     ),

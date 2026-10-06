@@ -7,6 +7,7 @@ import { useOnValueChange } from "@/hooks/useOnValueChange";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_PROJECT_MAX_WIDTH, TABLE_HEADER_COLOR, SelectedCheckIcon, useTypeLabel } from "./PortalShared";
 import { Building2, Check, ChevronRight, Mail, MapPin } from "lucide-react";
+import { RADIUS } from "../shared/controls";
 
 interface ProjectSwitcherProps {
   /**
@@ -253,7 +254,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
         style={{
           display: "flex", alignItems: "center", gap: "6px",
           border: "none", background: "none", cursor: "pointer",
-          padding: "6px 8px", borderRadius: "8px",
+          padding: "6px 8px", borderRadius: RADIUS.control,
           color: dark ? "white" : "var(--gray-900)",
           /*
              In the rail it is a drawn box, not a bare label: the reference puts the site you are
@@ -268,7 +269,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
             // Height pinned, padding horizontal only: the collapsed rail reserves exactly this
             // 60px for its icon-only stand-in, so the nav starts at the same y in both states.
             width: "100%", minHeight: "60px", boxSizing: "border-box" as const,
-            padding: "10px 12px", borderRadius: "12px", gap: "8px", alignItems: "flex-start",
+            padding: "10px 12px", borderRadius: RADIUS.panel, gap: "8px", alignItems: "flex-start",
             /* The card wears the accent, the rows around it do not. It was gray-800 inside a
                gray-800 hover and a gray-700 border — a box you had to look for, holding the one
                thing the whole rail is scoped to. primary-400 at 18% with a 40% edge reads as a
@@ -351,7 +352,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
           style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}
         >
           <div style={{
-            backgroundColor: "white", border: BORDER, borderRadius: "16px",
+            backgroundColor: "white", border: BORDER, borderRadius: RADIUS.card,
             width: "640px", maxWidth: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column",
             boxShadow: "var(--shadow-modal)", overflow: "hidden",
           }}>
@@ -367,7 +368,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
               <button
                 className="portal-btn-quiet"
                 onClick={() => { setOpen(false); onRequestProject(); }}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 8px", borderRadius: "6px", background: "none", border: "none", cursor: "pointer", color: "var(--gray-500)", fontSize: "12px", fontWeight: 600, fontFamily: "inherit" }}
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 8px", borderRadius: RADIUS.inner, background: "none", border: "none", cursor: "pointer", color: "var(--gray-500)", fontSize: "12px", fontWeight: 600, fontFamily: "inherit" }}
               >
                 <Mail size={13} strokeWidth={2.2} />
                 {t.requestProject}
@@ -393,7 +394,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                   <button onClick={() => setTeamMenuOpen(o => !o)} title={t.switchTeam}
                     style={{
                       display: "flex", alignItems: "center", gap: "6px",
-                      background: "none", border: "none", padding: "2px 4px", marginLeft: "-4px", borderRadius: "6px",
+                      background: "none", border: "none", padding: "2px 4px", marginLeft: "-4px", borderRadius: RADIUS.inner,
                       cursor: "pointer", fontFamily: "inherit",
                       fontSize: "12px", fontWeight: 700, color: "var(--gray-600)",
                     }}>
@@ -410,7 +411,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                 {teamMenuOpen && (
                   <div style={{
                     position: "absolute", top: "100%", left: 0, marginTop: "4px", zIndex: 20,
-                    minWidth: "260px", backgroundColor: "white", border: BORDER, borderRadius: "10px",
+                    minWidth: "260px", backgroundColor: "white", border: BORDER, borderRadius: RADIUS.panel,
                     boxShadow: "0 12px 28px rgba(24,17,39,0.16)", padding: "4px", overflow: "hidden",
                   }}>
                     {teams.map(tm => (
@@ -424,7 +425,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                         }}
                         style={{
                           display: "flex", alignItems: "center", gap: "8px", width: "100%",
-                          padding: "8px 10px", borderRadius: "8px", border: "none", background: "none",
+                          padding: "8px 10px", borderRadius: RADIUS.control, border: "none", background: "none",
                           cursor: "pointer", textAlign: "left", fontFamily: "inherit",
                           fontSize: "13px", fontWeight: tm.id === team?.id ? 700 : 500,
                           color: "var(--gray-900)",
@@ -452,7 +453,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                   onBlur={() => setSearchFocused(false)}
                   placeholder={t.searchPlaceholder}
                   style={{
-                    width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 32px", borderRadius: "10px",
+                    width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 32px", borderRadius: RADIUS.control,
                     border: searchFocused ? "1px solid var(--gray-900)" : BORDER, outline: "none",
                     fontSize: "13px", fontFamily: "inherit",
                   }}
@@ -545,7 +546,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
             <div style={{ padding: "12px 20px", display: "flex", justifyContent: "flex-end" }}>
               <button className="portal-btn-outline"
                 onClick={() => setOpen(false)}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+                style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
               >
                 {t.close}
               </button>

@@ -10,6 +10,7 @@ import {
   CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TABLE_RULE, TOOLBAR_GAP,
   ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TableLoadFailed, TableSkeleton, sortRows, useTableSort} from "./PortalShared";
 import { FileOutput, Lock, LogIn, LogOut, ShieldX } from "lucide-react";
+import { RADIUS } from "../shared/controls";
 
 /**
  * Who got in, who tried and failed, and from which machine.
@@ -545,7 +546,7 @@ export default function ProjectAccessLogTab({ projectId }: { projectId: string }
           <button className="portal-btn-quiet" onClick={exportCsv} disabled={exportDisabled} title={exportBlocked}
             style={{
               display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px",
-              borderRadius: "8px", border: "none", backgroundColor: "transparent",
+              borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent",
               color: exportDisabled ? "var(--gray-300)" : "var(--gray-600)",
               fontSize: "12px", fontWeight: 600, cursor: exportDisabled ? "not-allowed" : "pointer", fontFamily: "inherit",
             }}>
@@ -633,7 +634,7 @@ export default function ProjectAccessLogTab({ projectId }: { projectId: string }
               </span>
               <span style={{
                 display: "inline-flex", alignItems: "center", gap: "4px", justifySelf: "start",
-                height: "20px", padding: style.bg === "transparent" ? "0" : "0 8px", borderRadius: "999px",
+                height: "20px", padding: style.bg === "transparent" ? "0" : "0 8px", borderRadius: RADIUS.pill,
                 backgroundColor: style.bg, color: style.fg,
                 fontSize: "11px", fontWeight: style.weight, whiteSpace: "nowrap",
               }}>

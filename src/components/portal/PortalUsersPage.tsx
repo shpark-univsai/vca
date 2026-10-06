@@ -22,6 +22,7 @@ import {
   ROSTER_T, RosterCodeCell, IssueConfirmModal, RemoveConfirmModal, PrintSheet, type RosterTranslations,
   exportRosterCsv,
 } from "./ProjectRosterTab";
+import { RADIUS } from "../shared/controls";
 
 const T = {
   en: {
@@ -1060,7 +1061,7 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
                      no wrap: there are exactly four, they are short, and 520px divides. */
                   flex: 1, minWidth: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  height: CONTROL_HEIGHT, padding: "0 6px", borderRadius: "9px", cursor: "pointer",
+                  height: CONTROL_HEIGHT, padding: "0 6px", borderRadius: RADIUS.control, cursor: "pointer",
                   border: picked ? PICKED_LINE : BORDER,
                   backgroundColor: picked ? PICKED_FILL : "white", fontFamily: "inherit",
                   fontSize: "12px", fontWeight: 700,
@@ -1098,7 +1099,7 @@ function GrantPicker({ presets, choice, onChoice, actions, onToggleAction, hideT
               style={{
                 flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "2px",
                 border: "none", background: "none", padding: "2px 4px", marginRight: "-4px",
-                borderRadius: "6px", cursor: "pointer", fontFamily: "inherit",
+                borderRadius: RADIUS.inner, cursor: "pointer", fontFamily: "inherit",
                 fontSize: "11px", fontWeight: 700, color: "var(--gray-600)",
               }}>
               {t.grantDetails}
@@ -1200,7 +1201,7 @@ function InviteLinkRow({ name, email, url }: { name: string; email: string; url:
     );
   };
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--line)", backgroundColor: "var(--gray-50)" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "12px 14px", borderRadius: RADIUS.panel, border: "1px solid var(--line)", backgroundColor: "var(--gray-50)" }}>
       {/* Who this one is for. The bulk case hands over several at once, and a column of tokens
           that differ in the last six characters cannot be told apart by eye. */}
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px", minWidth: 0 }}>
@@ -1213,7 +1214,7 @@ function InviteLinkRow({ name, email, url }: { name: string; email: string; url:
           {url}
         </code>
         <button onClick={copy}
-          style={{ flexShrink: 0, padding: "7px 11px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: copied ? "var(--success-400)" : "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          style={{ flexShrink: 0, padding: "7px 11px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: copied ? "var(--success-400)" : "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
           {copied ? t.tempCopied : t.tempCopy}
         </button>
       </div>
@@ -1283,7 +1284,7 @@ function InviteLinkPanel({ title, links, onClose, onBack, doneLabel, children }:
     <Drawer title={title} onClose={onClose} onBack={onBack}
       footer={
         <button className="portal-btn-primary" onClick={onClose}
-          style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
           {doneLabel ?? t.tempDone}
         </button>
       }>
@@ -1661,7 +1662,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
             /* Filled, not outlined. Above it sits a link block with a Copy button that owns the
                sheet; an outlined row under it read as a footnote to the thing you came for. The
                fill is the same one the panel uses for a value you are meant to take in. */
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between", padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between", padding: "12px 14px", borderRadius: RADIUS.panel, backgroundColor: "var(--gray-50)" }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.scopeLabel}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>
@@ -1681,7 +1682,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                 </p>
               </div>
               <button onClick={() => setScoping(true)}
-                style={{ flexShrink: 0, padding: "7px 11px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ flexShrink: 0, padding: "7px 11px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 {t.scopePick}
               </button>
             </div>
@@ -1730,11 +1731,11 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               {effectiveChoice === null ? t.grantNotChosen : t.grantNoScreens}
             </span>
           )}
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button className="portal-btn-primary" onClick={submit} disabled={!canInvite}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: canInvite ? "pointer" : "not-allowed", opacity: canInvite ? 1 : 0.5 }}>
+            style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: canInvite ? "pointer" : "not-allowed", opacity: canInvite ? 1 : 0.5 }}>
             {t.sendInvite}
           </button>
       </>}>
@@ -1754,7 +1755,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
               keeps catching. The other door is still open — a registration code is handed over by
               hand and needs no mail — so this points at it rather than just refusing. */}
           {!siteSmtp && (
-            <p style={{ margin: 0, padding: "10px 12px", borderRadius: "8px", backgroundColor: "var(--warning-100)", color: "var(--warning-500)", fontSize: "12px", fontWeight: 700, lineHeight: 1.5 }}>
+            <p style={{ margin: 0, padding: "10px 12px", borderRadius: RADIUS.control, backgroundColor: "var(--warning-100)", color: "var(--warning-500)", fontSize: "12px", fontWeight: 700, lineHeight: 1.5 }}>
               {t.inviteNoMail}
             </p>
           )}
@@ -1849,7 +1850,7 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
                                else used CONTROL_HEIGHT. A column of boxes at four heights reads as
                                four kinds of control when it is one. */
                             display: "flex", alignItems: "center",
-                            height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",
+                            height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, cursor: "pointer",
                             border: active ? PICKED_LINE : BORDER,
                             backgroundColor: active ? PICKED_FILL : "white",
                             color: active ? "var(--gray-900)" : "var(--gray-600)",
@@ -2133,10 +2134,10 @@ function ChangeEmailPanel({ user, mailDomain, mailAvailable, onClose, onBack }: 
             panel's own ground directly above it — two addresses in the same column, one of which
             looked like nothing in particular. The fill says the same thing the field's edge says,
             in the other direction: this one is a value, that one is a box you type in. Same
-            12px/14px and 10px radius the reset sheet uses for its value blocks, so the two panels
+            12px/14px and the panel radius the reset sheet uses for its value blocks, so the two panels
             that open over this card wear the same treatment.
           */}
-          <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+          <div style={{ padding: "12px 14px", borderRadius: RADIUS.panel, backgroundColor: "var(--gray-50)" }}>
             <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", wordBreak: "break-all" }}>{user.email}</p>
           </div>
         </div>
@@ -2363,7 +2364,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }
         {password === null ? (
           <>
             <div style={MODAL_BODY}>
-              <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+              <div style={{ padding: "12px 14px", borderRadius: RADIUS.panel, backgroundColor: "var(--gray-50)" }}>
                 <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px", textTransform: "uppercase" }}>{t.tempForLabel}</p>
                 <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", marginTop: "4px" }}>{user.name}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{user.email}</p>
@@ -2389,7 +2390,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }
                       style={{
                         display: "flex", gap: "10px", alignItems: "flex-start",
                         cursor: opt.unavailable ? "default" : "pointer",
-                        padding: "12px 14px", borderRadius: "10px",
+                        padding: "12px 14px", borderRadius: RADIUS.control,
                         border: on ? "1px solid var(--primary-300)" : "1px solid var(--line)",
                         backgroundColor: on ? "var(--primary-50)" : opt.unavailable ? "var(--gray-50)" : "white",
                       }}
@@ -2438,12 +2439,12 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }
               {/* Monospace and letter-spaced because this string gets read aloud a character at a
                   time. user-select stays on: the copy button is a convenience, not the only way
                   to get it out of the box. */}
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px", borderRadius: "10px", border: "1px solid var(--line)", backgroundColor: "var(--gray-50)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px", borderRadius: RADIUS.panel, border: "1px solid var(--line)", backgroundColor: "var(--gray-50)" }}>
                 <code style={{ flex: 1, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "18px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "1px", wordBreak: "break-all" }}>
                   {shownCredential}
                 </code>
                 <button onClick={copy}
-                  style={{ flexShrink: 0, padding: "8px 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: copied ? "var(--success-400)" : "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ flexShrink: 0, padding: "8px 12px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: copied ? "var(--success-400)" : "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
                   {copied ? t.tempCopied : t.tempCopy}
                 </button>
               </div>
@@ -2453,7 +2454,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }
                 {c.expiryLabel && <span style={{ flexShrink: 0, fontSize: "12px", color: "var(--gray-500)" }}>{c.expiryLabel}</span>}
               </div>
 
-              <div style={{ padding: "12px 14px", borderRadius: "10px", backgroundColor: c.showExpiry ? "var(--warning-100)" : "var(--info-100)" }}>
+              <div style={{ padding: "12px 14px", borderRadius: RADIUS.panel, backgroundColor: c.showExpiry ? "var(--warning-100)" : "var(--info-100)" }}>
                 <p style={{ fontSize: "10px", fontWeight: 700, color: c.showExpiry ? "var(--warning-500)" : "var(--info-500)", letterSpacing: "0.4px", textTransform: "uppercase" }}>{c.handoverTitle}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-700)", lineHeight: 1.5, marginTop: "4px" }}>{c.handover}</p>
               </div>
@@ -2673,7 +2674,7 @@ function SetupCodeBadge({ issuedAt }: { issuedAt?: string }) {
     <span
       title={days === null ? undefined : t.setupBadgeTitle(days)}
       style={{
-        display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px",
+        display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: RADIUS.pill,
         backgroundColor: tone.bg, color: tone.color, fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap",
       }}
     >
@@ -2701,7 +2702,7 @@ function TempPasswordBadge({ issuedAt }: { issuedAt: string }) {
     <span
       title={t.tempBadgeTitle(new Date(issuedAt).toLocaleString(lang === "ko" ? "ko-KR" : "en-US"))}
       style={{
-        display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px",
+        display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: RADIUS.pill,
         backgroundColor: tone.bg, color: tone.color, fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap",
       }}
     >
@@ -2719,7 +2720,7 @@ function RecoveryModeNotice({ supportContact }: { supportContact: string | null 
   const [lang] = usePortalLanguage();
   const t = T[lang];
   return (
-    <div style={{ display: "flex", gap: "12px", padding: "14px 16px", borderRadius: "12px", backgroundColor: "var(--info-100)", border: "1px solid var(--info-200)", marginBottom: "16px" }}>
+    <div style={{ display: "flex", gap: "12px", padding: "14px 16px", borderRadius: RADIUS.panel, backgroundColor: "var(--info-100)", border: "1px solid var(--info-200)", marginBottom: "16px" }}>
       <span style={{ flexShrink: 0, display: "flex", color: "var(--info-500)", marginTop: "1px" }}>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/><path d="M8 7.2v4M8 5.1v.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
       </span>
@@ -2823,7 +2824,7 @@ function AccessRequestsPanel({ projectId, onLinksMade }: {
         {selected.length > 0 && (
           <button onClick={() => approve(selected)}
             disabled={!manageAccess} title={manageAccess ? undefined : t.reasonNotOwner}
-            style={{ padding: "8px 14px", borderRadius: "8px", border: manageAccess ? "1px solid var(--gray-900)" : BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-900)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
+            style={{ padding: "8px 14px", borderRadius: RADIUS.control, border: manageAccess ? "1px solid var(--gray-900)" : BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-900)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
             {t.approveSelected(selected.length)}
           </button>
         )}
@@ -2846,12 +2847,12 @@ function AccessRequestsPanel({ projectId, onLinksMade }: {
             <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
               <button className="portal-btn-outline" onClick={() => manageAccess && dismissAccessRequest(r.id)}
                 disabled={!manageAccess} title={manageAccess ? undefined : t.reasonNotOwner}
-                style={{ padding: "8px 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
+                style={{ padding: "8px 12px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
                 {t.dismiss}
               </button>
               <button onClick={() => approve([r.id])}
                 disabled={!manageAccess} title={manageAccess ? undefined : t.reasonNotOwner}
-                style={{ padding: "8px 12px", borderRadius: "8px", border: manageAccess ? "1px solid var(--gray-900)" : BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-900)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
+                style={{ padding: "8px 12px", borderRadius: RADIUS.control, border: manageAccess ? "1px solid var(--gray-900)" : BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-900)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
                 {t.approve}
               </button>
             </div>
@@ -2899,7 +2900,7 @@ function AccessRequestsPanel({ projectId, onLinksMade }: {
  * not a quiet button, it is text.
  */
 const SECONDARY_BTN: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: "6px", padding: "10px", borderRadius: "8px",
+  display: "flex", alignItems: "center", gap: "6px", padding: "10px", borderRadius: RADIUS.control,
   border: "none", backgroundColor: "transparent", color: "var(--gray-600)",
   fontSize: "12px", fontWeight: 600, cursor: "pointer", flexShrink: 0,
 };
@@ -3113,11 +3114,11 @@ function UserProjectsModal({ user, teamProjects, onClose, onBack, onSave }: {
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
             {/* 취소 goes BACK when there is a card behind, not away. */}
             <button className="portal-btn-outline" onClick={onBack ?? onClose}
-              style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               {onBack ? t.grantBack : t.cancel}
             </button>
             <button className="portal-btn-primary" onClick={() => { onSave(picked); onClose(); }} disabled={!canSave}
-              style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+              style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
               {t.changeApply}
             </button>
           </div>
@@ -3142,7 +3143,7 @@ function UserProjectsModal({ user, teamProjects, onClose, onBack, onSave }: {
           what is about to be saved, beside the button that saves it.
         */}
         <div style={{ padding: "16px 20px 6px" }}>
-          <div style={{ border: BORDER, borderRadius: "10px", overflow: "hidden" }}>
+          <div style={{ border: BORDER, borderRadius: RADIUS.panel, overflow: "hidden" }}>
             {teamProjects.map((p, i) => {
               const active = picked.includes(p.id);
               return (
@@ -3159,7 +3160,7 @@ function UserProjectsModal({ user, teamProjects, onClose, onBack, onSave }: {
                     backgroundColor: "white",
                   }}>
                   <span style={{
-                    width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0,
+                    width: "16px", height: "16px", borderRadius: RADIUS.inner, flexShrink: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     border: active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
                     backgroundColor: active ? "var(--gray-900)" : "white",
@@ -3288,13 +3289,13 @@ function AppGrantEditor({ presets, initial, subtitle, nested, warning, blockedRe
               set: a stacked panel's cancel returns to what it covered, and saying 취소 there reads
               as cancelling the invite underneath. */}
           <button type="button" className="portal-btn-outline" onClick={onClose}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {nested ? t.grantBack : t.cancel}
           </button>
           {/* 적용 against 변경: the nested one edits a draft of an account that does not exist, so
               there is nothing yet to have changed. */}
           <button type="button" className="portal-btn-primary" onClick={() => onApply(draft)} disabled={blocked !== null}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: blocked === null ? "var(--primary-400)" : "var(--gray-200)", color: blocked === null ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: blocked === null ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+            style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: blocked === null ? "var(--primary-400)" : "var(--gray-200)", color: blocked === null ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: blocked === null ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
             {nested ? t.grantApply : t.changeApply}
           </button>
           </div>
@@ -3492,12 +3493,12 @@ function RosterEntryModal({ entry, projectId, onClose, onCreated, t }: {
       escapeEnabled={grantEditor === null}
       footer={
         <>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button className="portal-btn-primary" onClick={submit} disabled={!canSubmit}
             style={{
-              padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)",
+              padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)",
               fontSize: "13px", fontWeight: 700, cursor: canSubmit ? "pointer" : "not-allowed",
             }}>
             {t.save}
@@ -3542,7 +3543,7 @@ function RosterEntryModal({ entry, projectId, onClose, onCreated, t }: {
               return (
                 <button key={pr.id} type="button" onClick={() => setPickedProject(pr.id)}
                   style={{
-                    padding: "8px 12px", borderRadius: "999px", cursor: "pointer",
+                    padding: "8px 12px", borderRadius: RADIUS.control, cursor: "pointer",
                     border: active ? PICKED_LINE : BORDER,
                     backgroundColor: active ? PICKED_FILL : "white",
                     color: active ? "var(--gray-900)" : "var(--gray-600)",
@@ -3767,7 +3768,7 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
             { label: t.accessAppOnly, desc: t.accessAppOnlyDesc },
             { label: t.accessPortalOnly, desc: t.accessPortalOnlyDesc },
           ]).map(a => (
-            <div key={a.label} style={{ display: "flex", gap: "10px", alignItems: "baseline", border: BORDER, borderRadius: "10px", padding: "10px 12px" }}>
+            <div key={a.label} style={{ display: "flex", gap: "10px", alignItems: "baseline", border: BORDER, borderRadius: RADIUS.panel, padding: "10px 12px" }}>
               <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", whiteSpace: "nowrap", minWidth: "88px" }}>{a.label}</span>
               <span style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{a.desc}</span>
             </div>
@@ -3776,7 +3777,7 @@ function AccessGuideModal({ t, onClose }: { t: (typeof T)["en"] | (typeof T)["ko
 
         <div style={{ padding: "20px 20px 0" }}>
           <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.guideRolesHeading}</p>
-          <div style={{ border: BORDER, borderRadius: "10px", overflow: "hidden" }}>
+          <div style={{ border: BORDER, borderRadius: RADIUS.panel, overflow: "hidden" }}>
             <div style={{ display: "grid", gridTemplateColumns: GUIDE_GRID, gap: "8px", padding: "8px 12px", backgroundColor: "var(--gray-50)", borderBottom: BORDER }}>
               <span />
               {roles.map(r => (
@@ -3888,7 +3889,7 @@ function AddPersonMenu({ t, mayInvite, inviteReason, mayAddCode, codeReason, onM
   return (
     <div ref={wrap} style={{ position: "relative", flexShrink: 0 }}>
       <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
-        style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
+        style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
         <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="white" strokeWidth="1.22" strokeLinecap="round"/></svg>
         {t.addPerson}
         <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true"
@@ -3899,7 +3900,7 @@ function AddPersonMenu({ t, mayInvite, inviteReason, mayAddCode, codeReason, onM
       {open && (
         <div style={{
           position: "absolute", top: "100%", right: 0, marginTop: "4px", zIndex: 50,
-          width: "272px", backgroundColor: "white", border: BORDER, borderRadius: "10px",
+          width: "272px", backgroundColor: "white", border: BORDER, borderRadius: RADIUS.panel,
           boxShadow: "var(--shadow-popover)", padding: "4px", display: "flex", flexDirection: "column",
         }}>
           {option(t.addPersonMail, t.addPersonMailWhy, mayInvite, inviteReason, onMail)}
@@ -5098,7 +5099,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
       {mayEdit && bulkSuspendTargets.length > 0 && (
         <div style={{
           display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
-          padding: "10px 14px", marginBottom: "10px", borderRadius: "10px",
+          padding: "10px 14px", marginBottom: "10px", borderRadius: RADIUS.panel,
           backgroundColor: "var(--gray-50)", border: BORDER,
         }}>
           <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>
@@ -5108,7 +5109,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             <span style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5 }}>{t.bulkSuspendKept(bulkSuspendKept)}</span>
           )}
           <button className="portal-btn-outline" onClick={() => setConfirmingBulkSuspend(true)}
-            style={{ marginLeft: "auto", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ marginLeft: "auto", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {/* The count again, not "Suspend all shown": with the bar saying 3 of 5, a button
                 offering "all shown" is the discarded claim coming back one control to the right.
                 Same string the confirm dialog's own button uses, so the number the reader presses
@@ -5424,12 +5425,12 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     a row 12px of height on exactly the rows that have something wrong with them.
 
                     `alignItems: flex-start` so the mark stays on the FIRST line rather than
-                    centring itself against a two-line block, and the radius comes off 999px —
-                    a stadium round a two-line label is a lozenge, 9px is a chip either way.
+                    centring itself against a two-line block, and the radius comes off the pill —
+                    a stadium round a two-line label is a lozenge, the control step is a chip either way.
                   */}
                   <span style={{
                     display: "inline-flex", alignItems: "flex-start", gap: "4px",
-                    maxWidth: "100%", minHeight: "18px", padding: "2px 8px", borderRadius: "9px",
+                    maxWidth: "100%", minHeight: "18px", padding: "2px 8px", borderRadius: RADIUS.control,
                     backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
                     fontSize: "10px", fontWeight: 600, lineHeight: "14px",
                   }}>
@@ -5481,7 +5482,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                        the tones were unified, and this chip is not a state at all — it is a
                        capability the account holds. It was also the only info-blue on the page,
                        which made a secondary fact the loudest thing in the table. */
-                    <span title={t.colAppSearch} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", padding: "1px 6px", borderRadius: "999px", backgroundColor: "var(--gray-100)", color: "var(--gray-600)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
+                    <span title={t.colAppSearch} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", padding: "1px 6px", borderRadius: RADIUS.pill, backgroundColor: "var(--gray-100)", color: "var(--gray-600)", fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap" }}>
                       {t.colAppSearch}
                     </span>
                   )}
@@ -6036,7 +6037,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
               */}
               {mu.status === "suspended" && (
                 <div style={{
-                  margin: "8px 20px 0", padding: "12px 14px", borderRadius: "10px",
+                  margin: "8px 20px 0", padding: "12px 14px", borderRadius: RADIUS.panel,
                   backgroundColor: "var(--warning-100)",
                   display: "flex", gap: "8px", alignItems: "flex-start",
                 }}>
@@ -6065,7 +6066,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                       width: "100%", display: "flex", alignItems: "center", gap: "8px", textAlign: "left",
                       /* Taller than the one-line version it replaces, because the row is now two
                          lines — see the stacked block below. */
-                      padding: row.hero ? "10px 12px" : "9px 12px", border: "none", borderRadius: "8px",
+                      padding: row.hero ? "10px 12px" : "9px 12px", border: "none", borderRadius: RADIUS.control,
                       /* See PANEL_PLATE. A row that opens something wears the plate; a refused one
                          and a select row do not, and both override this below. */
                       backgroundColor: PANEL_PLATE, fontFamily: "inherit",
@@ -6207,7 +6208,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                         title={a.disabled ? a.reason : undefined}
                         style={{
                           display: "inline-flex", alignItems: "center", gap: "6px", alignSelf: "flex-start",
-                          height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none",
+                          height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, border: "none",
                           /* See PANEL_PLATE — this one lives inside the rows group rather than in
                              the actions block, and it is the fifth of the five the owner counted. */
                           backgroundColor: a.disabled ? "transparent" : PANEL_PLATE, fontFamily: "inherit", fontSize: "12px",
@@ -6345,7 +6346,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                       title={a.disabled ? a.reason : undefined}
                       style={{
                         display: "inline-flex", alignItems: "center", gap: "6px",
-                        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none",
+                        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, border: "none",
                         /* See PANEL_PLATE: one surface for everything pressable in this card. The
                            border these carried from 2026-09-28 was answering the same need — 「버튼
                            이라고 느껴지게」 — and the fill answers it without an edge, so the rows
@@ -6424,7 +6425,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                      */
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "6px",
-                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none",
+                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, border: "none",
                       /* See PANEL_PLATE. */
                       backgroundColor: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "transparent" : PANEL_PLATE,
                       color: (!manageAccess || (mu.status !== "suspended" && lastAdmin)) ? "var(--gray-300)" : "var(--gray-600)",
@@ -6470,7 +6471,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                      */
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "6px",
-                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "none",
+                      height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, border: "none",
                       /* See PANEL_PLATE. 제거 keeps its red-on-pointing class as the one action
                          that cannot be undone — the plate is the resting state, not the warning. */
                       backgroundColor: (!manageAccess || lastAdmin) ? "transparent" : PANEL_PLATE,
@@ -6528,7 +6529,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {bulkResult.refused.map(r => (
-                <div key={r.name} style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "10px 12px", borderRadius: "10px", border: BORDER, backgroundColor: "var(--gray-50)" }}>
+                <div key={r.name} style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "10px 12px", borderRadius: RADIUS.panel, border: BORDER, backgroundColor: "var(--gray-50)" }}>
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{r.name}</span>
                   <span style={{ fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5 }}>{r.reason}</span>
                 </div>

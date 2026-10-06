@@ -15,6 +15,7 @@ import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TextField,
   ConfirmModal, Drawer, FieldError, PairGrid, PairItem, PanelCancel, PanelPrimary, RequiredMark, RowActionsMenu, usePortalEditAccess,
 } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 /**
  * CAMERA GROUPS, ON THE SCREEN THAT HANDS THEM OUT.
@@ -607,7 +608,7 @@ function GroupDrawer({ group, cameras, otherGroups, portalUsers, t, onSave, onCl
       {picked.map(id => {
         const cam = cameras.find(c => c.id === id);
         return (
-          <span key={id} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 6px 4px 9px", borderRadius: "8px", border: BORDER, backgroundColor: "var(--gray-50)", fontSize: "11.5px", color: "var(--gray-900)" }}>
+          <span key={id} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 6px 4px 9px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "var(--gray-50)", fontSize: "11.5px", color: "var(--gray-900)" }}>
             {/* A camera the register no longer holds still has to be shown — a group can name one
                 that was removed, and silently dropping it would make the count disagree with the
                 chips. */}
@@ -762,15 +763,15 @@ function GroupDrawer({ group, cameras, otherGroups, portalUsers, t, onSave, onCl
                 AND THE CONSOLE'S OWN ONE, TO THE TOKEN. It was drawn near this shape but not on
                 it — a --gray-100 track with no line, radius 9/7, 11.5px, and a selected shadow
                 written out as a literal rgba — while 입력 소스 and VIP 등록 both use --gray-50 +
-                BORDER, radius 10/8, 10px and PANEL_SHADOW. One gesture, "show me this
+                BORDER, radius control/inner and PANEL_SHADOW. One gesture, "show me this
                 differently", in two sizes on two screens is the kind of difference a reader
                 cannot name and still notices.
               */}
-              <div style={{ display: "flex", alignItems: "center", padding: "3px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", padding: "3px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: RADIUS.control, flexShrink: 0 }}>
                 {([["list", t.viewList], ["map", t.viewMap]] as const).map(([value, text]) => (
                   <button key={value} type="button" onClick={() => setView(value)}
                     style={{
-                      padding: "4px 10px", borderRadius: "8px", cursor: "pointer", fontFamily: "inherit",
+                      padding: "4px 10px", borderRadius: RADIUS.inner, cursor: "pointer", fontFamily: "inherit",
                       fontSize: "10px", fontWeight: 700, border: "none",
                       backgroundColor: view === value ? "white" : "transparent",
                       color: view === value ? "var(--gray-900)" : "var(--gray-400)",
@@ -936,8 +937,8 @@ function GroupDrawer({ group, cameras, otherGroups, portalUsers, t, onSave, onCl
                              * characters, 「다른 그룹 N」 is six glyphs and a digit).
                              */
                             <button key={c.id} type="button" onClick={() => toggle(c.id)}
-                              style={{ width: "100%", display: "grid", gridTemplateColumns: "16px minmax(0, 1fr) 96px 68px", alignItems: "center", columnGap: "10px", textAlign: "left", padding: "7px 6px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit" }}>
-                              <span style={{ width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white" }}>
+                              style={{ width: "100%", display: "grid", gridTemplateColumns: "16px minmax(0, 1fr) 96px 68px", alignItems: "center", columnGap: "10px", textAlign: "left", padding: "7px 6px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", cursor: "pointer", fontFamily: "inherit" }}>
+                              <span style={{ width: "16px", height: "16px", borderRadius: RADIUS.inner, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white" }}>
                                 {on && (
                                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
                                     <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
@@ -994,7 +995,7 @@ function HolderChip({ n, t, onOpen }: {
     <span style={{
       flexShrink: 0, fontSize: "11px", fontWeight: 700,
       color: n === 0 ? "var(--gray-400)" : "var(--gray-600)",
-      padding: "3px 8px", borderRadius: "999px", border: BORDER,
+      padding: "3px 8px", borderRadius: RADIUS.pill, border: BORDER,
       backgroundColor: n === 0 ? "transparent" : "var(--gray-50)",
       fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap",
     }}>
@@ -1157,13 +1158,13 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
               is, and a screen reader saying "선택됨" is the state the white lozenge shows.
             */}
             <span role="radiogroup" aria-label={t.viewLabel}
-              style={{ display: "inline-flex", alignItems: "center", padding: "3px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", flexShrink: 0 }}>
+              style={{ display: "inline-flex", alignItems: "center", padding: "3px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: RADIUS.control, flexShrink: 0 }}>
               {(["cards", "map"] as const).map(v => {
                 const on = view === v;
                 return (
                   <button key={v} type="button" role="radio" aria-checked={on} onClick={() => setView(v)}
                     style={{
-                      padding: "4px 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
+                      padding: "4px 10px", borderRadius: RADIUS.inner, border: "none", cursor: "pointer", fontFamily: "inherit",
                       fontSize: "10px", fontWeight: 700,
                       backgroundColor: on ? "white" : "transparent",
                       color: on ? "var(--gray-900)" : "var(--gray-400)",
@@ -1175,7 +1176,7 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
               })}
             </span>
             <button type="button" onClick={() => setCreating(true)}
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               <Plus size={13} strokeWidth={2.4} aria-hidden="true" />
               {t.createButton}
             </button>
@@ -1191,13 +1192,13 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.6, textAlign: "center" }}>{t.empty}</p>
           {mayEdit && (
             <button type="button" onClick={() => setCreating(true)}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               {t.createButton}
             </button>
           )}
           {onGoToCameras && (
             <button onClick={onGoToCameras}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               {t.goToCameras}
             </button>
           )}
@@ -1249,7 +1250,7 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
                 position: "absolute", right: "12px", bottom: "12px", zIndex: 500,
                 maxWidth: "min(46%, 280px)", maxHeight: "60%", overflowY: "auto",
                 display: "flex", flexDirection: "column", gap: "6px",
-                padding: "10px 12px", borderRadius: "10px", border: BORDER,
+                padding: "10px 12px", borderRadius: RADIUS.panel, border: BORDER,
                 backgroundColor: "white", boxShadow: "var(--shadow-popover)",
               }}>
                 {groups.map((g, i) => {
@@ -1265,7 +1266,7 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
                       style={{
                         display: "flex", alignItems: "center", gap: "7px",
                         margin: "0 -6px", padding: "3px 6px", width: "calc(100% + 12px)",
-                        border: "none", borderRadius: "6px", fontFamily: "inherit", textAlign: "left",
+                        border: "none", borderRadius: RADIUS.inner, fontFamily: "inherit", textAlign: "left",
                         backgroundColor: held ? "var(--gray-100)" : "transparent",
                         cursor: drawn === 0 ? "default" : "pointer",
                         fontSize: "11.5px", color: "var(--gray-700)",
@@ -1333,7 +1334,7 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
                   </div>
                   {/* An empty group is worth seeing rather than reading as a zero: it grants
                       nothing today and will grant whatever somebody puts in it. */}
-                  <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 700, color: cams.length === 0 ? "var(--gray-900)" : "var(--gray-600)", padding: "3px 8px", borderRadius: "999px", border: BORDER, backgroundColor: "var(--gray-50)", fontVariantNumeric: "tabular-nums" }}>
+                  <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 700, color: cams.length === 0 ? "var(--gray-900)" : "var(--gray-600)", padding: "3px 8px", borderRadius: RADIUS.pill, border: BORDER, backgroundColor: "var(--gray-50)", fontVariantNumeric: "tabular-nums" }}>
                     {cams.length === 0 ? t.camerasNone : t.cameras(cams.length)}
                   </span>
                   {/*
@@ -1387,7 +1388,7 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
                 {cams.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
                     {cams.slice(0, CARD_CHIP_CAP).map(c => (
-                      <span key={c.id} style={{ fontSize: "11px", color: "var(--gray-600)", padding: "3px 7px", borderRadius: "6px", backgroundColor: "var(--gray-100)" }}>{c.name}</span>
+                      <span key={c.id} style={{ fontSize: "11px", color: "var(--gray-600)", padding: "3px 7px", borderRadius: RADIUS.inner, backgroundColor: "var(--gray-100)" }}>{c.name}</span>
                     ))}
                     {cams.length > CARD_CHIP_CAP && (
                       <span style={{ fontSize: "11px", color: "var(--gray-400)", padding: "3px 2px" }}>{t.andMore(cams.length - CARD_CHIP_CAP)}</span>
@@ -1453,7 +1454,7 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
               {held.map(u => (
                 <button key={u.id} type="button" onClick={() => { setHolders(null); setPeeking(u); }}
                   className="portal-btn-quiet"
-                  style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "1px", width: "calc(100% + 24px)", margin: "0 -12px", padding: "8px 12px", border: "none", borderRadius: "8px", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                  style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "1px", width: "calc(100% + 24px)", margin: "0 -12px", padding: "8px 12px", border: "none", borderRadius: RADIUS.control, background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
                   <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{u.name}</span>
                   <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{appLabelOf(u)}</span>
                 </button>

@@ -19,6 +19,7 @@ import PortalUsersPage from "./PortalUsersPage";
 import ProjectRecordsTabs from "./ProjectRecordsTabs";
 import ProjectRequestsTab from "./ProjectRequestsTab";
 import { getComplianceConfig } from "@/lib/complianceConfig";
+import { RADIUS } from "../shared/controls";
 
 const T = {
   en: {
@@ -372,7 +373,7 @@ function SectionHead({ title, subtitle, action }: {
              is 15px of icon in 4px of padding — 23px against a 17px title line — so top-aligning
              the box left the glyph sitting a few px low, right in the gap. Tighter padding and a
              -2px nudge put its centre on the title's centre. */
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "3px", border: "none", background: "none", padding: action.labelled ? "2px 4px" : "2px", marginTop: "-2px", borderRadius: "6px", cursor: "pointer", color: "var(--gray-500)", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "3px", border: "none", background: "none", padding: action.labelled ? "2px 4px" : "2px", marginTop: "-2px", borderRadius: RADIUS.inner, cursor: "pointer", color: "var(--gray-500)", fontFamily: "inherit", fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}
         >
           {action.labelled && action.label}
           {/* HORIZONTAL OPTICAL NUDGE (2026-10-01). An up-right arrow carries its mass in the
@@ -988,11 +989,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                   not worth the space. */}
               {mayEdit && (<>
                 <button className="portal-btn-quiet" onClick={() => onTabChange("cameras")}
-                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 12px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                   <PlusIcon /> {t.addCamera}
                 </button>
                 <button className="portal-btn-quiet" onClick={() => onTabChange("vip")}
-                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 12px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                   <UserPlusIcon /> {t.registerVip}
                 </button>
               </>)}
@@ -1015,16 +1016,16 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                 <button
                   className="portal-btn-primary"
                   onClick={() => router.push("/")}
-                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   <ExitIcon /> {t.goToApp}
                 </button>
               )}
               {showAccessRequests && (
                 <button className="portal-btn-quiet" onClick={() => onTabChange("users")}
-                  style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 12px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                   <ShieldIcon /> {t.approveAccessRequests}
                   {projectAccessRequests.length > 0 && (
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 7px", borderRadius: "999px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 7px", borderRadius: RADIUS.pill }}>
                       {projectAccessRequests.length}
                     </span>
                   )}
@@ -1089,11 +1090,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
               // padding was setting its height rather than breathing around content — 56px of
               // strip for 28px of thing. Horizontal stays wider than vertical, which is what
               // keeps a single-line bar reading as a bar.
-              borderRadius: "12px", padding: "10px 16px", marginBottom: CARD_GAP,
+              borderRadius: RADIUS.panel, padding: "10px 16px", marginBottom: CARD_GAP,
             }}>
               <span style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
-                width: "28px", height: "28px", borderRadius: "8px", flexShrink: 0,
+                width: "28px", height: "28px", borderRadius: RADIUS.control, flexShrink: 0,
                 // primary-100 now, not white: on the old primary-100 band a white square was the
                 // clean edge, but on primary-50 white has nothing to separate from. The square is
                 // the only saturated thing left here, so it carries the tint and the mark.
@@ -1192,13 +1193,13 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                       className="portal-btn-quiet"
                       style={{
                         display: "flex", alignItems: "center", gap: "10px", width: "100%", textAlign: "left",
-                        padding: "10px 12px", borderRadius: "8px", border: "none", background: "none",
+                        padding: "10px 12px", borderRadius: RADIUS.control, border: "none", background: "none",
                         cursor: "pointer", font: "inherit", fontSize: "13px", color: "var(--gray-900)",
                       }}
                     >
                       {/* The colour that ranked it, as a dot. On the strip the order carries that;
                           in a list of eight rows the reader needs to see where red stops. */}
-                      <span style={{ width: "6px", height: "6px", borderRadius: "999px", backgroundColor: item.color, flexShrink: 0 }} />
+                      <span style={{ width: "6px", height: "6px", borderRadius: RADIUS.pill, backgroundColor: item.color, flexShrink: 0 }} />
                       <span style={{ minWidth: 0 }}>{item.text}</span>
                       <span style={{ flex: 1 }} />
                       <ChevronRight size={14} strokeWidth={2.4} style={{ color: "var(--gray-300)", flexShrink: 0 }} />
@@ -1323,7 +1324,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                   one statement with a gap in the middle. The cards still line up: both bars have
                   the same rows above them, and the grid stretches the cards themselves. */}
               <div style={{ paddingTop: "2px" }}>
-                <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden", display: "flex" }}>
+                <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: RADIUS.pill, overflow: "hidden", display: "flex" }}>
                   {/* primary-300 for the healthy share, the fault tone only for the part that is
                       not. It was success-400 against danger-400 — two saturated hues meeting in
                       the middle of a white card, which read as a chart from another product —
@@ -1368,7 +1369,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                 </span>
               </div>
               <div style={{ paddingTop: "2px" }}>
-                <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: "999px", overflow: "hidden" }}>
+                <div style={{ width: "100%", height: "8px", backgroundColor: "var(--gray-100)", borderRadius: RADIUS.pill, overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${channelLimit ? Math.min(100, (projectCameras.length / channelLimit) * 100) : 0}%`, backgroundColor: overChannelLimit ? "var(--danger-400)" : "var(--primary-300)" }} />
                 </div>
                 {/* The plan on the left, what is left on the right — and no percentage between
@@ -1490,7 +1491,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
             is written as the API being asked for rather than as decoration — a screen the backend
             developer can look at is a clearer specification than a sentence in a meeting.
           */}
-          <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "16px", marginBottom: CARD_GAP }}>
+          <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.card, boxShadow: PANEL_SHADOW, padding: "16px", marginBottom: CARD_GAP }}>
             {/*
               Laid out the way the references lay this out.
 
@@ -1653,7 +1654,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                         top: `${(1 - (d.total / detectionPeak) * 0.9) * 100}%`,
                         transform: `translate(${i === 0 ? "0" : i === detectionDays.length - 1 ? "-100%" : "-50%"}, calc(-100% - 10px))`,
                         backgroundColor: "var(--gray-900)", color: "white",
-                        borderRadius: "8px", padding: "6px 8px", whiteSpace: "nowrap",
+                        borderRadius: RADIUS.control, padding: "6px 8px", whiteSpace: "nowrap",
                         fontSize: "11px", lineHeight: 1.5,
                         boxShadow: "var(--shadow-popover)",
                       }}
@@ -1737,7 +1738,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
               what a summary panel should do anyway.
             */}
             <div style={{ position: "relative", minWidth: 0 }}>
-              <div style={{ position: "absolute", inset: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+              <div style={{ position: "absolute", inset: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.card, boxShadow: PANEL_SHADOW, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 {/* No All / Offline toggle. The panel is the fleet, ordered by longest silence, so
                     the cameras an offline filter would have selected are already the rows at the
                     top — and the two places that answer "how many are down" (the attention strip
@@ -1928,7 +1929,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                             title={t.openCamera}
                             onClick={openCamera}
                             className="portal-icon-btn"
-                            style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", padding: "4px", borderRadius: "6px", cursor: "pointer", color: "var(--gray-400)", justifySelf: "end" }}
+                            style={{ display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", padding: "4px", borderRadius: RADIUS.inner, cursor: "pointer", color: "var(--gray-400)", justifySelf: "end" }}
                           >
                             <ChevronRight size={15} strokeWidth={2.4} />
                           </button>
@@ -1950,7 +1951,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                   happened to take and the activity card was pushed to the bottom of the page with
                   a field of white above it. Three registrations and five log lines are what these
                   two have to say; the column ends where they end. */}
-              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.card, boxShadow: PANEL_SHADOW, padding: "20px", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
                   <SectionHead
                     title={t.recentVipsTitle}
@@ -1977,8 +1978,8 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                     {recentVips.map(p => (
                       <button key={p.id} onClick={() => setOverviewVipId(p.id)}
                         className="portal-attention-row"
-                        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", border: BORDER, borderRadius: "12px", padding: "10px", background: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-                        <FacePhoto src={p.photoUrl} size={36} radius="8px" style={{ flexShrink: 0 }} />
+                        style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", border: BORDER, borderRadius: RADIUS.panel, padding: "10px", background: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+                        <FacePhoto src={p.photoUrl} size={36} radius={RADIUS.control} style={{ flexShrink: 0 }} />
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</p>
                           {/* Date and hour, where the record has an hour. Seeded rows written as
@@ -2001,11 +2002,11 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                   shown while real requests exist, so turning the flag off later cannot strand
                   someone who already asked. */}
               {showAccessRequests && (
-              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px" }}>
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.card, boxShadow: PANEL_SHADOW, padding: "20px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                   <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.accessRequestsTitle}</p>
                   {projectAccessRequests.length > 0 && (
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 8px", borderRadius: "999px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--warning-500)", backgroundColor: "var(--warning-200)", padding: "2px 8px", borderRadius: RADIUS.pill }}>
                       {projectAccessRequests.length}
                     </span>
                   )}
@@ -2015,17 +2016,17 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {projectAccessRequests.slice(0, 2).map(r => (
-                      <div key={r.id} style={{ border: BORDER, borderRadius: "12px", padding: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div key={r.id} style={{ border: BORDER, borderRadius: RADIUS.panel, padding: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
                         <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{r.name}</p>
                         {r.reason && <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>&quot;{r.reason}&quot;</p>}
                         <div style={{ display: "flex", gap: "8px" }}>
                           <button onClick={() => approveRequest(r.id, r.name)} disabled={!manageAccess} title={manageAccess ? undefined : t.reasonNotOwner}
-                            style={{ flex: 1, padding: "6px 10px", borderRadius: "8px", border: manageAccess ? "1px solid var(--gray-900)" : BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-900)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
+                            style={{ flex: 1, padding: "6px 10px", borderRadius: RADIUS.control, border: manageAccess ? "1px solid var(--gray-900)" : BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-900)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
                             {t.approve}
                           </button>
                           <button className="portal-btn-outline" onClick={() => dismissRequest(r.id, r.name)}
                             disabled={!manageAccess} title={manageAccess ? undefined : t.reasonNotOwner}
-                            style={{ flex: 1, padding: "6px 10px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
+                            style={{ flex: 1, padding: "6px 10px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: manageAccess ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: manageAccess ? "pointer" : "not-allowed" }}>
                             {t.dismiss}
                           </button>
                         </div>
@@ -2041,7 +2042,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
               </div>
               )}
 
-              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW, padding: "20px", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+              <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.card, boxShadow: PANEL_SHADOW, padding: "20px", display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ marginBottom: "14px", flexShrink: 0 }}>
                   <SectionHead
                     title={t.recentAdminActivity}

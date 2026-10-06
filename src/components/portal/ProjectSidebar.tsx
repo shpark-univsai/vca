@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import { Crown } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
+import { RADIUS } from "../shared/controls";
 
 export type DetailTab = "overview" | "cameras" | "vip" | "license" | "server" | "users" | "grants" | "records" | "requests";
 
@@ -377,7 +378,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
               {!collapsed && brand && <p style={{ fontSize: "15px", fontWeight: 800, color: "white", letterSpacing: "-0.2px", flex: 1, minWidth: 0 }}>{brand}</p>}
               {onToggleCollapse && (
                 <button className="portal-rail-toggle" onClick={onToggleCollapse} title={toggleLabel}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "8px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", flexShrink: 0 }}>
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: RADIUS.control, border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", flexShrink: 0 }}>
                   <RailToggleIcon />
                 </button>
               )}
@@ -447,7 +448,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                   style={{
                     display: "flex", alignItems: "center", gap: "12px",
                     justifyContent: collapsed ? "center" : "flex-start",
-                    border: "none", cursor: "pointer", borderRadius: "10px",
+                    border: "none", cursor: "pointer", borderRadius: RADIUS.control,
                     padding: collapsed ? "12px 0" : "11px 12px",
                     position: "relative",
                     /*
@@ -502,7 +503,7 @@ export default function ProjectSidebar({ brand, team, project, onToggleCollapse,
                           <span style={{
                             fontSize: "10px", fontWeight: 600, color: "var(--gray-400)",
                             backgroundColor: active ? "rgba(255, 255, 255, 0.14)" : "var(--gray-800)",
-                            padding: "2px 6px", borderRadius: "6px", flexShrink: 0,
+                            padding: "2px 6px", borderRadius: RADIUS.inner, flexShrink: 0,
                           }}>{counts[t.id]}</span>
                         </>
                       )}

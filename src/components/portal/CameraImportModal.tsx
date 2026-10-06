@@ -9,6 +9,7 @@ import {
   buildCameraImportRows, decodeSpreadsheetBytes, importableRows, isBlocking, looksLikeXlsx, parseDelimited,
   type CameraImportIssue, type CameraImportMode, type ParsedCameraRow,
 } from "@/lib/cameraImport";
+import { RADIUS } from "../shared/controls";
 
 /**
  * Installation day, from the installer's own spreadsheet.
@@ -329,24 +330,24 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
         <>
           {result.skipped.length > 0 && (
             <button className="portal-btn-outline" onClick={downloadSkipped}
-              style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+              style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
               {t.downloadErrors}
             </button>
           )}
           <button className="portal-btn-primary" onClick={onClose}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.close}
           </button>
         </>
       ) : parsed ? (
         <>
           <button className="portal-btn-outline" onClick={onClose}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={commit} disabled={willImport === 0}
             style={{
-              padding: "10px 16px", borderRadius: "8px", border: "none",
+              padding: "10px 16px", borderRadius: RADIUS.control, border: "none",
               backgroundColor: willImport === 0 ? "var(--gray-200)" : "var(--primary-400)",
               color: willImport === 0 ? "var(--gray-400)" : "white",
               fontSize: "13px", fontWeight: 700, cursor: willImport === 0 ? "not-allowed" : "pointer",
@@ -356,7 +357,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
         </>
       ) : (
         <button className="portal-btn-outline" onClick={onClose}
-          style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
           {t.cancel}
         </button>
       )}>
@@ -373,7 +374,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
           {result.skipped.length > 0 && (
             <div style={{ marginTop: "16px" }}>
               <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.skippedHeading}</p>
-              <div style={{ border: BORDER, borderRadius: "12px", overflow: "hidden" }}>
+              <div style={{ border: BORDER, borderRadius: RADIUS.panel, overflow: "hidden" }}>
                 {result.skipped.map((s, i) => (
                   <div key={`${s.row.line}-${i}`} style={{
                     display: "flex", gap: "10px", padding: "8px 12px", alignItems: "baseline",
@@ -477,7 +478,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
                      drop what was parsed rather than reinterpret it silently. */
                   onClick={() => { setMode(option.value); setParsed(null); setFileError(null); }}
                   style={{
-                    textAlign: "left", padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
+                    textAlign: "left", padding: "10px 12px", borderRadius: RADIUS.control, cursor: "pointer", fontFamily: "inherit",
                     border: on ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
                     backgroundColor: on ? "var(--primary-50)" : "white",
                   }}>
@@ -495,7 +496,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
             style={{
               border: `1px dashed ${dragging ? "var(--primary-400)" : "var(--gray-200)"}`,
               backgroundColor: dragging ? "var(--primary-100)" : "var(--gray-50)",
-              borderRadius: "12px", padding: "24px 20px", textAlign: "center", cursor: "pointer",
+              borderRadius: RADIUS.panel, padding: "24px 20px", textAlign: "center", cursor: "pointer",
             }}>
             <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dropHere}</p>
             <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.orBrowse}</p>
@@ -504,7 +505,7 @@ export default function CameraImportModal({ projectId, onClose }: { projectId: s
             onChange={e => { onPick(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
 
           {fileError && (
-            <div style={{ marginTop: "12px", padding: "12px", borderRadius: "12px", backgroundColor: "var(--danger-100)" }}>
+            <div style={{ marginTop: "12px", padding: "12px", borderRadius: RADIUS.panel, backgroundColor: "var(--danger-100)" }}>
               <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{fileError.title}</p>
               <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.5 }}>{fileError.body}</p>
             </div>

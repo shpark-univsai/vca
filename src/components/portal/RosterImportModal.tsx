@@ -9,6 +9,7 @@ import {
   buildImportRows, decodeSpreadsheetBytes, looksLikeXlsx, parseDelimited,
   type ImportIssue, type ParsedRow,
 } from "@/lib/rosterImport";
+import { RADIUS } from "../shared/controls";
 
 const T = {
   en: {
@@ -263,12 +264,12 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
     <>
       {result.skipped.length > 0 && (
         <button className="portal-btn-outline" onClick={downloadSkipped}
-          style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
           {t.downloadErrors}
         </button>
       )}
       <button className="portal-btn-primary" onClick={onClose}
-        style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+        style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
         {t.close}
       </button>
     </>
@@ -277,16 +278,16 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
       {/* Pushed to the far end of the row: it goes back a step, and reading it next to the two
           buttons that end the import would make it look like a third way out. */}
       <button className="portal-btn-outline" onClick={() => { setParsed(null); setFileError(null); }}
-        style={{ marginRight: "auto", padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+        style={{ marginRight: "auto", padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
         {t.chooseAnother}
       </button>
       <button className="portal-btn-outline" onClick={onClose}
-        style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+        style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
         {t.cancel}
       </button>
       <button onClick={commit} disabled={okRows.length === 0}
         style={{
-          padding: "10px 16px", borderRadius: "8px", border: "none",
+          padding: "10px 16px", borderRadius: RADIUS.control, border: "none",
           backgroundColor: okRows.length === 0 ? "var(--gray-200)" : "var(--primary-400)",
           color: okRows.length === 0 ? "var(--gray-400)" : "white",
           fontSize: "13px", fontWeight: 700, cursor: okRows.length === 0 ? "not-allowed" : "pointer",
@@ -296,7 +297,7 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
     </>
   ) : (
     <button className="portal-btn-outline" onClick={onClose}
-      style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+      style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
       {t.cancel}
     </button>
   );
@@ -316,7 +317,7 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
           {result.skipped.length > 0 && (
             <div style={{ marginTop: "16px" }}>
               <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", marginBottom: "8px" }}>{t.skippedHeading}</p>
-              <div style={{ border: BORDER, borderRadius: "12px", overflow: "hidden" }}>
+              <div style={{ border: BORDER, borderRadius: RADIUS.panel, overflow: "hidden" }}>
                 {result.skipped.map((s, i) => (
                   <div key={`${s.row.line}-${i}`} style={{
                     display: "flex", gap: "10px", padding: "8px 12px", alignItems: "baseline",
@@ -389,7 +390,7 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
               marginTop: "14px",
               border: `1px dashed ${dragging ? "var(--primary-400)" : "var(--gray-200)"}`,
               backgroundColor: dragging ? "var(--primary-100)" : "var(--gray-50)",
-              borderRadius: "12px", padding: "24px 20px", textAlign: "center", cursor: "pointer",
+              borderRadius: RADIUS.panel, padding: "24px 20px", textAlign: "center", cursor: "pointer",
             }}>
             <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.dropHere}</p>
             <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.orBrowse}</p>
@@ -398,7 +399,7 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
             onChange={e => { onPick(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
 
           {fileError && (
-            <div style={{ marginTop: "12px", padding: "12px", borderRadius: "12px", backgroundColor: "var(--danger-100)" }}>
+            <div style={{ marginTop: "12px", padding: "12px", borderRadius: RADIUS.panel, backgroundColor: "var(--danger-100)" }}>
               <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{fileError.title}</p>
               <p style={{ fontSize: "12px", color: "var(--danger-500)", marginTop: "4px", lineHeight: 1.5 }}>{fileError.body}</p>
             </div>

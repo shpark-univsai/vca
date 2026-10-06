@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useVcaStore } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { FormLabel, FIELD_STYLE, BORDER, RequiredMark } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 type SignupStep = "account" | "team" | "done";
 
@@ -182,7 +183,7 @@ function ProgressPills({ current }: { current: SignupStep }) {
         const active = key === current;
         return (
           <span key={key} style={{
-            fontSize: "10px", fontWeight: 600, padding: "8px 14px", borderRadius: "14px",
+            fontSize: "10px", fontWeight: 600, padding: "8px 14px", borderRadius: RADIUS.pill,
             backgroundColor: active ? "var(--primary-400)" : "var(--gray-100)",
             color: active ? "white" : "var(--gray-500)", whiteSpace: "nowrap",
           }}>
@@ -197,7 +198,7 @@ function ProgressPills({ current }: { current: SignupStep }) {
 function StepCard({ children, width = 520 }: { children: React.ReactNode; width?: number }) {
   return (
     <div style={{
-      backgroundColor: "white", border: BORDER, borderRadius: "20px",
+      backgroundColor: "white", border: BORDER, borderRadius: RADIUS.card,
       width: `${width}px`, maxWidth: "100%", boxSizing: "border-box", padding: "24px 32px 32px",
     }}>
       {children}
@@ -309,8 +310,8 @@ export default function PortalSignupWizard() {
             <BackLink label={t.step1.backToLogin} onClick={() => router.push("/login")} />
             <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>{t.step1.title}</p>
             <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.step1.subtitle}</p>
-            <div style={{ height: "4px", backgroundColor: "var(--gray-100)", borderRadius: "2px", marginTop: "16px", marginBottom: "20px" }}>
-              <div style={{ height: "4px", width: "50%", backgroundColor: "var(--primary-400)", borderRadius: "2px" }} />
+            <div style={{ height: "4px", backgroundColor: "var(--gray-100)", borderRadius: RADIUS.pill, marginTop: "16px", marginBottom: "20px" }}>
+              <div style={{ height: "4px", width: "50%", backgroundColor: "var(--primary-400)", borderRadius: RADIUS.pill }} />
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -337,7 +338,7 @@ export default function PortalSignupWizard() {
                   style={{ ...inputStyle, border: passwordError ? "1px solid var(--danger-500)" : inputStyle.border }}
                 />
                 <FieldError text={passwordError} />
-                <div style={{ backgroundColor: "var(--primary-100)", borderRadius: "10px", padding: "8px 14px", marginTop: "6px" }}>
+                <div style={{ backgroundColor: "var(--primary-100)", borderRadius: RADIUS.panel, padding: "8px 14px", marginTop: "6px" }}>
                   <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--primary-400)" }}>{t.step1.passwordReqTitle}</p>
                   <p style={{ fontSize: "10px", color: "var(--primary-400)", marginTop: "2px" }}>{t.step1.passwordReqText}</p>
                 </div>
@@ -372,7 +373,7 @@ export default function PortalSignupWizard() {
             <button className="portal-btn-primary"
               onClick={handleContinueStep1}
               style={{
-                width: "100%", height: "48px", marginTop: "24px", borderRadius: "8px", border: "none",
+                width: "100%", height: "48px", marginTop: "24px", borderRadius: RADIUS.control, border: "none",
                 backgroundColor: "var(--gray-900)", color: "white", fontSize: "14px", fontWeight: 700,
                 cursor: "pointer", opacity: step1Valid ? 1 : 0.5,
               }}
@@ -387,7 +388,7 @@ export default function PortalSignupWizard() {
             <BackLink label={t.step2.back} onClick={() => setStep("account")} />
             <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)" }}>{t.step2.title}</p>
             <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "4px" }}>{t.step2.subtitle}</p>
-            <div style={{ height: "4px", backgroundColor: "var(--primary-400)", borderRadius: "2px", marginTop: "16px", marginBottom: "20px" }} />
+            <div style={{ height: "4px", backgroundColor: "var(--primary-400)", borderRadius: RADIUS.pill, marginTop: "16px", marginBottom: "20px" }} />
 
             <FieldLabel>{t.step2.orgNameLabel}<RequiredMark /></FieldLabel>
             <div style={{ display: "flex", gap: "8px" }}>
@@ -402,7 +403,7 @@ export default function PortalSignupWizard() {
                 onClick={useSuggestedDomain}
                 disabled={!email.split("@")[1]}
                 style={{
-                  minWidth: "91px", height: "40px", borderRadius: "8px", border: "none", flexShrink: 0,
+                  minWidth: "91px", height: "40px", borderRadius: RADIUS.control, border: "none", flexShrink: 0,
                   padding: "0 12px",
                   backgroundColor: "var(--primary-100)", color: "var(--primary-400)", fontSize: "12px", fontWeight: 700,
                   cursor: email.split("@")[1] ? "pointer" : "not-allowed",
@@ -416,7 +417,7 @@ export default function PortalSignupWizard() {
               : <p style={{ fontSize: "10px", color: "var(--gray-400)", marginTop: "6px" }}>{t.step2.orgNameHint}</p>}
 
 
-            <div style={{ backgroundColor: "var(--primary-100)", borderRadius: "10px", padding: "8px 14px", marginTop: "8px" }}>
+            <div style={{ backgroundColor: "var(--primary-100)", borderRadius: RADIUS.panel, padding: "8px 14px", marginTop: "8px" }}>
               <p style={{ fontSize: "10px", fontWeight: 600, color: "var(--primary-400)" }}>{t.step2.domainTemplateHint}</p>
             </div>
 
@@ -435,7 +436,7 @@ export default function PortalSignupWizard() {
             <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginTop: "16px", cursor: "pointer" }}
               onClick={() => markTouched2("agreedToS")}>
               <span style={{
-                width: "16px", height: "16px", borderRadius: "4px", flexShrink: 0, marginTop: "1px",
+                width: "16px", height: "16px", borderRadius: RADIUS.inner, flexShrink: 0, marginTop: "1px",
                 border: tosError ? "1px solid var(--danger-500)" : agreedToS ? "1px solid var(--primary-400)" : BORDER,
                 backgroundColor: agreedToS ? "var(--primary-400)" : "white",
                 display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "10px", fontWeight: 600,
@@ -449,7 +450,7 @@ export default function PortalSignupWizard() {
 
             <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginTop: "8px", cursor: "pointer" }}>
               <span style={{
-                width: "16px", height: "16px", borderRadius: "4px", flexShrink: 0, marginTop: "1px",
+                width: "16px", height: "16px", borderRadius: RADIUS.inner, flexShrink: 0, marginTop: "1px",
                 border: agreedMarketing ? "1px solid var(--primary-400)" : BORDER, backgroundColor: agreedMarketing ? "var(--primary-400)" : "white",
                 display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "10px", fontWeight: 600,
               }}>
@@ -462,7 +463,7 @@ export default function PortalSignupWizard() {
             <button className="portal-btn-primary"
               onClick={handleCompleteSignup}
               style={{
-                width: "100%", height: "48px", marginTop: "24px", borderRadius: "8px", border: "none",
+                width: "100%", height: "48px", marginTop: "24px", borderRadius: RADIUS.control, border: "none",
                 backgroundColor: "var(--gray-900)", color: "white", fontSize: "14px", fontWeight: 700,
                 cursor: "pointer", opacity: step2Valid ? 1 : 0.5,
               }}
@@ -476,7 +477,7 @@ export default function PortalSignupWizard() {
           <StepCard width={480}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
               <span style={{
-                width: "56px", height: "56px", borderRadius: "28px", backgroundColor: "var(--primary-100)",
+                width: "56px", height: "56px", borderRadius: "50%", backgroundColor: "var(--primary-100)",
                 display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary-400)", fontSize: "24px", fontWeight: 800,
               }}>
                 ✓
@@ -491,7 +492,7 @@ export default function PortalSignupWizard() {
               <button className="portal-btn-quiet"
                 onClick={() => router.push("/login")}
                 style={{
-                  width: "100%", height: "40px", marginTop: "24px", borderRadius: "8px", border: "none",
+                  width: "100%", height: "40px", marginTop: "24px", borderRadius: RADIUS.control, border: "none",
                   backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "12px", fontWeight: 700, cursor: "pointer",
                 }}
               >

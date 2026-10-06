@@ -19,6 +19,7 @@ import { useVcaStore, canEnterApp, currentPortalUser, SIGNED_IN_USER, type Proje
 import AccessGate, { denialFor } from "@/components/AccessGate";
 import { usePortalLanguage } from "@/lib/i18n";
 import { BORDER, BREADCRUMB_TEAM_MAX_WIDTH } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 const T = {
   en: {
@@ -85,13 +86,13 @@ function RequestProjectModal({ team, onClose }: { team: Team; onClose: () => voi
     */
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, zIndex: 400, backgroundColor: "var(--scrim)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
+      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: RADIUS.card, maxWidth: "440px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px 20px 0" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)" }}>{t.requestTitle}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "8px" }}>{t.requestBody}</p>
         </div>
         <div style={{ padding: "16px 20px" }}>
-          <div style={{ padding: "14px 16px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px" }}>
+          <div style={{ padding: "14px 16px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: RADIUS.panel }}>
             {m ? (<>
               <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{t.requestManager.toUpperCase()}</p>
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "4px" }}>{m.name}</p>
@@ -103,7 +104,7 @@ function RequestProjectModal({ team, onClose }: { team: Team; onClose: () => voi
         </div>
         <div style={{ padding: "0 20px 20px", display: "flex", justifyContent: "flex-end" }}>
           <button className="portal-btn-outline" onClick={onClose}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {t.close}
           </button>
         </div>
@@ -598,7 +599,7 @@ export default function PortalShell() {
               title={currentOrg?.name}
               style={{
                 display: "block",
-                border: "1px solid var(--line)", borderRadius: "8px", padding: "6px 10px",
+                border: "1px solid var(--line)", borderRadius: RADIUS.control, padding: "6px 10px",
                 fontSize: "12px", fontWeight: 700, color: "var(--gray-600)", whiteSpace: "nowrap",
                 maxWidth: BREADCRUMB_TEAM_MAX_WIDTH, overflow: "hidden", textOverflow: "ellipsis",
               }}

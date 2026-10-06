@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useVcaStore, VIP_CATEGORY_COLORS, type VipCategory, type VipCategoryColor } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { FormLabel, BORDER, CONTROL_HEIGHT, ConfirmModal, Drawer, TextField } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 /**
  * VIP categories are a TEAM's policy, not a project's.
@@ -161,7 +162,7 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
       width="520px"
       footer={
         <button className="portal-btn-outline" onClick={onClose}
-          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
           {t.close}
         </button>
       }
@@ -177,9 +178,9 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
         {categories.map(c => (
           <div key={c.id} style={{
             display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px",
-            border: BORDER, borderRadius: "10px", opacity: c.archived ? 0.55 : 1,
+            border: BORDER, borderRadius: RADIUS.panel, opacity: c.archived ? 0.55 : 1,
           }}>
-            <span style={{ width: "10px", height: "10px", borderRadius: "3px", flexShrink: 0, backgroundColor: categoryTint(c.color).dot }} />
+            <span style={{ width: "10px", height: "10px", borderRadius: "50%", flexShrink: 0, backgroundColor: categoryTint(c.color).dot }} />
             <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {c.label}
             </span>
@@ -191,13 +192,13 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--gray-400)", whiteSpace: "nowrap" }}>{t.catArchived}</span>
             ) : !canEdit ? null : (<>
               <button className="portal-btn-quiet" onClick={() => startEdit(c)}
-                style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 {t.catEdit}
               </button>
               {/* Retiring keeps its box. It is the one action here that cannot be undone from
                   this screen, and it should not read as the same weight as renaming. */}
               <button className="portal-btn-outline" onClick={() => setRetiring(c)}
-                style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 {t.catArchive}
               </button>
             </>)}
@@ -209,7 +210,7 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
              owner rather than conclude the console is broken. */
           <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.catOwnerOnly}</p>
         ) : editing !== null ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: RADIUS.panel, backgroundColor: "var(--gray-50)" }}>
             <div>
               <FormLabel as="span">{t.catLabelField}</FormLabel>
               <TextField value={label} onChange={setLabel} placeholder={t.catLabelPlaceholder} autoFocus />
@@ -224,11 +225,11 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
                 {VIP_CATEGORY_COLORS.map(name => (
                   <button key={name} onClick={() => setColor(name)} title={name}
                     style={{
-                      width: "28px", height: "28px", borderRadius: "8px", cursor: "pointer",
+                      width: "28px", height: "28px", borderRadius: RADIUS.control, cursor: "pointer",
                       backgroundColor: categoryTint(name).bg,
                       border: color === name ? "2px solid var(--gray-900)" : "1px solid var(--gray-200)",
                     }}>
-                    <span style={{ display: "block", width: "10px", height: "10px", borderRadius: "3px", margin: "0 auto", backgroundColor: categoryTint(name).dot }} />
+                    <span style={{ display: "block", width: "10px", height: "10px", borderRadius: "50%", margin: "0 auto", backgroundColor: categoryTint(name).dot }} />
                   </button>
                 ))}
               </div>
@@ -242,18 +243,18 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
             </label>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
               <button className="portal-btn-outline" onClick={reset}
-                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 {t.cancel}
               </button>
               <button className="portal-btn-primary" onClick={submit} disabled={!label.trim()}
-                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: label.trim() ? "var(--primary-400)" : "var(--gray-200)", color: label.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: label.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+                style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "none", backgroundColor: label.trim() ? "var(--primary-400)" : "var(--gray-200)", color: label.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: label.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
                 {editing === "new" ? t.catCreate : t.catSave}
               </button>
             </div>
           </div>
         ) : (
           <button className="portal-btn-outline" onClick={() => setEditing("new")}
-            style={{ height: CONTROL_HEIGHT, borderRadius: "10px", border: `1px dashed var(--gray-300)`, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ height: CONTROL_HEIGHT, borderRadius: RADIUS.control, border: `1px dashed var(--gray-300)`, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             + {t.catNew}
           </button>
         )}

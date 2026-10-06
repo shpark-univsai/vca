@@ -15,6 +15,7 @@ import { ipv4Problem, FIELD_CHECK_T } from "@/lib/fieldChecks";
 import { useToast } from "../Toast";
 import { FormLabel, BulkBarSubject, BulkBarExit, useFitRowsPerPage, TablePagination, PICKED_FILL, PICKED_LINE, CARD_RADIUS, TABLE_RULE, CARD_BORDER, BORDER, TABLE_COLUMN_GAP, TOOLBAR_GAP, SearchInput, CONTROL_HEIGHT, PANEL_SHADOW, TableEmpty, TableSkeleton, TableLoadFailed, RowActionsMenu, FilterSelect, TextField, SortableHeader, SummaryStrip, Tooltip, Drawer, sortRows, useTableSort, ActiveFilterCount, usePortalEditAccess, ConfirmModal, FieldError, RequiredMark, FloatingBulkBar, BulkBarDivider, TONE_STYLE, type StatusTone, type RowAction } from "./PortalShared";
 import CameraDetailPanel from "./CameraDetailPanel";
+import { RADIUS } from "../shared/controls";
 
 const T = {
   en: {
@@ -945,7 +946,7 @@ function CameraFormModal({
               were spending attention on the least consequential control. Bare text, outline,
               filled: leaving, the batch, the save. The same ladder the toolbar above already
               climbs, where the secondary actions carry no box either. */}
-          <button className="portal-btn-quiet" onClick={onClose} style={{ padding: "10px 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          <button className="portal-btn-quiet" onClick={onClose} style={{ padding: "10px 12px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {/* 닫기 once something has gone in: 취소 would claim it can undo the four cameras
                 already registered. Same distinction the bulk bar draws. */}
             {addedInSitting > 0 ? t.closeAfterBatch : t.cancel}
@@ -963,12 +964,12 @@ function CameraFormModal({
             <button className="portal-btn-outline" title={t.addAnotherWhy}
               onClick={() => { if (!valid) { setRefused(true); return; } onSubmitAndAnother(form); nextInBatch(); }}
               disabled={atLimit}
-              style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: atLimit ? "var(--gray-300)" : "var(--gray-700)", fontSize: "13px", fontWeight: 700, cursor: atLimit ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+              style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: atLimit ? "var(--gray-300)" : "var(--gray-700)", fontSize: "13px", fontWeight: 700, cursor: atLimit ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
               {t.addAnother}
             </button>
           )}
           <button className="portal-btn-primary" onClick={() => (valid ? onSubmit(form) : setRefused(true))}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
             {isEdit ? t.saveChanges : t.addDevice}
           </button>
@@ -993,7 +994,7 @@ function CameraFormModal({
               return (
                 <button key={option.value} type="button" onClick={() => pickKind(option.value)} title={option.why}
                   style={{
-                    textAlign: "left", padding: "9px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
+                    textAlign: "left", padding: "9px 12px", borderRadius: RADIUS.control, cursor: "pointer", fontFamily: "inherit",
                     /* The shared picked box (PICKED_LINE/PICKED_FILL). This one was drawn by hand
                        in primary-400 on primary-50 with purple TEXT — the same shape as every other
                        two-way picker in Portal but one step louder, and the purple lettering made a
@@ -2039,12 +2040,12 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             Only where the rows are cameras: a video file has no coordinates, so there is nothing
             for a map to draw on the 영상 / 이미지 / 딥페이크 tabs. */}
         {showCameraColumns && (
-          <div style={{ display: "flex", alignItems: "center", marginBottom: "8px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: "8px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: RADIUS.control, padding: "3px", flexShrink: 0 }}>
             {(["table", "map"] as const).map(v => (
               <button key={v} onClick={() => setView(v)} title={v === "map" ? t.openMapWhy : undefined}
                 style={{
                   display: "flex", alignItems: "center", gap: "5px",
-                  padding: "4px 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
+                  padding: "4px 10px", borderRadius: RADIUS.inner, border: "none", cursor: "pointer", fontFamily: "inherit",
                   backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
                   fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
                 }}>
@@ -2080,7 +2081,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
       {(atChannelLimit || channelLimitUnrecorded) && (
         <div style={{
           display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "12px",
-          padding: "12px 14px", borderRadius: "10px",
+          padding: "12px 14px", borderRadius: RADIUS.panel,
           backgroundColor: "var(--warning-100)", border: "1px solid var(--warning-200)",
         }}>
           <span style={{ display: "flex", flexShrink: 0, marginTop: "1px", color: "var(--warning-500)" }}>
@@ -2286,7 +2287,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               as adding a camera — this is the same act, three hundred times. */}
           {mayEdit && (
             <button className="portal-btn-quiet" onClick={() => setShowImport(true)}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
               <FileInput size={14} strokeWidth={2.4} />
               {t.importCsv}
             </button>
@@ -2297,7 +2298,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               same button on VIP 등록 was disabled with a reason). One button, two screens, one
               rule. title rather than a line under it: this row has to stay one row. */}
           <button className="portal-btn-quiet" onClick={exportCsv} disabled={exportRows.length === 0} title={exportDisabledReason}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: exportRows.length === 0 ? "var(--gray-300)" : "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: exportRows.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: exportRows.length === 0 ? "var(--gray-300)" : "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: exportRows.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
               <FileOutput size={14} strokeWidth={2.4} />
               {t.exportCsv}
             </button>
@@ -2310,14 +2311,14 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             <button className="portal-btn-primary" onClick={() => setAddMenuOpen(o => !o)}
               disabled={!mayEdit || cannotAddSource}
               title={!mayEdit ? readOnlyReason : channelLimitUnrecorded ? t.noLicenceReason : zeroChannelLicence ? t.zeroChannelReason : atChannelLimit ? t.atLimitReason(channelLimit ?? 0) : undefined}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: (mayEdit && !cannotAddSource) ? "var(--primary-400)" : "var(--gray-200)", color: (mayEdit && !cannotAddSource) ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: (mayEdit && !cannotAddSource) ? "pointer" : "not-allowed" }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: (mayEdit && !cannotAddSource) ? "var(--primary-400)" : "var(--gray-200)", color: (mayEdit && !cannotAddSource) ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: (mayEdit && !cannotAddSource) ? "pointer" : "not-allowed" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addSource}
             </button>
             {addMenuOpen && (
               <div style={{
                 position: "absolute", top: "100%", right: 0, marginTop: "4px", zIndex: 60,
-                backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "var(--shadow-popover)",
+                backgroundColor: "white", border: BORDER, borderRadius: RADIUS.panel, boxShadow: "var(--shadow-popover)",
                 minWidth: "200px", padding: "4px",
               }}>
                 {[
@@ -2331,7 +2332,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     onMouseEnter={() => setHoveredAddItem(item.label)}
                     onMouseLeave={() => setHoveredAddItem(null)}
                     style={{
-                      display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: "6px",
+                      display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: RADIUS.inner,
                       border: "none", cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit",
                       backgroundColor: hoveredAddItem === item.label ? "var(--gray-100)" : "transparent",
                       fontSize: "12px", fontWeight: 600, color: "var(--gray-900)",
@@ -2377,7 +2378,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                 the same twelve again inside a permission dialog. See CameraGroup. */}
             <button
               onClick={() => setGroupingSelection(true)}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-900)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}
             >
               {t.bulkGroup}
             </button>
@@ -2391,7 +2392,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             <button
               onClick={() => setConfirmingBulkDelete(true)}
               className="portal-btn-outline-danger"
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "1px solid var(--danger-400)", backgroundColor: "transparent", color: "var(--danger-400)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "1px solid var(--danger-400)", backgroundColor: "transparent", color: "var(--danger-400)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}
             >
               {t.bulkDelete}
             </button>
@@ -2587,7 +2588,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   {/* A file has no live thumbnail to show, so the tile carries its kind instead of
                       a frame we do not have. Inventing a poster image would imply the analysis had
                       already looked at it. */}
-                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", borderRadius: "8px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)" }}>
+                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", borderRadius: RADIUS.control, backgroundColor: "var(--gray-100)", color: "var(--gray-500)" }}>
                     {u.kind === "image" ? <ImageIcon size={18} strokeWidth={1.87} />
                       : u.kind === "deepfake" ? <ShieldCheck size={18} strokeWidth={1.87} />
                       : <FilmIcon size={18} strokeWidth={1.87} />}
@@ -2706,7 +2707,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                 {/* 48px, the same tile the registry's face column uses: two tables one click
                     apart whose rows are 61px and 69px read as two different tables, and the
                     height follows the picture (owner's note: "vip 화면 테이블 높이로 맞춰줘"). */}
-                <button {...stopRowClick} onClick={() => setInspectingCameraId(cam.id)} style={{ width: "48px", height: "48px", borderRadius: "8px", overflow: "hidden", backgroundColor: "var(--gray-100)", border: "none", cursor: "pointer", padding: 0 }}>
+                <button {...stopRowClick} onClick={() => setInspectingCameraId(cam.id)} style={{ width: "48px", height: "48px", borderRadius: RADIUS.control, overflow: "hidden", backgroundColor: "var(--gray-100)", border: "none", cursor: "pointer", padding: 0 }}>
                   {cam.thumbnail
                     ? <img src={cam.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     : <div style={{ width: "100%", height: "100%", backgroundColor: "var(--gray-100)" }} />}
@@ -2753,7 +2754,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                         <span style={{
                           display: "inline-flex", alignItems: "center", gap: "4px",
                           flexShrink: 1, minWidth: 0, maxWidth: "100%", overflow: "hidden",
-                          height: "18px", padding: "0 8px", borderRadius: "999px",
+                          height: "18px", padding: "0 8px", borderRadius: RADIUS.pill,
                           backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
                           fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap",
                         }}>
@@ -2873,12 +2874,12 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
               onDragLeave={() => setDragging(false)}
               onDrop={e => { e.preventDefault(); setDragging(false); acceptFiles(e.dataTransfer.files); }}
               style={{
-                borderRadius: "12px", border: `1px dashed ${dragging ? "var(--gray-900)" : "var(--gray-300)"}`,
+                borderRadius: RADIUS.panel, border: `1px dashed ${dragging ? "var(--gray-900)" : "var(--gray-300)"}`,
                 backgroundColor: dragging ? "var(--gray-100)" : "var(--gray-50)",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 gap: "12px", padding: "32px 24px", textAlign: "center",
               }}>
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", borderRadius: "24px", backgroundColor: "var(--gray-100)", color: "var(--gray-500)" }}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "var(--gray-100)", color: "var(--gray-500)" }}>
                 <FilmIcon size={22} strokeWidth={1.53} />
               </span>
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -2886,7 +2887,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                 <span style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5 }}>{uploadPurpose === "deepfake" ? t.deepfakeUploadHint : t.uploadHint}</span>
               </div>
               <button className="portal-btn-primary" onClick={() => uploadInputRef.current?.click()}
-                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700 }}>
+                style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: "none", cursor: "pointer", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700 }}>
                 {t.uploadChoose}
               </button>
               <input ref={uploadInputRef} type="file" multiple accept="video/*,image/*"

@@ -5,6 +5,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { useVcaStore, canManageAccess, currentPortalUser, type ProjectType } from "@/lib/vcaStore";
 import { usePortalLanguage } from "@/lib/i18n";
 import { FormLabel, BORDER, CONTROL_HEIGHT, FieldError, RequiredMark } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 const TEMPLATES: { type: ProjectType; icon: string }[] = [
   { type: "smart_city", icon: "/icons/portal-smart-city.png" },
@@ -171,12 +172,12 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
           position: "fixed", inset: 0, zIndex: 400, backgroundColor: "var(--scrim)",
           display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
         }}>
-        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "16px", maxWidth: "400px", width: "100%", padding: "22px", boxShadow: "var(--shadow-modal)" }}>
+        <div style={{ backgroundColor: "white", border: BORDER, borderRadius: RADIUS.card, maxWidth: "400px", width: "100%", padding: "22px", boxShadow: "var(--shadow-modal)" }}>
           <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)" }}>{t.refusedTitle}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "8px" }}>{t.refusedBody}</p>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "18px" }}>
             <button className="portal-btn-outline" onClick={() => onCancel?.()}
-              style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               {t.cancel}
             </button>
           </div>
@@ -214,7 +215,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
       {/* margin auto rather than centring alone: with the scroll on the backdrop, a dialog taller
           than a short window gets its top cut off under align-items centre. */}
       <div style={{
-        backgroundColor: "white", border: BORDER, borderRadius: "20px",
+        backgroundColor: "white", border: BORDER, borderRadius: RADIUS.card,
         width: "640px", maxWidth: "100%", boxSizing: "border-box", padding: "24px 32px 32px",
         margin: "auto", boxShadow: "var(--shadow-modal)",
       }}>
@@ -224,7 +225,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
               light. */}
           <span style={{
             display: "inline-flex", alignItems: "center",
-            border: "1px solid var(--primary-200)", borderRadius: "13px",
+            border: "1px solid var(--primary-200)", borderRadius: RADIUS.pill,
             padding: "5px 12px", fontSize: "10px", fontWeight: 600, color: "var(--primary-400)",
           }}>
             {t.badge}
@@ -246,7 +247,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
                   position: "relative", flex: 1, textAlign: "left", cursor: "pointer",
                   border: selected ? "1px solid var(--primary-400)" : BORDER,
                   backgroundColor: selected ? "var(--primary-50)" : "white",
-                  borderRadius: "14px", padding: "10px 16px 14px", minHeight: "110px",
+                  borderRadius: RADIUS.card, padding: "10px 16px 14px", minHeight: "110px",
                 }}
               >
                 {/* Inside the card's padding box, on the same top line as the icon — not hung off
@@ -296,7 +297,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
              on top of 36px controls it reads as a different product. */
           style={{
             width: "100%", boxSizing: "border-box", height: CONTROL_HEIGHT, padding: "0 12px",
-            borderRadius: "10px", border: BORDER, backgroundColor: "white",
+            borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white",
             fontSize: "13px", fontWeight: 600, fontFamily: "inherit", marginBottom: "16px",
           }}
         />
@@ -313,13 +314,13 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
             placeholder={t.rtspPlaceholder}
             style={{
               flex: 1, boxSizing: "border-box", height: CONTROL_HEIGHT, padding: "0 12px",
-              borderRadius: "10px", border: BORDER, backgroundColor: "white",
+              borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white",
               fontSize: "13px", fontWeight: 600, fontFamily: "inherit",
             }}
           />
           <span style={{
             display: "flex", alignItems: "center", justifyContent: "center",
-            width: "84px", height: CONTROL_HEIGHT, borderRadius: "10px", backgroundColor: "var(--gray-900)",
+            width: "84px", height: CONTROL_HEIGHT, borderRadius: RADIUS.control, backgroundColor: "var(--gray-900)",
             color: "white", fontSize: "10px", fontWeight: 600, flexShrink: 0,
           }}>
             {t.rtspTag}
@@ -348,7 +349,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
                   inputMode="decimal"
                   style={{
                     flex: 1, boxSizing: "border-box", height: CONTROL_HEIGHT, padding: "0 12px",
-                    borderRadius: "10px", border: BORDER, backgroundColor: "white",
+                    borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white",
                     fontSize: "13px", fontWeight: 600, fontFamily: "inherit",
                   }}
                 />
@@ -364,7 +365,7 @@ export default function PortalNewProjectWizard({ teamId, onDeployed, onCancel, d
           onClick={deploy}
           disabled={!canDeploy}
           style={{
-            width: "100%", height: "40px", marginTop: "20px", borderRadius: "8px", border: "none",
+            width: "100%", height: "40px", marginTop: "20px", borderRadius: RADIUS.control, border: "none",
             backgroundColor: canDeploy ? "var(--primary-400)" : "var(--gray-200)", color: canDeploy ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700,
             cursor: canDeploy ? "pointer" : "not-allowed", 
           }}

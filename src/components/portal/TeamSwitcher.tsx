@@ -8,6 +8,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { FormLabel, BORDER, BREADCRUMB_TEAM_MAX_WIDTH, ConfirmModal, Drawer, PanelCancel, PanelPrimary, SelectedCheckIcon, TextField } from "./PortalShared";
 import { useToast } from "@/components/Toast";
+import { RADIUS } from "../shared/controls";
 
 const T = {
   en: {
@@ -187,7 +188,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
           onMouseLeave={() => setHovered(null)}
           style={{
             display: "flex", alignItems: "center", gap: "6px",
-            borderRadius: "8px", padding: "6px 10px",
+            borderRadius: RADIUS.control, padding: "6px 10px",
             // No edge of its own in the rail: it is one row of a bordered box that holds both
             // switchers, and a border inside a border is two boxes for one thing.
             border: dark ? "none" : "1px solid var(--line)",
@@ -204,7 +205,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
             // stand-in, and a row whose height depends on a font's metrics cannot be matched.
             ...(dark ? { width: "100%", minHeight: "34px", padding: "6px 12px", borderRadius: 0, boxSizing: "border-box" as const, alignItems: "center" } : null),
             ...(compact ? {
-              width: "34px", height: "34px", padding: 0, borderRadius: "8px", justifyContent: "center",
+              width: "34px", height: "34px", padding: 0, borderRadius: RADIUS.control, justifyContent: "center",
               backgroundColor: hovered === "__trigger" ? "var(--gray-700)" : "var(--gray-800)",
             } : null),
           }}
@@ -268,7 +269,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
           <div style={{
             position: "absolute", left: 0, zIndex: 200,
             ...(dropUp ? { bottom: "100%", marginBottom: "6px" } : { top: "100%", marginTop: "4px" }),
-            backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "var(--shadow-popover)",
+            backgroundColor: "white", border: BORDER, borderRadius: RADIUS.panel, boxShadow: "var(--shadow-popover)",
             minWidth: "280px", maxWidth: "360px", padding: "4px",
           }}>
             <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px", padding: "8px 10px 4px" }}>
@@ -287,7 +288,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
                   onMouseLeave={() => setHovered(null)}
                   style={{
                     display: "flex", alignItems: "center", gap: "8px", width: "100%", textAlign: "left",
-                    padding: "8px 10px", borderRadius: "6px", border: "none", cursor: "pointer",
+                    padding: "8px 10px", borderRadius: RADIUS.inner, border: "none", cursor: "pointer",
                     backgroundColor: hovered === team.id ? "var(--gray-100)" : "transparent",
                   }}
                 >
@@ -312,7 +313,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
                 onMouseLeave={() => setHovered(null)}
                 style={{
                   display: "flex", alignItems: "center", gap: "8px", width: "100%", textAlign: "left",
-                  padding: "8px 10px", borderRadius: "6px", border: "none", cursor: "pointer",
+                  padding: "8px 10px", borderRadius: RADIUS.inner, border: "none", cursor: "pointer",
                   backgroundColor: hovered === "__new" ? "var(--gray-100)" : "transparent",
                   fontSize: "12px", fontWeight: 700, color: "var(--primary-400)",
                 }}
@@ -333,7 +334,7 @@ export default function TeamSwitcher({ dark, compact, currentTeamId, onSelect }:
                   onMouseLeave={() => setHovered(null)}
                   style={{
                     display: "flex", alignItems: "center", gap: "8px", width: "100%", textAlign: "left",
-                    padding: "8px 10px", borderRadius: "6px", border: "none", cursor: "pointer",
+                    padding: "8px 10px", borderRadius: RADIUS.inner, border: "none", cursor: "pointer",
                     backgroundColor: hovered === "__manage" ? "var(--gray-100)" : "transparent",
                     fontSize: "12px", fontWeight: 600, color: "var(--gray-600)",
                   }}
@@ -486,7 +487,7 @@ function ManageTeamModal({ team, onClose, onDeleted }: {
             <button onClick={() => canDelete && setConfirming(true)} disabled={!canDelete}
               className={canDelete ? "portal-btn-quiet" : undefined}
               style={{
-                height: "30px", padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: "transparent",
+                height: "30px", padding: "0 12px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent",
                 color: canDelete ? "var(--danger-500)" : "var(--gray-300)",
                 fontSize: "12px", fontWeight: 700, cursor: canDelete ? "pointer" : "not-allowed", fontFamily: "inherit",
               }}>
@@ -583,7 +584,7 @@ export function NewTeamModal({ onClose, onCreated }: { onClose: () => void; onCr
             // 14px, a step up from the 13px the Portal's other form inputs use. This is the one
             // field the whole panel exists for, and it is what the team will be called everywhere
             // afterwards — worth reading at the size you would read a title at.
-            style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: BORDER, fontSize: "14px", fontFamily: "inherit" }}
+            style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: RADIUS.control, border: BORDER, fontSize: "14px", fontFamily: "inherit" }}
           />
         </div>
       </div>

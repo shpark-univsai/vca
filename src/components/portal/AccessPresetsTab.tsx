@@ -15,6 +15,7 @@ import {
   TextField, Drawer, PanelCancel, GRANT_TREE, GrantGroupIcon, type GrantRowDef, type GrantGroupDef,
 } from "./PortalShared";
 import { APP_GRANT_LABELS } from "@/lib/appGrants";
+import { RADIUS } from "../shared/controls";
 
 /**
  * APP-ACCESS PRESETS, BESIDE THE ACCOUNTS THEY ARE HANDED TO.
@@ -326,7 +327,7 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
           <>
             {presets.length > 0 && (
               <button className="portal-btn-outline" onClick={() => startEditing()}
-                style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 <Pencil size={13} strokeWidth={2.4} aria-hidden="true" />
                 {t.presetEdit}
               </button>
@@ -351,7 +352,7 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
               not a place to type, and the panel takes over.
             */}
             <button className="portal-btn-outline" onClick={() => (columnFits ? startEditing(true) : setCreating(true))}
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               <Plus size={13} strokeWidth={2.4} aria-hidden="true" />
               {t.presetNew}
             </button>
@@ -436,7 +437,7 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
                          hold 보기 · 검색 in its cells, but the name in it is three letters —
                          stretching the box to the column made an empty field the widest thing on
                          the screen. 128px still takes a name twice as long as any of the three. */
-                      style={{ width: "100%", maxWidth: "104px", boxSizing: "border-box", height: "28px", padding: "0 8px", borderRadius: "7px", border: BORDER, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", backgroundColor: "white" }}
+                      style={{ width: "100%", maxWidth: "104px", boxSizing: "border-box", height: "28px", padding: "0 8px", borderRadius: RADIUS.control, border: BORDER, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "inherit", backgroundColor: "white" }}
                     />
                     {/* Not a door while the name beside it is an input: opening a panel over an
                         unsaved edit would put the table's own 저장 behind a scrim. */}
@@ -492,7 +493,7 @@ function AccessPresetList({ t, teamId, canEdit, lang, actionsSlot }: {
           <BulkBarDivider />
           <button onClick={save} disabled={!dirty || emptyDraft}
             title={emptyDraft ? t.presetNoActions : undefined}
-            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: dirty && !emptyDraft ? "white" : "var(--gray-700)", color: dirty && !emptyDraft ? "var(--gray-900)" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: dirty && !emptyDraft ? "pointer" : "not-allowed", flexShrink: 0, fontFamily: "inherit" }}>
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "none", backgroundColor: dirty && !emptyDraft ? "white" : "var(--gray-700)", color: dirty && !emptyDraft ? "var(--gray-900)" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: dirty && !emptyDraft ? "pointer" : "not-allowed", flexShrink: 0, fontFamily: "inherit" }}>
             {t.presetSave}
           </button>
           <BulkBarExit onClick={stopEditing}>{t.presetCancel}</BulkBarExit>
@@ -681,7 +682,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
       <button type="button" onClick={apply} title={t.presetCycleHint}
         style={{
           display: "inline-flex", alignItems: "center", justifyContent: "center",
-          height: "24px", padding: "0 8px", borderRadius: "7px",
+          height: "24px", padding: "0 8px", borderRadius: RADIUS.control,
           border: state === "none" ? "1px dashed var(--gray-300)" : BORDER,
           backgroundColor: "white", cursor: "pointer", fontFamily: "inherit",
         }}>
@@ -817,7 +818,7 @@ function PresetMatrix({ presets, lang, header, footer, editing, draft, removed, 
       <button type="button" onClick={apply} title={t.presetCycleHint}
         style={{
           display: "inline-flex", alignItems: "center", justifyContent: "center",
-          height: "24px", padding: "0 8px", borderRadius: "7px",
+          height: "24px", padding: "0 8px", borderRadius: RADIUS.control,
           border: cur.on ? BORDER : "1px dashed var(--gray-300)",
           backgroundColor: "white",
           cursor: "pointer", fontFamily: "inherit",
@@ -1018,7 +1019,7 @@ function UseChip({ n, t, plain, onOpen }: {
          the field in a 188px column. Reading the saved table it keeps the pill, which is the same
          vocabulary the cells below it use. */
       ...(plain ? {} : {
-        padding: "2px 6px", borderRadius: "999px",
+        padding: "2px 6px", borderRadius: RADIUS.pill,
         border: BORDER, backgroundColor: n === 0 ? "white" : "var(--gray-50)",
       }),
       fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap",
@@ -1106,11 +1107,11 @@ function PresetEditor({ t, preset, followers, onSave, onCancel }: {
             <span style={{ flex: 1, fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.45 }}>{t.presetNoScreens}</span>
           )}
           <button className="portal-btn-outline" onClick={onCancel}
-            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {t.presetCancel}
           </button>
           <button className="portal-btn-primary" onClick={() => canSave && onSave({ label: label.trim(), actions })} disabled={!canSave}
-            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
             {preset ? t.presetSave : t.presetCreate}
           </button>
         </>

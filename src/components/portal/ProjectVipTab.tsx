@@ -13,6 +13,7 @@ import { FormLabel, BulkBarSubject, BulkBarExit, ActiveFilterCount, TextField, B
 import { VipCategoryModal, categoryTint } from "./VipCategories";
 import VipImportModal from "./VipImportModal";
 import { DateRangeTrigger, dateKeyOf } from "../shared/DateRangePicker";
+import { RADIUS } from "../shared/controls";
 
 type VipSortKey = "name" | "priority" | "registered" | "lastDetected" | "expires";
 
@@ -935,7 +936,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
       width="520px"
       footer={
         <>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button className="portal-btn-primary"
@@ -962,7 +963,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               });
             }}
             disabled={!valid}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", }}>
             {/* The plus belongs to adding. Saving an edit adds nothing. */}
             {!editing && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>}
             {editing ? t.saveEdit : t.register}
@@ -1002,7 +1003,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                 onMouseEnter={() => setPhotoHoverIndex(index)}
                 onMouseLeave={() => setPhotoHoverIndex(-1)}
                 title={photo.fileName}
-                style={{ position: "relative", display: "flex", width: `${PHOTO_TILE}px`, height: `${PHOTO_TILE}px`, borderRadius: "10px", overflow: "hidden", border: BORDER, flexShrink: 0 }}>
+                style={{ position: "relative", display: "flex", width: `${PHOTO_TILE}px`, height: `${PHOTO_TILE}px`, borderRadius: RADIUS.control, overflow: "hidden", border: BORDER, flexShrink: 0 }}>
                 <img src={photo.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 {/* WHICH ONE THE REST OF THE PRODUCT SHOWS. Marked rather than left to be
                     inferred from position: the table, the cards and the app all draw this face,
@@ -1037,7 +1038,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               onClick={() => photoInputRef.current?.click()}
               style={{
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px",
-                width: `${PHOTO_TILE}px`, height: `${PHOTO_TILE}px`, borderRadius: "10px", flexShrink: 0,
+                width: `${PHOTO_TILE}px`, height: `${PHOTO_TILE}px`, borderRadius: RADIUS.control, flexShrink: 0,
                 border: "1px dashed var(--gray-300)", backgroundColor: "var(--gray-50)",
                 cursor: "pointer", fontFamily: "inherit",
               }}>
@@ -1060,7 +1061,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
               hints because this one means NOTHING WAS SAVED — the other two describe a row that
               exists. */}
           {photoRejected && (
-            <div style={{ marginTop: "8px", padding: "10px 12px", borderRadius: "8px", backgroundColor: "var(--danger-100)", border: "1px solid var(--danger-200)" }}>
+            <div style={{ marginTop: "8px", padding: "10px 12px", borderRadius: RADIUS.control, backgroundColor: "var(--danger-100)", border: "1px solid var(--danger-200)" }}>
               <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--danger-500)" }}>{t.photoRejectedTitle}</p>
               <p style={{ fontSize: "11px", color: "var(--gray-600)", lineHeight: 1.45, marginTop: "4px" }}>{t.photoRejectedHint}</p>
             </div>
@@ -1178,7 +1179,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                   </div>
                   <button className="portal-btn-primary" onClick={createGroup} disabled={!newGroupName.trim()}
                     style={{
-                      height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none",
+                      height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "none",
                       backgroundColor: newGroupName.trim() ? "var(--primary-400)" : "var(--gray-200)",
                       color: newGroupName.trim() ? "white" : "var(--gray-400)",
                       fontSize: "12px", fontWeight: 700, cursor: newGroupName.trim() ? "pointer" : "not-allowed", flexShrink: 0,
@@ -1186,7 +1187,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                     {t.createGroupAction}
                   </button>
                   <button className="portal-btn-outline" onClick={() => setNewGroupName(null)}
-                    style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+                    style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
                     {t.cancel}
                   </button>
                 </div>
@@ -1224,7 +1225,7 @@ function Tag({ label, bg, color, flexible, icon }: { label: string; bg: string; 
       title={flexible ? label : undefined}
       style={{
         alignItems: "center", height: "18px",
-        fontSize: "10px", fontWeight: 600, padding: "0 8px", borderRadius: "999px",
+        fontSize: "10px", fontWeight: 600, padding: "0 8px", borderRadius: RADIUS.pill,
         backgroundColor: bg, color, textTransform: "uppercase", whiteSpace: "nowrap",
         // `block`, not `inline-flex`, when it has to truncate: text-overflow needs a block
         // container to clip against, and lineHeight then does what alignItems was doing.
@@ -1313,12 +1314,12 @@ function GroupModal({ t, group, projectId, onClose }: {
       width="520px"
       footer={
         <>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.cancel}
           </button>
           <button onClick={save} disabled={!name.trim()}
             style={{
-              padding: "10px 16px", borderRadius: "8px", border: "none",
+              padding: "10px 16px", borderRadius: RADIUS.control, border: "none",
               backgroundColor: name.trim() ? "var(--primary-400)" : "var(--gray-200)",
               color: name.trim() ? "white" : "var(--gray-400)",
               fontSize: "13px", fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed",
@@ -1450,7 +1451,7 @@ export function VipDetailPanel({ person, zone, groups, onClose, onEdit, onRemove
          place, and the same quiet treatment, as CameraDetailPanel's 「입력 소스에서 열기」. */
       headerAction={onOpenInRegistry && (
         <button className="portal-btn-quiet" onClick={onOpenInRegistry}
-          style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", borderRadius: "6px", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>
+          style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", borderRadius: RADIUS.inner, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>
           {t.openInRegistry}
           <ArrowUpRight size={13} strokeWidth={2.2} aria-hidden="true" />
         </button>
@@ -1480,7 +1481,7 @@ export function VipDetailPanel({ person, zone, groups, onClose, onEdit, onRemove
             {t.photoSetCount((person.enrolmentPhotoUrls ?? []).length)}
           </span>
           {(person.enrolmentPhotoUrls ?? []).map(url => (
-            <FacePhoto key={url} src={url} size={40} radius="8px" />
+            <FacePhoto key={url} src={url} size={40} radius={RADIUS.control} />
           ))}
         </div>
       )}
@@ -2330,11 +2331,11 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
             control the only one in the console that leads with the view you are not in. Input
             Sources is ["table", "map"], so the same gesture now has the same order in both. */}
         {vipTab !== "groups" && (
-          <div style={{ display: "flex", alignItems: "center", marginBottom: "8px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "10px", padding: "3px", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: "8px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: RADIUS.control, padding: "3px", flexShrink: 0 }}>
             {(["table", "grid"] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
                 style={{
-                  padding: "4px 10px", borderRadius: "8px", border: "none", cursor: "pointer", fontFamily: "inherit",
+                  padding: "4px 10px", borderRadius: RADIUS.inner, border: "none", cursor: "pointer", fontFamily: "inherit",
                   backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
                   fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
                 }}>
@@ -2505,7 +2506,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
             aria-pressed={gridPriorityFirst}
             style={{
               display: "flex", alignItems: "center", gap: "6px", flexShrink: 0,
-              height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",
+              height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, cursor: "pointer",
               fontSize: "10px", fontWeight: 700, fontFamily: "inherit",
               ...(gridPriorityFirst
                 ? { border: "1px solid var(--gray-900)", backgroundColor: "var(--gray-900)", color: "white" }
@@ -2525,7 +2526,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               a bulk face upload has nothing to do with the list of parties. */}
       {vipTab === "groups" ? (
             <button className="portal-btn-primary" onClick={() => setGroupModalFor({ group: null })} disabled={!mayEdit} title={readOnlyReason}
-              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}>
+              style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}>
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
               {t.addGroup}
             </button>
@@ -2536,7 +2537,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               addPersons ran on the way back from the dialog and the first thing anybody saw was a
               toast with two numbers in it. */}
           <button className="portal-btn-quiet" onClick={() => setShowImport(true)} disabled={!mayEdit} title={readOnlyReason}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: mayEdit ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 600, cursor: mayEdit ? "pointer" : "not-allowed" }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: mayEdit ? "var(--gray-600)" : "var(--gray-300)", fontSize: "12px", fontWeight: 600, cursor: mayEdit ? "pointer" : "not-allowed" }}>
             <FileInput size={14} strokeWidth={2.4} />
             {t.bulkUpload}
           </button>
@@ -2549,19 +2550,19 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
               is Salesforce's rule too: map what they give you, and let an export be the template.
               Open to a read-only account: downloading a blank file changes nothing. */}
           <button className="portal-btn-quiet" onClick={downloadBulkTemplate} title={t.bulkTemplateHint}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             <FileDown size={14} strokeWidth={2.4} />
             {t.bulkTemplate}
           </button>
           {/* title, the same way the two buttons on either side of it carry their refusal — a
               toolbar has no room for a sentence under it, and these three have to stay one row. */}
           <button className="portal-btn-quiet" onClick={exportCsv} disabled={projectPersons.length === 0} title={exportDisabledReason}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: projectPersons.length === 0 ? "var(--gray-300)" : "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: projectPersons.length === 0 ? "not-allowed" : "pointer" }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: projectPersons.length === 0 ? "var(--gray-300)" : "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: projectPersons.length === 0 ? "not-allowed" : "pointer" }}>
             <FileOutput size={14} strokeWidth={2.4} />
             {t.exportCsv}
           </button>
           <button className="portal-btn-primary" onClick={() => setShowRegister(true)} disabled={!mayEdit} title={readOnlyReason}
-            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}>
+            style={{ display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: mayEdit ? "var(--primary-400)" : "var(--gray-200)", color: mayEdit ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: mayEdit ? "pointer" : "not-allowed" }}>
             <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 2.9V11.1M2.9 7H11.1" stroke="currentColor" strokeWidth="1.22" strokeLinecap="round"/></svg>
             {t.registerVip}
           </button>
@@ -2684,7 +2685,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 <button
                   onClick={() => bulkExpiry && applyBulkExpiry(bulkExpiry)}
                   disabled={!bulkExpiry}
-                  style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: bulkExpiry ? "var(--primary-400)" : "var(--gray-700)", color: bulkExpiry ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: bulkExpiry ? "pointer" : "not-allowed", flexShrink: 0 }}
+                  style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "none", backgroundColor: bulkExpiry ? "var(--primary-400)" : "var(--gray-700)", color: bulkExpiry ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: bulkExpiry ? "pointer" : "not-allowed", flexShrink: 0 }}
                 >
                   {t.bulkExpiryApply}
                 </button>
@@ -2692,7 +2693,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     the only way to clear the unanswered warning in bulk is to invent a date. */}
                 <button
                   onClick={() => applyBulkExpiry(null)}
-                  style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "1px solid var(--gray-700)", backgroundColor: "transparent", color: "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                  style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, border: "1px solid var(--gray-700)", backgroundColor: "transparent", color: "var(--gray-300)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
                 >
                   {t.bulkExpiryNone}
                 </button>
@@ -2710,7 +2711,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                      three of background, colour and border unchanged. The cameras tab's twin
                      carries the same class. */
                   className="portal-btn-outline-danger"
-                  style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", border: "1px solid var(--danger-400)", backgroundColor: "transparent", color: "var(--danger-400)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                  style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, border: "1px solid var(--danger-400)", backgroundColor: "transparent", color: "var(--danger-400)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
                 >
                   {t.bulkDelete}
                 </button>
@@ -2863,7 +2864,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     this column exists so the reader can tell one Michael from another. The row's
                     own padding is untouched — the first grid track grew with the picture, so the
                     row is taller by exactly what the picture needed and by nothing else. */}
-                <FacePhoto src={person.photoUrl} size={48} radius="8px" />
+                <FacePhoto src={person.photoUrl} size={48} radius={RADIUS.control} />
                 {/* The name is the way in, as it is in most tables — a narrow target that does not
                     fight the group select two cells over for the same click. */}
                 {/* Just the name. The expiry tag moved under 등록일, where the other lifecycle
@@ -2902,7 +2903,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     const tint = categoryTint(cat.color);
                     return (
                       <span style={{
-                        display: "inline-block", maxWidth: "100%", padding: "2px 8px", borderRadius: "999px",
+                        display: "inline-block", maxWidth: "100%", padding: "2px 8px", borderRadius: RADIUS.pill,
                         backgroundColor: tint.bg, color: tint.fg,
                         fontSize: "11px", fontWeight: 700,
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -3069,7 +3070,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 // put a soft grey edge under every tile and turned the gaps between them into a
                 // texture — the wall of faces reads as cluttered before it reads as a list. The
                 // hairline is enough to say where a card ends when there are this many of them.
-                backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px",
+                backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.card,
                 /* No padding on the card any more, and `overflow: hidden` instead: the picture
                    runs to the card's own edges and is clipped by its radius, so the face is as
                    large as the card can make it. The text block below carries the padding. */

@@ -6,6 +6,7 @@ import { APP_ACTION_CONTENT, APP_ACTIONS, SUPPORT_CONTACT, canEditPortal, canSet
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { usePortalLanguage } from "@/lib/i18n";
 import { APP_GRANT_LABELS } from "@/lib/appGrants";
+import { CONTROL_HEIGHT, RADIUS } from "../shared/controls";
 
 /**
  * Whether the person at this console may change anything on it, and the sentence to show when
@@ -120,11 +121,16 @@ export const TABLE_RULE = CARD_BORDER;
  * The summary strip keeps its own 12 deliberately: it is a band of cells, not a card, and it
  * sits directly above one — a strip as round as the card under it reads as a second card.
  */
-export const CARD_RADIUS = "16px";
-// Every control that can sit on a toolbar row — search input, FilterSelect, pill buttons, the
-// table/grid segmented toggle — is this tall, so a row of them lines up regardless of padding
-// or font size. Set the height, not the vertical padding.
-export const CONTROL_HEIGHT = "36px";
+export const CARD_RADIUS = RADIUS.card;
+/**
+ * The shape scale and the control height both live in ../shared/controls now, and these two names
+ * are that file under the names ~100 call sites here already use.
+ *
+ * They are re-exported rather than re-declared on purpose: Portal said "a card is 16" and "a
+ * control is 36 tall" for a year while the monitoring app typed both numbers inline, and two
+ * copies of a number are two numbers as soon as one of them is edited.
+ */
+export { CONTROL_HEIGHT, RADIUS };
 /**
  * Every icon in Portal renders a 1.4px stroke. The NUMBER in the markup is rarely 1.4.
  *
@@ -289,7 +295,7 @@ export function SearchInput({ value, onChange, placeholder, style }: {
  */
 export const FIELD_STYLE: React.CSSProperties = {
   width: "100%", boxSizing: "border-box",
-  height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "10px",
+  height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control,
   border: CONTROL_BORDER, backgroundColor: "white",
   fontSize: "13px", fontFamily: "inherit",
 };
@@ -435,7 +441,7 @@ export function TableSkeleton({ grid, rows = 6, columnGap = TABLE_COLUMN_GAP }: 
         }}>
           {grid.split(" ").map((_c, j) => (
             <span key={j} style={{
-              height: "10px", borderRadius: "5px", backgroundColor: "var(--gray-100)",
+              height: "10px", borderRadius: RADIUS.pill, backgroundColor: "var(--gray-100)",
               /* Not every bar the same length: a column of identical grey pills reads as a
                  rendering fault rather than as text that has not arrived. */
               width: `${[70, 52, 84, 46, 62, 38][(i + j) % 6]}%`,
@@ -457,7 +463,7 @@ export function TableLoadFailed({ text, retryLabel, onRetry }: { text: string; r
     <div style={{ padding: "40px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
       <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)" }}>{text}</p>
       <button type="button" onClick={onRetry}
-        style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+        style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
         {retryLabel}
       </button>
     </div>
@@ -630,7 +636,7 @@ export function TablePagination({ total, page, rowsPerPage, onPage, onRowsPerPag
         disabled={disabled}
         title={dir === "prev" ? t.prev : t.next}
         style={{
-          width: "28px", height: "28px", borderRadius: "8px", border: BORDER, backgroundColor: "white",
+          width: "28px", height: "28px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white",
           color: disabled ? "var(--gray-300)" : "var(--gray-600)", cursor: disabled ? "not-allowed" : "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
@@ -674,7 +680,7 @@ export function TablePagination({ total, page, rowsPerPage, onPage, onRowsPerPag
         ) : (
           <button key={n} onClick={() => onPage(n)}
             style={{
-              minWidth: "28px", height: "28px", padding: "0 6px", borderRadius: "8px", border: "none", cursor: "pointer",
+              minWidth: "28px", height: "28px", padding: "0 6px", borderRadius: RADIUS.control, border: "none", cursor: "pointer",
               backgroundColor: n === current ? "var(--gray-900)" : "transparent",
               color: n === current ? "white" : "var(--gray-600)",
               fontSize: "12px", fontWeight: 700, fontFamily: "inherit",
@@ -886,7 +892,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
           ...(fitContent ? { gridArea: "1 / 1", width: "100%" } : { width: "100%" }), boxSizing: "border-box",
-          height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "10px",
+          height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control,
           backgroundColor: "white", cursor: "pointer", whiteSpace: "nowrap", outline: "none",
           // Open is this control's focused state, and it now looks like one — the same ring a text
           // field gets. Hover keeps its lighter cue underneath.
@@ -916,7 +922,7 @@ export function FilterSelect({ value, onChange, options, fitContent, footerActio
           ...(dropUp ? { bottom: "100%", marginBottom: "4px" } : { top: "100%", marginTop: "4px" }),
           // Same radius and shadow as RowActionsMenu's dropdown — Portal has two menus and they
           // should not be two designs.
-          backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "var(--shadow-popover)",
+          backgroundColor: "white", border: BORDER, borderRadius: RADIUS.panel, boxShadow: "var(--shadow-popover)",
           // The trigger's width is the FLOOR, not the width. It was a flat 160px plus whatever the
           // widest option needed, so a full-width field in a form got a list narrower than itself
           // and a narrow filter in a toolbar got one wider — every select in Portal drew a
@@ -1036,8 +1042,8 @@ export function RowActionsMenu({ actions, variant = "row", label }: {
           // buttons this sits beside are sized by their own padding around 18px of content, so
           // 10 + 18 + 10 lands on their 38px exactly. CONTROL_HEIGHT (36) and a 16px glyph both
           // came up two pixels short.
-          ? { display: "flex", alignItems: "center", gap: "6px", padding: "10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }
-          : { border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", borderRadius: "6px" }}
+          ? { display: "flex", alignItems: "center", gap: "6px", padding: "10px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }
+          : { border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex", padding: "4px", borderRadius: RADIUS.inner }}
       >
         <svg width={toolbar ? 18 : 16} height={toolbar ? 18 : 16} viewBox="0 0 16 16" fill="none">
           <circle cx="8" cy="3.3" r="1.3" fill="currentColor"/>
@@ -1049,7 +1055,7 @@ export function RowActionsMenu({ actions, variant = "row", label }: {
       {open && (
         <div style={{
           position: "absolute", top: "100%", right: 0, marginTop: "4px", zIndex: 50,
-          backgroundColor: "white", border: BORDER, borderRadius: "10px", boxShadow: "var(--shadow-popover)",
+          backgroundColor: "white", border: BORDER, borderRadius: RADIUS.panel, boxShadow: "var(--shadow-popover)",
           // Sized to the longest label rather than to a guess. At 140px every label of more than
           // two words wrapped, and the menu came out as a column of stacked half-sentences that
           // looked like nothing else in the app. maxWidth only bounds the footnote below, which is
@@ -1064,7 +1070,7 @@ export function RowActionsMenu({ actions, variant = "row", label }: {
               onMouseEnter={() => setHovered(a.label)}
               onMouseLeave={() => setHovered(null)}
               style={{
-                display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: "6px",
+                display: "block", width: "100%", textAlign: "left", padding: "8px 10px", borderRadius: RADIUS.inner,
                 border: "none", whiteSpace: "nowrap",
                 // Hover used to be a `.portal-menu-item:hover` rule in a <style> tag, which never
                 // once fired: every item also carried an inline `background: none`, and an inline
@@ -1220,7 +1226,7 @@ export function SummaryStrip({ cells, state = "ready" }: {
                   /* A bar where the figure goes, the height of the digits it replaces, so the card
                      keeps its size. Same gray-100 as TableSkeleton's row bars — one vocabulary for
                      "not here yet" across the page. */
-                  <span style={{ display: "block", width: "56px", height: "18px", margin: "4px 0", borderRadius: "5px", backgroundColor: "var(--gray-100)" }} />
+                  <span style={{ display: "block", width: "56px", height: "18px", margin: "4px 0", borderRadius: RADIUS.pill, backgroundColor: "var(--gray-100)" }} />
                 ) : state === "failed" ? (
                   <span style={{ fontSize: "24px", fontWeight: 800, color: "var(--gray-300)", lineHeight: "26px", letterSpacing: "-0.5px" }}>—</span>
                 ) : (
@@ -1263,7 +1269,7 @@ export function SummaryStrip({ cells, state = "ready" }: {
         const mark = (
           <span style={{
             display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            width: "30px", height: "30px", borderRadius: "9px", color: markColor,
+            width: "30px", height: "30px", borderRadius: RADIUS.control, color: markColor,
             backgroundColor: cell.tone === "warning" && !pending ? "var(--warning-100)" : "var(--gray-100)",
           }}>{cell.icon}</span>
         );
@@ -1282,7 +1288,7 @@ export function SummaryStrip({ cells, state = "ready" }: {
           // Roomier than it was (10px 18px). These are the page's headline numbers and they were
           // wearing the padding of a table row.
           padding: "14px 18px",
-          backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px",
+          backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.panel,
           // No dividers and no end-cap corners any more: the gap between the cards separates them,
           // and every card carries all four of its own corners.
         };
@@ -1367,7 +1373,7 @@ export function CardSection({ heading, icon, subheading, desc, hint, children }:
           {icon && (
             <span style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-              width: "28px", height: "28px", borderRadius: "9px",
+              width: "28px", height: "28px", borderRadius: RADIUS.control,
               backgroundColor: "var(--gray-50)", border: BORDER, color: "var(--gray-600)",
             }}>{icon}</span>
           )}
@@ -1523,7 +1529,7 @@ export function ActiveFilterCount({ count, onClear, label }: { count: number; on
       <button type="button" onClick={onClear} className="portal-btn-quiet"
         style={{
           display: "flex", alignItems: "center", flexShrink: 0,
-          height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", cursor: "pointer",
+          height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: RADIUS.control, cursor: "pointer",
           border: "none", backgroundColor: "transparent",
           fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", fontFamily: "inherit",
         }}>
@@ -1540,7 +1546,7 @@ export function ActiveFilterCount({ count, onClear, label }: { count: number; on
       title={CLEAR_FILTERS_T[lang]}
       style={{
         display: "flex", alignItems: "center", gap: "6px", flexShrink: 0,
-        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",
+        height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, cursor: "pointer",
         border: "none", backgroundColor: hovered ? "var(--gray-200)" : "var(--gray-100)",
         /* 12px, matching the table below and the buttons beside it. A filter keeps its border —
            it is an input, and an input with no edge does not read as somewhere you can type or
@@ -1583,7 +1589,7 @@ export function Switch({ checked, onChange, label, disabled }: {
            squarish slot — which is what read as angular. 999px makes the track's ends the same
            curve as the knob that travels between them. 8px is this console's BUTTON radius; a
            switch is not a button, and nothing else in Portal draws one. */
-        position: "relative", flexShrink: 0, width: "38px", height: "22px", borderRadius: "999px",
+        position: "relative", flexShrink: 0, width: "38px", height: "22px", borderRadius: RADIUS.pill,
         border: "none", padding: 0, cursor: disabled ? "not-allowed" : "pointer",
         backgroundColor: checked ? "var(--gray-900)" : "var(--gray-200)",
         opacity: disabled ? 0.5 : 1,
@@ -1592,7 +1598,7 @@ export function Switch({ checked, onChange, label, disabled }: {
     >
       <span style={{
         position: "absolute", top: "3px", left: checked ? "19px" : "3px",
-        width: "16px", height: "16px", borderRadius: "999px", backgroundColor: "white",
+        width: "16px", height: "16px", borderRadius: RADIUS.pill, backgroundColor: "white",
         boxShadow: "0 1px 3px rgba(24,17,39,0.3)", transition: "left 0.15s",
       }} />
     </button>
@@ -1688,7 +1694,8 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
           ? { backgroundColor: "transparent", border: accentBorder ?? "none", padding: 0 }
           : {
               backgroundColor: "white", border: accentBorder ?? CARD_BORDER,
-              borderRadius: dense ? "12px" : "16px",
+              /* `dense` is tighter padding, not a shallower box — a card is a card. */
+              borderRadius: RADIUS.card,
               // 12px top and bottom, 16 at the sides. These cards are five short lines — icon row,
               // label, figure, bar, captions — and every px of vertical padding is a px the panels
               // below lose. The sides keep 16 so text still starts where the card's own hairline
@@ -1708,7 +1715,7 @@ export function MetricCard({ label, iconBg, iconColor, icon, accentBorder, dense
           four separate reads. */}
       <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "space-between", marginBottom: dense ? 0 : (Icon || chip ? "8px" : "2px") }}>
         {!dense && Icon && (
-          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: RADIUS.control, backgroundColor: iconBg, color: iconColor, flexShrink: 0 }}>
             <Icon />
           </span>
         )}
@@ -1959,7 +1966,7 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
           region and cannot leave the screen. Both halves are spread in only when asked: with the
           prop off the card and the body carry exactly the styles they always did, which is what
           keeps every existing caller's layout where it was. 32px is the backdrop's own padding. */}
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)",
+      <div style={{ backgroundColor: "white", borderRadius: RADIUS.card, border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)",
         ...(bodyScrolls ? { maxHeight: "calc(100vh - 32px)", display: "flex", flexDirection: "column" } : null) }}>
         {/* minHeight 0 alongside the overflow: a column flex item's default min-height is its
             content, so without it the body refuses to shrink and the cap above does nothing. */}
@@ -1982,13 +1989,13 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end", gap: "8px", flexShrink: 0 }}>
           {/* The same ghost cancel the panels use — two bordered buttons side by side read as two
               equal choices, which is the one thing a confirmation must not say. */}
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {cancelLabel}
           </button>
           {altAction && (
             <button onClick={altAction.onClick}
               style={{
-                padding: "10px 16px", borderRadius: "8px",
+                padding: "10px 16px", borderRadius: RADIUS.control,
                 border: altAction.danger ? "none" : BORDER,
                 backgroundColor: altAction.danger ? "var(--danger-400)" : "white",
                 color: altAction.danger ? "white" : "var(--gray-600)",
@@ -2002,7 +2009,7 @@ export function ConfirmModal({ title, body, confirmLabel, cancelLabel, danger, c
               nobody is meant to linger in. */}
           <button onClick={onConfirm} disabled={confirmDisabled}
             style={{
-              padding: "10px 16px", borderRadius: "8px", border: "none",
+              padding: "10px 16px", borderRadius: RADIUS.control, border: "none",
               /* PURPLE, LIKE EVERY OTHER COMMITTING ACTION (owner: 중앙모달에만 엑션버튼들이
                  검정색이야?). It was gray-900 while the panels' primary is primary-400 — the same
                  weight of decision wearing two colours depending on which container it landed in.
@@ -2047,7 +2054,7 @@ export function HelpTip({ text, placement = "bottom", size = 18 }: { text: strin
           // Sized to what it sits beside. 18 beside an 18px heading, 13 beside an 11px field
           // label — a mark bigger than the words it belongs to stops being a mark and becomes a
           // control, and the eye goes to it before the label it is annotating.
-          width: `${size}px`, height: `${size}px`, borderRadius: "999px", flexShrink: 0,
+          width: `${size}px`, height: `${size}px`, borderRadius: RADIUS.pill, flexShrink: 0,
           display: "inline-flex", alignItems: "center", justifyContent: "center",
           border: `1px solid ${hover ? "var(--gray-400)" : "var(--gray-300)"}`,
           backgroundColor: "transparent",
@@ -2114,7 +2121,7 @@ export function Tooltip({ text, children, placement = "bottom" }: {
             width: "max-content", maxWidth: "300px",
             backgroundColor: "var(--gray-900)", color: "white",
             fontSize: "12px", fontWeight: 400, lineHeight: 1.55, textAlign: "left",
-            padding: "8px 10px", borderRadius: "8px",
+            padding: "8px 10px", borderRadius: RADIUS.control,
             boxShadow: "var(--shadow-popover)",
             pointerEvents: "none", whiteSpace: "normal",
           }}
@@ -2303,7 +2310,7 @@ export function SupportContactModal({ onClose }: { onClose: () => void }) {
          dim and read as disabled. 400 is what CameraStreamModal, PortalNewProjectWizard and
          PortalShell already use, so an ask-before-you-act is now above every panel, everywhere. */
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
+      <div style={{ backgroundColor: "white", borderRadius: RADIUS.card, border: BORDER, maxWidth: "400px", width: "100%", boxShadow: "var(--shadow-modal)" }}>
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
           <p style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", marginBottom: "2px" }}>{t.heading}</p>
           {row(t.email, (
@@ -2322,7 +2329,7 @@ export function SupportContactModal({ onClose }: { onClose: () => void }) {
         </div>
         <div style={{ padding: "16px 20px", display: "flex", justifyContent: "flex-end" }}>
           <button className="portal-btn-outline" onClick={onClose}
-            style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {t.close}
           </button>
         </div>
@@ -2601,8 +2608,8 @@ function GrantStage({ rowLabel, value, twoCell, parentOn, locked, onPickStage, s
       backgroundColor: lit ? PICKED_FILL : "white",
       color: lit ? "var(--gray-900)" : "var(--gray-500)",
       border: `1px solid ${lit ? "var(--primary-300)" : "var(--gray-200)"}`,
-      borderTopLeftRadius: first ? "6px" : 0, borderBottomLeftRadius: first ? "6px" : 0,
-      borderTopRightRadius: last ? "6px" : 0, borderBottomRightRadius: last ? "6px" : 0,
+      borderTopLeftRadius: first ? RADIUS.inner : 0, borderBottomLeftRadius: first ? RADIUS.inner : 0,
+      borderTopRightRadius: last ? RADIUS.inner : 0, borderBottomRightRadius: last ? RADIUS.inner : 0,
       /* The seam: one line, owned by whichever cell is lit. */
       marginLeft: first ? 0 : "-1px",
       position: "relative" as const, zIndex: lit ? 1 : 0,
@@ -2694,13 +2701,13 @@ function GrantRow({ label, desc, on, locked, disabled, indent, fill, onToggle, r
            + 10 gap). No connector glyph — Shopify uses indent alone, and a 「└」 in the string
            would leak into /mypage's chips and the preset summary sentence, which have no tree. */
         padding: indent ? "9px 10px 9px 36px" : "9px 10px",
-        borderRadius: "8px", border: "none", fontFamily: "inherit",
+        borderRadius: RADIUS.control, border: "none", fontFamily: "inherit",
         backgroundColor: on && !locked ? fill : "transparent",
         cursor: inert ? "default" : "pointer",
         opacity: disabled ? 0.45 : locked && !on ? 0.5 : 1,
       }}>
       <span style={{
-        width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, marginTop: "1px",
+        width: "16px", height: "16px", borderRadius: RADIUS.inner, flexShrink: 0, marginTop: "1px",
         display: "flex", alignItems: "center", justifyContent: "center",
         border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
         backgroundColor: on ? "var(--gray-900)" : "white",
@@ -2949,7 +2956,7 @@ export function StatusBadge({ tone, label, title }: { tone: StatusTone; label: s
   return (
     <span title={title} style={{
       display: "inline-flex", alignItems: "center", gap: "4px", flexShrink: 0,
-      height: "18px", padding: "0 8px", borderRadius: "999px",
+      height: "18px", padding: "0 8px", borderRadius: RADIUS.pill,
       backgroundColor: bg, color: fg, fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap",
     }}>
       <Glyph size={11} strokeWidth={2.6} aria-hidden="true" />
@@ -3045,7 +3052,7 @@ export function SectionNav({ sections, active, onSelect }: {
               // while the caption above each group already separates the groups — so the rows read
               // as four separate things rather than two pairs. The captions keep their own 14px of
               // air above them, so tightening the rows widens the gap that means something.
-              padding: "7px 10px 7px 16px", borderRadius: "8px", border: "none",
+              padding: "7px 10px 7px 16px", borderRadius: RADIUS.control, border: "none",
               // Grey, not purple. Purple is reserved for things that need attention, and "where
               // you are" is not one — see the colour note in globals.css.
               //
@@ -3084,7 +3091,7 @@ export function SectionNav({ sections, active, onSelect }: {
             {on && (
               <span aria-hidden="true" style={{
                 position: "absolute", left: "5px", top: "50%", transform: "translateY(-50%)",
-                width: "3px", height: "16px", borderRadius: "999px", backgroundColor: "var(--gray-900)",
+                width: "3px", height: "16px", borderRadius: RADIUS.pill, backgroundColor: "var(--gray-900)",
               }} />
             )}
             <span style={{ display: "flex", flexShrink: 0, color: on ? "var(--gray-900)" : warm ? "var(--gray-600)" : "var(--gray-400)" }}>{sec.icon}</span>
@@ -3239,7 +3246,7 @@ export function FloatingBulkBar({ children }: { children: React.ReactNode }) {
     <div style={{ position: "fixed", left: 0, right: 0, bottom: "24px", zIndex: 40, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
       <div style={{
         pointerEvents: "auto", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
-        backgroundColor: "var(--gray-900)", borderRadius: "12px", padding: "10px 12px 10px 18px",
+        backgroundColor: "var(--gray-900)", borderRadius: RADIUS.panel, padding: "10px 12px 10px 18px",
         boxShadow: "var(--shadow-popover)", maxWidth: "calc(100% - 48px)",
       }}>
         {children}
@@ -3506,7 +3513,7 @@ export function PanelCancel({ onClick, label, apart }: {
        (gray-100), the same one the icon buttons and the kebab menus use. */
     <button type="button" onClick={onClick} className="portal-btn-quiet"
       style={{
-        padding: "10px 14px", borderRadius: "8px", border: "none", backgroundColor: "transparent",
+        padding: "10px 14px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent",
         color: "var(--gray-500)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
         ...(apart ? { marginRight: "auto" } : null),
       }}>
@@ -3534,7 +3541,7 @@ export function PanelPrimary({ onClick, label, disabled, danger }: {
   return (
     <button type="button" onClick={onClick} disabled={disabled}
       style={{
-        padding: "10px 18px", borderRadius: "8px", border: "none",
+        padding: "10px 18px", borderRadius: RADIUS.control, border: "none",
         backgroundColor: disabled ? "var(--gray-200)" : fill,
         color: disabled ? "var(--gray-400)" : "white",
         fontSize: "13px", fontWeight: 700,

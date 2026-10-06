@@ -10,6 +10,7 @@ import {
   CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TABLE_RULE, TOOLBAR_GAP,
   ActiveFilterCount, FilterSelect, SortableHeader, SummaryStrip, TableEmpty, TableLoadFailed, TableSkeleton, sortRows, useTableSort } from "./PortalShared";
 import { Check, CheckCircle2, FileOutput, ListChecks, UserCheck } from "lucide-react";
+import { RADIUS } from "../shared/controls";
 
 /**
  * 처리 기록 — WHAT THE SHIFT DEALT WITH, WHO DEALT WITH IT, AND WHAT THEY DID ABOUT IT.
@@ -489,7 +490,7 @@ export default function ProjectHandlingLogTab({ projectId }: { projectId: string
           <button className="portal-btn-quiet" onClick={exportCsv} disabled={exportDisabled} title={exportBlocked}
             style={{
               display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px",
-              borderRadius: "8px", border: "none", backgroundColor: "transparent",
+              borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent",
               color: exportDisabled ? "var(--gray-300)" : "var(--gray-600)",
               fontSize: "12px", fontWeight: 600, cursor: exportDisabled ? "not-allowed" : "pointer", fontFamily: "inherit",
             }}>

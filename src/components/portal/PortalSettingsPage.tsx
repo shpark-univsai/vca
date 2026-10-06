@@ -12,6 +12,7 @@ import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useToast } from "@/components/Toast";
 import ProjectMailPanel from "./ProjectMailPanel";
 import { PROJECT_TIME_ZONE } from "@/lib/time";
+import { RADIUS } from "../shared/controls";
 
 /**
  * The settings rail: one section at a time.
@@ -711,7 +712,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           which they never reach — the first section has no top rule and the last no bottom one —
           and it clipped the one thing that has to escape this box: the language select sits in the
           final section, so its list opened straight into the card's bottom edge and was cut off. */}
-      <div className="portal-settings-card" style={{ minWidth: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: "16px", boxShadow: PANEL_SHADOW }}>
+      <div className="portal-settings-card" style={{ minWidth: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.card, boxShadow: PANEL_SHADOW }}>
       {/* Which pairs exist depends on whether the signed-in address matches an account: with no
           match there is nothing to say about a role or a door, so those are absent rather than
           filled with a disclaimer. */}
@@ -760,11 +761,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                     setNameDraft(null);
                     showToast({ variant: "success", title: t.nameSavedToast, desc: next });
                   }}
-                  style={{ height: "30px", padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: (nameDraft.trim() && nameDraft.trim() !== me.name) ? "var(--primary-400)" : "var(--gray-200)", color: (nameDraft.trim() && nameDraft.trim() !== me.name) ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: (nameDraft.trim() && nameDraft.trim() !== me.name) ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+                  style={{ height: "30px", padding: "0 12px", borderRadius: RADIUS.control, border: "none", backgroundColor: (nameDraft.trim() && nameDraft.trim() !== me.name) ? "var(--primary-400)" : "var(--gray-200)", color: (nameDraft.trim() && nameDraft.trim() !== me.name) ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: (nameDraft.trim() && nameDraft.trim() !== me.name) ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
                   {t.nameSave}
                 </button>
                 <button className="portal-btn-quiet" onClick={() => setNameDraft(null)}
-                  style={{ height: "30px", padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ height: "30px", padding: "0 10px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                   {t.nameCancel}
                 </button>
               </span>
@@ -775,7 +776,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                     no record to write to, and a button that edits nothing is worse than none. */}
                 {me && (
                   <button className="portal-btn-outline" onClick={() => setNameDraft(me.name)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: "5px", flexShrink: 0, height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                    style={{ display: "inline-flex", alignItems: "center", gap: "5px", flexShrink: 0, height: "24px", padding: "0 9px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                     <Pencil size={11} strokeWidth={2.2} />
                     {t.nameEdit}
                   </button>
@@ -800,7 +801,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
               <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)" }}>{t.passwordSetAgo}</span>
               <button className="portal-btn-outline" onClick={() => setChangingPassword(true)}
-                style={{ height: "28px", padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ height: "28px", padding: "0 12px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 {t.changePassword}
               </button>
             </div>
@@ -863,11 +864,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                       showToast({ variant: "success", title: t.renamedToast, desc: renaming.trim() });
                       setRenaming(null);
                     }}
-                    style={{ height: "30px", padding: "0 12px", borderRadius: "8px", border: "none", backgroundColor: renaming.trim() ? "var(--primary-400)" : "var(--gray-200)", color: renaming.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: renaming.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+                    style={{ height: "30px", padding: "0 12px", borderRadius: RADIUS.control, border: "none", backgroundColor: renaming.trim() ? "var(--primary-400)" : "var(--gray-200)", color: renaming.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: renaming.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
                     {t.renameSave}
                   </button>
                   <button className="portal-btn-quiet" onClick={() => setRenaming(null)}
-                    style={{ height: "30px", padding: "0 10px", borderRadius: "8px", border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                    style={{ height: "30px", padding: "0 10px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", color: "var(--gray-600)", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                     {t.renameCancel}
                   </button>
                 </span>
@@ -886,7 +887,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                        is, so hover only changes its fill, and the pencil says what the word does
                        before the word is read. */
                     <button className="portal-btn-outline" onClick={() => setRenaming(project.name)}
-                      style={{ display: "inline-flex", alignItems: "center", gap: "5px", flexShrink: 0, height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      style={{ display: "inline-flex", alignItems: "center", gap: "5px", flexShrink: 0, height: "24px", padding: "0 9px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                       <Pencil size={11} strokeWidth={2.2} />
                       {t.rename}
                     </button>
@@ -1086,7 +1087,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                   half a column apart and the hover tint landed nowhere near the text — read as a
                   stray control rather than the end of this paragraph. */}
               <button className="portal-btn-outline-danger" onClick={() => { setDeleteEcho(""); setConfirmingDelete(true); }}
-                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 12px", marginTop: "12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 12px", marginTop: "12px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 <Trash2 size={13} strokeWidth={2.2} />
                 {t.deleteProject}
               </button>
@@ -1262,7 +1263,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
             </span>
             {liveMail !== null && (
               <button className="portal-btn-primary" onClick={saveTeamMail} disabled={!canSaveTeamMail}
-                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSaveTeamMail ? "var(--primary-400)" : "var(--gray-200)", color: canSaveTeamMail ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSaveTeamMail ? "pointer" : "not-allowed", fontFamily: "inherit", flexShrink: 0 }}>
+                style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: canSaveTeamMail ? "var(--primary-400)" : "var(--gray-200)", color: canSaveTeamMail ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSaveTeamMail ? "pointer" : "not-allowed", fontFamily: "inherit", flexShrink: 0 }}>
                 {t.teamMailSaveScoped}
               </button>
             )}
@@ -1295,11 +1296,11 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
           {teamCategories.filter(c => !c.archived).length === 0 ? (
             <div style={{
               display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "12px",
-              padding: "22px", borderRadius: "12px", border: "1px dashed var(--gray-300)",
+              padding: "22px", borderRadius: RADIUS.panel, border: "1px dashed var(--gray-300)",
             }}>
               <p style={{ fontSize: "13px", color: "var(--gray-500)" }}>{t.categoryNone}</p>
               <button className="portal-btn-outline" onClick={() => setManagingCategories(true)}
-                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 <Plus size={14} strokeWidth={2.4} />
                 {t.categoryAdd}
               </button>
@@ -1310,7 +1311,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 {t.categoryCount(teamCategories.filter(c => !c.archived).length)}
               </span>
               <button className="portal-btn-outline" onClick={() => setManagingCategories(true)}
-                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 <Tag size={13} strokeWidth={2.4} />
                 {t.categoryManage}
               </button>
@@ -1340,7 +1341,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
               through. */}
           {requirePurpose && activePurposes.length === 0 && (
             <p style={{
-              padding: "10px 12px", marginBottom: "12px", borderRadius: "8px", maxWidth: "fit-content",
+              padding: "10px 12px", marginBottom: "12px", borderRadius: RADIUS.control, maxWidth: "fit-content",
               backgroundColor: "var(--warning-100)", color: "var(--warning-500)",
               fontSize: "12px", fontWeight: 700, lineHeight: 1.5,
             }}>{t.purposeRequirementOn}</p>
@@ -1580,7 +1581,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
       {purposes.map(sp => (
         <div key={sp.id} style={{
           display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px",
-          border: BORDER, borderRadius: "10px", opacity: sp.archived ? 0.55 : 1,
+          border: BORDER, borderRadius: RADIUS.panel, opacity: sp.archived ? 0.55 : 1,
         }}>
           <span style={{ flex: 1, minWidth: 0, fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {sp.label}
@@ -1592,7 +1593,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
             <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 700, color: "var(--gray-400)" }}>{t.purposeRetired}</span>
           ) : canEdit ? (
             <button className="portal-btn-outline" onClick={() => archiveSearchPurpose(sp.id)}
-              style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ flexShrink: 0, height: "26px", padding: "0 10px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               {t.purposeRetire}
             </button>
           ) : null}
@@ -1604,7 +1605,7 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
         // has an owner rather than conclude the console is broken.
         <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45 }}>{t.purposeOwnerOnly}</p>
       ) : creating ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "14px", border: BORDER, borderRadius: RADIUS.panel, backgroundColor: "var(--gray-50)" }}>
           <div>
             <label style={{ ...PAIR_LABEL, display: "block", marginBottom: "6px" }}>{t.purposeLabelField}</label>
             <TextField value={label} onChange={setLabel} placeholder={t.purposeLabelPlaceholder} autoFocus />
@@ -1618,18 +1619,18 @@ function SearchPurposeList({ t, teamId, purposes, canEdit }: {
           </label>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
             <button className="portal-btn-outline" onClick={reset}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               {t.purposeCancel}
             </button>
             <button className="portal-btn-primary" onClick={create} disabled={!label.trim()}
-              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: label.trim() ? "var(--primary-400)" : "var(--gray-200)", color: label.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: label.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+              style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "none", backgroundColor: label.trim() ? "var(--primary-400)" : "var(--gray-200)", color: label.trim() ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: label.trim() ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
               {t.purposeCreate}
             </button>
           </div>
         </div>
       ) : (
         <button className="portal-btn-outline" onClick={() => setCreating(true)}
-          style={{ height: CONTROL_HEIGHT, borderRadius: "10px", border: "1px dashed var(--gray-300)", backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          style={{ height: CONTROL_HEIGHT, borderRadius: RADIUS.control, border: "1px dashed var(--gray-300)", backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
           + {t.purposeNew}
         </button>
       )}

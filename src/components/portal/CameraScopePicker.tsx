@@ -6,6 +6,7 @@ import { useVcaStore, hasPosition, type Camera, type PortalUser } from "@/lib/vc
 import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "@/components/Toast";
 import { BORDER, CONTROL_HEIGHT, Drawer, PICKED_FILL, PICKED_LINE, TextField } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 /**
  * Which cameras an account may watch.
@@ -253,7 +254,7 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
               both: under 전부 the account also gets cameras installed later (the radio card above
               says so), so the total is the answer and a fraction would be a lie about a ceiling.
             */}
-            <span style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: "6px", padding: "5px 10px", borderRadius: "999px", border: BORDER, backgroundColor: "var(--gray-50)" }}>
+            <span style={{ flexShrink: 0, display: "flex", alignItems: "baseline", gap: "6px", padding: "5px 10px", borderRadius: RADIUS.pill, border: BORDER, backgroundColor: "var(--gray-50)" }}>
               <span style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--gray-500)" }}>{t.countLabel}</span>
               <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--gray-900)", fontVariantNumeric: "tabular-nums" }}>
                 {mode === "all" ? t.countAll(cameras.length) : t.countSome(resolvedCount, cameras.length)}
@@ -289,11 +290,11 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
           ) : null}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
           <button className="portal-btn-outline" onClick={onBack ?? onClose}
-            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {onBack ? t.back : t.cancel}
           </button>
           <button className="portal-btn-primary" onClick={save} disabled={!(canSave && dirty)}
-            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: canSave && dirty ? "var(--primary-400)" : "var(--gray-200)", color: canSave && dirty ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave && dirty ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "none", backgroundColor: canSave && dirty ? "var(--primary-400)" : "var(--gray-200)", color: canSave && dirty ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave && dirty ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
             {t.apply}
           </button>
           </div>
@@ -309,11 +310,11 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
               <button key={value} onClick={() => setMode(value)}
                 style={{
                   width: "100%", display: "flex", alignItems: "flex-start", gap: "10px", textAlign: "left",
-                  padding: "10px 12px", borderRadius: "10px", cursor: "pointer", fontFamily: "inherit",
+                  padding: "10px 12px", borderRadius: RADIUS.control, cursor: "pointer", fontFamily: "inherit",
                   border: on ? PICKED_LINE : BORDER,
                   backgroundColor: on ? PICKED_FILL : "white",
                 }}>
-                <span style={{ width: "14px", height: "14px", borderRadius: "999px", flexShrink: 0, marginTop: "2px", border: on ? "4px solid var(--gray-900)" : "1px solid var(--gray-300)" }} />
+                <span style={{ width: "14px", height: "14px", borderRadius: RADIUS.pill, flexShrink: 0, marginTop: "2px", border: on ? "4px solid var(--gray-900)" : "1px solid var(--gray-300)" }} />
                 <span style={{ minWidth: 0 }}>
                   <span style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "var(--gray-900)" }}>{label}</span>
                   <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>{desc}</span>
@@ -344,8 +345,8 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
                   const on = pickedGroups.includes(g.id);
                   return (
                     <button key={g.id} onClick={mode === "some" ? () => toggleGroupPick(g.id) : undefined} disabled={mode === "all"}
-                      style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "7px 8px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: mode === "some" ? "pointer" : "default", fontFamily: "inherit" }}>
-                      <span style={{ width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "7px 8px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", cursor: mode === "some" ? "pointer" : "default", fontFamily: "inherit" }}>
+                      <span style={{ width: "16px", height: "16px", borderRadius: RADIUS.inner, flexShrink: 0, border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {on && (
                           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
                             <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
@@ -477,8 +478,8 @@ export default function CameraScopePicker({ user, cameras, onClose, onBack }: {
                     const on = mode === "all" || byGroup || picked.includes(c.id);
                     return (
                       <button key={c.id} onClick={mode === "some" && !byGroup ? () => toggle(c.id) : undefined} disabled={mode === "all" || byGroup}
-                        style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "7px 8px", borderRadius: "8px", border: "none", backgroundColor: "transparent", cursor: mode === "some" ? "pointer" : "default", fontFamily: "inherit" }}>
-                        <span style={{ width: "16px", height: "16px", borderRadius: "5px", flexShrink: 0, border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "7px 8px", borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent", cursor: mode === "some" ? "pointer" : "default", fontFamily: "inherit" }}>
+                        <span style={{ width: "16px", height: "16px", borderRadius: RADIUS.inner, flexShrink: 0, border: on ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)", backgroundColor: on ? "var(--gray-900)" : "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           {on && (
                             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
                               <path d="M2 5.2l2 2L8 3" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>

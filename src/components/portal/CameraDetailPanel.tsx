@@ -7,6 +7,7 @@ import { BORDER, Drawer } from "./PortalShared";
 import { PROJECT_TIME_ZONE, clockMinutesIn, dateKeyIn } from "@/lib/time";
 import { usePortalLanguage } from "@/lib/i18n";
 import ViewerWatermark from "@/components/ViewerWatermark";
+import { RADIUS } from "../shared/controls";
 
 const T = {
   en: {
@@ -145,7 +146,7 @@ export default function CameraDetailPanel({ camera, onClose, onOpenInCameras }: 
       }
       headerAction={onOpenInCameras && (
         <button className="portal-btn-quiet" onClick={onOpenInCameras}
-          style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", borderRadius: "6px", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>
+          style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 8px", borderRadius: RADIUS.inner, border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>
           {t.openInCameras}
           <ArrowUpRight size={13} strokeWidth={2.2} aria-hidden="true" />
         </button>
@@ -158,7 +159,7 @@ export default function CameraDetailPanel({ camera, onClose, onOpenInCameras }: 
             is. */}
         <div style={{ padding: "12px 20px 20px", display: "flex", flexDirection: "column", gap: "16px" }}>
           {/* Preview */}
-          <div style={{ position: "relative", borderRadius: "12px", overflow: "hidden", aspectRatio: "16 / 9", backgroundColor: "var(--gray-900)" }}>
+          <div style={{ position: "relative", borderRadius: RADIUS.panel, overflow: "hidden", aspectRatio: "16 / 9", backgroundColor: "var(--gray-900)" }}>
             {/* Nothing rather than somebody else's corridor. A camera registered through Portal
                 has no captured frame, and this box is captioned as one. */}
             {camera.thumbnail && (
@@ -168,7 +169,7 @@ export default function CameraDetailPanel({ camera, onClose, onOpenInCameras }: 
                 server is streaming. It read "LIVE" over a static thumbnail before, which is the
                 one thing this frame is definitely not. */}
             {online && (
-              <div style={{ position: "absolute", top: "10px", left: "10px", display: "flex", alignItems: "center", gap: "6px", backgroundColor: "var(--label-plate)", padding: "4px 10px", borderRadius: "999px" }}>
+              <div style={{ position: "absolute", top: "10px", left: "10px", display: "flex", alignItems: "center", gap: "6px", backgroundColor: "var(--label-plate)", padding: "4px 10px", borderRadius: RADIUS.pill }}>
                 <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: playing ? "var(--success-400)" : "var(--gray-400)" }} />
                 <span style={{ fontSize: "10px", fontWeight: 600, color: "white" }}>{playing ? t.connecting : t.stillFrame}</span>
               </div>
@@ -207,7 +208,7 @@ export default function CameraDetailPanel({ camera, onClose, onOpenInCameras }: 
                 <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, maxWidth: "320px" }}>{t.connectingHint}</p>
                 <button
                   onClick={() => setPlaying(false)}
-                  style={{ marginTop: "4px", padding: "6px 12px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.3)", background: "none", color: "white", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}
+                  style={{ marginTop: "4px", padding: "6px 12px", borderRadius: RADIUS.control, border: "1px solid rgba(255,255,255,0.3)", background: "none", color: "white", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}
                 >
                   {t.stopPreview}
                 </button>

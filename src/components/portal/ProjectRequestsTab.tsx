@@ -10,6 +10,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { useToast } from "../Toast";
 import { Eraser, Video } from "lucide-react";
 import { FormLabel, BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP, TableEmpty, SortableHeader, TextField, FilterSelect, ConfirmModal, HelpTip, usePortalEditAccess, MEASURE, Drawer } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 /**
  * One register for everything the outside world asks of this project.
@@ -236,7 +237,7 @@ type Filter = "all" | "open" | "footage" | "erasure";
  *  mark on every action reads as unfinished. */
 const REGISTER_BTN: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: "6px",
-  height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER,
+  height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER,
   backgroundColor: "white", color: "var(--gray-700)",
   fontSize: "12px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
 };
@@ -315,7 +316,7 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
             return (
               <button key={f.id} onClick={() => setFilter(f.id)}
                 style={{
-                  height: "28px", padding: "0 12px", borderRadius: "999px", cursor: "pointer", fontFamily: "inherit",
+                  height: "28px", padding: "0 12px", borderRadius: RADIUS.control, cursor: "pointer", fontFamily: "inherit",
                   border: active ? "1px solid var(--gray-900)" : BORDER,
                   backgroundColor: active ? "var(--gray-900)" : "white",
                   color: active ? "white" : "var(--gray-600)",
@@ -380,7 +381,7 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
                   </div>
                   <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{row.filed.slice(0, 10)}</span>
                   <div>
-                    <span style={{ display: "inline-block", fontSize: "11px", fontWeight: 700, padding: "3px 8px", borderRadius: "999px", backgroundColor: tone.bg, color: tone.fg, whiteSpace: "nowrap" }}>
+                    <span style={{ display: "inline-block", fontSize: "11px", fontWeight: 700, padding: "3px 8px", borderRadius: RADIUS.pill, backgroundColor: tone.bg, color: tone.fg, whiteSpace: "nowrap" }}>
                       {stateLabel}
                     </span>
                     {undecided > 0 && (
@@ -394,7 +395,7 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
                   </div>
                   <div style={{ display: "flex", justifyContent: "flex-end" }}>
                     <button className="portal-btn-outline" onClick={() => setOpenId(row.id === openId ? null : row.id)}
-                      style={{ height: "26px", padding: "0 10px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      style={{ height: "26px", padding: "0 10px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                       {t.openTab}
                     </button>
                   </div>
@@ -439,7 +440,7 @@ export default function ProjectRequestsTab({ projectId }: { projectId: string })
 
 function Panel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", boxShadow: PANEL_SHADOW, marginTop: "14px", padding: "18px 20px" }}>
+    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.panel, boxShadow: PANEL_SHADOW, marginTop: "14px", padding: "18px 20px" }}>
       {children}
     </div>
   );
@@ -474,7 +475,7 @@ function FootageDetail({ t, req, mayDecide, onDecide, onRelease }: {
       {mayDecide && (req.status === "received" || req.status === "approved") && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "14px" }}>
           <button className="portal-btn-outline" onClick={req.status === "received" ? onDecide : onRelease}
-            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {req.status === "received" ? t.decide : t.release}
           </button>
         </div>
@@ -508,7 +509,7 @@ function ErasureDetail({ t, req, mayDecide, undecided, onSet, onClose }: {
               <p style={{ fontSize: "11.5px", color: "var(--gray-500)", lineHeight: 1.6 }}>{t.why[cat]}</p>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 {fixed || !mayDecide || req.status !== "received" ? (
-                  <span style={{ fontSize: "11px", fontWeight: 700, padding: "4px 10px", borderRadius: "999px", backgroundColor: tone.bg, color: tone.fg, whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 700, padding: "4px 10px", borderRadius: RADIUS.pill, backgroundColor: tone.bg, color: tone.fg, whiteSpace: "nowrap" }}>
                     {t.dispo[d]}
                   </span>
                 ) : (
@@ -526,7 +527,7 @@ function ErasureDetail({ t, req, mayDecide, undecided, onSet, onClose }: {
             <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--warning-500)", lineHeight: 1.45, flex: 1, minWidth: "200px" }}>{t.blocked(undecided)}</span>
           )}
           <button className="portal-btn-outline" onClick={onClose}
-            style={{ marginLeft: "auto", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ marginLeft: "auto", flexShrink: 0, height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {t.closeTitle}
           </button>
         </div>
@@ -561,7 +562,7 @@ function FormDrawer({ title, children, footer, onClose }: {
 }
 
 function btn(kind: "ghost" | "primary" | "quiet", enabled: boolean) {
-  const base = { height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 700, cursor: enabled ? "pointer" : "not-allowed", fontFamily: "inherit" } as const;
+  const base = { height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, fontSize: "12px", fontWeight: 700, cursor: enabled ? "pointer" : "not-allowed", fontFamily: "inherit" } as const;
   if (kind === "primary") return { ...base, border: "none", backgroundColor: enabled ? "var(--primary-400)" : "var(--gray-200)", color: enabled ? "white" : "var(--gray-400)" };
   return { ...base, border: BORDER, backgroundColor: "white", color: enabled ? "var(--gray-600)" : "var(--gray-400)" };
 }
@@ -738,7 +739,7 @@ function CloseModal({ t, request, onClose, onDone }: {
         {/* Refusing stays available: a request from somebody the institution cannot identify, or
             one it is obliged to decline, still needs an answer and a record of it. */}
         <button className="portal-btn-outline" disabled={!canRefuse} onClick={() => onDone(false, note)}
-          style={{ alignSelf: "flex-start", height: "28px", padding: "0 12px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: canRefuse ? "var(--gray-700)" : "var(--gray-400)", fontSize: "11px", fontWeight: 700, cursor: canRefuse ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+          style={{ alignSelf: "flex-start", height: "28px", padding: "0 12px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: canRefuse ? "var(--gray-700)" : "var(--gray-400)", fontSize: "11px", fontWeight: 700, cursor: canRefuse ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
           {t.refuse}
         </button>
       </div>

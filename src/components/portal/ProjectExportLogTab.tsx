@@ -12,6 +12,7 @@ import {
   ActiveFilterCount, BORDER, Drawer, FilterSelect, PairGrid, PairItem, PanelPrimary, SortableHeader,
   SummaryStrip, TableEmpty, TableSkeleton, TableLoadFailed, sortRows, useTableSort } from "./PortalShared";
 import { CheckCircle2, ChevronRight, FileOutput, FileSpreadsheet, Layers, ScanFace, ShieldAlert, SearchCheck } from "lucide-react";
+import { RADIUS } from "../shared/controls";
 
 /**
  * 반출 기록 — WHAT LEFT THIS INSTALLATION AS A FILE, WHO TOOK IT, AND ON WHOSE AUTHORITY.
@@ -701,7 +702,7 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
           <button className="portal-btn-quiet" onClick={exportCsv} disabled={visible.length === 0} title={exportBlocked}
             style={{
               display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 10px",
-              borderRadius: "8px", border: "none", backgroundColor: "transparent",
+              borderRadius: RADIUS.control, border: "none", backgroundColor: "transparent",
               color: visible.length === 0 ? "var(--gray-300)" : "var(--gray-600)",
               fontSize: "12px", fontWeight: 600, cursor: visible.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit",
             }}>
@@ -998,7 +999,7 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
                     placeholder={t.reviewNotePlaceholder}
                     style={{
                       width: "100%", boxSizing: "border-box", minHeight: "84px", resize: "vertical",
-                      border: BORDER, borderRadius: "8px", padding: "10px 12px",
+                      border: BORDER, borderRadius: RADIUS.control, padding: "10px 12px",
                       fontFamily: "inherit", fontSize: "13px", lineHeight: 1.5,
                       color: "var(--gray-900)", backgroundColor: "white",
                     }}

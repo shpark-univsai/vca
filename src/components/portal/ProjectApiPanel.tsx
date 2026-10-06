@@ -37,6 +37,7 @@ import {
   BORDER, CARD_BORDER, CARD_RADIUS, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TextField,
   ConfirmModal, FieldError, RequiredMark, RowActionsMenu, StatusBadge, TableEmpty, Drawer,
 } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 const ENDPOINTS = [
   { method: "GET", path: "/v1/cameras", desc: { en: "List cameras registered to this project.", ko: "이 프로젝트에 등록된 카메라 목록을 조회합니다." } },
@@ -200,16 +201,16 @@ function IssueKeyModal({ projectId, onClose }: { projectId: string; onClose: () 
            be asked for again, so there has to be one exit a reader takes on purpose — the
            scrim, Escape and the panel's ✕ are all ways out of it by accident. */
         <button className="portal-btn-primary" onClick={onClose}
-          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
           {t.done}
         </button>
       ) : (<>
         <button className="portal-btn-outline" onClick={onClose}
-          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
           {t.cancel}
         </button>
         <button className="portal-btn-primary" onClick={submit} disabled={!valid}
-          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
+          style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: valid ? "var(--primary-400)" : "var(--gray-200)", color: valid ? "white" : "var(--gray-400)", fontSize: "13px", fontWeight: 700, cursor: valid ? "pointer" : "not-allowed", fontFamily: "inherit" }}>
           {t.issueButton}
         </button>
       </>)}>
@@ -219,13 +220,13 @@ function IssueKeyModal({ projectId, onClose }: { projectId: string; onClose: () 
           <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
             <code style={{
               flex: 1, minWidth: 0, fontSize: "12px", fontFamily: "monospace", color: "var(--gray-900)",
-              backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "10px",
+              backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: RADIUS.control, padding: "10px",
               wordBreak: "break-all", lineHeight: 1.5,
             }}>
               {issued.secret}
             </code>
             <button onClick={copy}
-              style={{ flexShrink: 0, alignSelf: "flex-start", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ flexShrink: 0, alignSelf: "flex-start", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               {copied ? t.copied : t.copy}
             </button>
           </div>
@@ -250,7 +251,7 @@ function IssueKeyModal({ projectId, onClose }: { projectId: string; onClose: () 
               {([["read", t.scopeRead, t.scopeReadDesc], ["readwrite", t.scopeWrite, t.scopeWriteDesc]] as const).map(([value, label, desc]) => (
                 <label key={value} style={{
                   display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer",
-                  padding: "10px 12px", borderRadius: "10px",
+                  padding: "10px 12px", borderRadius: RADIUS.control,
                   border: scope === value ? "1px solid var(--primary-400)" : BORDER,
                   backgroundColor: scope === value ? "var(--primary-100)" : "white",
                 }}>
@@ -273,7 +274,7 @@ function IssueKeyModal({ projectId, onClose }: { projectId: string; onClose: () 
                 return (
                   <button key={String(choice.days)} onClick={() => setExpiryDays(choice.days)}
                     style={{
-                      height: "32px", padding: "0 12px", borderRadius: "8px", cursor: "pointer", fontFamily: "inherit",
+                      height: "32px", padding: "0 12px", borderRadius: RADIUS.control, cursor: "pointer", fontFamily: "inherit",
                       border: selected ? "1px solid var(--primary-400)" : BORDER,
                       backgroundColor: selected ? "var(--primary-100)" : "white",
                       color: selected ? "var(--primary-400)" : "var(--gray-600)",
@@ -366,7 +367,7 @@ export default function ProjectApiPanel({ projectId }: { projectId: string }) {
             <button onClick={() => setIssuing(true)} disabled={!mayManage || atLimit}
               title={!mayManage ? t.notOwner : atLimit ? t.limitReached : undefined}
               style={{
-                display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: "8px", border: "none",
+                display: "flex", alignItems: "center", gap: "6px", height: CONTROL_HEIGHT, padding: "0 14px", borderRadius: RADIUS.control, border: "none",
                 backgroundColor: mayManage && !atLimit ? "var(--primary-400)" : "var(--gray-200)",
                 color: mayManage && !atLimit ? "white" : "var(--gray-400)",
                 fontSize: "12px", fontWeight: 700, cursor: mayManage && !atLimit ? "pointer" : "not-allowed", fontFamily: "inherit",
@@ -432,16 +433,16 @@ export default function ProjectApiPanel({ projectId }: { projectId: string }) {
       {/* THE REFERENCE, beside it. */}
       <div style={{ flex: "2 1 320px", minWidth: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.baseUrl}</p>
-        <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: "8px", padding: "8px 10px", overflowX: "auto" }}>
+        <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: RADIUS.control, padding: "8px 10px", overflowX: "auto" }}>
           {origin}/api/portal/projects/{projectId}
         </p>
         <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.baseUrlNote}</p>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "20px", marginBottom: "10px" }}>{t.endpoints}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {ENDPOINTS.map(ep => (
-            <div key={ep.path} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "8px", backgroundColor: "var(--gray-50)" }}>
+            <div key={ep.path} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: RADIUS.control, backgroundColor: "var(--gray-50)" }}>
               <span style={{
-                fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "6px", flexShrink: 0,
+                fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: RADIUS.inner, flexShrink: 0,
                 backgroundColor: ep.method === "GET" ? "var(--gray-200)" : "var(--success-100)",
                 color: ep.method === "GET" ? "var(--gray-900)" : "var(--success-400)",
               }}>

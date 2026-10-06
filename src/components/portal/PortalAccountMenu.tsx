@@ -8,6 +8,7 @@ import { usePortalLanguage } from "@/lib/i18n";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER, SupportContactModal } from "./PortalShared";
 import { SUPPORT_CONTACT } from "@/lib/vcaStore";
+import { RADIUS } from "../shared/controls";
 
 const T = {
   en: { toApp: "Go to app", settings: "Settings", support: "Contact support", logOut: "Sign out" },
@@ -16,7 +17,7 @@ const T = {
 
 const MENU_ITEM: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: "10px", width: "100%",
-  padding: "9px 10px", borderRadius: "8px", border: "none", background: "none",
+  padding: "9px 10px", borderRadius: RADIUS.control, border: "none", background: "none",
   cursor: "pointer", textAlign: "left",
   fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", fontFamily: "inherit",
   whiteSpace: "nowrap",
@@ -75,7 +76,7 @@ export default function PortalAccountMenu({ admin, appAccess, onSettings }: {
           style={{
             display: "flex", alignItems: "center", gap: "8px",
             border: "none", background: open ? "var(--gray-100)" : "none",
-            borderRadius: "8px", padding: "4px 8px 4px 4px", cursor: "pointer",
+            borderRadius: RADIUS.control, padding: "4px 8px 4px 4px", cursor: "pointer",
             fontFamily: "inherit", maxWidth: "220px",
           }}
         >
@@ -92,7 +93,7 @@ export default function PortalAccountMenu({ admin, appAccess, onSettings }: {
           <div style={{
             position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 200,
             minWidth: "220px",
-            backgroundColor: "white", border: BORDER, borderRadius: "12px",
+            backgroundColor: "white", border: BORDER, borderRadius: RADIUS.panel,
             boxShadow: "var(--shadow-popover)", padding: "6px",
           }}>
             <div style={{ padding: "8px 10px 10px", minWidth: 0 }}>

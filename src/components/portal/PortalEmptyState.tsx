@@ -5,6 +5,7 @@ import { ListChecks, Users } from "lucide-react";
 import { usePortalLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { FormLabel, BORDER } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 const T = {
   en: {
@@ -135,7 +136,7 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
         <div style={{ width: "480px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <span style={{
             display: "flex", alignItems: "center", justifyContent: "center",
-            width: "56px", height: "56px", borderRadius: "16px",
+            width: "56px", height: "56px", borderRadius: RADIUS.control,
             backgroundColor: "white", border: BORDER, color: "var(--gray-500)",
           }}>
             <Users size={24} strokeWidth={1.4} />
@@ -144,7 +145,7 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
           <p style={{ fontSize: "14px", color: "var(--gray-500)", marginTop: "8px", textAlign: "center", lineHeight: 1.5 }}>
             {t.noTeamWaitingBody}
           </p>
-          <div style={{ marginTop: "24px", padding: "16px 18px", backgroundColor: "white", border: BORDER, borderRadius: "12px", width: "100%", boxSizing: "border-box" }}>
+          <div style={{ marginTop: "24px", padding: "16px 18px", backgroundColor: "white", border: BORDER, borderRadius: RADIUS.panel, width: "100%", boxSizing: "border-box" }}>
             {accountManager ? (<>
               <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-400)", letterSpacing: "0.4px" }}>{t.contactManager.toUpperCase()}</p>
               <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", marginTop: "4px" }}>{accountManager.name}</p>
@@ -167,7 +168,7 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
         <div style={{ width: "480px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <span style={{
             display: "flex", alignItems: "center", justifyContent: "center",
-            width: "56px", height: "56px", borderRadius: "16px",
+            width: "56px", height: "56px", borderRadius: RADIUS.control,
             backgroundColor: "white", border: BORDER, color: "var(--gray-500)",
           }}>
             <Users size={24} strokeWidth={1.4} />
@@ -192,7 +193,7 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
               placeholder={t.teamNamePlaceholder}
               autoFocus
               style={{
-                width: "100%", boxSizing: "border-box", height: "44px", padding: "0 12px", borderRadius: "10px",
+                width: "100%", boxSizing: "border-box", height: "44px", padding: "0 12px", borderRadius: RADIUS.control,
                 border: nameFocused ? "1px solid var(--gray-900)" : BORDER, outline: "none",
                 fontSize: "14px", fontFamily: "inherit", backgroundColor: "white",
               }}
@@ -203,7 +204,7 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
             onClick={submit}
             disabled={!canSubmit}
             style={{
-              width: "100%", marginTop: "16px", padding: "12px 20px", borderRadius: "8px", border: "none",
+              width: "100%", marginTop: "16px", padding: "12px 20px", borderRadius: RADIUS.control, border: "none",
               backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-200)", color: canSubmit ? "white" : "var(--gray-400)", fontSize: "14px", fontWeight: 700,
               cursor: canSubmit ? "pointer" : "not-allowed", 
             }}
@@ -226,7 +227,7 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
             bought the product and is waiting for a site; the useful thing is the name of the
             person who can tell them when it arrives. Plain text rather than a mailto — the same
             treatment the Licence screen's party block uses. */}
-        <div style={{ marginTop: "24px", padding: "16px 18px", backgroundColor: "white", border: BORDER, borderRadius: "12px", maxWidth: "440px" }}>
+        <div style={{ marginTop: "24px", padding: "16px 18px", backgroundColor: "white", border: BORDER, borderRadius: RADIUS.panel, maxWidth: "440px" }}>
           <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.notProvisionedTitle}</p>
           <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.notProvisionedBody}</p>
           <div style={{ borderTop: BORDER, marginTop: "12px", paddingTop: "12px" }}>
@@ -254,7 +255,7 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
           an inaccuracy: it opened Settings on a promise of two sections the rail had already
           dropped. */}
       {prepItems.length > 0 && (
-      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: "14px", padding: "20px 22px" }}>
+      <div style={{ backgroundColor: "white", border: BORDER, borderRadius: RADIUS.card, padding: "20px 22px" }}>
         <p style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)" }}>{t.prepTitle}</p>
         <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "6px" }}>{t.prepBody}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "18px" }}>
@@ -272,7 +273,7 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
         </div>
         {onOpenSettings && (
           <button className="portal-btn-primary" onClick={onOpenSettings}
-            style={{ marginTop: "20px", padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ marginTop: "20px", padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {t.prepOpen}
           </button>
         )}

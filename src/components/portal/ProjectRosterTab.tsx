@@ -6,6 +6,7 @@ import { REGISTRATION_CODE_TTL_DAYS, codeExpiresAt, formatCode, type RosterEntry
 import { sgtDateKey } from "@/lib/time";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BORDER, ConfirmModal, type StatusTone } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 
 const T = {
   en: {
@@ -323,7 +324,7 @@ function RosterCodeCell({ entry, onReveal, onIssue, t, justIssued }: {
      stood 83px against every other row's 59 — the row that had just succeeded looked like the
      broken one. Here it sits on the line it is about, next to the code it says is new. */
   const justIssuedChip = justIssued ? (
-    <span style={{ flexShrink: 0, fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", backgroundColor: "var(--primary-50)", padding: "2px 6px", borderRadius: "999px", whiteSpace: "nowrap" }}>
+    <span style={{ flexShrink: 0, fontSize: "10px", fontWeight: 700, color: "var(--primary-400)", backgroundColor: "var(--primary-50)", padding: "2px 6px", borderRadius: RADIUS.pill, whiteSpace: "nowrap" }}>
       {t.justIssued}
     </span>
   ) : null;
@@ -345,7 +346,7 @@ function RosterCodeCell({ entry, onReveal, onIssue, t, justIssued }: {
     if (!onIssue) return <span style={{ ...cellRow, fontSize: "12px", color: "var(--gray-300)" }}>—</span>;
     return (
       <button type="button" onClick={onIssue}
-        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "5px", height: "24px", padding: "0 9px", borderRadius: "7px", border: "1px solid var(--gray-200)", backgroundColor: "white", cursor: "pointer", fontFamily: "inherit", fontSize: "11.5px", fontWeight: 700, color: "var(--gray-600)" }}>
+        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "5px", height: "24px", padding: "0 9px", borderRadius: RADIUS.control, border: "1px solid var(--gray-200)", backgroundColor: "white", cursor: "pointer", fontFamily: "inherit", fontSize: "11.5px", fontWeight: 700, color: "var(--gray-600)" }}>
         <KeyRound size={12} strokeWidth={2.4} aria-hidden="true" />
         {t.issueConfirm}
       </button>
@@ -488,17 +489,17 @@ function PrintSheet({ entries, projectName, onClose, t }: { entries: RosterEntry
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "2px" }}>{t.handoutSlipCount(entries.length)}</p>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
-          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: "8px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-outline" onClick={onClose} style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.close}
           </button>
-          <button className="portal-btn-primary" onClick={() => window.print()} style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          <button className="portal-btn-primary" onClick={() => window.print()} style={{ padding: "10px 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
             {t.print}
           </button>
         </div>
       </div>
       <div id="roster-print-sheet" style={{ padding: "24px", display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "14px" }}>
         {entries.map(entry => (
-          <div key={entry.employeeId} className="roster-print-slip" style={{ border: "1px dashed var(--gray-300)", borderRadius: "10px", padding: "20px" }}>
+          <div key={entry.employeeId} className="roster-print-slip" style={{ border: "1px dashed var(--gray-300)", borderRadius: RADIUS.card, padding: "20px" }}>
             <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{projectName}</p>
             <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)", marginTop: "4px" }}>{entry.name}</p>
             <p style={{ fontSize: "20px", fontWeight: 800, fontFamily: "monospace", color: "var(--gray-900)", marginTop: "10px", letterSpacing: "1px" }}>

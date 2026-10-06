@@ -67,6 +67,7 @@ import { portProblem } from "@/lib/fieldChecks";
 import {
   BORDER, CONTROL_HEIGHT, FieldError, PairGrid, PairItem, Switch, TextField, usePortalEditAccess,
 } from "./PortalShared";
+import { RADIUS } from "../shared/controls";
 const NETWORK_T = {
   en: {
     heading: "Network reachability",
@@ -382,7 +383,7 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
               </span>
               {mayEdit && (
                 <button className="portal-btn-outline" onClick={() => requestNetworkRecheck(projectId)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: "5px", flexShrink: 0, height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  style={{ display: "inline-flex", alignItems: "center", gap: "5px", flexShrink: 0, height: "24px", padding: "0 9px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   <RefreshCw size={11} strokeWidth={2.2} />
                   {n.recheck}
                 </button>
@@ -421,7 +422,7 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
                       </p>
                     )}
                     <button className="portal-btn-outline" onClick={() => setNetworkIsolationOverride(projectId, null)}
-                      style={{ alignSelf: "flex-start", height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      style={{ alignSelf: "flex-start", height: "24px", padding: "0 9px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-600)", fontSize: "11px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                       {n.revertToDetection}
                     </button>
                   </>
@@ -431,7 +432,7 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
                      the opposite of what was measured. */
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <button className="portal-btn-outline" onClick={() => setNetworkIsolationOverride(projectId, !detected)}
-                      style={{ height: "24px", padding: "0 9px", borderRadius: "7px", border: BORDER, backgroundColor: "white", color: "var(--gray-500)", fontSize: "11px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                      style={{ height: "24px", padding: "0 9px", borderRadius: RADIUS.control, border: BORDER, backgroundColor: "white", color: "var(--gray-500)", fontSize: "11px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                       {n.overrideTo(detected ? n.connectedShort : n.isolatedShort)}
                     </button>
                     {/* Opened and not wanted after all — the way back out, so the row can return
@@ -523,7 +524,7 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
         )}
         {changed && (
           <button className="portal-btn-primary" onClick={save} disabled={!canSave}
-            style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: "8px", border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit", flexShrink: 0 }}>
+            style={{ height: CONTROL_HEIGHT, padding: "0 16px", borderRadius: RADIUS.control, border: "none", backgroundColor: canSave ? "var(--primary-400)" : "var(--gray-200)", color: canSave ? "white" : "var(--gray-400)", fontSize: "12px", fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed", fontFamily: "inherit", flexShrink: 0 }}>
             {t.saveProject}
           </button>
         )}
