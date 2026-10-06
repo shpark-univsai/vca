@@ -209,7 +209,7 @@ function statusColor(cam: Camera): string {
 }
 
 export default function CameraMapView({
-  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect, alwaysPicking, fill, overlay, tintOf,
+  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect, alwaysPicking, fill, overlay, tintOf, noteOf,
 }: {
   /** The rows the table would be showing — filters applied. Split by position here. */
   cameras: Camera[];
@@ -268,6 +268,16 @@ export default function CameraMapView({
    * is the screen. Ignored while picking — a picked dot has to read as picked.
    */
   tintOf?: (cameraId: string) => string | null;
+  /**
+   * ONE SENTENCE THIS SCREEN WANTS TO SAY ABOUT A CAMERA, printed in the card a dot opens.
+   *
+   * It exists because colour runs out. A screen that paints the dots (`tintOf`) can only carry as
+   * many meanings as the ramp has steps — six here — and the map that needed this was showing an
+   * account's camera scope, where the number of groups behind it is not something the product
+   * limits. So the map says ONE thing in colour (reachable or not) and the rest in words: press a
+   * dot and it tells you which group puts it there, and names both when two do.
+   */
+  noteOf?: (cameraId: string) => string | null;
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -908,6 +918,11 @@ export default function CameraMapView({
               </span>
               {selectedCamera.zone && (
                 <p style={{ fontSize: "11px", color: "var(--gray-500)", marginTop: "4px" }}>{selectedCamera.zone}</p>
+              )}
+              {noteOf?.(selectedCamera.id) && (
+                <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--gray-700)", marginTop: "6px", lineHeight: 1.5 }}>
+                  {noteOf(selectedCamera.id)}
+                </p>
               )}
               {onInspect && (
                 <button className="portal-btn-quiet" onClick={() => onInspect(selectedCamera.id)}

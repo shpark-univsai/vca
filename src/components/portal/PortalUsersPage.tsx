@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Asterisk, ChevronRight, CircleHelp, Eye, KeyRound, Link2, MailQuestion, MonitorOff, Trash2, UserCheck, UserMinus, UserSearch, UserX, Users2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useVcaStore, isNetworkIsolated, isLastActiveAdmin, canManageAccess, canEditPortal, canEnterPortal, currentPortalRole, currentPortalUser, resolveMailConfig, isMailDeliverable, presetsForTeam, grantsOfPreset, presetLabel, scopedCameraIds, cameraGroupsInProject, withAppActionDeps, APP_ACTIONS, type AccessPreset, type AppAction, type Camera, type GrantMode, type PortalPermission, type PortalUser, type PortalUserStatus } from "@/lib/vcaStore";
+import CameraMapView from "./CameraMapView";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { formatElapsed } from "@/lib/time";
 import { RESET_CODE_TTL_MIN, TEMP_PASSWORD_VALIDITY_HOURS } from "@/lib/password";
@@ -199,6 +200,13 @@ const T = {
        one of the two would hide the other under it. */
     panelAccountSection: "Sign-in",
     panelStatusSection: "Account",
+    /* The row above says HOW MANY; this says WHICH. One without the other is either a number
+       nobody can act on or a picture nobody can total. */
+    panelScopeMapSection: "Cameras they can see",
+    scopeMapVia: (names: string) => `Through ${names}`,
+    scopeMapPicked: "Picked for this account on its own",
+    scopeMapAnd: " and ",
+    scopeMapNotVisible: "Not visible to this account",
     /*
      * THE ONE FACT THAT MAKES THE REST OF THE CARD HYPOTHETICAL, AT THE TOP OF IT.
      *
@@ -687,6 +695,12 @@ const T = {
      */
     panelAccountSection: "로그인 수단",
     panelStatusSection: "계정",
+    /* 위 줄은 몇 대인지를, 이 줄은 어느 대인지를 답한다. */
+    panelScopeMapSection: "보이는 카메라",
+    scopeMapVia: (names: string) => `${names} 그룹으로 보입니다`,
+    scopeMapPicked: "이 계정에 따로 지정된 카메라입니다",
+    scopeMapAnd: " · ",
+    scopeMapNotVisible: "이 계정에는 보이지 않습니다",
     /* 영어 쪽 주석 참고 — 배지는 상태를 부르고, 이 줄은 그 상태의 결과를 말한다. */
     suspendedPanelTitle: "이 계정은 로그인할 수 없습니다",
     suspendedPanelBody: "정지된 상태입니다. 여기서 정한 권한은 그대로 보관되어 재활성화하면 함께 돌아오지만, 재활성화하기 전에는 어떤 비밀번호도 설치 코드도 이 계정을 들여보내지 못합니다 — 재활성화 버튼은 이 카드 맨 아래에 있습니다.",
@@ -1261,6 +1275,10 @@ function InviteLinkPanel({ title, links, onClose, onBack, children }: {
  * At module scope because three places ask it now — the row menu, the invite form's summary and
  * the invite result step — and three copies of one filter drift the first time one is corrected.
  */
+/** The map below the account card picks nothing, and a fresh Set each render would re-run it. */
+const NO_SELECTION: Set<string> = new Set();
+const NO_PICKING = () => {};
+
 function scopableCameras(cameras: Camera[], projectIds: string[]): Camera[] {
   return cameras.filter(c => projectIds.includes(c.projectId));
 }
@@ -6148,6 +6166,62 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     {t.removeUser}
                   </button>
                 </div>
+                {/*
+                  WHICH CAMERAS, NOT HOW MANY (owner, 2026-10-06: 지도를 표현해주고싶은데).
+
+                  The 카메라 row four lines up says 「3 / 62」. That is the number an access review
+                  totals and the one thing it cannot picture: whether the three sit on one street
+                  or on three sides of the site. The panel had ~300px of empty space under 계정,
+                  measured at 1440×1000, which is where this goes.
+
+                  ONE COLOUR, AND THE REST IN WORDS. The obvious design paints a colour per group,
+                  and it breaks for the same reason the camera-groups map broke: the ramp has six
+                  steps and the product does not cap how many groups an account may hold — the
+                  owner's point when this came up (2026-10-06: 한 사람한테 카메라 그룹 하나만
+                  부여된다는 보장은 없어 … 하나로 막아버리면 선택권이 없어지니까). So the map says
+                  the one thing that is true at any number — reachable or not — and a pressed dot
+                  says which group puts it there, naming both when two do. Colour runs out; words
+                  do not.
+
+                  Drawn only for a NARROWED account. For one that reaches everything, 「전부」 in the
+                  row above is already the whole answer, and a map with every dot lit is the
+                  register's own map wearing this panel's heading.
+                */}
+                {mu.appAccess && scopeCountFor(mu) !== null && (() => {
+                  const scopable = scopableCamerasFor(mu);
+                  const allowed = scopedCameraIds(mu, cameraGroups) ?? new Set<string>();
+                  const held = (mu.cameraGroupIds ?? [])
+                    .map(id => cameraGroups.find(g => g.id === id))
+                    .filter((g): g is NonNullable<typeof g> => !!g);
+                  return (
+                    <div>
+                      <p style={PANEL_CAPTION}>{t.panelScopeMapSection}</p>
+                      {/* 320, not 260. MEASURED at 260: the map drew 477x221 and the card a dot
+                          opens is 260px wide, so pressing a dot covered half the picture you
+                          pressed it on. The panel scrolls, so the height is cheap; the drawer's
+                          520px width is not, and that is what sets the card's share. */}
+                      <div style={{ height: "320px", borderRadius: CARD_RADIUS, overflow: "hidden", border: BORDER }}>
+                        <CameraMapView
+                          cameras={scopable}
+                          fill
+                          selectedIds={NO_SELECTION}
+                          /* Nothing is picked and nothing can be: this map reports a scope, it
+                             does not edit one. Changing it is the 카메라 row's own editor. */
+                          onToggleSelect={NO_PICKING}
+                          tintOf={id => (allowed.has(id) ? "var(--primary-400)" : "var(--gray-300)")}
+                          noteOf={id => {
+                            if (!allowed.has(id)) return t.scopeMapNotVisible;
+                            const via = held.filter(g => g.cameraIds.includes(id)).map(g => `\u201c${g.label}\u201d`);
+                            const parts: string[] = [];
+                            if (via.length) parts.push(t.scopeMapVia(via.join(t.scopeMapAnd)));
+                            if ((mu.cameraIds ?? []).includes(id)) parts.push(t.scopeMapPicked);
+                            return parts.join(t.scopeMapAnd) || null;
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
           </Drawer>
         );
