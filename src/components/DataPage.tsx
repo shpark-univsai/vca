@@ -3974,7 +3974,22 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
   // The pick is lifted to the front for the same reason it always was: this row scrolls
   // horizontally, and a choice made further along leaves the screen with nothing saying which
   // person is loaded.
-  const shown = matched.slice(0, REGISTRY_PICKER_LIMIT);
+  /*
+   * NOTHING UNTIL SOMEBODY TYPES, in the row layout only (owner, 2026-10-06: 단축키인데 … 검색바
+   * 아래 칩들은 없어도될것같아).
+   *
+   * The strip is a shortcut, and it was opening with forty of a hundred and twenty-two names on a
+   * rule nobody chose — the screen said so itself, in grey, under the chips: 「40 of 122 shown」.
+   * A shortcut that holds a third of the list arbitrarily is not a shortcut; it is a list with the
+   * end cut off. 「Recent targets」 directly above is the real way in for somebody who has no name,
+   * so this strip answers only the case where a name IS known, and that case starts with typing.
+   *
+   * THE GRID LAYOUT KEEPS ITS DEFAULT. There the list is not a shortcut beside a search box — it
+   * IS the tab (모니터링 / Re-ID's search rail), and emptying it would leave that screen blank
+   * until typed into.
+   */
+  const strip = layout === "row";
+  const shown = strip && !q ? [] : matched.slice(0, REGISTRY_PICKER_LIMIT);
   const ordered = selected && !shown.some(person => person.id === selected.id) && matched.some(person => person.id === selected.id)
     ? [selected, ...shown.slice(0, REGISTRY_PICKER_LIMIT - 1)]
     : [...shown].sort((a, b) => (a.id === selected?.id ? -1 : b.id === selected?.id ? 1 : 0));
@@ -4023,6 +4038,11 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
       </div>
       {registry.length === 0 ? (
         <div style={{ padding:"12px 0", color:"var(--gray-400)", fontSize:"12px" }}>{t.registryEmpty}</div>
+      ) : strip && !q ? (
+        /* Not asked yet. No placeholder sentence either — the search box above says what to do by
+           being a search box, and a line of grey repeating it is the thing this console keeps
+           being told to stop writing. */
+        null
       ) : matched.length === 0 ? (
         <div style={{ padding:"12px 0", color:"var(--gray-400)", fontSize:"12px" }}>{t.registryNoMatch(query)}</div>
       ) : (

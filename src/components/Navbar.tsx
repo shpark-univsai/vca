@@ -13,6 +13,7 @@ import { getDashboardStats } from "@/lib/api/dashboard";
 import { sgtClockTime, sgtDateKey } from "@/lib/time";
 import { useLanguage } from "@/lib/i18n";
 import { SegmentedControl } from "./shared/SegmentedControl";
+import { RADIUS } from "./shared/controls";
 import { updateGateChoice } from "@/components/AccessGate";
 
 // The console's one hairline value — see --line in globals.css, which was defined for exactly
@@ -704,7 +705,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                   onClick={() => { setSettingsOpen(false); updateGateChoice("portal"); router.push("/portal"); }}
                   style={{
                     display: "flex", alignItems: "center", gap: "10px", width: "100%",
-                    padding: "9px 8px", borderRadius: "10px", border: "none",
+                    padding: "9px 8px", borderRadius: RADIUS.control, border: "none",
                     cursor: "pointer", textAlign: "left",
                   }}
                 >
@@ -721,7 +722,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                   onClick={() => { setSettingsOpen(false); router.push("/mypage"); }}
                   style={{
                     display: "flex", alignItems: "center", gap: "10px", width: "100%",
-                    padding: "9px 8px", borderRadius: "10px", border: "none",
+                    padding: "9px 8px", borderRadius: RADIUS.control, border: "none",
                     cursor: "pointer", textAlign: "left",
                   }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -755,7 +756,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                   onClick={() => { setSettingsOpen(false); router.push("/login"); }}
                   style={{
                     display: "flex", alignItems: "center", gap: "10px", width: "100%",
-                    padding: "9px 8px", borderRadius: "10px", border: "none",
+                    padding: "9px 8px", borderRadius: RADIUS.control, border: "none",
                     cursor: "pointer", textAlign: "left",
                   }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">

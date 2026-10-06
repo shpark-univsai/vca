@@ -1708,14 +1708,13 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                       <div style={{ position: "relative", width: "63px", height: "62px", borderRadius: RADIUS.control, overflow: "hidden", flexShrink: 0 }}>
                         <img src={hit.faceUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} alt="" />
                         <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "var(--label-plate)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px",
-                          /* A label burned onto a thumbnail, not a control — the same family as the
-                             detection boxes drawn over video, which the shape scale excludes. 3px
-                             because a control's 6px on a 16px-tall plate reads as a button. */
-                          borderRadius: "3px" }}>{t.face}</span>
+                          /* A pill, like every other label plate in the app — see the note on the
+                             matching plate in Sidebar's hover card. */
+                          borderRadius: RADIUS.pill }}>{t.face}</span>
                       </div>
                       <div style={{ position: "relative", width: "63px", height: "62px", borderRadius: RADIUS.control, overflow: "hidden", flexShrink: 0 }}>
                         <img src={hit.bodyUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} alt="" />
-                        <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "var(--label-plate)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px", borderRadius: "3px" }}>{t.body}</span>
+                        <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "var(--label-plate)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px", borderRadius: RADIUS.pill }}>{t.body}</span>
                       </div>
                     </div>
                     {/* The scores, through the one badge that draws them everywhere (shared/

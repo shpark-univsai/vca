@@ -2128,8 +2128,12 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
             <div style={{ position:"fixed", ...(position === "right" ? { right:"64px" } : { left:"64px" }), top: clampedTop, zIndex:1000, width:"210px", backgroundColor:"white", border:BORDER, borderRadius:RADIUS.panel, padding:"10px", boxShadow:"0 4px 20px rgba(24, 17, 39,0.12)", pointerEvents:"none" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", paddingBottom:"8px", marginBottom:"8px", borderBottom:"1px solid var(--gray-100)" }}>
                 <span style={{ fontSize:"10px", fontWeight:800, color: event.type==="VIP" ? "var(--primary-400)" : "var(--type-tracking)", backgroundColor: event.type==="VIP" ? "var(--primary-100)" : "var(--type-tracking-100)", padding:"2px 6px",
-                  /* A label inside a hover card, not a control — see the note in RedmapPage. */
-                  borderRadius:"4px" }}>
+                  /* A pill, with every other label plate in the app: label-only and its width
+                     follows its text, which is the scale's pill test. I had left this and the two
+                     on Redmap's thumbnails at 3–4px as 「labels, not controls」; 데이터 모니터링 and
+                     베스트 프레임 상세 both read the same plates as pills, and the timeline strip
+                     already did, so mine were the outliers, not the rule. */
+                  borderRadius:RADIUS.pill }}>
                   {event.type==="VIP" ? `VIP · ${event.confidence}%` : "TRACKING"}
                 </span>
                 <span style={{ fontSize:"10px", color:"var(--gray-400)" }}>{formatTimeAgo(event.timestamp)}</span>
@@ -2152,7 +2156,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
               {zone && <div style={{ fontSize:"10px", color:"var(--gray-400)", marginBottom:"3px" }}>{zone}</div>}
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontSize:"12px", fontWeight:800, color:"white" }}>{device.name}</span>
-                <span style={{ fontSize:"10px", fontWeight:600, color: isLive ? "var(--success-400)" : "var(--warning-500)", backgroundColor: "var(--gray-800)", padding:"2px 6px", borderRadius:"4px" }}>
+                <span style={{ fontSize:"10px", fontWeight:600, color: isLive ? "var(--success-400)" : "var(--warning-500)", backgroundColor: "var(--gray-800)", padding:"2px 6px", borderRadius:RADIUS.pill }}>
                   {isLive ? "● LIVE" : "○ OFF"}
                 </span>
               </div>
