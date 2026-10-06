@@ -28,7 +28,6 @@ const T = {
     // Page header
     inviteUser: "Invite user",
     inviteNoMail: "No mail server on this site, so an invitation cannot be delivered. Set one up in Settings › Mail, or hand over a registration code instead.",
-    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     searchPlaceholder: "Search by user name or email address",
     rosterSearchPlaceholder: "Search by name or employee number",
     rosterFilterAll: "All states",
@@ -547,7 +546,6 @@ const T = {
     // Page header
     inviteUser: "사용자 초대",
     inviteNoMail: "이 현장에는 메일 서버가 없어 초대장이 전달되지 않습니다. 설정 > 메일에서 설정하거나, 등록 코드를 직접 건네주세요.",
-    filtersActive: (n: number) => `필터 ${n}개`,
     searchPlaceholder: "사용자 이름 또는 이메일 주소로 검색",
     rosterSearchPlaceholder: "이름 또는 사번으로 검색",
     /* 「모든 코드 상태」였다 (사용자: 표현이 어색해 · 그냥 상태 전체 이런게 나을것같아). 필터의
@@ -4928,7 +4926,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           ]}
         />
       )}
-      <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
+      <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} />
 
           {/* Tools follow the tab. Six buttons in one row was every tool for both halves of the
               lifecycle competing at once, and four of them could not act on what the reader was

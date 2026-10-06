@@ -1491,16 +1491,53 @@ export function PairItem({ label, hint, children }: { label: string; hint?: stri
 }
 
 
-export function ActiveFilterCount({ count, onClear, label }: { count: number; onClear: () => void; label: string }) {
+const CLEAR_FILTERS_T = { en: "Clear filters", ko: "필터 해제" } as const;
+
+/**
+ * THE CLEAR, AND ONLY WHERE THE ROW CANNOT SPEAK FOR ITSELF.
+ *
+ * It used to be one grey pill reading 「필터 1」 sitting at the end of the selects, and the owner
+ * named what is wrong with it (2026-10-06: 옆에 칩들은 여러개 필터링할때 쓰는건데 이건 하나씩밖에
+ * 안되서 어차피 다른거 선택하면 없어지는데 옆에 있엉). A removable token in a filter row is the
+ * vocabulary of filters that ACCUMULATE — Linear, Notion, Jira all build a row of them and add
+ * one per condition. Ours never accumulates: the conditions live in the selects to its left, each
+ * single-choice, each already printing its own value, so the pill was a count of controls the
+ * reader can see, in the shape of a control they cannot add to.
+ *
+ * So the default is no token at all — a quiet text action, which is what a row of selects actually
+ * needs and what Stripe and GCP put there. It stays beside the selects because that is what it
+ * acts on, and it is the only thing in the row without a border, so it does not read as a fourth
+ * filter.
+ *
+ * `label` IS THE EXCEPTION, not the normal case: pass words only for a filter with NO control in
+ * the row — the ones set by pressing a summary card (입력 소스의 상태·결함 칩, VIP의 건강 칩). Those
+ * genuinely have nowhere else to be named, and they keep the token with its × because for them it
+ * is the control. Never pass a count.
+ */
+export function ActiveFilterCount({ count, onClear, label }: { count: number; onClear: () => void; label?: string }) {
+  const [lang] = usePortalLanguage();
   const [hovered, setHovered] = useState(false);
   if (count === 0) return null;
+  if (!label) {
+    return (
+      <button type="button" onClick={onClear} className="portal-btn-quiet"
+        style={{
+          display: "flex", alignItems: "center", flexShrink: 0,
+          height: CONTROL_HEIGHT, padding: "0 10px", borderRadius: "8px", cursor: "pointer",
+          border: "none", backgroundColor: "transparent",
+          fontSize: "12px", fontWeight: 600, color: "var(--gray-600)", fontFamily: "inherit",
+        }}>
+        {CLEAR_FILTERS_T[lang]}
+      </button>
+    );
+  }
   return (
     <button
       type="button"
       onClick={onClear}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      title={label}
+      title={CLEAR_FILTERS_T[lang]}
       style={{
         display: "flex", alignItems: "center", gap: "6px", flexShrink: 0,
         height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: "8px", cursor: "pointer",

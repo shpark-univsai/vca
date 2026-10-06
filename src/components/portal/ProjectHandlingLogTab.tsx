@@ -151,7 +151,6 @@ const T = {
     filterAllStates: "Any handling",
     filterOpen: "Not closed",
     filterAllOperators: "Anyone",
-    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     export: "Export CSV",
     exportNothingHeld: "Nothing has been dealt with yet, so there is nothing to export.",
     exportNoMatch: "These filters match no records. The file carries the rows the table is showing.",
@@ -185,7 +184,6 @@ const T = {
     filterAllStates: "처리 전체",
     filterOpen: "종결 안 됨",
     filterAllOperators: "처리한 사람 전체",
-    filtersActive: (n: number) => `필터 ${n}`,
     export: "CSV 내보내기",
     exportNothingHeld: "처리한 감지가 없어 내보낼 것이 없습니다.",
     exportNoMatch: "조건에 맞는 기록이 없습니다. 파일에는 표에 보이는 행만 담깁니다.",
@@ -461,9 +459,14 @@ export default function ProjectHandlingLogTab({ projectId }: { projectId: string
             <DateRangeTrigger lang={lang} value={range} onApply={setRange} emptyText={t.filterAllDates} />
           </span>
         )}
-        <FilterSelect value={stateFilter} onChange={v => setStateFilter(v as typeof stateFilter)}
-          active={stateFilter !== "ALL"}
-          options={[{ value: "ALL", label: t.filterAllStates }, ...stateOptions]} />
+        {/* With the range above it: on a log nobody has written to there is nothing to narrow, and
+            a closed-set select is the one control that does not disappear on its own for want of
+            options. */}
+        {!nothingHeld && (
+          <FilterSelect value={stateFilter} onChange={v => setStateFilter(v as typeof stateFilter)}
+            active={stateFilter !== "ALL"}
+            options={[{ value: "ALL", label: t.filterAllStates }, ...stateOptions]} />
+        )}
         {/* Appears once it can narrow something. On a log with one operator this offered 「전체」
             and one name — a control that changes nothing, on a screen whose whole value is that
             the reader can trust what the controls mean. */}
@@ -471,7 +474,7 @@ export default function ProjectHandlingLogTab({ projectId }: { projectId: string
           <FilterSelect value={operatorFilter} onChange={setOperatorFilter} active={operatorFilter !== "ALL"}
             options={[{ value: "ALL", label: t.filterAllOperators }, ...operatorOptions]} />
         )}
-        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
+        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} />
         <span style={{ flex: 1 }} />
         {/* EXPORT IS THE ONLY THING THIS SCREEN DOES TO A ROW. No kebab and no bulk bar: a
             handling is written by the operator who did the work, and an administrator editing or

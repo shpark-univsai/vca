@@ -83,7 +83,6 @@ interface VipDict {
   allGroups: string;
   allPriorities: string;
   noGroup: string;
-  filtersActive: (n: number) => string;
   /* The chip NAMES the one filter that is on, because "1 filter" left the reader hunting the
      toolbar for which control was set (measured: on 우선순위=Very High the chip read 「1 filter」
      and nothing else on screen said "priority"). Two or more go back to the count — the chip sits
@@ -289,7 +288,6 @@ const T: Record<"en" | "ko", VipDict> = {
     allGroups: "All groups",
     allPriorities: "All priorities",
     noGroup: "No group",
-    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     filterChipGroup: (name: string) => `Group: ${name}`,
     filterChipPriority: (label: string) => `Priority: ${label}`,
     tabCountNarrowed: (shown: number, total: number) => `${shown} of ${total} shown — the search box or a filter is narrowing this tab.`,
@@ -500,7 +498,6 @@ const T: Record<"en" | "ko", VipDict> = {
     allGroups: "전체 그룹",
     allPriorities: "전체 우선순위",
     noGroup: "그룹 없음",
-    filtersActive: (n: number) => `필터 ${n}개`,
     filterChipGroup: (name: string) => `그룹: ${name}`,
     filterChipPriority: (label: string) => `우선순위: ${label}`,
     tabCountNarrowed: (shown: number, total: number) => `전체 ${total} 중 ${shown}만 보이는 중 — 검색어나 필터가 걸려 있습니다.`,
@@ -1860,8 +1857,16 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
     healthFilter === null ? null : healthFilterLabel[healthFilter],
   ].filter((label): label is string => label !== null);
   const activeFilterCount = activeFilterLabels.length;
-  /* One filter names itself; two or more go back to a count, because the row wraps. */
-  const filterChipLabel = activeFilterLabels.length === 1 ? activeFilterLabels[0] : t.filtersActive(activeFilterCount);
+  /*
+   * ONLY 건강 칩 KEEPS THE TOKEN, and only alone — 그룹 and 우선순위 are selects in the same row
+   * printing their own values, so a token repeating them was a second copy of what the row said,
+   * in the shape of a condition you could add another of (owner, 2026-10-06). They get the quiet
+   * 「필터 해제」 instead. The health filter is pressed on a card in the strip above and appears in
+   * no control, so its words are the only sighting of it; alone, because the × clears everything.
+   */
+  const filterChipLabel = activeFilterCount === 1 && healthFilter !== null
+    ? healthFilterLabel[healthFilter]
+    : undefined;
   const clearFilters = () => { setGroupFilter(null); setPriorityFilter("ALL"); setHealthFilter(null); };
   /*
    * A DIFFERENT TAB IS A DIFFERENT LIST, so nothing carries over — filters AND the search box.

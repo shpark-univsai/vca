@@ -74,7 +74,6 @@ const T = {
     filterAllDates: "Any date",
     filterAllSurfaces: "Every screen",
     filterAllActors: "Anyone",
-    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     clearFilters: "Clear",
     export: "Export CSV",
     // Two ways this button can be dead, and on this tab they are opposite answers — see the note
@@ -104,7 +103,6 @@ const T = {
     filterAllDates: "전체 기간",
     filterAllSurfaces: "전체 화면",
     filterAllActors: "조회한 사람 전체",
-    filtersActive: (n: number) => `필터 ${n}`,
     clearFilters: "해제",
     export: "CSV 내보내기",
     exportNothingHeld: "기록된 조회가 없어 내보낼 것이 없습니다.",
@@ -397,7 +395,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
           <FilterSelect value={actorFilter} onChange={setActorFilter}
             options={[{ value: "ALL", label: t.filterAllActors }, ...actorOptions]} />
         )}
-        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
+        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} />
         <span style={{ flex: 1 }} />
         {/* WHY THE GREY BUTTON SAYS WHICH KIND OF NOTHING IT IS. "Nobody has looked anybody up
             here" and "your date range matched nothing" are the same two sentences the empty table

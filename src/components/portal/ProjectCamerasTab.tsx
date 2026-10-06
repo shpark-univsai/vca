@@ -110,7 +110,6 @@ const T = {
     searchPlaceholder: "Search by name, IP address, or code",
     filterAllZones: "All zones",
     filterAllStatus: "All status",
-    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     /* The chip NAMES the one filter that is on. 「1 filter」 named nothing: with 구역=Tampines set
        the table dropped from 69 rows to 6 and the only way to find out which of the two selects
        did it was to read both. Two or more go back to the count — this toolbar row already wraps
@@ -341,7 +340,6 @@ const T = {
     searchPlaceholder: "이름, IP 주소, 코드로 검색",
     filterAllZones: "전체 구역",
     filterAllStatus: "전체 상태",
-    filtersActive: (n: number) => `필터 ${n}개`,
     filterChipZone: (name: string) => `구역: ${name}`,
     filterChipStatus: (label: string) => `상태: ${label}`,
     tabCountNarrowed: (shown: number, total: number) => `전체 ${total} 중 ${shown}만 보이는 중 — 검색어나 필터가 걸려 있습니다.`,
@@ -1392,12 +1390,17 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
      to Cameras or All brings them back set, with the controls visible again. */
   const fileOnlyTab = kindTab === "video" || kindTab === "image" || kindTab === "deepfake";
   /*
-   * WHAT IS ON, IN WORDS — built here because ActiveFilterCount only draws the label it is handed
-   * (see PortalShared). The chip said 「1 filter」, which names nothing: measured at 구역=Tampines,
-   * the pager dropped to 6 rows and nothing on screen said the word "zone".
+   * WHAT IS ON, IN WORDS — but only for the filter that has no control in the row.
    *
-   * The status values are spelt with the table's own four names (see the ONE NAME PER STATE note
-   * at the top of this dictionary) so the chip and the row it filtered to read the same word.
+   * 구역 and 상태 each sit in a select two inches to the left, printing their own value, so naming
+   * them again in a token beside it said nothing the row had not already said — and a token in a
+   * filter row promises conditions you can stack, which these cannot (owner, 2026-10-06). They now
+   * leave the clear as the quiet 「필터 해제」 text ActiveFilterCount draws by default.
+   *
+   * 결함 칩 is the exception that keeps the token: it is set by pressing a card in the strip above
+   * and appears in no control, so its own words are the only place the reader can see it on. And
+   * ONLY WHEN IT IS ALONE — the × clears every filter, so a token reading 「서버 없음」 while 구역
+   * was also set would take away two things while naming one.
    */
   const statusFilterText = statusFilter === "online" ? t.online
     : statusFilter === "offline" ? t.offline
@@ -1410,8 +1413,9 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     gapFilter === null ? null : gapFilter === "noServer" ? t.healthNoServer : t.healthNoPosition,
   ].filter((label): label is string => label !== null);
   const activeFilterCount = activeFilterLabels.length;
-  /* One filter names itself; two or more go back to a count, because the row wraps. */
-  const filterChipLabel = activeFilterLabels.length === 1 ? activeFilterLabels[0] : t.filtersActive(activeFilterCount);
+  const filterChipLabel = activeFilterCount === 1 && gapFilter !== null && !fileOnlyTab
+    ? (gapFilter === "noServer" ? t.healthNoServer : t.healthNoPosition)
+    : undefined;
   // Selected camera ids. Held as a Set of ids rather than of rows so a selection survives the list
   // being re-sorted or re-filtered underneath it.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());

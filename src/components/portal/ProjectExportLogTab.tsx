@@ -147,7 +147,6 @@ const T = {
     filterAllKinds: "Every kind",
     filterAllActors: "Anyone",
     filterAllSubjects: "Any subject",
-    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     clearFilters: "Clear",
     export: "Export CSV",
     exportNothingHeld: "Nothing has been exported yet, so there is nothing to export.",
@@ -228,7 +227,6 @@ const T = {
     filterAllKinds: "전체 종류",
     filterAllActors: "반출한 사람 전체",
     filterAllSubjects: "대상 인물 전체",
-    filtersActive: (n: number) => `필터 ${n}`,
     clearFilters: "해제",
     export: "CSV 내보내기",
     exportNothingHeld: "반출된 것이 없어 내보낼 것이 없습니다.",
@@ -664,9 +662,17 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
             <DateRangeTrigger lang={lang} value={range} onApply={setRange} emptyText={t.filterAllDates} />
           </span>
         )}
-        <FilterSelect value={kindFilter} onChange={v => setKindFilter(v as "ALL" | ExportKind)}
-          active={kindFilter !== "ALL"}
-          options={[{ value: "ALL", label: t.filterAllKinds }, ...kindOptions]} />
+        {/* Hidden on an empty log, like the range above and the strip above that. This was the one
+            control left standing over 「이 프로젝트에서 반출된 것이 없습니다」 — so the screen offered
+            to narrow nothing, and picking a kind there left 「조건에 맞는 반출 기록이 없습니다」 in
+            place of the finding an auditor came to read. (It is also the state the owner was looking
+            at, 2026-10-06.) The three kinds stay a closed set for a log that HAS rows; see the note
+            on kindOptions. */}
+        {!nothingHeld && (
+          <FilterSelect value={kindFilter} onChange={v => setKindFilter(v as "ALL" | ExportKind)}
+            active={kindFilter !== "ALL"}
+            options={[{ value: "ALL", label: t.filterAllKinds }, ...kindOptions]} />
+        )}
         {/* Each appears once it can narrow something. On a log with one exporter this offered
             「전체」 and one name — a control that changes nothing, on the screen where the reader
             most needs to trust what the controls mean. */}
@@ -681,7 +687,7 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
           <FilterSelect value={subjectFilter} onChange={setSubjectFilter} active={subjectFilter !== "ALL"}
             options={[{ value: "ALL", label: t.filterAllSubjects }, ...subjectOptions]} />
         )}
-        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
+        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} />
         <span style={{ flex: 1 }} />
         {/* WHY THE GREY BUTTON SAYS WHICH KIND OF NOTHING IT IS. "Nothing has ever left this
             project" and "your range matched nothing" send an auditor to opposite conclusions, and

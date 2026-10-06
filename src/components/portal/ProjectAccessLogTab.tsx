@@ -164,7 +164,6 @@ const T = {
     filterFailed: "Failed attempts",
     filterNotFailed: "Excluding failed attempts",
     filterAllPeople: "Anyone",
-    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     export: "Export CSV",
     exportNothingHeld: "Nothing is recorded yet — there is nothing to export.",
     exportNoMatch: "These filters match no records. The file carries the rows the table is showing.",
@@ -203,7 +202,6 @@ const T = {
     filterFailed: "실패만",
     filterNotFailed: "실패 제외",
     filterAllPeople: "계정 전체",
-    filtersActive: (n: number) => `필터 ${n}`,
     export: "CSV 내보내기",
     exportNothingHeld: "기록이 없어 내보낼 것이 없습니다.",
     exportNoMatch: "조건에 맞는 기록이 없습니다. 파일에는 표에 보이는 행만 담깁니다.",
@@ -519,17 +517,21 @@ export default function ProjectAccessLogTab({ projectId }: { projectId: string }
             <DateRangeTrigger lang={lang} value={range} onApply={setRange} emptyText={t.filterAllDates} />
           </span>
         )}
-        <FilterSelect value={doorFilter} onChange={setDoorFilter} active={doorFilter !== "ALL"}
-          options={[{ value: "ALL", label: t.filterAllDoors }, ...doorOptions]} />
-        <FilterSelect value={outcomeFilter} onChange={setOutcomeFilter} active={outcomeFilter !== "ALL"}
-          options={[{ value: "ALL", label: t.filterAllOutcomes }, ...outcomeOptions]} />
+        {/* With the range and the strip — a log nobody has written to has nothing to narrow, and
+            the two closed-set selects were the only controls left standing over its empty state. */}
+        {!nothingHeld && <>
+          <FilterSelect value={doorFilter} onChange={setDoorFilter} active={doorFilter !== "ALL"}
+            options={[{ value: "ALL", label: t.filterAllDoors }, ...doorOptions]} />
+          <FilterSelect value={outcomeFilter} onChange={setOutcomeFilter} active={outcomeFilter !== "ALL"}
+            options={[{ value: "ALL", label: t.filterAllOutcomes }, ...outcomeOptions]} />
+        </>}
         {/* Same rule the tab next door follows: on a log nobody has written to, this offered
             「전체」 and nothing else — a control that narrows nothing. */}
         {personOptions.length > 1 && (
           <FilterSelect value={personFilter} onChange={setPersonFilter} active={personFilter !== "ALL"}
             options={[{ value: "ALL", label: t.filterAllPeople }, ...personOptions]} />
         )}
-        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
+        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} />
         <span style={{ flex: 1 }} />
         {/* EXPORT IS THE ONLY THING THIS SCREEN DOES TO A ROW (고시 제8조제3항) — there is no
             kebab beside it and no bulk bar under it, because nothing here may edit, hide or

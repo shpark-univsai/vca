@@ -104,7 +104,6 @@ const T = {
     filterAllActors: "Anyone",
     filterAllAreas: "Every screen",
     range7: "Last 7 days", range30: "Last 30 days", range90: "Last 90 days", rangeAll: "All held",
-    filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`,
     clearFilters: "Clear",
     export: "Export CSV",
     // Two ways this button can be dead, and on an audit surface they are opposite answers — see
@@ -137,7 +136,6 @@ const T = {
     filterAllActors: "변경한 사람 전체",
     filterAllAreas: "전체 화면",
     range7: "최근 7일", range30: "최근 30일", range90: "최근 90일", rangeAll: "보관분 전체",
-    filtersActive: (n: number) => `필터 ${n}`,
     clearFilters: "해제",
     export: "CSV 내보내기",
     exportNothingHeld: "기록된 변경이 없어 내보낼 것이 없습니다.",
@@ -422,7 +420,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
               options={[{ value: "ALL", label: t.filterAllAreas }, ...areaOptions]} />
           )}
         </>}
-        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} label={t.filtersActive(activeFilterCount)} />
+        <ActiveFilterCount count={activeFilterCount} onClear={clearFilters} />
         <span style={{ flex: 1 }} />
         {/* WHY THE GREY BUTTON SAYS WHICH KIND OF NOTHING IT IS. The two reasons this control can
             be dead send an auditor to opposite conclusions — "nothing was ever recorded on this

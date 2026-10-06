@@ -299,7 +299,7 @@ const MAIN_T = {
     gapShowOnly: "Show only these",
     gapClear: "Show everything again",
     searchPlaceholder: "Search by server name or IP address",
-    allTypes: "All types", filtersActive: (n: number) => `${n} filter${n === 1 ? "" : "s"}`, addServer: "Add server",
+    allTypes: "All types", addServer: "Add server",
     emptyNoServers: "No servers configured for this project yet.",
     loadFailed: "Could not load the server list.",
     retry: "Try again",
@@ -360,7 +360,7 @@ const MAIN_T = {
     gapShowOnly: "이 항목만 보기",
     gapClear: "전체 다시 보기",
     searchPlaceholder: "서버 이름 또는 IP 주소로 검색",
-    allTypes: "전체 유형", filtersActive: (n: number) => `필터 ${n}개`, addServer: "서버 추가",
+    allTypes: "전체 유형", addServer: "서버 추가",
     emptyNoServers: "이 프로젝트에 아직 설정된 서버가 없습니다.",
     loadFailed: "서버 목록을 불러오지 못했습니다.",
     retry: "다시 시도",
@@ -641,7 +641,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
               are on, and clears them when pressed. One fewer bespoke control, and the toolbar now
               reads the same on every list.
             */}
-            <ActiveFilterCount count={activeFilterCount} onClear={resetFilters} label={t.filtersActive(activeFilterCount)} />
+            <ActiveFilterCount count={activeFilterCount} onClear={resetFilters} />
             {/* `marginLeft: auto` puts this at the right end of the toolbar, which is where every
                 other list in Portal keeps the one thing that MAKES something — left of the row is
                 how you narrow the list, right of it is what you do to it. Without it this button
