@@ -209,7 +209,7 @@ function statusColor(cam: Camera): string {
 }
 
 export default function CameraMapView({
-  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect, alwaysPicking, fill, overlay, tintOf, noteOf,
+  cameras, onInspect, onShowUnpositioned, selectedIds, onToggleSelect, alwaysPicking, fill, overlay, tintOf, noteOf, fitTo,
 }: {
   /** The rows the table would be showing — filters applied. Split by position here. */
   cameras: Camera[];
@@ -278,6 +278,18 @@ export default function CameraMapView({
    * dot and it tells you which group puts it there, and names both when two do.
    */
   noteOf?: (cameraId: string) => string | null;
+  /**
+   * FRAME THESE, not everything drawn.
+   *
+   * The opening fit takes in every camera it was given, which is right when the map IS the fleet.
+   * It is wrong when the map is drawn to answer a question about a FEW of them: an account scoped
+   * to three cameras got the whole site, and MEASURED at the 477px the account card allows, 61
+   * dots at 12px put 22 of them under a neighbour — including one of the three the picture
+   * existed to show. The others stay drawn, greyed, wherever they fall; the frame is just set by
+   * the subject. Ids that are not on the map are ignored, and an empty list falls back to
+   * everything, so an account with nothing placed still gets a map rather than a grey box.
+   */
+  fitTo?: string[];
 }) {
   const [lang] = usePortalLanguage();
   const t = T[lang];
@@ -618,8 +630,12 @@ export default function CameraMapView({
 
       // Frame what is actually there. A site can be a campus a few hundred metres across, ten
       // kilometres from the city centre the default view opens on.
-      if (placed.length > 0) {
-        const bounds = L.latLngBounds(placed.map(c => [c.lat as number, c.lng as number] as [number, number]));
+      const frame = fitTo && fitTo.length > 0
+        ? placed.filter(c => fitTo.includes(c.id))
+        : placed;
+      const framed = frame.length > 0 ? frame : placed;
+      if (framed.length > 0) {
+        const bounds = L.latLngBounds(framed.map(c => [c.lat as number, c.lng as number] as [number, number]));
         instance.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 });
       }
       // After the fit, not before: which layer belongs on screen depends on the zoom the fit chose.

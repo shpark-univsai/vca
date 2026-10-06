@@ -2826,8 +2826,27 @@ const PANEL_CAPTION: React.CSSProperties = {
  * anywhere in a user panel. The fill does the grouping the border and the dividers were doing,
  * and it costs no lines.
  */
+/*
+ * THE FILL CAME OFF (owner, 2026-10-06: 이게 회색 바탕색으로 묶어놔서 … 다른 방법으로 시각적으로
+ * 묶으면).
+ *
+ * This is NOT the 2026-09-22 change coming back. That one took away 27 border edges — two boxed
+ * groups, three dividers and five bordered buttons — because the card read as a stack of
+ * identical boxes. None of those return here: the group is held by its caption and the space
+ * around it, and nothing is drawn at all. The same survey quoted above found consoles that do
+ * exactly this — Neon, Fibery and Canny draw no line ANYWHERE in a user panel — so the lighter
+ * answer was always on the table; the tint was simply the first step away from the lines.
+ *
+ * It mattered more once a 261px map moved into the 권한 group: a picture inside a tinted box
+ * inside a card is three surfaces deep, and the map had to carry its own edge to stay legible
+ * against the tint. With the tint gone the map needs no edge of its own either.
+ *
+ * Height is NOT the reason, and it is worth writing down so nobody claims it later: the padding
+ * was 4px, so this buys 16px across the two groups. The 권한 group measured 572px and the map is
+ * 261 of them — that is where the height is, and it is sized on its own merits.
+ */
 const PANEL_GROUP: React.CSSProperties = {
-  backgroundColor: "var(--gray-50)", borderRadius: "12px", padding: "4px",
+  display: "flex", flexDirection: "column",
 };
 
 /**
@@ -5572,6 +5591,61 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
          * 들어가는 곳 = which door, which sites. 할 수 있는 일 = the console role, and the app's
          * screens and cameras. The second name is the app's own words for it (see appGrants).
          */
+        /*
+          WHICH CAMERAS, NOT HOW MANY (owner, 2026-10-06: 지도를 표현해주고싶은데).
+
+          It rides directly under the 카메라 row, because that row says 「3 / 62」 and this is the
+          half of that answer a number cannot carry — whether the three sit on one street or on
+          three sides of the site. It sat at the foot of the card first, below 계정, and the owner's
+          first question on seeing it was where it opens: a picture 300px and one scroll away from
+          the line it explains is a second thing to find rather than an answer to the first.
+
+          ONE COLOUR, AND THE REST IN WORDS. Painting a colour per group is the obvious design and
+          it breaks for the reason the camera-groups map broke: the ramp has six steps and the
+          product does not cap how many groups an account may hold (owner, 2026-10-06: 한 사람한테
+          카메라 그룹 하나만 부여된다는 보장은 없어). So the map says the one thing true at any
+          number — reachable or not — and a pressed dot names the group that puts it there.
+
+          Only for a NARROWED account: 「전부」 in the row above is already the whole answer, and a
+          map with every dot lit is the register's map wearing this panel's heading.
+        */
+        const scopeMap = mu.appAccess && scopeCountFor(mu) !== null ? (() => {
+          const scopable = scopableCamerasFor(mu);
+          const allowed = scopedCameraIds(mu, cameraGroups) ?? new Set<string>();
+          const held = (mu.cameraGroupIds ?? [])
+            .map(id => cameraGroups.find(g => g.id === id))
+            .filter((g): g is NonNullable<typeof g> => !!g);
+          return (
+            <div style={{ padding: "2px 12px 8px" }}>
+              {/* 240, down from 300: the frame holds the account's own cameras now, not the site,
+                  so the extra height was empty tiles. The edge went with the group's tint — one
+                  surface, not three. */}
+              <div style={{ height: "240px", borderRadius: CARD_RADIUS, overflow: "hidden" }}>
+                <CameraMapView
+                  cameras={scopable}
+                  fill
+                  /* Framed on what the account reaches, not on the whole site. MEASURED when it
+                     fitted everything: 61 dots at 12px in a 477px map, 22 of them covered by a
+                     neighbour — and one of the three the account could see was underneath a grey
+                     one, which is the single dot the picture exists for. */
+                  fitTo={[...allowed]}
+                  selectedIds={NO_SELECTION}
+                  onToggleSelect={NO_PICKING}
+                  tintOf={id => (allowed.has(id) ? "var(--primary-400)" : "var(--gray-300)")}
+                  noteOf={id => {
+                    if (!allowed.has(id)) return t.scopeMapNotVisible;
+                    const via = held.filter(g => g.cameraIds.includes(id)).map(g => `\u201c${g.label}\u201d`);
+                    const parts: string[] = [];
+                    if (via.length) parts.push(t.scopeMapVia(via.join(t.scopeMapAnd)));
+                    if ((mu.cameraIds ?? []).includes(id)) parts.push(t.scopeMapPicked);
+                    return parts.join(t.scopeMapAnd) || null;
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })() : null;
+
         const rows: {
           key: string; group: "where" | "what"; label: string; value: string;
           /** The one value printed large. See the door row for why it is that one. */
@@ -5773,8 +5847,15 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                 </div>
               )}
               <div style={{ padding: "8px 20px 4px", display: "flex", flexDirection: "column", gap: "18px" }}>
-                {([["where", t.panelWhereSection], ["what", t.panelWhatSection]] as const).map(([group, heading]) => (
-                <div key={group}>
+                {([["where", t.panelWhereSection], ["what", t.panelWhatSection]] as const).map(([group, heading], gi) => (
+                /* A HAIRLINE WHERE THE TINT USED TO BE (owner, 2026-10-06: 그룹핑하던 자리에
+                   연한색 라인을 추가해줄까). `--line` is the token whose stated job is grouping —
+                   see its note in PortalShared, where it is kept apart from the control outline
+                   precisely because one groups and the other is an edge you click into.
+                   One rule per boundary, three in the whole card. That is not the 2026-09-22
+                   state coming back: what came off then was 27 edges, of which 15 crossed the
+                   reader's path. */
+                <div key={group} style={gi === 0 ? undefined : { borderTop: BORDER, paddingTop: "16px" }}>
                 <p style={PANEL_CAPTION}>{heading}</p>
                 <div style={PANEL_GROUP}>
                   {rows.filter(r => r.group === group).map(row => {
@@ -5858,7 +5939,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                          nothing but the chevron to say it opens something. The tint on pointing is
                          the rest of that sentence — see the class's own note: nothing at rest and
                          nothing on pointing is not a quiet control, it is text. */
-                      <button key={row.key} type="button" className="portal-btn-quiet" onClick={() => row.onClick?.()} style={{ ...style, cursor: "pointer" }}>
+                      <React.Fragment key={row.key}>
+                      <button type="button" className="portal-btn-quiet" onClick={() => row.onClick?.()} style={{ ...style, cursor: "pointer" }}>
                         {stacked}
                         {/* No chevron on a row that cannot be opened — an arrow that leads nowhere
                             is the control this console keeps being asked to stop drawing. */}
@@ -5866,6 +5948,8 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                           <path d="M3 1.5L7 5l-4 3.5" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       </button>
+                      {row.key === "cameras" && scopeMap}
+                      </React.Fragment>
                     );
                   })}
                   {/*
@@ -5959,7 +6043,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                 identical at 36px tall and 8px radius. 제거 keeps its red-on-pointing class as the
                 one that cannot be undone.
               */}
-              <div style={{ padding: "14px 20px 22px" }}>
+              <div style={{ margin: "0 20px", paddingTop: "16px", paddingBottom: "22px", borderTop: BORDER }}>
                 <p style={PANEL_CAPTION}>{t.panelAccountSection}</p>
                 {/* Pulled left by the button's own 10px padding, so the first label starts on the
                     same x as the caption over it and the section reads as one block. */}
@@ -6062,11 +6146,13 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     a heading says which two they are — the ones that change whether the account
                     works at all, as opposed to the ones that help somebody back in. Same heading
                     style as the groups above, so the card reads as four named parts. */}
-                <p style={{ ...PANEL_CAPTION, marginTop: "22px" }}>{t.panelStatusSection}</p>
-                {/* 22px above the heading rather than a rule: with the boxes gone from everything
-                    else, a hairline here would have been the only line in the card doing the job
-                    the space already does. Supabase's user panel separates its own last two
-                    actions the same way, with a heading and room. */}
+                {/* It takes the rule now. The 2026-09-28 note said a hairline here would be the
+                    ONLY line in the card, doing a job the space already did — true then, and no
+                    longer true: every group boundary carries one (owner, 2026-10-06), so leaving
+                    this one bare would make the last two actions the single pair held by nothing.
+                    The heading and the room stay; the line joins them. */}
+                <div style={{ borderTop: BORDER, marginTop: "22px", paddingTop: "16px" }} />
+                <p style={PANEL_CAPTION}>{t.panelStatusSection}</p>
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", margin: "0 -10px" }}>
                   <button type="button"
                     disabled={!manageAccess || (mu.status !== "suspended" && lastAdmin)}
@@ -6166,62 +6252,6 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     {t.removeUser}
                   </button>
                 </div>
-                {/*
-                  WHICH CAMERAS, NOT HOW MANY (owner, 2026-10-06: 지도를 표현해주고싶은데).
-
-                  The 카메라 row four lines up says 「3 / 62」. That is the number an access review
-                  totals and the one thing it cannot picture: whether the three sit on one street
-                  or on three sides of the site. The panel had ~300px of empty space under 계정,
-                  measured at 1440×1000, which is where this goes.
-
-                  ONE COLOUR, AND THE REST IN WORDS. The obvious design paints a colour per group,
-                  and it breaks for the same reason the camera-groups map broke: the ramp has six
-                  steps and the product does not cap how many groups an account may hold — the
-                  owner's point when this came up (2026-10-06: 한 사람한테 카메라 그룹 하나만
-                  부여된다는 보장은 없어 … 하나로 막아버리면 선택권이 없어지니까). So the map says
-                  the one thing that is true at any number — reachable or not — and a pressed dot
-                  says which group puts it there, naming both when two do. Colour runs out; words
-                  do not.
-
-                  Drawn only for a NARROWED account. For one that reaches everything, 「전부」 in the
-                  row above is already the whole answer, and a map with every dot lit is the
-                  register's own map wearing this panel's heading.
-                */}
-                {mu.appAccess && scopeCountFor(mu) !== null && (() => {
-                  const scopable = scopableCamerasFor(mu);
-                  const allowed = scopedCameraIds(mu, cameraGroups) ?? new Set<string>();
-                  const held = (mu.cameraGroupIds ?? [])
-                    .map(id => cameraGroups.find(g => g.id === id))
-                    .filter((g): g is NonNullable<typeof g> => !!g);
-                  return (
-                    <div>
-                      <p style={PANEL_CAPTION}>{t.panelScopeMapSection}</p>
-                      {/* 320, not 260. MEASURED at 260: the map drew 477x221 and the card a dot
-                          opens is 260px wide, so pressing a dot covered half the picture you
-                          pressed it on. The panel scrolls, so the height is cheap; the drawer's
-                          520px width is not, and that is what sets the card's share. */}
-                      <div style={{ height: "320px", borderRadius: CARD_RADIUS, overflow: "hidden", border: BORDER }}>
-                        <CameraMapView
-                          cameras={scopable}
-                          fill
-                          selectedIds={NO_SELECTION}
-                          /* Nothing is picked and nothing can be: this map reports a scope, it
-                             does not edit one. Changing it is the 카메라 row's own editor. */
-                          onToggleSelect={NO_PICKING}
-                          tintOf={id => (allowed.has(id) ? "var(--primary-400)" : "var(--gray-300)")}
-                          noteOf={id => {
-                            if (!allowed.has(id)) return t.scopeMapNotVisible;
-                            const via = held.filter(g => g.cameraIds.includes(id)).map(g => `\u201c${g.label}\u201d`);
-                            const parts: string[] = [];
-                            if (via.length) parts.push(t.scopeMapVia(via.join(t.scopeMapAnd)));
-                            if ((mu.cameraIds ?? []).includes(id)) parts.push(t.scopeMapPicked);
-                            return parts.join(t.scopeMapAnd) || null;
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
           </Drawer>
         );
