@@ -159,6 +159,9 @@ const T = {
     colCameras: "Cameras",
     camerasAll: "All",
     camerasSome: (n: number, total: number) => `${n} / ${total}`,
+    /* Which groups put them there. The same sentence /mypage shows the account holder about
+       themselves, now on the console side too — see the row's own note. */
+    camerasVia: (names: string) => `Through ${names}`,
     camerasFromGroups: (n: number) => `${n} group${n === 1 ? "" : "s"}`,
     camerasFromGroupsTitle: "Part of this scope comes from camera groups, so it grows when a group does. Individually picked cameras do not.",
     camerasNarrowedTitle: (n: number, total: number) => `Sees ${n} of the ${total} cameras on their projects, in the app.`,
@@ -648,6 +651,7 @@ const T = {
     colCameras: "카메라",
     camerasAll: "전체",
     camerasSome: (n: number, total: number) => `${n} / ${total}`,
+    camerasVia: (names: string) => `${names} 그룹으로`,
     camerasFromGroups: (n: number) => `그룹 ${n}`,
     camerasFromGroupsTitle: "이 범위의 일부가 카메라 그룹에서 나옵니다. 그룹이 커지면 이 범위도 같이 커집니다. 개별로 고른 카메라는 그렇지 않습니다.",
     camerasNarrowedTitle: (n: number, total: number) => `앱에서 담당 프로젝트 카메라 ${total}대 중 ${n}대만 봅니다.`,
@@ -5869,9 +5873,25 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
           {
             key: "cameras", group: "what",
             label: t.colCameras,
+            /*
+             * THE GROUPS BY NAME, NOT ONLY THE NUMBER (owner, 2026-10-06: 유저탭에서 어느 카메라
+             * 그룹을 사용하는지 유저상세에서는 볼수있는거지?).
+             *
+             * It could not be. The name lived in the table row's `title` — a hover, invisible on
+             * touch and unreadable at a glance — and this panel said 「3 / 62」 and nothing else.
+             * That mattered more the moment the group card stopped naming its holders: the two
+             * directions of one fact are "who holds this group" and "which groups does this
+             * account hold", and the console now answers the first from the account's own row, so
+             * the second has to be on the account's own card. /mypage has shown the holder exactly
+             * this sentence about themselves since 6c53ee6; this is the console's side of it.
+             *
+             * Only groups that actually give this account a camera it can reach — the same
+             * intersection the count uses, so the names and the number cannot disagree.
+             */
             value: !mu.appAccess ? t.panelNoApp
               : scopeCountFor(mu) === null ? t.camerasAll
-              : t.camerasSome(scopeCountFor(mu) ?? 0, scopableCamerasFor(mu).length),
+              : [t.camerasSome(scopeCountFor(mu) ?? 0, scopableCamerasFor(mu).length),
+                 groupNamesFor(mu) ? t.camerasVia(groupNamesFor(mu)) : ""].filter(Boolean).join(" · "),
             disabled: !manageAccess || !mu.appAccess || scopableCamerasFor(mu).length === 0,
             reason: !manageAccess ? t.reasonNotOwner
               : !mu.appAccess ? t.reasonNoScopeWithoutApp
