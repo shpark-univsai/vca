@@ -49,7 +49,9 @@ function StatusRowSkeleton() {
 function CarouselCardSkeleton() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-      <Bone w="140px" h="96px" color="var(--gray-200)" radius="8px" />
+      {/* The corner the real tile draws. MonitorCard moved to the card step and this stayed at 8,
+          so the handoff from loading to loaded popped by 8px of radius on every tile. */}
+      <Bone w="140px" h="96px" color="var(--gray-200)" radius="var(--radius-card)" />
       <Bone w="90px" h="10px" color="var(--gray-100)" />
     </div>
   );

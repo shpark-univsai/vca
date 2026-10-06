@@ -3076,7 +3076,22 @@ function MetaDivider() {
 
 function ClusterMatchCard({ item, onClick }: { item: MatchItem; onClick?: () => void }) {
   return (
-    <div onClick={onClick} className={onClick ? "vca-hover-card" : undefined} style={{ backgroundColor:"white", borderRadius:RADIUS.card, overflow:"hidden", width:"133px", flexShrink:0, display:"flex", flexDirection:"column", gap:"8px", cursor: onClick ? "pointer" : "default" }}>
+    /*
+     * A STEP IN FROM ITS PARENT, NOT THE SAME CORNER (review, 2026-10-06).
+     *
+     * This card sits INSIDE ClusterCard, which is also RADIUS.card — so after the scale went in,
+     * parent and child drew the identical 16px corner while sharing a bottom-left corner 12px
+     * apart. Material 3 states the negative rule outright (「avoid using the same corner radius
+     * value for nested objects」) and Apple's ConcentricRectangle makes it arithmetically
+     * impossible: the child's radius is the parent's minus the padding. 16 − 12 = 4, and 6 is the
+     * nearest step on this scale, so this is `inner` — the step the scale names for a thing nested
+     * in another.
+     *
+     * The scale has no step for 「a card inside a card」, which is worth knowing rather than
+     * hiding: 8 (control) would have been the other defensible answer, and it is 4px further from
+     * the computed 4 than 6 is.
+     */
+    <div onClick={onClick} className={onClick ? "vca-hover-card" : undefined} style={{ backgroundColor:"white", borderRadius:RADIUS.inner, overflow:"hidden", width:"133px", flexShrink:0, display:"flex", flexDirection:"column", gap:"8px", cursor: onClick ? "pointer" : "default" }}>
       <div style={{ position:"relative", height:"160px", overflow:"hidden" }}>
         <img src={item.body} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
         <span style={{ position:"absolute", top:6, left:6 }}><ScoreBadge score={item.similarity} /></span>
