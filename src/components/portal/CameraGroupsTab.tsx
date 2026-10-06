@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCheck, Plus, RotateCcw } from "lucide-react";
+import { CheckCheck, Globe, Plus, RotateCcw, UserCheck } from "lucide-react";
 import {
   accountsWatching, cameraGroupsInProject, camerasInProject, hasPosition, presetLabel,
   scopedCameraIds, useVcaStore, type Camera, type CameraGroup, type PortalUser,
@@ -58,9 +58,16 @@ const T = {
     mapInNoGroup: "In no group",
     cameras: (n: number) => `${n} camera${n === 1 ? "" : "s"}`,
     camerasNone: "Empty",
-    watchThrough: "Watching through this group",
-    watchThroughNone: "Nobody watches through this group",
-    watchEvery: "Also watching — scope never narrowed",
+    /* Short on the card, long on the hover (owner, 2026-10-06: 설명 조금 더 직관적으로 보이게끔
+       아이콘 활용해서 표시 짧게 해줘). The two rows differ in one thing — WHY these accounts reach
+       these cameras — so the mark carries that and the words carry the names, which is what the
+       reader came for. The full sentence is one pointer-rest away on each row. */
+    watchThrough: "Via group",
+    watchThroughFull: "These accounts reach these cameras through this group",
+    watchThroughNone: "Nobody",
+    watchThroughNoneFull: "No account reaches these cameras through this group",
+    watchEvery: "All cameras",
+    watchEveryFull: "These accounts were never narrowed, so they see these cameras anyway — deleting this group takes nothing from them",
     andMorePeople: (n: number) => `and ${n} more`,
     grantCustom: "Custom",
     accountEmail: "Email",
@@ -123,9 +130,12 @@ const T = {
     mapInNoGroup: "어느 그룹에도 없음",
     cameras: (n: number) => `${n}대`,
     camerasNone: "비어 있음",
-    watchThrough: "이 그룹으로 보는 계정",
-    watchThroughNone: "이 그룹으로 보는 계정 없음",
-    watchEvery: "범위를 안 좁혀 함께 보는 계정",
+    watchThrough: "이 그룹으로",
+    watchThroughFull: "이 그룹을 통해 이 카메라들을 보는 계정입니다",
+    watchThroughNone: "없음",
+    watchThroughNoneFull: "이 그룹으로 이 카메라들을 보는 계정이 없습니다",
+    watchEvery: "전체 범위",
+    watchEveryFull: "범위를 좁히지 않아 어차피 보는 계정입니다 — 이 그룹을 지워도 잃는 것이 없습니다",
     andMorePeople: (n: number) => `외 ${n}명`,
     grantCustom: "커스텀",
     accountEmail: "이메일",
@@ -990,23 +1000,44 @@ const NAME_CAP = 3;
  * camera axis, 「조사자」 is the app axis, and an access review needs both before it can say
  * whether this is the right person on these cameras.
  */
-function WatcherLine({ label, empty, people, appLabelOf, moreLabel, onOpen }: {
+function WatcherLine({ icon, label, hint, empty, emptyHint, people, appLabelOf, moreLabel, onOpen }: {
+  /**
+   * The mark that says WHY, so the words can be only WHO.
+   *
+   * These two rows are the same list of names twice and differ in one thing — reached through
+   * this group, or reached because the account was never narrowed. That difference used to be
+   * carried by 「범위를 안 좁혀 함께 보는 계정」, a label longer than the names beside it. A mark
+   * can hold a distinction that has exactly two values; it cannot hold the reasoning, so the
+   * sentence is on the hover of the whole row rather than deleted.
+   */
+  icon: React.ReactNode;
   label: string;
+  /** The long form, on the row's hover. */
+  hint: string;
   /** Printed instead of the label when nobody is here. Omitted where silence is the right answer. */
   empty?: string;
+  emptyHint?: string;
   people: PortalUser[];
   appLabelOf: (u: PortalUser) => string;
   moreLabel: (n: number) => string;
   onOpen: (u: PortalUser) => void;
 }) {
   if (people.length === 0) {
-    return empty ? <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>{empty}</span> : null;
+    return empty ? (
+      <span title={emptyHint} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: "var(--gray-400)" }}>
+        <span aria-hidden="true" style={{ display: "flex", flexShrink: 0, color: "var(--gray-300)" }}>{icon}</span>
+        {empty}
+      </span>
+    ) : null;
   }
   const shown = people.slice(0, NAME_CAP);
   const rest = people.slice(NAME_CAP);
   return (
-    <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "3px 8px" }}>
-      <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{label}</span>
+    <div title={hint} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "3px 8px" }}>
+      <span style={{ display: "flex", alignItems: "center", gap: "5px", flexShrink: 0, fontSize: "11px", color: "var(--gray-500)" }}>
+        <span aria-hidden="true" style={{ display: "flex", color: "var(--gray-400)" }}>{icon}</span>
+        {label}
+      </span>
       {shown.map(u => (
         /* Underlined in grey rather than coloured: this footer can hold six of these, and six
            purple words on a card whose every other mark is grey would make the names the loudest
@@ -1414,8 +1445,12 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
                 */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "auto", paddingTop: "8px", borderTop: "1px solid var(--gray-100)" }}>
                   <WatcherLine
+                    /* A person with a tick: this account was given it. */
+                    icon={<UserCheck size={12} strokeWidth={2.2} />}
                     label={t.watchThrough}
+                    hint={t.watchThroughFull}
                     empty={t.watchThroughNone}
+                    emptyHint={t.watchThroughNoneFull}
                     people={watching.through}
                     appLabelOf={appLabelOf}
                     moreLabel={t.andMorePeople}
@@ -1424,7 +1459,10 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
                   {/* Silent when there is none. 「0 accounts see everything」 is a sentence about
                       nothing, the same rule the delete dialog's holder count already follows. */}
                   <WatcherLine
+                    /* A globe: nothing to do with this group — these accounts hold the whole site. */
+                    icon={<Globe size={12} strokeWidth={2.2} />}
                     label={t.watchEvery}
+                    hint={t.watchEveryFull}
                     people={watching.unrestricted}
                     appLabelOf={appLabelOf}
                     moreLabel={t.andMorePeople}
