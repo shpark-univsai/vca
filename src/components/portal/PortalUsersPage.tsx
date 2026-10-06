@@ -77,10 +77,7 @@ const T = {
        explanation at all. */
     peopleTabRosterHint: "No account yet. Hand over a registration code — signing up with it creates the account.",
     peopleTabPresets: "App presets",
-    peopleTabPresetsHint: "Editing one reaches every account following it.",
     peopleTabGroups: "Camera groups",
-    peopleTabGroupsFor: "for granting",
-    peopleTabGroupsHint: "Named sets of cameras, handed out as one when granting camera access.",
     colPlannedPermission: "Permission on signup",
     /* A roster row that carries no app grants — see the cell that prints it. */
     plannedNoGrants: "No permissions",
@@ -593,10 +590,7 @@ const T = {
     peopleTabAccountsHint: "이 프로젝트에 닿을 수 있는 계정입니다 — 초대만 받고 아직 로그인하지 않은 사람도 포함합니다.",
     peopleTabRosterHint: "아직 계정이 없는 사람입니다. 등록 코드를 건네주고, 그 코드로 가입하면 계정이 됩니다.",
     peopleTabPresets: "앱 권한 프리셋",
-    peopleTabPresetsHint: "하나를 고치면 그것을 따르는 계정 전부에 닿습니다.",
     peopleTabGroups: "카메라 그룹",
-    peopleTabGroupsFor: "권한용 묶음",
-    peopleTabGroupsHint: "이름 붙인 카메라 묶음입니다. 카메라 권한을 줄 때 한 덩어리로 줍니다.",
     colPlannedPermission: "가입 시 권한",
     plannedNoGrants: "권한 없음",
     colCode: "등록 코드",
@@ -3776,7 +3770,17 @@ export const PEOPLE_TABS: { id: PeopleTab; half: PeopleHalf; label: { en: string
   { id: "roster", half: "users", label: { en: "Awaiting sign-up", ko: "가입 대기" } },
   /* Preset before group, the order the invite form asks them in (owner, 2026-09-23). */
   { id: "presets", half: "grants", label: { en: "App permission presets", ko: "앱 권한 프리셋" } },
-  { id: "groups", half: "grants", label: { en: "Camera groups", ko: "카메라 그룹" } },
+  /*
+   * 「권한」 IN THE NAME, because its sibling has it (owner, 2026-10-06: 카메라 그룹이라는 탭만
+   * 봐도 이해가 바로 될까).
+   *
+   * Beside 「앱 권한 프리셋」, a tab called 「카메라 그룹」 reads as the other kind of grouping —
+   * zones, a tidy-up of the register — and that is the exact misreading this screen has been
+   * corrected for twice: the cards described geography while the thing they are for is granting.
+   * The word was already chosen once (`peopleTabGroupsFor`: 「권한용 묶음」) and lost when the tab
+   * descriptions came off on 2026-09-22. It belongs in the label, not in a line under it.
+   */
+  { id: "groups", half: "grants", label: { en: "Camera permission groups", ko: "카메라 권한 그룹" } },
 ];
 
 /** Which rail row this page is standing under. See the note on the tab strip. */
