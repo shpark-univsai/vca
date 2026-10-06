@@ -15,6 +15,7 @@ import { useApiData } from "@/hooks/useApiData";
 import { getDashboardStats, getDevices, getDistricts } from "@/lib/api/dashboard";
 
 import { useLanguage } from "@/lib/i18n";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 import { SegmentedControl } from "./shared/SegmentedControl";
 import { RADIUS } from "./shared/controls";
 
@@ -797,6 +798,8 @@ function hopCameraKey(hop: TrackingHop): string {
  * carried on to Jurong East" belongs.
  */
 function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null, handling, onAcknowledge }: { event: LiveEvent; isSelected: boolean; onClick: () => void; districtHopFilter?: string | null; handling?: DetectionHandling; onAcknowledge: () => void }) {
+  /* complianceConfig.detectionHandling — see its note. */
+  const handlingEnabled = getComplianceConfig().detectionHandling;
   const photoUrl = getFacePhoto(event.id);
   // event.path is stored oldest-first, but the most-recently-seen camera is what an operator
   // cares about first — reverse once here so both the collapsed route line and the expanded
@@ -937,9 +940,11 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
           {/* The handling slot sits on the chevron's line rather than under it: a third stacked
               item would push the right column taller than the row's own 54px photo. */}
           <div style={{ display:"flex", alignItems:"center", gap:"6px", minHeight:"22px" }}>
-            {handling
+            {/* Both halves behind complianceConfig's detectionHandling: the mark reads a row the
+                app cannot write today, and the 22px target writes one. */}
+            {handlingEnabled && (handling
               ? <HandlingMark handling={handling} />
-              : (isHovered || isFocused) && <AckButton onAck={onAcknowledge} />}
+              : (isHovered || isFocused) && <AckButton onAck={onAcknowledge} />)}
             <ChevronDownIcon rotated={isSelected} />
           </div>
         </div>
@@ -1001,6 +1006,8 @@ function TrackingEventRow({ event, isSelected, onClick, districtHopFilter = null
 }
 
 function VipEventRow({ event, isSelected, photoUrl, onClick, locationFilter, handling, onAcknowledge }: { event: LiveEvent; isSelected: boolean; photoUrl: string; onClick: () => void; locationFilter?: string | null; handling?: DetectionHandling; onAcknowledge: () => void }) {
+  /* complianceConfig.detectionHandling — see its note. */
+  const handlingEnabled = getComplianceConfig().detectionHandling;
   // Already scoped to one location (the "Live Analytics · Tampines" header above says so) —
   // repeating that same location on every row just to append the camera label pushed long labels
   // (e.g. "CAM-SIM-513...") into ellipsis. Only the camera name is new information here.
@@ -1055,9 +1062,9 @@ function VipEventRow({ event, isSelected, photoUrl, onClick, locationFilter, han
           while nobody has touched it — a mark on every row would have no glance value left. */}
       <div style={{ marginLeft:"8px", flexShrink:0, alignSelf:"flex-start", marginTop:"10px", display:"flex", flexDirection:"column", alignItems:"flex-end", gap:"6px", minHeight:"38px" }}>
         <VipBadge />
-        {handling
+        {handlingEnabled && (handling
           ? <HandlingMark handling={handling} />
-          : (isHovered || isFocused) && <AckButton onAck={onAcknowledge} />}
+          : (isHovered || isFocused) && <AckButton onAck={onAcknowledge} />)}
       </div>
     </div>
   );
@@ -1463,6 +1470,8 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
 
   // Counted over the list the other filters already narrowed, so the figure answers "how many
   // are left in what I am looking at" rather than site-wide — the pill sits in that filter row.
+  /* complianceConfig.detectionHandling — see its note. */
+  const handlingEnabled = getComplianceConfig().detectionHandling;
   const unhandled = filtered.filter(e => !handlingFor(detectionHandlings, e.id));
   const visible = unhandledOnly ? unhandled : filtered;
 
@@ -1563,7 +1572,7 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
               </button>
             );
           })}
-          <button
+          {handlingEnabled && <button
             onClick={() => { setUnhandledOnly(v => !v); setPage(1); }}
             aria-pressed={unhandledOnly}
             style={{
@@ -1577,7 +1586,7 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
             }}>
             {t.handling.unhandled}
             <span style={{ fontWeight:700, color: unhandledOnly ? "white" : "var(--gray-900)" }}>{unhandled.length}</span>
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -1611,7 +1620,9 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
                   row, directly under the row for a VIP one. Rendered here rather than inside the
                   rows so it is outside their click target: the row selects the event on the map,
                   and nothing in here should move the map. */}
-              {isSelected && <HandlingStrip event={event} handling={handling} />}
+              {/* Behind complianceConfig's detectionHandling — see its note (owner, 2026-10-06).
+                  The row itself, its selection and everything else here are untouched. */}
+              {isSelected && handlingEnabled && <HandlingStrip event={event} handling={handling} />}
               {i < paginated.length - 1 && <div style={{ height:"1px", backgroundColor:"var(--gray-200)", margin:"0 16px" }} />}
             </div>
           );

@@ -155,6 +155,14 @@ export interface ComplianceConfig {
    * who and when to anyone who asks later.
    */
   detectionJudgement: boolean;
+  /**
+   * Whether an operator can mark a detection seen, assign it, or close it out with a note.
+   *
+   * The three states are the shift-handover answer to 「이건 누가 봤나」 and the only source the
+   * Portal's 처리 기록 has. They need the same thing the verdict above needs — a server, so the
+   * row outlives the tab and carries who and when. Off until then; see the default's note.
+   */
+  detectionHandling: boolean;
 }
 
 /**
@@ -266,5 +274,28 @@ export function getComplianceConfig(): ComplianceConfig {
      * no way to record one those branches simply never render.
      */
     detectionJudgement: false,
+    /**
+     * Off, on the same ground as `detectionJudgement` above and by the same owner decision
+     * (2026-10-06: 서버가 처리 기록을 들 때까지 이 버튼도 끈다 — 판단 기능과 같은 기준을 적용).
+     *
+     * The asymmetry was the argument. Handling rows live in the store exactly as judgements do, so
+     * a refresh forgets them too — and this one costs the operator MORE to produce: closing a
+     * detection requires a note saying what was done, and all it returns is a tick that does not
+     * survive the page. Worse, 「다시 열기」 deletes the closed row outright, note and all, with no
+     * trace of who reopened it. One of the two features had to move; the owner moved this one to
+     * meet the other.
+     *
+     * WHAT THIS HIDES is the write and its marks: the handling strip under an event row in the
+     * dashboard, the 22px acknowledge target on the row itself, the 「미처리」 filter (with nothing
+     * able to be handled, every event is unhandled and the filter narrows to the whole list), and
+     * the handling block in 베스트 프레임's detection popup. The Portal's 처리 기록 tab is NOT
+     * hidden — it reads the seeded rows, and the register existing before the app writes to it is
+     * how this product has deliberately pulled every other server contract into being.
+     *
+     * Turning it on takes a server that accepts a handling state and orders the writes — the same
+     * missing endpoint, and `setDetectionHandling`'s own note already says the actor must come
+     * from the session rather than the body.
+     */
+    detectionHandling: false,
   };
 }

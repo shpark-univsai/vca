@@ -3,10 +3,12 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { Search } from "lucide-react";
 import { useVcaStore, useActiveProjectId, useProjectCameras, holdsAppAction, handlingFor, type Camera as StoreCamera, type UploadedMedia, type DetectionHandling } from "@/lib/vcaStore";
+import { getComplianceConfig } from "@/lib/complianceConfig";
 import { formatTimeAgo } from "@/lib/mockData";
 import { runStateOf } from "@/lib/realtime/cameraStatus";
 import BestFrameDetailPage, { DET_COLOR } from "./BestFrameDetailPage";
 import ScoreBadge from "./shared/ScoreBadge";
+import { RADIUS } from "./shared/controls";
 import { useToast } from "./Toast";
 import type { DetType, MonitorState, Camera, Detection, CamData, HUDState } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -76,8 +78,19 @@ const T = {
      * at it, closing claims somebody dealt with it, and neither says anything about the face.
      */
     handling: {
-      acknowledge: "Acknowledge",
-      closeOut: "Close…",
+      /* 「Seen」 rather than 「Acknowledge」: shorter, and it claims exactly what pressing it
+         claims — somebody looked. Acknowledge is the state the Portal prints; the button is the
+         act (owner, 2026-10-06: 영문 단어도 더 명확하고 짧은걸로). */
+      acknowledge: "Seen",
+      /*
+       * 「Close out…」, not 「Close…」 — the owner could not tell what the button did, and the
+       * reason was in this file already: `Close` is the label on the dismiss ✕ six lines up, so a
+       * button that commits a closure shared a word with one that just puts the popup away. The
+       * confirm step had already been given the longer name for that exact reason; the button had
+       * not. The ellipsis stays and now has something to mean: a note is required, so pressing it
+       * asks before anything is recorded.
+       */
+      closeOut: "Close out…",
       /**
        * NAMES WHAT IS BEING CLOSED, because "Close" is already taken on this screen — it is the
        * label on the dismiss X (`close` above), and a button that commits a closure must not share
@@ -653,7 +666,7 @@ function CameraCard({
             style={{
               position:"absolute", top:"50%", left:"50%", transform:"translate(-50%, -50%)", zIndex:20,
               display:"flex", alignItems:"center", gap:"6px",
-              padding:"10px 20px", borderRadius:"12px", border:"1px solid rgba(255,255,255,0.15)",
+              padding:"10px 20px", borderRadius:RADIUS.control, border:"1px solid rgba(255,255,255,0.15)",
               backgroundColor:"var(--scrim-media)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
               color:"white", fontSize:"13px", fontWeight:700,
               // --shadow-raised, not a fourth literal. It floats off the feed by a hair, which
@@ -764,7 +777,7 @@ function CameraCard({
                   onHeaderArrowClick?.();
                 }
               }) : undefined}
-              style={{ display:"flex", alignItems:"center", gap:"4px", borderRadius:"4px", cursor: dets.length > 0 ? "pointer" : "default" }}
+              style={{ display:"flex", alignItems:"center", gap:"4px", borderRadius:RADIUS.inner, cursor: dets.length > 0 ? "pointer" : "default" }}
             >
             <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.targetCount(dets.length)}</span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -794,11 +807,14 @@ function CameraCard({
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
               >
                 {/* The crop's place, held empty, with the type dot still on its corner — the
-                    rounded-square (8px, per Figma) is the shape the crop will come back in.
+                    rounded-square is the shape the crop will come back in. RADIUS.inner rather
+                    than the 8px Figma drew it at: a picture sitting inside something clickable
+                    takes the step in from it, and this screen was drawing the same empty crop at
+                    6, 8 and 10px depending on which panel it was in.
                     HANDOFF NOTE: one image per detection brings it back — the crop this row's
                     detection was matched on, carried on the detection by id. */}
                 <div style={{ position:"relative", flexShrink:0, width:"42px", height:"42px" }}>
-                  <div style={{ width:"42px", height:"42px", borderRadius:"8px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", boxSizing:"border-box" }} />
+                  <div style={{ width:"42px", height:"42px", borderRadius:RADIUS.inner, border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", boxSizing:"border-box" }} />
                   <div style={{
                     position:"absolute", top:"-2px", right:"-3px", width:"10px", height:"10px", borderRadius:"50%", border:"1px solid white",
                     backgroundColor: DET_COLOR[det.type],
@@ -913,7 +929,7 @@ function HandlingBlock({ det, camId }: { det: Detection; camId: string }) {
             onChange={e => setNote(e.target.value)}
             placeholder={t.notePlaceholder}
             style={{
-              width:"100%", resize:"none", padding:"8px 10px", borderRadius:"10px",
+              width:"100%", resize:"none", padding:"8px 10px", borderRadius:RADIUS.control,
               border:"1px solid var(--line-control)", outline:"none", boxSizing:"border-box",
               fontSize:"12px", fontWeight:500, color:"var(--gray-900)", fontFamily:"inherit", lineHeight:1.45,
             }}
@@ -954,7 +970,7 @@ function HandlingBlock({ det, camId }: { det: Detection; camId: string }) {
 
 /** Smaller and quieter than the HUD's two main buttons: these are a record, not the errand. */
 const HUD_HANDLING_BTN: React.CSSProperties = {
-  padding:"7px 12px", borderRadius:"10px", cursor:"pointer",
+  padding:"7px 12px", borderRadius:RADIUS.control, cursor:"pointer",
   border:"1px solid var(--line-control)", backgroundColor:"white",
   fontSize:"12px", fontWeight:600, color:"var(--gray-700)", whiteSpace:"nowrap",
 };
@@ -975,7 +991,12 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
   return (
     <div onClick={e => e.stopPropagation()} style={{
       position:"fixed", zIndex:200, left:hud.x, top:hud.y,
-      width:"320px", backgroundColor:"white", borderRadius:"24px",
+      // A POPUP, NOT A MODAL — RADIUS.panel. This was 24px, the only 24px surface in the app,
+      // sitting between the 12px popovers and the 16px modals and belonging to neither. What it
+      // is anchored to settles it: it opens at the detection's own x/y, closes on Escape or a
+      // click outside, and dims nothing behind it. That is a dropdown's behaviour, so it takes
+      // a dropdown's shape.
+      width:"320px", backgroundColor:"white", borderRadius:RADIUS.panel,
       boxShadow:"-3px 3px 8px rgba(24, 17, 39,0.12)", padding:"20px",
       display:"flex", flexDirection:"column", gap:"16px",
     }}>
@@ -1007,24 +1028,27 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
         </button>
       </div>
 
-      {/* Photo comparison */}
-      <div style={{ display:"flex", gap:"12px", backgroundColor:"var(--gray-50)", borderRadius:"16px", padding:"12px" }}>
+      {/* Photo comparison. RADIUS.control for the grey block, RADIUS.inner for the pictures in
+          it: inside a 12px popup the card step would draw a child rounder than the thing holding
+          it, so the inset blocks take the step below the popup and the pictures the step below
+          that — 12 outside, then 8, then 6. */}
+      <div style={{ display:"flex", gap:"12px", backgroundColor:"var(--gray-50)", borderRadius:RADIUS.control, padding:"12px" }}>
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"8px", width:"96px", flexShrink:0 }}>
           {/* Empty, not a stock face. Both sides of this comparison were the SAME constant —
               AVATAR[0] for people, CAR_IMG for vehicles — captioned 실시간 감지 and 등록 DB with a
               match percentage between them. The panel was inviting the operator to confirm an
               identity by eye against a picture of somebody else. See the long note in
               BestFrameDetailPage, which had the same pair. */}
-          <div style={{ width:"100%", aspectRatio: det.type === "Vehicle" ? "1/1" : "77/177", borderRadius:"8px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)" }} />
+          <div style={{ width:"100%", aspectRatio: det.type === "Vehicle" ? "1/1" : "77/177", borderRadius:RADIUS.inner, border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)" }} />
           <span title={t.liveSnapshotHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", cursor:"help" }}>{t.liveSnapshot}</span>
         </div>
         <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"8px", flex:1, minWidth:0 }}>
           {isUnknown ? (
-            <div style={{ width:"100%", aspectRatio:"1/1", borderRadius:"10px", border:"2px dashed var(--warning-500)", backgroundColor:"var(--warning-100)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ width:"100%", aspectRatio:"1/1", borderRadius:RADIUS.inner, border:"2px dashed var(--warning-500)", backgroundColor:"var(--warning-100)", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <span title={t.noDbMatchHint} style={{ fontSize:"10px", fontWeight:600, color:"var(--warning-500)", textAlign:"center", cursor:"help" }}>{t.noDbMatch}</span>
             </div>
           ) : (
-            <div style={{ width:"100%", aspectRatio:"1/1", borderRadius:"10px", border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", display:"flex", alignItems:"center", justifyContent:"center", padding:"10px" }}>
+            <div style={{ width:"100%", aspectRatio:"1/1", borderRadius:RADIUS.inner, border:"1px dashed var(--gray-300)", backgroundColor:"var(--gray-50)", display:"flex", alignItems:"center", justifyContent:"center", padding:"10px" }}>
               <p style={{ fontSize:"10px", color:"var(--gray-400)", textAlign:"center", lineHeight:1.5, margin:0 }}>{t.photosNotWired}</p>
             </div>
           )}
@@ -1044,7 +1068,7 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
       </div>
 
       {/* Attributes / details */}
-      <div style={{ backgroundColor:"var(--gray-50)", borderRadius:"16px", padding:"14px 16px", display:"flex", flexDirection:"column", gap:"8px" }}>
+      <div style={{ backgroundColor:"var(--gray-50)", borderRadius:RADIUS.control, padding:"14px 16px", display:"flex", flexDirection:"column", gap:"8px" }}>
         {attributes.length > 0 ? attributes.map((attr, i) => (
           <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)" }}>{t.detail(i + 1)}</span>
@@ -1066,18 +1090,21 @@ function DetectionHUD({ hud, onClose, onAnalyze, onTrackOnMap }: { hud: HUDState
 
       {/* What the shift did about it — a rule above it, because it answers a different question
           from everything over the rule. */}
-      <HandlingBlock det={det} camId={hud.camId} />
+      {/* Behind the same switch as the verdict buttons — see complianceConfig's detectionHandling
+          (owner, 2026-10-06). Nothing else in this popup changes; with the flag on, the block
+          returns exactly where it was. */}
+      {getComplianceConfig().detectionHandling && <HandlingBlock det={det} camId={hud.camId} />}
 
       {/* Actions */}
       <div style={{ display:"flex", gap:"8px" }}>
-        {onTrackOnMap && <button onClick={onTrackOnMap} className={HOVER_QUIET} style={{ flex:1, padding:"12px 0", borderRadius:"12px", border:"1px solid var(--gray-900)", backgroundColor:"white", color:"var(--gray-900)", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
+        {onTrackOnMap && <button onClick={onTrackOnMap} className={HOVER_QUIET} style={{ flex:1, padding:"12px 0", borderRadius:RADIUS.control, border:"1px solid var(--gray-900)", backgroundColor:"white", color:"var(--gray-900)", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M16.6667 8.33333C16.6667 13.3333 10 18.3333 10 18.3333C10 18.3333 3.33333 13.3333 3.33333 8.33333C3.33333 6.56522 4.03571 4.86953 5.28596 3.61929C6.5362 2.36905 8.23189 1.66667 10 1.66667C11.7681 1.66667 13.4638 2.36905 14.714 3.61929C15.9643 4.86953 16.6667 6.56522 16.6667 8.33333Z" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M10 10.8333C11.3807 10.8333 12.5 9.71404 12.5 8.33333C12.5 6.95262 11.3807 5.83333 10 5.83333C8.61929 5.83333 7.5 6.95262 7.5 8.33333C7.5 9.71404 8.61929 10.8333 10 10.8333Z" stroke="var(--gray-900)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           {t.trackOnMap}
         </button>}
-        <button onClick={onAnalyze} className="portal-btn-primary" style={{ flex:1, padding:"12px 0", borderRadius:"12px", border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
+        <button onClick={onAnalyze} className="portal-btn-primary" style={{ flex:1, padding:"12px 0", borderRadius:RADIUS.control, border:"none", backgroundColor:"var(--gray-900)", color:"white", fontSize:"13px", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M15.2701 1.77009L16.2301 2.73009C16.3163 2.81396 16.3848 2.91425 16.4315 3.02503C16.4783 3.13581 16.5024 3.25484 16.5024 3.37509C16.5024 3.49535 16.4783 3.61438 16.4315 3.72516C16.3848 3.83594 16.3163 3.93623 16.2301 4.02009L4.02009 16.2301C3.93623 16.3163 3.83594 16.3848 3.72516 16.4315C3.61438 16.4783 3.49535 16.5024 3.37509 16.5024C3.25484 16.5024 3.13581 16.4783 3.02503 16.4315C2.91425 16.3848 2.81396 16.3163 2.73009 16.2301L1.77009 15.2701C1.68483 15.1857 1.61715 15.0853 1.57095 14.9745C1.52476 14.8638 1.50098 14.7451 1.50098 14.6251C1.50098 14.5051 1.52476 14.3864 1.57095 14.2757C1.61715 14.1649 1.68483 14.0645 1.77009 13.9801L13.9801 1.77009C14.0645 1.68483 14.1649 1.61715 14.2757 1.57095C14.3864 1.52476 14.5051 1.50098 14.6251 1.50098C14.7451 1.50098 14.8638 1.52476 14.9745 1.57095C15.0853 1.61715 15.1857 1.68483 15.2701 1.77009Z" stroke="white" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M10.5 5.25L12.75 7.5" stroke="white" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1148,7 +1175,7 @@ function CameraItem({ cam, onToggle, type = "camera", disabled = false, activity
       onClick={onToggle}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ display:"flex", alignItems:"center", gap:"8px", padding:"10px 12px", borderRadius:"10px", width:"100%", border:"none", cursor: isAlert ? "default" : "pointer", backgroundColor: isChecked ? "var(--gray-100)" : hovered && !isAlert && !isCapped ? "var(--gray-50)" : "transparent", flexShrink:0, opacity: isAlert || isCapped ? 0.4 : 1 }}
+      style={{ display:"flex", alignItems:"center", gap:"8px", padding:"10px 12px", borderRadius:RADIUS.control, width:"100%", border:"none", cursor: isAlert ? "default" : "pointer", backgroundColor: isChecked ? "var(--gray-100)" : hovered && !isAlert && !isCapped ? "var(--gray-50)" : "transparent", flexShrink:0, opacity: isAlert || isCapped ? 0.4 : 1 }}
     >
       {/* Video/Image rows navigate straight to their analysis screen on click — there's nothing
           for a checkbox to toggle there, so it's replaced with a plain spacer to keep alignment. */}
@@ -1195,7 +1222,7 @@ function SidebarSection({ label, count, badge, expanded, onToggle, activeLabel }
       <span style={{ flex:1, fontSize:"14px", fontWeight:800, color:"var(--gray-800)", letterSpacing:"-0.28px", whiteSpace:"nowrap", textAlign:"left" }}>{label}</span>
       {count !== undefined && <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", flexShrink:0 }}>{activeLabel ? activeLabel(count) : count}</span>}
       {badge !== undefined && (
-        <div style={{ backgroundColor:"var(--gray-100)", borderRadius:"999px", minWidth:"18px", height:"18px", padding:"0 4px", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+        <div style={{ backgroundColor:"var(--gray-100)", borderRadius:RADIUS.pill, minWidth:"18px", height:"18px", padding:"0 4px", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-700)" }}>{badge}</span>
         </div>
       )}
@@ -1215,7 +1242,7 @@ function CollapsedIcon({ type, badge, active=false }: { type:"camera"|"video"|"i
   const hasBg = type === "search" || type === "camera" || active;
   return (
     <div style={{ position:"relative" }}>
-      <div style={{ width:"40px", height:"40px", borderRadius:"10px", backgroundColor: hasBg ? "var(--gray-100)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ width:"40px", height:"40px", borderRadius:RADIUS.control, backgroundColor: hasBg ? "var(--gray-100)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
         {type === "search" && (
           <svg width="18" height="18" viewBox="6.5 6.5 16.5 16.5" fill="none">
             <path d="M21.7501 21.7501L18.4951 18.4951M20.25 14.25C20.25 17.5637 17.5637 20.25 14.25 20.25C10.9363 20.25 8.25 17.5637 8.25 14.25C8.25 10.9363 10.9363 8.25 14.25 8.25C17.5637 8.25 20.25 10.9363 20.25 14.25Z" stroke="var(--gray-500)" strokeWidth="1" strokeLinecap="round"/>
@@ -1240,7 +1267,7 @@ function CollapsedIcon({ type, badge, active=false }: { type:"camera"|"video"|"i
         )}
       </div>
       {badge !== undefined && (
-        <div style={{ position:"absolute", top:"-4px", right:"-4px", backgroundColor: active ? "var(--gray-900)" : "var(--gray-400)", borderRadius:"999px", minWidth:"16px", height:"16px", padding:"0 3px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <div style={{ position:"absolute", top:"-4px", right:"-4px", backgroundColor: active ? "var(--gray-900)" : "var(--gray-400)", borderRadius:RADIUS.pill, minWidth:"16px", height:"16px", padding:"0 3px", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <span style={{ fontSize:"10px", fontWeight:600, color:"white", lineHeight:"16px" }}>{badge}</span>
         </div>
       )}
@@ -1733,7 +1760,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
             <p style={{ fontSize:"18px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.36px" }}>{t.liveCamera}</p>
           </div>
           <div style={{ padding:"0 12px 10px" }}>
-            <div style={{ display:"flex", alignItems:"center", backgroundColor:"var(--gray-100)", borderRadius:"8px", height:"36px", padding:"0 14px", gap:"8px" }}>
+            <div style={{ display:"flex", alignItems:"center", backgroundColor:"var(--gray-100)", borderRadius:RADIUS.control, height:"36px", padding:"0 14px", gap:"8px" }}>
               <input
                 ref={camSearchInputRef}
                 value={camSearch}
@@ -1748,8 +1775,11 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
             {CAM_TYPE_FILTERS.map(id => {
               const active = camTypeFilter === id;
               return (
+                // RADIUS.pill, the case the scale keeps that shape for: a label-only chip with
+                // no set height, whose width follows its text, switching one condition on. The
+                // search field above it has a height in a row, so that one is RADIUS.control.
                 <button key={id} onClick={() => setCamTypeFilter(id)} className={active ? undefined : HOVER_QUIET} style={{
-                  padding:"6px 14px", borderRadius:"999px", cursor:"pointer",
+                  padding:"6px 14px", borderRadius:RADIUS.pill, cursor:"pointer",
                   border: active ? "1px solid var(--gray-700)" : "1px solid var(--gray-300)",
                   backgroundColor: active ? "var(--gray-100)" : "white",
                   color:"var(--gray-700)", fontSize:"12px", fontWeight: active ? 700 : 600,
@@ -1842,7 +1872,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
               if (f.id === "All") {
                 return (
                   <button key="All" onClick={() => setFilterType("All")} className={active ? undefined : HOVER_QUIET} style={{
-                    padding:"6px 16px", borderRadius:"999px", cursor:"pointer",
+                    padding:"6px 16px", borderRadius:RADIUS.pill, cursor:"pointer",
                     border: active ? "1px solid var(--gray-900)" : "1px solid var(--gray-300)",
                     backgroundColor: active ? "var(--gray-900)" : "white",
                     color: active ? "white" : "var(--gray-700)",
@@ -1854,7 +1884,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
               return (
                 <button key={f.id} onClick={() => setFilterType(f.id)} className={active ? undefined : HOVER_QUIET} style={{
                   display:"flex", alignItems:"center", gap:"6px",
-                  padding:"6px 12px", borderRadius:"999px", cursor:"pointer",
+                  padding:"6px 12px", borderRadius:RADIUS.pill, cursor:"pointer",
                   border: active ? `1px solid ${c}` : "1px solid var(--gray-300)",
                   backgroundColor: active ? c : "white",
                   color: active ? "white" : "var(--gray-700)",
