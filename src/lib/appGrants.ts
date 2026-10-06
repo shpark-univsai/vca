@@ -76,8 +76,15 @@ export const APP_GRANT_LABELS = {
       bestframeVip: "Best Frame \u00b7 VIP",
       bestframeVehicle: "Best Frame \u00b7 vehicles",
       bestframeUnknown: "Best Frame \u00b7 strangers",
-      history: "Best Frame",
-      bestframeEnrolled: "Best Frame",
+      /* NOT just "Best Frame", twice. MEASURED on /mypage at 1440: the chip list printed 「Best
+         Frame」 ✓ and 「Best Frame」 — side by side, one granted and one not, with nothing to tell
+         the reader which of the two they were being refused. The grant tree gets away with the
+         bare names because a 「베스트 프레임」 caption sits over them; these three readers print
+         this table with no caption at all. The suffix is the pattern the siblings already use
+         (「Best Frame · VIP」, 「· vehicles」, 「· strangers」), so nothing new is invented and the
+         note below still holds — the place is still said on its own. */
+      history: "Best Frame \u00b7 past records",
+      bestframeEnrolled: "Best Frame \u00b7 enrolled photo",
       reid: "Data > Re-ID Analysis",
       reidSearch: "Search on Re-ID Analysis",
       redface: "Data > RedFace",
@@ -171,8 +178,8 @@ export const APP_GRANT_LABELS = {
       bestframeVip: "베스트 프레임 \u00b7 VIP",
       bestframeVehicle: "베스트 프레임 \u00b7 차량",
       bestframeUnknown: "베스트 프레임 \u00b7 모르는 사람",
-      history: "베스트 프레임",
-      bestframeEnrolled: "베스트 프레임",
+      history: "베스트 프레임 \u00b7 지난 기록",
+      bestframeEnrolled: "베스트 프레임 \u00b7 등록 사진",
       reid: "데이터 > Re-ID 분석",
       reidSearch: "Re-ID 분석에서 검색",
       redface: "데이터 > RedFace",

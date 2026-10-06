@@ -733,10 +733,33 @@ export default function MyPage() {
             <h1 style={{ margin: 0, fontSize: "26px", fontWeight: 800, color: "var(--gray-900)" }}>{t.myPage}</h1>
           </div>
 
-          {/* 3-column grid */}
-          <div style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
+          {/*
+            TWO COLUMNS, NOT THREE (owner, 2026-10-06).
+
+            This was three `flex: 1` siblings — not a grid, so there is no track count to change.
+            Three equal thirds meant the two short cards each left most of a 453px column empty:
+            beside a 768px Profile card, Security ended at 321px and System preferences at 287px,
+            so roughly 930px of column height below them was blank page.
+
+            Stacked in one column they come to 624px against a Profile that is now 652px — 28px of
+            dead space instead of 930. The ratio is 13:7 rather than halves because the chip grid
+            is what sets Profile's height: at a 688px half it wraps the grants onto 4 rows, at
+            894px onto 3, and 3 is as few as they go in either language. Past that the left column
+            only takes room away from the right for nothing, so this stops there — 482px for the
+            right column, near the 453px the two cards were drawn at.
+
+            minWidth on each is both the floor and the breakpoint: flex line-breaking measures an
+            item by its basis clamped to min-width, so 420 + 320 + 16 = 756 is the row width below
+            which the two wrap and stack full-width — a window of about 804px. A media query would
+            be the other way to say it, and this file has no stylesheet of its own to put one in.
+
+            The min(..., 100%) is not decoration. A flat 420px floor survives the wrap and then
+            outgrows the page: at 375px the Profile card measured 420px against a 327px column and
+            its right edge was cut off. Against the column itself the floor simply lifts.
+          */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "flex-start" }}>
             {/* Profile Information */}
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ flex: "13 1 0", minWidth: "min(420px, 100%)" }}>
               <Card>
                 <CardHeader icon={<UserCheckIcon />} title={t.profile} />
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "100%" }}>
@@ -808,8 +831,9 @@ export default function MyPage() {
               </Card>
             </div>
 
-            {/* Security & Access Control */}
-            <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Security & Access Control, then System Preferences — stacked in this column in the
+                order they used to read left to right. */}
+            <div style={{ flex: "7 1 0", minWidth: "min(320px, 100%)", display: "flex", flexDirection: "column", gap: "16px" }}>
               <Card>
                 <CardHeader icon={<ShieldIcon />} title={t.security} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
@@ -883,10 +907,8 @@ export default function MyPage() {
                   ))}
                 </div>
               </Card>
-            </div>
 
-            {/* System Preferences */}
-            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* System Preferences */}
               <Card>
                 <CardHeader icon={<SlidersIcon />} title={t.systemPreferences} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
