@@ -17,6 +17,7 @@ import { RADIUS } from "@/components/shared/controls";
 // to keep its own copy and it had already drifted: it said "실시간 관제" for a tab the app calls
 // 대시보드, so the person reading their own permissions went looking for a tab that is not there.
 import { APP_GRANT_LABELS } from "@/lib/appGrants";
+import { GRANT_TREE } from "@/components/portal/PortalShared";
 
 // See the per-file pattern note in lib/i18n.ts. SIGNED_IN_USER's role and team are not in here on
 // purpose — those are the customer's own words for their org chart, and translating them would put
@@ -48,6 +49,7 @@ const T = {
     myPage: "My page",
     myGrants: "What this account can open",
     myGrantsWho: "Granted per account. An administrator changes this in Portal, under Users & Permissions.",
+    myGrantsOff: (list: string) => `Not granted: ${list}`,
     myCameras: "Cameras you can see",
     myCamerasAll: "Every camera at this site",
     myCamerasSome: (n: number) => `${n} assigned to this account`,
@@ -105,6 +107,7 @@ const T = {
     myPage: "마이 페이지",
     myGrants: "이 계정이 열 수 있는 것",
     myGrantsWho: "계정마다 따로 지정됩니다. Portal의 사용자 및 권한에서 관리자가 바꿉니다.",
+    myGrantsOff: (list: string) => `받지 않은 것: ${list}`,
     myCameras: "보이는 카메라",
     myCamerasAll: "이 현장의 모든 카메라",
     myCamerasSome: (n: number) => `이 계정에 지정된 ${n}대`,
@@ -832,23 +835,58 @@ export default function MyPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
                   {/* No heading inside. The card's own title says it, and saying it twice 20px
                       apart is the thing this repo keeps deleting. */}
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                    {/*
-                      THE SAME SIX ROWS THE ADMINISTRATOR TICKED (owner, 2026-09-22: 권한을 준
-                      사람도 받은 사람도 헷갈릴 것 같아).
+                  {/*
+                    GROUPED BY SCREEN, NOT SEVENTEEN CHIPS IN A ROW (owner, 2026-10-06: 각 화면의
+                    기능들이 나열되어있는게 뭔가 한눈에 안들어오는데,, 표로 그려줘야하나..).
 
-                      This list was never migrated when the grant became six actions: it drew five
-                      SCREEN names plus two verb chips, so one grant printed different words in
-                      different counts on the two sides of it — the administrator ticked 「지난 기록
-                      열람」 and the person read 「베스트 프레임」, and 「시스템 현황」 appeared on
-                      neither. Now both sides render APP_ACTIONS through APP_GRANT_LABELS, whose
-                      titles are the words this app puts on its own tabs.
-                    */}
-                    {APP_ACTIONS.map(action => (
-                      <GrantChip key={action} label={APP_GRANT_LABELS[lang].actionName[action]}
-                        on={holdsAppAction(portalUsers, action)} />
-                    ))}
+                    NOT A TABLE. A table earns its columns when the same column means the same
+                    thing on every row; here there would be two — the screen, and what is on in it
+                    — which is a definition list wearing borders. What was missing was the
+                    grouping, not the grid.
+
+                    The flat list repeated the place in every chip: 「Best Frame」 six times,
+                    「Data > Live Monitoring」 three, 「Dashboard」 three. Saying the screen once and
+                    the grants beside it is the same information in a third of the words, and it
+                    is the shape the administrator already ticks — GRANT_TREE is the tree the
+                    permission panel draws, so the two sides of this grant now share a structure as
+                    well as a vocabulary.
+
+                    AND THE OFF ONES LEFT THE LIST. A card headed 「이 계정이 열 수 있는 것」 was
+                    printing a greyed 「— Best Frame · enrolled photo」 in the same stream as the
+                    things it can open. They go last, in one muted line, because knowing what you
+                    do NOT have is what you take to an administrator — but it is not an answer to
+                    this card's question and it should not be read as one.
+                  */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {GRANT_TREE.map(group => {
+                      const actionsOf = (row: typeof group.rows[number]) =>
+                        [row.action, ...(row.search ? [row.search] : []), ...(row.children ?? [])];
+                      const on = group.rows.flatMap(actionsOf).filter(a => holdsAppAction(portalUsers, a));
+                      if (on.length === 0) return null;
+                      return (
+                        <div key={group.caption} style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
+                          <span style={{ flexShrink: 0, width: "84px", fontSize: "11px", fontWeight: 700, color: "var(--gray-500)" }}>
+                            {APP_GRANT_LABELS[lang].groupName[group.caption]}
+                          </span>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", minWidth: 0 }}>
+                            {on.map(a => (
+                              <GrantChip key={a} on
+                                label={APP_GRANT_LABELS[lang].rowName[a] ?? APP_GRANT_LABELS[lang].actionName[a]} />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
+                  {(() => {
+                    const off = APP_ACTIONS.filter(a => !holdsAppAction(portalUsers, a));
+                    if (off.length === 0) return null;
+                    return (
+                      <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", lineHeight: 1.6 }}>
+                        {t.myGrantsOff(off.map(a => APP_GRANT_LABELS[lang].actionName[a]).join(" · "))}
+                      </span>
+                    );
+                  })()}
                   {/* Under the screen chips, because it answers the same question about a
                       different axis: those say WHICH SCREENS, this says WHICH CAMERAS. Both are
                       the administrator's to set, so the one sentence about who changes them
