@@ -230,12 +230,9 @@ const T = {
     emailPanelTitle: "Change email address",
     emailPanelCurrent: "Current address",
     emailPanelNew: "New address",
-    /* Three paragraphs of policy stood here (owner, 2026-10-06: 설명이 너무 길어). Two of them
-       explained to an owner, mid-change, why owners are the ones who change it — a rule the reader
-       is already inside. What is left is what the screen cannot show: where the address is used,
-       what happens to rows already written, and when it takes effect. */
-    emailPanelWhy: "This address is the login, and a password reset goes to it.",
-    emailPanelLog: "Search-log rows already written keep the old address.",
+    /* Three paragraphs of policy stood here, then three short lines, then one (owner, 2026-10-06:
+       설명이 너무 길어 → 이게 꼭 필요한 설명인가). The survivor is the only sentence that changes
+       what the reader does next. */
     emailPanelNoVerify: "No confirmation can be sent from here, so it applies at once.",
     emailPanelPending: "The new address has to answer first. Until it does, this account signs in with the current one.",
     emailPanelRepeat: "New address again",
@@ -722,8 +719,6 @@ const T = {
     emailPanelTitle: "이메일 변경",
     emailPanelCurrent: "현재 주소",
     emailPanelNew: "새 주소",
-    emailPanelWhy: "이 주소로 로그인하고, 비밀번호 재설정도 여기로 갑니다.",
-    emailPanelLog: "이미 남은 조회 기록은 옛 주소 그대로입니다.",
     emailPanelNoVerify: "여기선 확인 메일을 보낼 수 없어 바로 적용됩니다.",
     emailPanelPending: "새 주소가 답해야 바뀝니다. 그 전까지는 지금 주소로 로그인합니다.",
     emailPanelRepeat: "새 주소 다시 입력",
@@ -2122,18 +2117,22 @@ function ChangeEmailPanel({ user, mailDomain, mailAvailable, onClose, onBack }: 
         {/* What the screen cannot show: where the address is used, what happens to rows already
             written, and when it takes effect. The last line is the one that changes with the
             installation, so it is the one that carries colour. */}
-        {/* ONE BLOCK, 4px apart (owner, 2026-10-06: 사이간격이 너무 떨어져있어서 디자인이
-            촘촘하지 않아보여). They were children of the panel's own 16px column, the same gap that
-            separates 현재 주소 from 새 주소 — so three lines of one note were spaced like three
-            sections, and the note read as loose text rather than as a thing. The 16px now sits
-            between the fields and this block, which is the boundary that is real. */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.emailPanelWhy}</p>
-          <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.6 }}>{t.emailPanelLog}</p>
-          <p style={{ fontSize: "11px", color: mailAvailable ? "var(--gray-600)" : "var(--warning-500)", lineHeight: 1.6 }}>
-            {mailAvailable ? t.emailPanelPending : t.emailPanelNoVerify}
-          </p>
-        </div>
+        {/*
+          ONE LINE LEFT (owner, 2026-10-06: 이게 꼭 필요한 설명인가).
+
+          Three stood here and two were answering questions the reader is not asking. 「이 주소가
+          로그인이다」 — this panel opens from the 로그인 수단 group, which has already said that.
+          「이미 남은 조회 기록은 옛 주소 그대로」 — true, invisible, and it changes nothing about
+          whether to proceed; the place that fact has to survive is the record, and the record
+          carries both addresses already.
+
+          What is left is the only one the reader cannot see and can act on: the old address keeps
+          working until the new one answers. Without it an owner presses 보내기 and tells the person
+          their address has changed, which it has not.
+        */}
+        <p style={{ fontSize: "11px", color: mailAvailable ? "var(--gray-600)" : "var(--warning-500)", lineHeight: 1.6 }}>
+          {mailAvailable ? t.emailPanelPending : t.emailPanelNoVerify}
+        </p>
       </div>
     </Drawer>
   );
