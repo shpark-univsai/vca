@@ -9,6 +9,7 @@ import { INVITE_TOKEN_TTL_DAYS, isPasswordFormatValid, PASSWORD_RULE_TEXT, TEMP_
 import { isCodeExpired } from "@/lib/staffRoster";
 import { getAuthConfig } from "@/lib/authConfig";
 import { useLanguage } from "@/lib/i18n";
+import { RADIUS } from "@/components/shared/controls";
 
 // See the per-file pattern note in lib/i18n.ts.
 const T = {
@@ -253,7 +254,7 @@ function PasswordSetupForm() {
               </p>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%", padding: "20px", borderRadius: "12px", backgroundColor: "var(--gray-50)" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%", padding: "20px", borderRadius: RADIUS.panel, backgroundColor: "var(--gray-50)" }}>
               <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{t.whoToContact}</p>
               <p style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>
                 {authConfig.supportContact ?? t.securityTeam}
@@ -264,7 +265,7 @@ function PasswordSetupForm() {
               <button
                 onClick={() => router.push("/login")}
                 style={{
-                  height: "52px", width: "100%", border: "none", borderRadius: "8px",
+                  height: "52px", width: "100%", border: "none", borderRadius: RADIUS.control,
                   backgroundColor: "var(--primary-400)", color: "white",
                   fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px", cursor: "pointer",
                 }}
@@ -322,7 +323,7 @@ function PasswordSetupForm() {
               {/* New password */}
               <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                 <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.newPassword}</label>
-                <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: RADIUS.control }}>
                   <input
                     type={showNew ? "text" : "password"}
                     value={newPassword}
@@ -344,7 +345,7 @@ function PasswordSetupForm() {
               {/* Confirm password */}
               <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                 <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.confirmPassword}</label>
-                <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: RADIUS.control }}>
                   <input
                     type={showConfirm ? "text" : "password"}
                     value={confirmPassword}
@@ -383,7 +384,7 @@ function PasswordSetupForm() {
               onClick={handleSubmit}
               disabled={!canSubmit}
               style={{
-                height: "52px", width: "100%", border: "none", borderRadius: "8px",
+                height: "52px", width: "100%", border: "none", borderRadius: RADIUS.control,
                 backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-100)",
                 color: canSubmit ? "white" : "var(--gray-400)",
                 fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px",

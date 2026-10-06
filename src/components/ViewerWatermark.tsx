@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { currentPortalUser, useVcaStore, useActiveProjectId, SIGNED_IN_USER } from "@/lib/vcaStore";
 import { dateKeyIn, clockMinutesIn, siteTimeZone } from "@/lib/time";
+import { RADIUS } from "./shared/controls";
 
 /**
  * THE MINUTE HAND, AS AN EXTERNAL SYSTEM RATHER THAN A STATE HOOK.
@@ -109,7 +110,10 @@ export default function ViewerWatermark({ corner = "bottom-left" }: {
       aria-hidden="true"
       style={{
         position: "absolute", ...place, zIndex: 5, pointerEvents: "none",
-        padding: "3px 7px", borderRadius: "6px",
+        padding: "3px 7px",
+        /* The smallest step on the scale: this is a plate laid INSIDE a video frame, not a control
+           sitting in a row — see shared/controls. */
+        borderRadius: RADIUS.inner,
         /* Its own dark plate rather than plain text: a frame can be a night scene or a white wall,
            and text alone disappears into one of the two. The plate is the scrim token, so it reads
            as chrome over media the way the map's own overlays do. */

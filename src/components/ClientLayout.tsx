@@ -25,6 +25,7 @@ import {
   type AppScreen, type Camera,
 } from "@/lib/vcaStore";
 import { useLanguage } from "@/lib/i18n";
+import { RADIUS } from "./shared/controls";
 
 /**
  * See the per-file pattern note in lib/i18n.ts.
@@ -346,13 +347,13 @@ function ScreenRefusedNotice({ screen, moved, onDismiss }: { screen: string; mov
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onDismiss(); }}
       style={{ position: "fixed", inset: 0, backgroundColor: "var(--scrim)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "16px", maxWidth: "380px", width: "100%", padding: "22px", boxShadow: "var(--shadow-modal)" }}>
+      <div style={{ backgroundColor: "white", borderRadius: RADIUS.card, maxWidth: "380px", width: "100%", padding: "22px", boxShadow: "var(--shadow-modal)" }}>
         <p style={{ fontSize: "15px", fontWeight: 800, color: "var(--gray-900)" }}>{t.title}</p>
         <p style={{ fontSize: "13px", color: "var(--gray-500)", lineHeight: 1.6, marginTop: "8px" }}>{t.body(screen)}</p>
         {moved && <p style={{ fontSize: "12px", color: "var(--gray-400)", lineHeight: 1.6, marginTop: "6px" }}>{t.moved}</p>}
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "18px" }}>
           <button onClick={onDismiss}
-            style={{ padding: "9px 18px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ padding: "9px 18px", borderRadius: RADIUS.control, border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {t.ok}
           </button>
         </div>
@@ -773,7 +774,10 @@ export default function ClientLayout() {
                     // asks for. The hairline is the token it always was; the 74% white wants a
                     // --glass-surface added to globals.css, which is a shared file and a design
                     // call, so it is reported rather than invented here.
-                    border: "1px solid var(--gray-200)", borderRadius: "999px", padding: "8px 14px",
+                    // Not a pill. The pill step is for a label-only chip that switches one
+                    // condition on and off; this is an icon-and-label button that OPENS the panel
+                    // above, and a button is the control step wherever it floats (shared/controls).
+                    border: "1px solid var(--gray-200)", borderRadius: RADIUS.control, padding: "8px 14px",
                     boxShadow: "var(--shadow-popover)", cursor: "pointer",
                   }}
                 >

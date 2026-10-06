@@ -12,6 +12,7 @@ import { EyeIcon, EyeOffIcon, ErrorCircleIcon } from "@/components/AuthIcons";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT } from "@/lib/password";
 import { useLanguage } from "@/lib/i18n";
+import { RADIUS } from "@/components/shared/controls";
 // One source for the seven names, shared with the Portal screens that grant them. This page used
 // to keep its own copy and it had already drifted: it said "실시간 관제" for a tab the app calls
 // 대시보드, so the person reading their own permissions went looking for a tab that is not there.
@@ -218,7 +219,7 @@ function ChevronDownIcon() {
 function GrantChip({ label, on }: { label: string; on: boolean }) {
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", gap: "5px", padding: "4px 9px", borderRadius: "999px",
+      display: "inline-flex", alignItems: "center", gap: "5px", padding: "4px 9px", borderRadius: RADIUS.pill,
       backgroundColor: on ? "var(--info-100)" : "var(--gray-50)",
       color: on ? "var(--info-500)" : "var(--gray-400)",
       fontSize: "10px", fontWeight: 700, whiteSpace: "nowrap",
@@ -231,7 +232,7 @@ function GrantChip({ label, on }: { label: string; on: boolean }) {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
+    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.card, padding: "20px", display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
       {children}
     </div>
   );
@@ -288,7 +289,7 @@ function DropdownBtn<V extends string>({ value, options, onSelect, disabledValue
     <div ref={ref} style={{ position: "relative" }}>
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "6px", padding: "6px 10px", cursor: "pointer" }}
+        style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: RADIUS.control, padding: "6px 10px", cursor: "pointer" }}
       >
         <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.24px" }}>
           {options.find(o => o.value === value)?.label ?? value}
@@ -296,7 +297,7 @@ function DropdownBtn<V extends string>({ value, options, onSelect, disabledValue
         <ChevronDownIcon />
       </button>
       {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "8px", boxShadow: "var(--shadow-popover)", minWidth: "150px", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: RADIUS.panel, boxShadow: "var(--shadow-popover)", minWidth: "150px", overflow: "hidden" }}>
           {options.map(opt => {
             const unavailable = disabledValues.includes(opt.value);
             const selected = opt.value === value;
@@ -331,7 +332,7 @@ function ThresholdField({ label, value, onChange, min, max }: { label: string; v
           max={max}
           value={value}
           onChange={(e) => onChange(clamp(Number(e.target.value) || min))}
-          style={{ width: "72px", textAlign: "center", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", border: "1px solid var(--gray-200)", borderRadius: "6px", padding: "6px 8px", outline: "none" }}
+          style={{ width: "72px", textAlign: "center", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", border: "1px solid var(--gray-200)", borderRadius: RADIUS.control, padding: "6px 8px", outline: "none" }}
         />
       </div>
       <input
@@ -411,7 +412,7 @@ function PasswordChangeModal({ onClose }: { onClose: () => void }) {
     >
       <div style={{
         width: "440px", maxWidth: "calc(100vw - 48px)", backgroundColor: "white",
-        borderRadius: "16px", padding: "28px", boxShadow: "var(--shadow-modal)",
+        borderRadius: RADIUS.card, padding: "28px", boxShadow: "var(--shadow-modal)",
         display: "flex", flexDirection: "column", gap: "20px",
       }}>
         {step === "done" ? (
@@ -424,7 +425,7 @@ function PasswordChangeModal({ onClose }: { onClose: () => void }) {
             </div>
             <button
               onClick={onClose}
-              style={{ height: "40px", padding: "0 24px", border: "none", borderRadius: "8px", backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+              style={{ height: "40px", padding: "0 24px", border: "none", borderRadius: RADIUS.control, backgroundColor: "var(--primary-400)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
             >
               {t.done}
             </button>
@@ -453,7 +454,7 @@ function PasswordChangeModal({ onClose }: { onClose: () => void }) {
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.currentPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", height: "48px", padding: "0 18px", border: fieldBorder(focusedField === "current"), borderRadius: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", height: "48px", padding: "0 18px", border: fieldBorder(focusedField === "current"), borderRadius: RADIUS.control }}>
                     <input
                       type={showCurrent ? "text" : "password"}
                       value={currentPassword}
@@ -475,7 +476,7 @@ function PasswordChangeModal({ onClose }: { onClose: () => void }) {
                   onClick={handleVerifyCurrent}
                   disabled={!canVerifyCurrent}
                   style={{
-                    height: "48px", width: "100%", border: "none", borderRadius: "8px",
+                    height: "48px", width: "100%", border: "none", borderRadius: RADIUS.control,
                     backgroundColor: canVerifyCurrent ? "var(--primary-400)" : "var(--gray-100)",
                     color: canVerifyCurrent ? "white" : "var(--gray-400)",
                     fontSize: "14px", fontWeight: 800, letterSpacing: "-0.28px",
@@ -490,7 +491,7 @@ function PasswordChangeModal({ onClose }: { onClose: () => void }) {
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.newPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", height: "48px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", height: "48px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: RADIUS.control }}>
                     <input
                       type={showNew ? "text" : "password"}
                       value={newPassword}
@@ -509,7 +510,7 @@ function PasswordChangeModal({ onClose }: { onClose: () => void }) {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{t.confirmPassword}</label>
-                  <div style={{ display: "flex", alignItems: "center", height: "48px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", height: "48px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: RADIUS.control }}>
                     <input
                       type={showConfirm ? "text" : "password"}
                       value={confirmPassword}
@@ -544,7 +545,7 @@ function PasswordChangeModal({ onClose }: { onClose: () => void }) {
                   onClick={handleSubmit}
                   disabled={!canSubmit}
                   style={{
-                    height: "48px", width: "100%", border: "none", borderRadius: "8px",
+                    height: "48px", width: "100%", border: "none", borderRadius: RADIUS.control,
                     backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-100)",
                     color: canSubmit ? "white" : "var(--gray-400)",
                     fontSize: "14px", fontWeight: 800, letterSpacing: "-0.28px",
@@ -591,7 +592,7 @@ function ThresholdModal({ initialAlert, initialModerate, onSave, onClose }: { in
     >
       <div style={{
         width: "440px", maxWidth: "calc(100vw - 48px)", backgroundColor: "white",
-        borderRadius: "16px", padding: "28px", boxShadow: "var(--shadow-modal)",
+        borderRadius: RADIUS.card, padding: "28px", boxShadow: "var(--shadow-modal)",
         display: "flex", flexDirection: "column", gap: "20px",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -615,7 +616,7 @@ function ThresholdModal({ initialAlert, initialModerate, onSave, onClose }: { in
               onClick={handleSave}
               disabled={!dirty}
               style={{
-                height: "40px", padding: "0 20px", border: "none", borderRadius: "8px",
+                height: "40px", padding: "0 20px", border: "none", borderRadius: RADIUS.control,
                 backgroundColor: dirty ? "var(--primary-400)" : "var(--gray-100)",
                 color: dirty ? "white" : "var(--gray-400)",
                 fontSize: "13px", fontWeight: 700, letterSpacing: "-0.26px",
@@ -788,7 +789,10 @@ export default function MyPage() {
                     <span style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>{SIGNED_IN_USER.name}</span>
                     <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{SIGNED_IN_USER.role}</span>
                   </div>
-                  <div style={{ backgroundColor: "var(--gray-50)", borderRadius: "4px", padding: "4px 8px" }}>
+                  {/* The smallest step, and deliberately NOT the pill: a pill is this console's shape for a
+                      state (see the session badge below and shared/ScoreBadge), and the account number
+                      is a value. Same shape would make an ID read as a status. */}
+                  <div style={{ backgroundColor: "var(--gray-50)", borderRadius: RADIUS.inner, padding: "4px 8px" }}>
                     <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--gray-600)", letterSpacing: "-0.2px" }}>{SIGNED_IN_USER.accountId}</span>
                   </div>
                 </div>
@@ -874,7 +878,7 @@ export default function MyPage() {
                 <CardHeader icon={<LockIcon />} title={t.security} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
                   <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.24px" }}>{t.passwordSettings}</span>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: "10px", padding: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: RADIUS.control, padding: "12px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                       <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.passwordChange}</span>
                       {/* No second line. It was `changedDaysAgo(PASSWORD_AGE_DAYS)` with the
@@ -887,7 +891,7 @@ export default function MyPage() {
                     </div>
                     <button
                       onClick={() => setShowPasswordModal(true)}
-                      style={{ backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "6px", padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.24px" }}
+                      style={{ backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: RADIUS.control, padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.24px" }}
                     >
                       {t.change}
                     </button>
@@ -925,7 +929,7 @@ export default function MyPage() {
                     )}
                   </div>
                   {LOGIN_SESSIONS.map(session => (
-                    <div key={session.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: "10px", padding: "12px 14px", width: "100%" }}>
+                    <div key={session.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: RADIUS.control, padding: "12px 14px", width: "100%" }}>
                       <div style={{ display: "flex", gap: "10px", alignItems: "center", flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0 }}>
                           <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.26px" }}>{session.device || t.thisBrowser}</span>
@@ -936,7 +940,7 @@ export default function MyPage() {
                           )}
                         </div>
                       </div>
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: session.current ? "var(--success-400)" : "var(--gray-500)", backgroundColor: session.current ? "var(--success-100)" : "var(--gray-100)", borderRadius: "4px", padding: "3px 8px" }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: session.current ? "var(--success-400)" : "var(--gray-500)", backgroundColor: session.current ? "var(--success-100)" : "var(--gray-100)", borderRadius: RADIUS.pill, padding: "3px 8px" }}>
                         {session.current ? t.activeNow : session.lastActive}
                       </span>
                     </div>
@@ -965,14 +969,14 @@ export default function MyPage() {
                 <div style={{ height: "1px", backgroundColor: "var(--gray-200)", width: "100%" }} />
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
                   <CardHeader icon={<AlertBellIcon />} title={t.thresholdsTitle} />
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: "10px", padding: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "var(--gray-50)", borderRadius: RADIUS.control, padding: "12px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                       <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.thresholdLevels}</span>
                       <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.2px" }}>{t.thresholdSummary(alertThreshold, moderateThreshold)}</span>
                     </div>
                     <button
                       onClick={() => setShowThresholdModal(true)}
-                      style={{ backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: "6px", padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.24px" }}
+                      style={{ backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: RADIUS.control, padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.24px" }}
                     >
                       {t.change}
                     </button>

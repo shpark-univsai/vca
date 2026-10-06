@@ -251,6 +251,10 @@ export default function RedmapMap({
           const tailHtml = cardBelow
             ? `<div style="position:absolute;left:${size / 2 - 7}px;top:-7px;width:14px;height:14px;
                   background:${color};border-radius:3px;transform:rotate(45deg);"></div>`
+            // 3px is off the shape scale on purpose: this is not a box, it is the speech-bubble
+            // tail — a 14px square turned 45° so one corner points at the circle. The radius only
+            // takes the sharpness off that point, and a scale step would round the tail into a
+            // lozenge. The equivalent in MapView is an SVG triangle, which has no radius at all.
             : isLast
               ? bubbleTailHtml(tailCenterY, color, color) // solid arrow, group color, for the "LAST SEEN" card
               : bubbleTailHtml(tailCenterY, "white", "var(--gray-200)");
@@ -258,7 +262,7 @@ export default function RedmapMap({
           const cardHtml = isLast
             ? `<div class="vca-pin-card" style="position:relative;font-family:'SUIT',sans-serif;filter:drop-shadow(0 4px 10px ${hexToRgba(color, 0.25)})">
                  ${tailHtml}
-                 <div style="position:relative;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;border:1.5px solid ${color}">
+                 <div style="position:relative;display:flex;flex-direction:column;border-radius:var(--radius-panel);overflow:hidden;border:1.5px solid ${color}">
                    <div style="background:${color};color:white;font-size:11px;font-weight:800;padding:6px 12px;display:flex;align-items:center;gap:4px;white-space:nowrap">
                      <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M6 0.5L1.5 6.5H5L4.5 10.5L9.5 4.5H6L6 0.5Z" fill="white"/></svg>
                      ${LAST_SEEN[lang]}
@@ -269,7 +273,7 @@ export default function RedmapMap({
                    </div>
                  </div>
                </div>`
-            : `<div class="vca-pin-card" style="position:relative;background:white;border:1px solid var(--gray-200);border-radius:16px;padding:10px 14px;white-space:nowrap;
+            : `<div class="vca-pin-card" style="position:relative;background:white;border:1px solid var(--gray-200);border-radius:var(--radius-panel);padding:10px 14px;white-space:nowrap;
                           font-family:'SUIT',sans-serif;box-shadow:0 4px 10px rgba(24,17,39,0.08);cursor:${hitIndex >= 0 ? "pointer" : "default"}">
                  ${tailHtml}
                  <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${node.label}</div>

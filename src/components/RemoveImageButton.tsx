@@ -28,6 +28,9 @@ export default function RemoveImageButton({ onRemove, label, variant = "overlay"
           : {}),
         width: "18px", height: "18px", flexShrink: 0, padding: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
+        /* Stays a circle. The scale keeps 50% for round things (shared/controls), and this is
+           the ✕ badge pinned to the corner of a picture — at 18px square a 6px box would read as
+           a tiny button parked on the image rather than as the picture's own remove mark. */
         borderRadius: "50%", border: "none", cursor: "pointer",
         backgroundColor: overlay ? "var(--label-plate)" : "var(--gray-200)",
         color: overlay ? "white" : "var(--gray-600)",

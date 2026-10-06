@@ -17,6 +17,21 @@ import { MAP_TILE_URL, MAP_TILE_FILTER, tileLayerOptions } from "@/lib/mapTiles"
 
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
+/**
+ * THE SHAPE SCALE IN THIS FILE IS WRITTEN AS `var(--radius-*)`, NOT `RADIUS.*`.
+ *
+ * Everything below builds its markup as HTML strings handed to Leaflet (divIcon / bindPopup), so
+ * there is no style object for a TypeScript constant to reach — a template literal would have to
+ * interpolate it into every rule. globals.css publishes the same five values as custom properties
+ * for exactly this case; the two definitions are kept in step by hand (src/components/shared/
+ * controls.ts carries the reasoning for the scale itself).
+ *
+ * Custom properties DO resolve here, because these are CSS declarations inside a style attribute.
+ * The one place in this app where `var()` silently fails is an SVG presentation attribute
+ * (fill="var(...)"), which is why the markers below still pass colours into `stroke`/`fill` as
+ * plain tokens rather than through a property.
+ */
+
 // See the per-file pattern note in lib/i18n.ts. Most of this screen's words live inside popup
 // markup built as HTML strings, which is why the builders below take the language as an argument
 // rather than reading a hook: they run outside React, inside Leaflet.
@@ -315,7 +330,7 @@ function cameraDotTooltipHtml(cam: Camera, lang: AppLanguage, people: number): s
     <div style="font-family:'SUIT',system-ui,sans-serif;padding:8px 10px;display:flex;flex-direction:column;gap:3px;min-width:120px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <span style="font-size:12px;font-weight:800;color:var(--gray-900);letter-spacing:-0.24px;white-space:nowrap">${escapeHtml(cam.name)}</span>
-        <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:999px;flex-shrink:0;color:${isLive ? "var(--success-400)" : "var(--warning-500)"};background:${isLive ? "var(--success-100)" : "var(--warning-100)"}">
+        <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:var(--radius-pill);flex-shrink:0;color:${isLive ? "var(--success-400)" : "var(--warning-500)"};background:${isLive ? "var(--success-100)" : "var(--warning-100)"}">
           ${isLive ? t.live : t.offline}
         </span>
       </div>
@@ -577,7 +592,7 @@ function districtPillHtml(
      a step for it would be the thing we are not allowed to do — see the handover note. */
   const shadow = isDark || isAlert ? "0 2px 10px rgba(24, 17, 39,0.2)" : "var(--shadow-raised)";
   return `<div style="transform:translateX(-50%) translateY(-50%);display:inline-flex;flex-direction:column;
-      align-items:center;gap:1px;background:${bg};${border}border-radius:10px;padding:5px 10px;
+      align-items:center;gap:1px;background:${bg};${border}border-radius:var(--radius-panel);padding:5px 10px;
       font-family:'SUIT',system-ui,sans-serif;color:${textColor};box-shadow:${shadow};
       white-space:nowrap;letter-spacing:-0.2px">
     <span style="font-size:11px;font-weight:600;opacity:0.78">${escapeHtml(label)}</span>
@@ -592,10 +607,10 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
   const photoUrl = getFacePhoto(event.id);
   const confidence = confidenceFigure(event.confidence);
   const vipBadge = event.type === "VIP"
-    ? `<div style="background:var(--primary-50);border-radius:10px;padding:2px 8px;display:flex;align-items:center;gap:3px;flex-shrink:0">
+    ? `<div style="background:var(--primary-50);border-radius:var(--radius-pill);padding:2px 8px;display:flex;align-items:center;gap:3px;flex-shrink:0">
          <span style="font-size:9px;font-weight:700;color:var(--primary-400)">VIP</span>
        </div>`
-    : `<div style="background:${typeBg};border-radius:10px;padding:2px 8px;flex-shrink:0">
+    : `<div style="background:${typeBg};border-radius:var(--radius-pill);padding:2px 8px;flex-shrink:0">
          <span style="font-size:9px;font-weight:700;color:${typeColor}">${event.type.toUpperCase()}</span>
        </div>`;
 
@@ -630,7 +645,7 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
 
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
         <div style="text-align:center">
-          <div style="width:60px;height:60px;border-radius:8px;background:var(--gray-100);overflow:hidden">
+          <div style="width:60px;height:60px;border-radius:var(--radius-inner);background:var(--gray-100);overflow:hidden">
             <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
           </div>
           <span style="font-size:10px;color:var(--gray-400);display:block;margin-top:4px;letter-spacing:-0.2px">${t.captured}</span>
@@ -654,14 +669,14 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
                <div style="width:44px;border-top:1.5px dashed var(--gray-300)"></div>`}
         </div>
         <div style="text-align:center">
-          <div style="width:60px;height:60px;border-radius:8px;background:var(--info-200);display:flex;align-items:center;justify-content:center">
+          <div style="width:60px;height:60px;border-radius:var(--radius-inner);background:var(--info-200);display:flex;align-items:center;justify-content:center">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="var(--primary-300)" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7" r="4" stroke="var(--primary-300)" stroke-width="2"/></svg>
           </div>
           <span style="font-size:10px;color:var(--gray-400);display:block;margin-top:4px;letter-spacing:-0.2px">${t.registered}</span>
         </div>
       </div>
 
-      <div style="background:var(--gray-900);border-radius:8px;height:96px;overflow:hidden;position:relative">
+      <div style="background:var(--gray-900);border-radius:var(--radius-inner);height:96px;overflow:hidden;position:relative">
         <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
         <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(24, 17, 39,0.8), rgba(24, 17, 39,0) 55%)"></div>
         <span style="position:absolute;bottom:8px;left:10px;font-size:9px;color:rgba(255,255,255,0.85);font-weight:700;letter-spacing:0.5px">${t.capturedFrame}</span>
@@ -669,7 +684,7 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
 
       <button onclick="window.__vcaGoAnalyzeFrame && window.__vcaGoAnalyzeFrame('${escapeOnclickArg(event.location)}')"
         style="margin-top:10px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
-        background:var(--gray-900);color:white;border:none;border-radius:6px;padding:8px 0;
+        background:var(--gray-900);color:white;border:none;border-radius:var(--radius-control);padding:8px 0;
         font-family:'SUIT',system-ui,sans-serif;font-size:11px;font-weight:700;cursor:pointer">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 3.5L8.5 6L4.5 8.5V3.5Z" fill="white"/></svg>
         ${t.analyzeFrame}
@@ -796,7 +811,7 @@ function getDevicePopupHTML(device: Device, cam: Camera | undefined, lang: AppLa
     <div style="font-family:'SUIT',system-ui,sans-serif;width:200px;padding:12px 14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-right:18px;gap:8px">
         <span style="font-size:13px;font-weight:800;color:var(--gray-900);letter-spacing:-0.26px">${escapeHtml(device.name)}</span>
-        <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;color:${isLive ? "var(--success-400)" : "var(--warning-500)"};background:${isLive ? "var(--success-100)" : "var(--warning-100)"};flex-shrink:0">
+        <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:var(--radius-pill);color:${isLive ? "var(--success-400)" : "var(--warning-500)"};background:${isLive ? "var(--success-100)" : "var(--warning-100)"};flex-shrink:0">
           ${isLive ? t.live : t.out}
         </span>
       </div>
@@ -812,7 +827,7 @@ function getDevicePopupHTML(device: Device, cam: Camera | undefined, lang: AppLa
       </div>` : !isLive || !canGoLive || !cam ? "" : `
       <button onclick="window.__vcaGoLiveCam && window.__vcaGoLiveCam('${escapeOnclickArg(cam.name)}')"
         style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
-        background:var(--gray-900);color:white;border:none;border-radius:6px;padding:7px 0;
+        background:var(--gray-900);color:white;border:none;border-radius:var(--radius-control);padding:7px 0;
         font-family:'SUIT',system-ui,sans-serif;font-size:11px;font-weight:700;cursor:pointer">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 3.5L8.5 6L4.5 8.5V3.5Z" fill="white"/></svg>
         ${t.viewLive}
@@ -825,7 +840,7 @@ function getDeviceMarkerHTML(name: string, isLive: boolean): string {
   const color = isLive ? "var(--success-400)" : "var(--warning-400)";
   return `
     <div style="display:flex;flex-direction:column;align-items:center">
-      <div style="display:flex;align-items:center;gap:5px;background:var(--gray-900);border-radius:999px;padding:5px 10px;box-shadow:0 2px 10px rgba(24, 17, 39,0.2);white-space:nowrap">
+      <div style="display:flex;align-items:center;gap:5px;background:var(--gray-900);border-radius:var(--radius-pill);padding:5px 10px;box-shadow:0 2px 10px rgba(24, 17, 39,0.2);white-space:nowrap">
         <div style="width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0"></div>
         <span style="font-family:'SUIT',system-ui,sans-serif;font-size:11px;font-weight:800;color:white;letter-spacing:-0.2px">${escapeHtml(name)}</span>
       </div>
@@ -1319,7 +1334,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // always used (see peopleAt, whose singular branch exists for this), so one figure now
           // appears under the same rule on both layers of this map.
           const countPill = people > 0
-            ? `<div style="position:absolute;left:13px;top:-11px;padding:1px 6px;border-radius:999px;
+            ? `<div style="position:absolute;left:13px;top:-11px;padding:1px 6px;border-radius:var(--radius-pill);
                   background:var(--gray-900);border:1.5px solid white;font-family:'SUIT',sans-serif;
                   font-size:10px;font-weight:800;color:white;letter-spacing:-0.2px;white-space:nowrap">
                  ${t.peopleAt(people)}
@@ -1618,7 +1633,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           const key = coordKey(cam.lat, cam.lng);
           const people = (peopleByCamera.get(cam.code) ?? peopleByCamera.get(key) ?? new Set()).size;
           const countPill = people > 0
-            ? `<div style="position:absolute;left:13px;top:-11px;padding:1px 6px;border-radius:999px;
+            ? `<div style="position:absolute;left:13px;top:-11px;padding:1px 6px;border-radius:var(--radius-pill);
                   background:var(--gray-900);border:1.5px solid white;font-family:'SUIT',sans-serif;
                   font-size:10px;font-weight:800;color:white;letter-spacing:-0.2px;white-space:nowrap">
                  ${t.peopleAt(people)}
@@ -1888,7 +1903,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // real width coming from the chip's own `white-space:nowrap`, centred by its transform.
           const chipIcon = L.divIcon({
             html: `<div style="transform:translate(-50%,-50%);display:inline-block;background:var(--gray-0);border:1px solid var(--gray-200);
-                        border-radius:6px;padding:3px 8px;font-family:'SUIT',sans-serif;font-size:11px;font-weight:600;
+                        border-radius:var(--radius-inner);padding:3px 8px;font-family:'SUIT',sans-serif;font-size:11px;font-weight:600;
                         color:var(--gray-500);white-space:nowrap">${chipText}</div>`,
             iconSize: [1, 1], iconAnchor: [0, 0], className: "",
           });
@@ -2085,7 +2100,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             ? ""
             : `<div style="position:relative;font-family:'SUIT',sans-serif;filter:drop-shadow(0 4px 10px rgba(109,147,0,0.25))">
                  ${tailHtml}
-                 <div style="position:relative;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;border:1.5px solid var(--type-tracking)">
+                 <div style="position:relative;display:flex;flex-direction:column;border-radius:var(--radius-panel);overflow:hidden;border:1.5px solid var(--type-tracking)">
                    <div style="background:var(--type-tracking);color:white;font-size:11px;font-weight:800;padding:6px 12px;display:flex;align-items:center;gap:4px;white-space:nowrap">
                      <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M6 0.5L1.5 6.5H5L4.5 10.5L9.5 4.5H6L6 0.5Z" fill="white"/></svg>
                      ${t.lastSeen}
@@ -2162,7 +2177,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
             // corner and reads as clipped. `pointer-events:none` gives back what the class turns
             // on: it is a line of text, and it must not swallow a drag of the map under it.
             const el = L.DomUtil.create("div", "leaflet-control");
-            el.style.cssText = "background:var(--gray-0);border:1px solid var(--gray-200);border-radius:6px;padding:5px 10px;"
+            el.style.cssText = "background:var(--gray-0);border:1px solid var(--gray-200);border-radius:var(--radius-inner);padding:5px 10px;"
               + "font-family:'SUIT',sans-serif;font-size:11px;font-weight:600;color:var(--gray-500);"
               + "white-space:nowrap;box-shadow:var(--shadow-popover);pointer-events:none";
             el.textContent = t.noCoordsSummary(unplacedCount, hops.length);

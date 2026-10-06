@@ -12,6 +12,7 @@ import { LOGIN_NOTICES, parseLoginNotice, type LoginFailure, type LoginNotice } 
 import { canEnterPortal, canUseAppNow, useVcaStore } from "@/lib/vcaStore";
 import { readGateChoice } from "@/components/AccessGate";
 import { useLanguage } from "@/lib/i18n";
+import { RADIUS } from "@/components/shared/controls";
 
 // See the per-file pattern note in lib/i18n.ts. The failure notices are not in here — they live in
 // lib/authErrors.ts beside the contract they belong to.
@@ -372,7 +373,7 @@ function LoginForm() {
                   role="alert"
                   style={{
                     display: "flex", gap: "10px", alignItems: "flex-start", width: "100%",
-                    padding: "14px 16px", borderRadius: "10px", marginBottom: "4px",
+                    padding: "14px 16px", borderRadius: RADIUS.panel, marginBottom: "4px",
                     backgroundColor: LOGIN_NOTICES[notice].tone === "error" ? "var(--danger-100)" : "var(--info-100)",
                   }}
                 >
@@ -414,7 +415,7 @@ function LoginForm() {
                 <label style={FIELD_LABEL}>
                   {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                 </label>
-                <div className="vca-auth-field" style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: FIELD_BORDER, borderRadius: "8px" }}>
+                <div className="vca-auth-field" style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: FIELD_BORDER, borderRadius: RADIUS.control }}>
                   <input
                     value={identifier}
                     onChange={e => { setIdentifier(e.target.value); setNotice(null); }}
@@ -437,7 +438,7 @@ function LoginForm() {
                     it is now (Teachable, SavvyCal, Productboard); only Lyssna and Elicit keep it
                     up here. Below is what a returning user's eye already expects. */}
                 <label style={FIELD_LABEL}>{t.password}</label>
-                <div className="vca-auth-field" style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: FIELD_BORDER, borderRadius: "8px" }}>
+                <div className="vca-auth-field" style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: FIELD_BORDER, borderRadius: RADIUS.control }}>
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
@@ -494,7 +495,7 @@ function LoginForm() {
                 type="submit"
                 disabled={!canSubmit}
                 style={{
-                  height: "52px", width: "100%", border: "none", borderRadius: "8px",
+                  height: "52px", width: "100%", border: "none", borderRadius: RADIUS.control,
                   backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-100)",
                   color: canSubmit ? "white" : "var(--gray-400)",
                   fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px",

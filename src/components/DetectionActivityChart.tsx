@@ -5,6 +5,7 @@ import { usePopoverDismiss } from "@/hooks/usePopoverDismiss";
 import { todaysDetectionHits, useProjectEvents, useProjectCameras } from "@/lib/vcaStore";
 import { sgtHour, sgtMinute } from "@/lib/time";
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
+import { RADIUS } from "./shared/controls";
 
 const CHART_HEIGHT = 160;
 const FALLBACK_WIDTH = 900; // used only until the container's real width is measured
@@ -249,7 +250,8 @@ export default function DetectionActivityChart({ onHide }: { onHide?: () => void
   return (
     <div className="vca-rise-in" style={{
       backgroundColor: "rgba(255,255,255,0.4)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
-      borderRadius: "11px", border: "1px solid rgba(226,232,240,0.6)", boxShadow: "var(--shadow-popover)",
+      // Floats over the map like a popover, so the panel step — it was the only 11px in the repo.
+      borderRadius: RADIUS.panel, border: "1px solid rgba(226,232,240,0.6)", boxShadow: "var(--shadow-popover)",
       padding: "18px 22px 14px", display: "flex", flexDirection: "column", gap: "12px",
     }}>
       {/* Whole header row is the click target to minimize (except the camera filter, which
@@ -281,7 +283,7 @@ export default function DetectionActivityChart({ onHide }: { onHide?: () => void
               onClick={() => setCameraPickerOpen(o => !o)}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
-                width: "160px", padding: "8px 12px", borderRadius: "8px", border: "none",
+                width: "160px", padding: "8px 12px", borderRadius: RADIUS.control, border: "none",
                 backgroundColor: "white", cursor: "pointer",
               }}
             >
@@ -300,7 +302,8 @@ export default function DetectionActivityChart({ onHide }: { onHide?: () => void
             {cameraPickerOpen && (
               <div style={{
                 position: "absolute", top: "calc(100% + 4px)", left: 0, width: "160px", backgroundColor: "white",
-                border: "1px solid var(--gray-200)", borderRadius: "8px", boxShadow: "var(--shadow-popover)",
+                // The trigger is a control (8px); the list it drops is a panel (12px).
+                border: "1px solid var(--gray-200)", borderRadius: RADIUS.panel, boxShadow: "var(--shadow-popover)",
                 zIndex: 10, overflow: "hidden",
               }}>
                 {([{ id: null as CameraFilter, name: t.allCameras }, ...cameras.map(c => ({ id: c.id as CameraFilter, name: c.name }))]).map(opt => (

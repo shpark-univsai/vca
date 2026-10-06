@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage, usePortalLanguage, type AppLanguage } from "@/lib/i18n";
+import { RADIUS } from "./shared/controls";
 
 // The console's one hairline value — see --line in globals.css, which was defined for exactly
 // this and then never reached the app: eight files each declared their own gray-200 rule instead,
@@ -27,7 +28,7 @@ function LanguageToggle({ scope }: { scope: "app" | "portal" }) {
   const [portalLang, setPortalLang] = usePortalLanguage();
   const [lang, setLang] = scope === "portal" ? [portalLang, setPortalLang] : [appLang, setAppLang];
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "2px", padding: "2px", backgroundColor: "var(--gray-50)", borderRadius: "7px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "2px", padding: "2px", backgroundColor: "var(--gray-50)", borderRadius: RADIUS.control }}>
       {LANGUAGES.map(l => {
         const active = l.value === lang;
         return (
@@ -36,7 +37,7 @@ function LanguageToggle({ scope }: { scope: "app" | "portal" }) {
             onClick={() => setLang(l.value)}
             aria-pressed={active}
             style={{
-              border: "none", borderRadius: "5px", padding: "4px 9px", cursor: "pointer",
+              border: "none", borderRadius: RADIUS.inner, padding: "4px 9px", cursor: "pointer",
               backgroundColor: active ? "white" : "transparent",
               boxShadow: active ? "var(--shadow-raised)" : "none",
               fontSize: "11px", fontWeight: active ? 800 : 600,
@@ -63,7 +64,7 @@ export default function AuthHeader({ scope = "app" }: { scope?: "app" | "portal"
       <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "center",
-          padding: "4px 12px", borderRadius: "8px", backgroundColor: "var(--gray-900)",
+          padding: "4px 12px", borderRadius: RADIUS.control, backgroundColor: "var(--gray-900)",
         }}>
           <span style={{ fontFamily: "'Jockey One', sans-serif", fontSize: "16px", lineHeight: "18px", color: "white" }}>VCA</span>
         </div>

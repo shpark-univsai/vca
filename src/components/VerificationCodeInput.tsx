@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef } from "react";
 import { useLanguage } from "@/lib/i18n";
+import { RADIUS } from "./shared/controls";
 
 interface Props {
   /** One string per box. Length of this array is the length of the code. */
@@ -135,7 +136,7 @@ export default function VerificationCodeInput({
             // the border only marks whether a digit is filled — so suppressing the outline left a
             // keyboard user with no way to see which of the eight they were typing into. The app's
             // shared focus ring (globals.css) draws it now.
-            borderRadius: "8px",
+            borderRadius: RADIUS.control,
             fontSize: "18px", fontWeight: 700,
             color: "var(--gray-800)",
             transition: "border-color 0.12s",

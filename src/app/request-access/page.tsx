@@ -8,6 +8,7 @@ import { isMailDeliverable, resolveMailConfig, useVcaStore } from "@/lib/vcaStor
 import { getAuthConfig } from "@/lib/authConfig";
 import { redirect } from "next/navigation";
 import { useLanguage } from "@/lib/i18n";
+import { RADIUS } from "@/components/shared/controls";
 
 
 // See the per-file pattern note in lib/i18n.ts.
@@ -218,7 +219,7 @@ function RequestAccessForm() {
               <button
                 onClick={() => router.push("/login")}
                 style={{
-                  height: "52px", width: "100%", border: "none", borderRadius: "8px",
+                  height: "52px", width: "100%", border: "none", borderRadius: RADIUS.control,
                   backgroundColor: "var(--primary-400)", color: "white",
                   fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px", cursor: "pointer",
                 }}
@@ -242,7 +243,7 @@ function RequestAccessForm() {
                     an approvable request, so it says that instead of failing on submit. */}
                 <div style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
-                  padding: "12px 14px", borderRadius: "8px",
+                  padding: "12px 14px", borderRadius: RADIUS.control,
                   backgroundColor: project ? "var(--gray-50)" : "var(--warning-100)",
                 }}>
                   <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{t.project}</span>
@@ -256,7 +257,7 @@ function RequestAccessForm() {
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                     <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.name}</label>
                     <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px",
-                      border: nameError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
+                      border: nameError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: RADIUS.control }}>
                       <input
                         value={name}
                         onChange={e => setName(e.target.value)}
@@ -273,7 +274,7 @@ function RequestAccessForm() {
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                     <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.email}</label>
                     <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px",
-                      border: emailError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
+                      border: emailError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: RADIUS.control }}>
                       <input
                         value={email}
                         onChange={e => setEmail(e.target.value)}
@@ -303,7 +304,7 @@ function RequestAccessForm() {
                       rows={3}
                       placeholder={t.reasonPlaceholder}
                       style={{
-                        width: "100%", boxSizing: "border-box", padding: "12px", border: FIELD_BORDER, borderRadius: "8px",
+                        width: "100%", boxSizing: "border-box", padding: "12px", border: FIELD_BORDER, borderRadius: RADIUS.control,
                         outline: "none", resize: "none", fontSize: "14px", color: "var(--gray-900)",
                         letterSpacing: "-0.32px", fontFamily: "inherit", lineHeight: 1.5,
                       }}
@@ -316,7 +317,7 @@ function RequestAccessForm() {
                     onClick={handleSubmit}
                     disabled={!canSubmit}
                     style={{
-                      height: "52px", width: "100%", border: "none", borderRadius: "8px",
+                      height: "52px", width: "100%", border: "none", borderRadius: RADIUS.control,
                       backgroundColor: canSubmit ? "var(--primary-400)" : "var(--gray-100)",
                       color: canSubmit ? "white" : "var(--gray-400)",
                       fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px",

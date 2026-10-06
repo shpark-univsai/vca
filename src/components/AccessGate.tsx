@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Cctv, Building2, ShieldOff, ArrowRight, LogOut } from "lucide-react";
 import AuthHeader from "@/components/AuthHeader";
 import { useLanguage, usePortalLanguage } from "@/lib/i18n";
+import { RADIUS } from "@/components/shared/controls";
 import { getAuthConfig } from "@/lib/authConfig";
 import {
   canEnterPortal, SIGNED_IN_USER,
@@ -213,7 +214,10 @@ function DoorCard({ icon, name, what, onClick }: {
       style={{
         flex: 1, display: "flex", flexDirection: "column", gap: "14px", alignItems: "flex-start",
         padding: "20px", textAlign: "left", cursor: "pointer",
-        borderRadius: "12px", backgroundColor: "white",
+        // A card, so it takes the card step — the same 16px as every modal in the console.
+        // That it happens to be a <button> does not make it a control: nothing on this screen
+        // lines up beside it in a row (the shape scale, shared/controls).
+        borderRadius: RADIUS.card, backgroundColor: "white",
         border: hover ? "1px solid var(--primary-300)" : CARD_BORDER,
         boxShadow: hover ? "var(--shadow-popover)" : "var(--shadow-raised)",
       }}
@@ -223,7 +227,7 @@ function DoorCard({ icon, name, what, onClick }: {
       <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "center",
-          width: "40px", height: "40px", borderRadius: "10px",
+          width: "40px", height: "40px", borderRadius: RADIUS.control,
           backgroundColor: hover ? "var(--primary-100)" : "var(--gray-100)",
           color: hover ? "var(--primary-400)" : "var(--gray-600)",
         }}>
@@ -256,7 +260,8 @@ function Grants({ permission, appAccess, status, t }: {
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "8px" }}>
       <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{t.holds}</span>
-      <div style={{ border: CARD_BORDER, borderRadius: "10px", overflow: "hidden" }}>
+      {/* An inset block inside the page, one step in from the card step. */}
+      <div style={{ border: CARD_BORDER, borderRadius: RADIUS.control, overflow: "hidden" }}>
         {rows.map((r, i) => (
           <div key={r.label} style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -284,7 +289,7 @@ function PrimaryButton({ label, onClick }: { label: string; onClick: () => void 
     <button
       onClick={onClick}
       style={{
-        height: "52px", width: "100%", border: "none", borderRadius: "8px",
+        height: "52px", width: "100%", border: "none", borderRadius: RADIUS.control,
         backgroundColor: "var(--primary-400)", color: "white",
         fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px", cursor: "pointer",
       }}
@@ -321,7 +326,7 @@ function QuietButton({ label, icon, onClick }: { label: string; icon?: React.Rea
       onClick={onClick}
       style={{
         display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-        height: "44px", width: "100%", borderRadius: "8px", cursor: "pointer",
+        height: "44px", width: "100%", borderRadius: RADIUS.control, cursor: "pointer",
         border: CARD_BORDER, backgroundColor: "white",
         fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px",
       }}
@@ -432,7 +437,7 @@ export default function AccessGate({ user, denial, inPortal = false }: AccessGat
           {denial && (
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "center",
-              width: "48px", height: "48px", borderRadius: "12px",
+              width: "48px", height: "48px", borderRadius: RADIUS.control,
               backgroundColor: "var(--gray-100)", color: "var(--gray-500)",
             }}>
               <ShieldOff size={22} strokeWidth={2} />

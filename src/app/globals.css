@@ -716,7 +716,7 @@ body {
 .leaflet-tooltip.vca-camera-tooltip {
   background: white;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-panel);
   box-shadow: var(--shadow-popover);
   padding: 0;
 }

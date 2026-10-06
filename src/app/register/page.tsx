@@ -12,6 +12,7 @@ import {
 } from "@/lib/staffRoster";
 import { canEnterPortal, useVcaStore } from "@/lib/vcaStore";
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
+import { RADIUS } from "@/components/shared/controls";
 
 type Step = "code" | "confirm" | "password" | "done";
 
@@ -418,7 +419,7 @@ function RegisterFlow() {
       onClick={onClick}
       disabled={!enabled}
       style={{
-        height: "52px", width: "100%", border: "none", borderRadius: "8px",
+        height: "52px", width: "100%", border: "none", borderRadius: RADIUS.control,
         backgroundColor: enabled ? "var(--primary-400)" : "var(--gray-100)",
         color: enabled ? "white" : "var(--gray-400)",
         fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px",
@@ -436,7 +437,7 @@ function RegisterFlow() {
   ) => (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
       <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{label}</label>
-      <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === key), borderRadius: "8px" }}>
+      <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === key), borderRadius: RADIUS.control }}>
         <input
           type={shown ? "text" : "password"}
           value={value}
@@ -494,7 +495,7 @@ function RegisterFlow() {
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 <div style={{
                   display: "flex", flexDirection: "column", gap: "10px",
-                  padding: "20px", borderRadius: "12px", backgroundColor: "var(--danger-100)",
+                  padding: "20px", borderRadius: RADIUS.panel, backgroundColor: "var(--danger-100)",
                 }}>
                   <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.26px", lineHeight: 1.5 }}>
                     {t.throttledBody}
@@ -559,7 +560,7 @@ function RegisterFlow() {
                     person's name — and there is no way back once the code is burned. */}
                 <div style={{
                   display: "flex", flexDirection: "column", gap: "10px",
-                  padding: "20px", borderRadius: "12px", backgroundColor: "var(--gray-50)",
+                  padding: "20px", borderRadius: RADIUS.panel, backgroundColor: "var(--gray-50)",
                 }}>
                   <p style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.36px" }}>{entry.name}</p>
                   <div style={{ height: "1px", backgroundColor: "var(--gray-200)" }} />

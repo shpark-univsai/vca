@@ -8,6 +8,7 @@ import VerificationCodeInput from "@/components/VerificationCodeInput";
 import { isPasswordFormatValid, PASSWORD_RULE_TEXT, RESET_CODE_LENGTH, RESET_CODE_TTL_MIN } from "@/lib/password";
 import { getAuthConfig } from "@/lib/authConfig";
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
+import { RADIUS } from "@/components/shared/controls";
 
 // See the per-file pattern note in lib/i18n.ts.
 const T = {
@@ -376,7 +377,7 @@ function ForgotPasswordFlow() {
       onClick={onClick}
       disabled={!enabled}
       style={{
-        height: "52px", width: "100%", border: "none", borderRadius: "8px",
+        height: "52px", width: "100%", border: "none", borderRadius: RADIUS.control,
         backgroundColor: enabled ? "var(--primary-400)" : "var(--gray-100)",
         color: enabled ? "white" : "var(--gray-400)",
         fontSize: "16px", fontWeight: 800, letterSpacing: "-0.32px",
@@ -440,7 +441,7 @@ function ForgotPasswordFlow() {
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 <div style={{
                   display: "flex", flexDirection: "column", gap: "10px",
-                  padding: "20px", borderRadius: "12px", backgroundColor: "var(--gray-50)",
+                  padding: "20px", borderRadius: RADIUS.panel, backgroundColor: "var(--gray-50)",
                 }}>
                   <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{t.whoToContact}</p>
                   <p style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>
@@ -495,7 +496,7 @@ function ForgotPasswordFlow() {
                     {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                   </label>
                   <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px",
-                    border: identifierError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: "8px" }}>
+                    border: identifierError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: RADIUS.control }}>
                     <input
                       value={identifier}
                       onChange={e => setIdentifier(e.target.value)}
@@ -553,7 +554,7 @@ function ForgotPasswordFlow() {
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", width: "100%" }}>
                 <div style={{
                   display: "flex", flexDirection: "column", gap: "10px",
-                  padding: "20px", borderRadius: "12px", backgroundColor: "var(--danger-100)",
+                  padding: "20px", borderRadius: RADIUS.panel, backgroundColor: "var(--danger-100)",
                 }}>
                   <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.26px", lineHeight: 1.5 }}>
                     {/* OPEN QUESTION for the backend: how long is the lockout, and does the response
@@ -672,7 +673,7 @@ function ForgotPasswordFlow() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "24px", width: "100%" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                     <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.newPassword}</label>
-                    <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "new"), borderRadius: RADIUS.control }}>
                       <input
                         type={showNew ? "text" : "password"}
                         value={newPassword}
@@ -694,7 +695,7 @@ function ForgotPasswordFlow() {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", width: "100%" }}>
                     <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>{t.confirmPassword}</label>
-                    <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px", border: fieldBorder(focusedField === "confirm"), borderRadius: RADIUS.control }}>
                       <input
                         type={showConfirm ? "text" : "password"}
                         value={confirmPassword}

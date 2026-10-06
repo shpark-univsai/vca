@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n";
+import { RADIUS } from "./shared/controls";
 
 export type ToastVariant = "default" | "success" | "info" | "warning" | "error";
 
@@ -107,7 +108,10 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
     */
     <div style={{
       display: "flex", alignItems: "center", gap: "10px",
-      padding: "10px 12px 10px 14px", borderRadius: "10px", boxSizing: "border-box",
+      padding: "10px 12px 10px 14px", boxSizing: "border-box",
+      // A toast is a floating surface, not a control, so it takes the popover step — and its own
+      // action button sits a step inside it (the shape scale, shared/controls).
+      borderRadius: RADIUS.panel,
       backgroundColor: "var(--gray-900)", border: "1px solid rgba(255, 255, 255, 0.08)",
       // Below a dialog, above the page — same step as the selection bar, and for the same reason
       // (see FloatingBulkBar): the old raw 0.28 outweighed --shadow-modal's 0.18.
@@ -138,7 +142,7 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
             style={{
               padding: "5px 10px", fontSize: "12px", fontWeight: 700, letterSpacing: "-0.2px",
               color: "var(--gray-900)", backgroundColor: "white",
-              border: "none", borderRadius: "8px", cursor: "pointer", whiteSpace: "nowrap",
+              border: "none", borderRadius: RADIUS.control, cursor: "pointer", whiteSpace: "nowrap",
             }}
           >
             {item.actionLabel}
