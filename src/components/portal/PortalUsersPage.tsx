@@ -415,6 +415,8 @@ const T = {
     bulkRefusedLastAdmin: "The last administrator who can still sign in to Portal. Suspending them would lock everyone out of access management.",
     bulkRefusedAlready: "Already suspended, or no longer on this project.",
     tempDone: "Done",
+    /* The default this account is holding, said on the button that takes it. See InviteLinkPanel. */
+    inviteDoneAll: "Finish \u2014 all cameras",
 
     // Recovery-mode notice (deployment with no outbound mail)
     recoveryNoticeTitle: "Self-service password reset is off for this installation",
@@ -857,6 +859,7 @@ const T = {
     bulkRefusedLastAdmin: "Portal에 들어올 수 있는 마지막 관리자입니다. 정지하면 아무도 접근 권한을 관리할 수 없게 됩니다.",
     bulkRefusedAlready: "이미 정지됐거나 이 프로젝트에 없습니다.",
     tempDone: "완료",
+    inviteDoneAll: "카메라 전체로 두고 완료",
 
     // Recovery-mode notice (deployment with no outbound mail)
     recoveryNoticeTitle: "이 설치 환경에서는 셀프 비밀번호 재설정이 꺼져 있습니다",
@@ -1233,10 +1236,26 @@ function InviteLinkRow({ name, email, url }: { name: string; email: string; url:
  * DO NOT PUT THIS BACK IN A TOAST. A toast is for something that happened; this is something the
  * administrator still has to carry somewhere.
  */
-function InviteLinkPanel({ title, links, onClose, onBack, children }: {
+function InviteLinkPanel({ title, links, onClose, onBack, doneLabel, children }: {
   title: string;
   links: InviteLink[];
   onClose: () => void;
+  /**
+   * WHAT THE LAST BUTTON IS AGREEING TO (owner, 2026-10-06: 여기서 카메라를 설정하는게 눈에
+   * 안띄어서 그냥 아래 done누르고 그런기능이 있었는지도 모를것같아).
+   *
+   * The account lands holding every camera on its projects, and this panel is the last place that
+   * can be changed without going and finding the row. But the camera block sat under a link that
+   * owns the reader's attention — it is shown once and has a Copy button — and the only dark
+   * control on the sheet said 「완료」, which is what you press when you are finished rather than
+   * when you have decided something. So the default was taken by not reading.
+   *
+   * The button names it instead. It costs no step and no sentence, and the one thing it makes
+   * impossible is pressing it without learning there was a choice. It goes back to 「완료」 the
+   * moment the scope is narrowed — a button that keeps announcing a default nobody is taking is
+   * the next thing to stop reading.
+   */
+  doneLabel?: string;
   /** Set when this opened over the account card — see Drawer.onBack. */
   onBack?: () => void;
   /**
@@ -1263,7 +1282,7 @@ function InviteLinkPanel({ title, links, onClose, onBack, children }: {
       footer={
         <button className="portal-btn-primary" onClick={onClose}
           style={{ padding: "10px 16px", borderRadius: "8px", border: "none", backgroundColor: "var(--gray-900)", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-          {t.tempDone}
+          {doneLabel ?? t.tempDone}
         </button>
       }>
         <div style={MODAL_BODY}>
@@ -1624,14 +1643,23 @@ function InviteUserModal({ defaultProjectId, onClose }: { defaultProjectId: stri
      */
     const created = issuedId ? allUsers.find(u => u.id === issuedId) ?? null : null;
     const scopable = created ? scopableCameras(allCameras, created.projectIds) : [];
+    /* Only while the account is still holding everything, and only where there is a scope to
+       narrow at all — on a site with no cameras provisioned, naming the default would be naming
+       nothing. */
+    const holdsEveryCamera = !!created && created.appAccess && scopable.length > 0
+      && scopedCameraIds(created, allGroups) === null;
     return (
       <>
-        <InviteLinkPanel title={t.inviteCreatedTitle} links={[issued]} onClose={onClose}>
+        <InviteLinkPanel title={t.inviteCreatedTitle} links={[issued]} onClose={onClose}
+          doneLabel={holdsEveryCamera ? t.inviteDoneAll : undefined}>
           {/* Same two conditions as the row menu item, for the same reasons: no app door means no
               cameras to narrow, and an empty picker would let somebody save the empty set on a
               site that simply has not been provisioned yet. */}
           {created && created.appAccess && scopable.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between", padding: "12px 14px", borderRadius: "10px", border: BORDER }}>
+            /* Filled, not outlined. Above it sits a link block with a Copy button that owns the
+               sheet; an outlined row under it read as a footnote to the thing you came for. The
+               fill is the same one the panel uses for a value you are meant to take in. */
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between", padding: "12px 14px", borderRadius: "10px", backgroundColor: "var(--gray-50)" }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-600)" }}>{t.scopeLabel}</p>
                 <p style={{ fontSize: "12px", color: "var(--gray-500)", lineHeight: 1.5, marginTop: "2px" }}>
@@ -5940,15 +5968,14 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                 </div>
               )}
               <div style={{ padding: "8px 20px 4px", display: "flex", flexDirection: "column", gap: "18px" }}>
-                {([["where", t.panelWhereSection], ["what", t.panelWhatSection]] as const).map(([group, heading], gi) => (
-                /* A HAIRLINE WHERE THE TINT USED TO BE (owner, 2026-10-06: 그룹핑하던 자리에
-                   연한색 라인을 추가해줄까). `--line` is the token whose stated job is grouping —
-                   see its note in PortalShared, where it is kept apart from the control outline
-                   precisely because one groups and the other is an edge you click into.
-                   One rule per boundary, three in the whole card. That is not the 2026-09-22
-                   state coming back: what came off then was 27 edges, of which 15 crossed the
-                   reader's path. */
-                <div key={group} style={gi === 0 ? undefined : { borderTop: BORDER, paddingTop: "16px" }}>
+                {([["where", t.panelWhereSection], ["what", t.panelWhatSection]] as const).map(([group, heading]) => (
+                /* NOTHING BETWEEN THE GROUPS — not a tint, not a rule. Both were tried on
+                   2026-10-06 at the owner's asking, in that order, and both came off: the tint
+                   because it boxed the groups, the hairline because three of them put lines back
+                   in a card that had just been cleared of 27. What holds a group is its caption
+                   and the space around it, which is what Neon, Fibery and Canny do in a user
+                   panel — the same survey the tint came from. */
+                <div key={group}>
                 <p style={PANEL_CAPTION}>{heading}</p>
                 <div style={PANEL_GROUP}>
                   {rows.filter(r => r.group === group).map(row => {
@@ -6136,7 +6163,7 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                 identical at 36px tall and 8px radius. 제거 keeps its red-on-pointing class as the
                 one that cannot be undone.
               */}
-              <div style={{ margin: "0 20px", paddingTop: "16px", paddingBottom: "22px", borderTop: BORDER }}>
+              <div style={{ padding: "14px 20px 22px" }}>
                 <p style={PANEL_CAPTION}>{t.panelAccountSection}</p>
                 {/*
                   A PARKED ADDRESS IS A STATE, so the card carries it.
@@ -6259,13 +6286,10 @@ export default function PortalUsersPage({ projectId, onGoToCameras, half = "user
                     a heading says which two they are — the ones that change whether the account
                     works at all, as opposed to the ones that help somebody back in. Same heading
                     style as the groups above, so the card reads as four named parts. */}
-                {/* It takes the rule now. The 2026-09-28 note said a hairline here would be the
-                    ONLY line in the card, doing a job the space already did — true then, and no
-                    longer true: every group boundary carries one (owner, 2026-10-06), so leaving
-                    this one bare would make the last two actions the single pair held by nothing.
-                    The heading and the room stay; the line joins them. */}
-                <div style={{ borderTop: BORDER, marginTop: "22px", paddingTop: "16px" }} />
-                <p style={PANEL_CAPTION}>{t.panelStatusSection}</p>
+                {/* 22px above the heading rather than a rule — the 2026-09-28 reasoning, and it
+                    outlived the hairlines that were briefly added beside it: with no boxes left
+                    anywhere else, a line here does a job the space already does. */}
+                <p style={{ ...PANEL_CAPTION, marginTop: "22px" }}>{t.panelStatusSection}</p>
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", margin: "0 -10px" }}>
                   <button type="button"
                     disabled={!manageAccess || (mu.status !== "suspended" && lastAdmin)}
