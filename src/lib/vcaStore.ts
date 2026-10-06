@@ -3739,6 +3739,26 @@ const PORTAL_USERS: PortalUser[] = [
   // The customer's security officer: reads Portal for the audit trail, has no business in the
   // monitoring app. The other new combination.
   { id: "user-6", name: "Aaron Sim", email: "aaron.sim@smartcity.gov.sg", employeeId: "EMP-2046", teamId: "team-univs", projectIds: ["proj-sg"], permission: "auditor", appAccess: false, status: "active", lastLoginAt: "2026-08-22 16:05" },
+  /*
+   * THREE MORE OPERATORS, SO A GROUP CAN BE HELD BY MORE THAN ONE (owner, 2026-10-06: 그룹
+   * 화면에서 여러 명이 사용중인 걸로 확인하고 싶어).
+   *
+   * The seed had exactly one account narrowed to a group, so every screen that counts holders —
+   * the card's 「사용중 · N」, the list behind it, the delete confirmation, the membership
+   * editor's warning — could only ever be seen at N = 1, which is the number that hides plural
+   * wording, a list that needs more than one row, and the difference between "1 account loses a
+   * camera" and "3 do". A console for a city site with five accounts was thin anyway.
+   *
+   * All three are active with the app door open, because `accountsWatching` counts only accounts
+   * that could sign in today — a suspended or not-yet-accepted holder is a grant, not a viewer,
+   * and seeding one here would have produced a number nobody could explain.
+   *
+   * One of them holds BOTH groups: a scope is a union, and until now nothing in the seed showed
+   * that an account can be given two.
+   */
+  { id: "user-7", name: "Priya Nair", email: "priya.nair@smartcity.gov.sg", employeeId: "EMP-2047", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], grantMode: "preset", presetId: "preset-operator", cameraGroupIds: ["cgroup-1"], status: "active", lastLoginAt: "2026-08-25 07:58" },
+  { id: "user-8", name: "Daniel Koh", email: "daniel.koh@smartcity.gov.sg", employeeId: "EMP-2048", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown"], grantMode: "preset", presetId: "preset-operator", cameraGroupIds: ["cgroup-1"], status: "active", lastLoginAt: "2026-08-24 22:11" },
+  { id: "user-9", name: "Siti Rahim", email: "siti.rahim@smartcity.gov.sg", employeeId: "EMP-2049", teamId: "team-univs", projectIds: ["proj-sg"], permission: "none", appAccess: true, appActions: ["systemStatus", "liveView", "dashboardTrail", "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch", "liveWall", "history", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "reid", "reidSearch", "redface", "trail"], grantMode: "preset", presetId: "preset-investigator", cameraGroupIds: ["cgroup-1", "cgroup-2"], status: "active", lastLoginAt: "2026-08-23 15:40" },
 ];
 
 // Empty on purpose. Three sample requests used to sit here, and no path in the app could produce
