@@ -100,6 +100,9 @@ const T = {
     viewLabel: "How to view groups",
     viewCards: "Cards",
     legendUngrouped: "Not in a group",
+    /* Only on the rows that cannot be pressed — a group whose cameras are all unsurveyed has
+       nothing on the map to frame. */
+    legendNothingDrawn: "None of this group is on the map yet",
     createButton: "New group",
     createdToast: "Camera group created",
     savedToast: "Camera group saved",
@@ -165,6 +168,7 @@ const T = {
     viewLabel: "그룹 보는 방법",
     viewCards: "카드",
     legendUngrouped: "그룹 없음",
+    legendNothingDrawn: "이 그룹은 아직 지도에 그릴 카메라가 없습니다",
     createButton: "그룹 만들기",
     createdToast: "카메라 그룹을 만들었습니다",
     savedToast: "카메라 그룹을 저장했습니다",
@@ -1089,6 +1093,20 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
      were looking last is not a setting, and a tab that opens in a mode you did not choose is
      worse than one that always opens the same way. */
   const [view, setView] = useState<"cards" | "map">("cards");
+  /*
+   * ONE GROUP AT A TIME, ON A MAP THAT CANNOT HOLD THEM ALL (owner, 2026-10-06: 이게 필요할 것
+   * 같아).
+   *
+   * MEASURED on the full-site view: 61 dots at 12px, 22 of them under a neighbour, and picking a
+   * specific camera took four zoom steps. Colour has the same ceiling from the other side — the
+   * ramp holds six and nothing caps how many groups a site has. Pressing a legend row answers
+   * both at once: the map reframes on that group's cameras, which spreads them, and everything
+   * else greys, so no two colours can be confused because only one is lit.
+   *
+   * Not a mode with a button: the legend is already the list of groups and already sits on the
+   * map. Press again to let go.
+   */
+  const [focusGroup, setFocusGroup] = useState<string | null>(null);
   /** The account a footer name was pressed on. Read-only — see AccountPeek. */
   const [peeking, setPeeking] = useState<PortalUser | null>(null);
   const drawerOpen = editing !== null || creating;
@@ -1221,9 +1239,13 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
             cameras={registered}
             selectedIds={EMPTY_SELECTION}
             onToggleSelect={() => {}}
+            fitTo={focusGroup ? (groups.find(g => g.id === focusGroup)?.cameraIds ?? []) : undefined}
             tintOf={cameraId => {
               const i = groups.findIndex(g => g.cameraIds.includes(cameraId));
-              return i === -1 ? "var(--gray-300)" : GROUP_COLORS[i % GROUP_COLORS.length];
+              if (i === -1) return "var(--gray-300)";
+              /* While one group is held, the others are context, not answers. */
+              if (focusGroup && groups[i].id !== focusGroup) return "var(--gray-300)";
+              return GROUP_COLORS[i % GROUP_COLORS.length];
             }}
             /* The colour says WHICH ONE only while there are six or fewer, and `findIndex` above
                paints a camera held by two groups in the first one's colour either way. Pressing a
@@ -1246,13 +1268,31 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
                 padding: "10px 12px", borderRadius: "10px", border: BORDER,
                 backgroundColor: "white", boxShadow: "var(--shadow-popover)",
               }}>
-                {groups.map((g, i) => (
-                  <span key={g.id} style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: "11.5px", color: "var(--gray-700)" }}>
-                    <span aria-hidden="true" style={{ flexShrink: 0, width: "10px", height: "10px", borderRadius: "50%", backgroundColor: GROUP_COLORS[i % GROUP_COLORS.length] }} />
-                    <span style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.label}</span>
-                    <span style={{ flexShrink: 0, color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>{liveCameras(g).filter(hasPosition).length}</span>
-                  </span>
-                ))}
+                {groups.map((g, i) => {
+                  const held = focusGroup === g.id;
+                  const drawn = liveCameras(g).filter(hasPosition).length;
+                  return (
+                    /* The whole row, not the dot or the count: pressing a 10px disc is a target
+                       nobody aims at, and the row is already the thing that names the group. */
+                    <button key={g.id} type="button" className="portal-btn-quiet"
+                      onClick={() => setFocusGroup(held ? null : g.id)}
+                      disabled={drawn === 0}
+                      title={drawn === 0 ? t.legendNothingDrawn : undefined}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "7px",
+                        margin: "0 -6px", padding: "3px 6px", width: "calc(100% + 12px)",
+                        border: "none", borderRadius: "6px", fontFamily: "inherit", textAlign: "left",
+                        backgroundColor: held ? "var(--gray-100)" : "transparent",
+                        cursor: drawn === 0 ? "default" : "pointer",
+                        fontSize: "11.5px", color: "var(--gray-700)",
+                        opacity: focusGroup && !held ? 0.45 : 1,
+                      }}>
+                      <span aria-hidden="true" style={{ flexShrink: 0, width: "10px", height: "10px", borderRadius: "50%", backgroundColor: GROUP_COLORS[i % GROUP_COLORS.length] }} />
+                      <span style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.label}</span>
+                      <span style={{ marginLeft: "auto", flexShrink: 0, color: "var(--gray-500)", fontVariantNumeric: "tabular-nums" }}>{drawn}</span>
+                    </button>
+                  );
+                })}
                 {/* Said only when there are any — a legend row for a colour no dot wears is noise. */}
                 {registered.some(c => hasPosition(c) && !groups.some(g => g.cameraIds.includes(c.id))) && (
                   <span style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: "11.5px", color: "var(--gray-500)", paddingTop: "4px", borderTop: "1px solid var(--gray-100)" }}>

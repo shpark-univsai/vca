@@ -358,6 +358,21 @@ export default function CameraMapView({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<Map<string, any>>(new Map());
   const [selected, setSelected] = useState<string | null>(null);
+  /*
+   * REFRAMING AFTER THE FIRST FIT.
+   *
+   * The opening fit lives inside the effect that builds the map, which runs once. A caller that
+   * changes `fitTo` later — the camera-groups legend, where pressing a group asks the map to show
+   * that group — would otherwise be heard only if the whole map were rebuilt, and rebuilding is
+   * what this file spends several notes avoiding. So the fit is kept as a function the build
+   * leaves behind, and a small effect calls it whenever the ids change.
+   */
+  const fitRef = useRef<((ids?: string[]) => void) | null>(null);
+  const fitKey = (fitTo ?? []).join(",");
+  useEffect(() => {
+    fitRef.current?.(fitTo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitKey]);
   /* Only so the header can say which mode the reader is in — the layers themselves are swapped
      inside Leaflet's own handler, without waiting for React. */
   const [zoom, setZoom] = useState(12);
@@ -417,6 +432,9 @@ export default function CameraMapView({
      — and it survives zooming in, which is the point: the ring is how the group stays legible
      once the pills have given way to individual dots. */
   const placed = useMemo(() => cameras.filter(hasPosition), [cameras]);
+  /* The colours as they stand, as one string. Cheap at this size (62 at most) and it is the only
+     honest dependency: `tintOf` is a new closure on every render of the caller. */
+  const tintKey = placed.map(c => tintOf?.(c.id) ?? "").join(",");
   const unplaced = cameras.length - placed.length;
   /* Keyed on the coordinates rather than the array, so a re-render from a hover or a language
      change does not yank the view back from wherever the reader has panned to — the same rule
@@ -630,14 +648,16 @@ export default function CameraMapView({
 
       // Frame what is actually there. A site can be a campus a few hundred metres across, ten
       // kilometres from the city centre the default view opens on.
-      const frame = fitTo && fitTo.length > 0
-        ? placed.filter(c => fitTo.includes(c.id))
-        : placed;
-      const framed = frame.length > 0 ? frame : placed;
-      if (framed.length > 0) {
+      fitRef.current = ids => {
+        const want = ids && ids.length > 0 ? placedRef.current.filter(c => ids.includes(c.id)) : placedRef.current;
+        const framed = want.length > 0 ? want : placedRef.current;
+        if (framed.length === 0) return;
         const bounds = L.latLngBounds(framed.map(c => [c.lat as number, c.lng as number] as [number, number]));
-        instance.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 });
-      }
+        /* animate: the second fit and later are a reader pressing a legend row, and a map that
+           jumps has to be re-read from scratch; the first one has nothing to move from. */
+        instance.fitBounds(bounds, { padding: [48, 48], maxZoom: 16, animate: fitRef.current !== null });
+      };
+      fitRef.current(fitTo);
       // After the fit, not before: which layer belongs on screen depends on the zoom the fit chose.
       applyZoom();
       map = instance;
@@ -688,9 +708,14 @@ export default function CameraMapView({
     })();
     return () => { cancelled = true; };
     // placed is recreated per render; positionsKey is the value that actually changes. The
-    // selection is joined into a string for the same reason: the Set is new every render.
+    // selection is joined into a string for the same reason: the Set is new every render — and so
+    // is `tintOf`, which is why the colours are compared as a string rather than the function.
+    // Without tintKey this pass ran only when the pick or the positions moved, so a caller that
+    // repainted the dots for its own reason — the camera-groups legend greying every group but
+    // the one being held — changed nothing on screen. MEASURED: the five coloured dots stayed
+    // coloured after the press.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positionsKey, selectionKey]);
+  }, [positionsKey, selectionKey, tintKey]);
 
   const selectedCamera = selected === null ? null : placed.find(c => c.id === selected) ?? null;
 
