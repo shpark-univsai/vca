@@ -62,12 +62,13 @@ const T = {
        아이콘 활용해서 표시 짧게 해줘). The two rows differ in one thing — WHY these accounts reach
        these cameras — so the mark carries that and the words carry the names, which is what the
        reader came for. The full sentence is one pointer-rest away on each row. */
-    watchThrough: "Via group",
-    watchThroughFull: "These accounts reach these cameras through this group",
-    watchThroughNone: "Nobody",
-    watchThroughNoneFull: "No account reaches these cameras through this group",
-    watchEvery: "All cameras",
-    watchEveryFull: "These accounts were never narrowed, so they see these cameras anyway — deleting this group takes nothing from them",
+    /* Worded and shaped like the preset tab's own chip, because they are the same fact about the
+       same kind of object (owner, 2026-10-06: 옆에 앱 퍼미션 프리셋도 마찬가지로 누가 가졌나는
+       안 보여주잖아). 「In use」 is a claim about the GROUP — how many accounts were given it —
+       not about the cameras, which is what lets the number be honest at this length. */
+    holders: (n: number) => `In use · ${n}`,
+    holdersNone: "Not in use",
+    holdersTitle: (label: string) => `Accounts given “${label}”`,
     andMorePeople: (n: number) => `and ${n} more`,
     grantCustom: "Custom",
     accountEmail: "Email",
@@ -130,12 +131,9 @@ const T = {
     mapInNoGroup: "어느 그룹에도 없음",
     cameras: (n: number) => `${n}대`,
     camerasNone: "비어 있음",
-    watchThrough: "이 그룹으로",
-    watchThroughFull: "이 그룹을 통해 이 카메라들을 보는 계정입니다",
-    watchThroughNone: "없음",
-    watchThroughNoneFull: "이 그룹으로 이 카메라들을 보는 계정이 없습니다",
-    watchEvery: "전체 범위",
-    watchEveryFull: "범위를 좁히지 않아 어차피 보는 계정입니다 — 이 그룹을 지워도 잃는 것이 없습니다",
+    holders: (n: number) => `사용중 · ${n}`,
+    holdersNone: "미사용",
+    holdersTitle: (label: string) => `「${label}」을 받은 계정`,
     andMorePeople: (n: number) => `외 ${n}명`,
     grantCustom: "커스텀",
     accountEmail: "이메일",
@@ -986,80 +984,33 @@ function GroupDrawer({ group, cameras, otherGroups, portalUsers, t, onSave, onCl
  */
 const NAME_CAP = 3;
 
-/**
- * ONE HALF OF 「WHO CAN WATCH THESE CAMERAS」, NAMED AND PRESSABLE.
- *
- * A labelled sentence rather than a bare figure: of the admin consoles checked for this, none
- * makes an integer on its own the target — Airwallex ships 「This role has 1 user」 and Linear
- * 「Members … 1 member ›」, both of them the whole phrase. So the label names the relation and the
- * names are the targets.
- *
- * THE APP PERMISSION RIDES WITH THE NAME, Vercel's row exactly (「Designers · 1 member · Saturday:
- * Project Viewer」). This card is the only place in the console where the two permission axes
- * stand side by side as values rather than as a sentence about how they combine: the group is the
- * camera axis, 「조사자」 is the app axis, and an access review needs both before it can say
- * whether this is the right person on these cameras.
- */
-function WatcherLine({ icon, label, hint, empty, emptyHint, people, appLabelOf, moreLabel, onOpen }: {
-  /**
-   * The mark that says WHY, so the words can be only WHO.
-   *
-   * These two rows are the same list of names twice and differ in one thing — reached through
-   * this group, or reached because the account was never narrowed. That difference used to be
-   * carried by 「범위를 안 좁혀 함께 보는 계정」, a label longer than the names beside it. A mark
-   * can hold a distinction that has exactly two values; it cannot hold the reasoning, so the
-   * sentence is on the hover of the whole row rather than deleted.
-   */
-  icon: React.ReactNode;
-  label: string;
-  /** The long form, on the row's hover. */
-  hint: string;
-  /** Printed instead of the label when nobody is here. Omitted where silence is the right answer. */
-  empty?: string;
-  emptyHint?: string;
-  people: PortalUser[];
-  appLabelOf: (u: PortalUser) => string;
-  moreLabel: (n: number) => string;
-  onOpen: (u: PortalUser) => void;
+/** The preset tab's own chip, for the same fact on the other kind of permission object. */
+function HolderChip({ n, t, onOpen }: {
+  n: number;
+  t: (typeof T)["en"] | (typeof T)["ko"];
+  onOpen?: () => void;
 }) {
-  if (people.length === 0) {
-    return empty ? (
-      <span title={emptyHint} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "11px", color: "var(--gray-400)" }}>
-        <span aria-hidden="true" style={{ display: "flex", flexShrink: 0, color: "var(--gray-300)" }}>{icon}</span>
-        {empty}
-      </span>
-    ) : null;
-  }
-  const shown = people.slice(0, NAME_CAP);
-  const rest = people.slice(NAME_CAP);
+  const body = (
+    <span style={{
+      flexShrink: 0, fontSize: "11px", fontWeight: 700,
+      color: n === 0 ? "var(--gray-400)" : "var(--gray-600)",
+      padding: "3px 8px", borderRadius: "999px", border: BORDER,
+      backgroundColor: n === 0 ? "transparent" : "var(--gray-50)",
+      fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap",
+    }}>
+      {n === 0 ? t.holdersNone : t.holders(n)}
+    </span>
+  );
+  /* The chip is the target, not a digit inside it — the same note the preset tab's chip carries. */
+  if (!onOpen) return body;
   return (
-    <div title={hint} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "3px 8px" }}>
-      <span style={{ display: "flex", alignItems: "center", gap: "5px", flexShrink: 0, fontSize: "11px", color: "var(--gray-500)" }}>
-        <span aria-hidden="true" style={{ display: "flex", color: "var(--gray-400)" }}>{icon}</span>
-        {label}
-      </span>
-      {shown.map(u => (
-        /* Underlined in grey rather than coloured: this footer can hold six of these, and six
-           purple words on a card whose every other mark is grey would make the names the loudest
-           thing in the list. The underline is what says "pressable" without spending the accent. */
-        <button key={u.id} type="button" onClick={() => onOpen(u)}
-          style={{
-            border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",
-            fontSize: "11px", fontWeight: 700, color: "var(--gray-900)",
-            textDecoration: "underline", textDecorationColor: "var(--gray-300)", textUnderlineOffset: "2px",
-          }}>
-          {u.name}
-          <span style={{ fontWeight: 600, color: "var(--gray-500)" }}>{` · ${appLabelOf(u)}`}</span>
-        </button>
-      ))}
-      {rest.length > 0 && (
-        <span title={rest.map(u => u.name).join(", ")} style={{ fontSize: "11px", color: "var(--gray-400)" }}>
-          {moreLabel(rest.length)}
-        </span>
-      )}
-    </div>
+    <button type="button" onClick={onOpen}
+      style={{ display: "inline-flex", flexShrink: 0, border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
+      {body}
+    </button>
   );
 }
+
 
 /**
  * THE ACCOUNT, OPENED FROM THE GROUP IT REACHES THROUGH.
@@ -1140,6 +1091,8 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
   const [focusGroup, setFocusGroup] = useState<string | null>(null);
   /** The account a footer name was pressed on. Read-only — see AccountPeek. */
   const [peeking, setPeeking] = useState<PortalUser | null>(null);
+  /** The group whose holders are being listed. Held by id-bearing object, like `peeking`. */
+  const [holders, setHolders] = useState<CameraGroup | null>(null);
   const drawerOpen = editing !== null || creating;
 
   /**
@@ -1383,6 +1336,34 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
                   <span style={{ flexShrink: 0, fontSize: "11px", fontWeight: 700, color: cams.length === 0 ? "var(--gray-900)" : "var(--gray-600)", padding: "3px 8px", borderRadius: "999px", border: BORDER, backgroundColor: "var(--gray-50)", fontVariantNumeric: "tabular-nums" }}>
                     {cams.length === 0 ? t.camerasNone : t.cameras(cams.length)}
                   </span>
+                  {/*
+                    A CHIP, NOT A FOOTER OF NAMES (owner, 2026-10-06: 여기에 사람이 표시될 필요는
+                    없을것 같은데 · 누가 가졌나는 사실 유저 탭에 유저에서 봐야지 · 옆에 앱 퍼미션
+                    프리셋도 마찬가지로 안 보여주잖아).
+
+                    Two rows of names stood here, and one of them — the accounts that were never
+                    narrowed — printed the SAME NAMES ON EVERY CARD, because an unnarrowed account
+                    reaches every group alike. Ten groups, ten copies of one fact. That row is
+                    gone outright.
+
+                    The other row is real per group, so it survives as a count that opens. That is
+                    the shape the sibling tab already uses for the same question (「사용중 · N」,
+                    pressable, opening the accounts that follow the preset), and matching it is
+                    the point: two tabs of one page answering "who has this" two different ways is
+                    the console teaching two habits.
+
+                    「사용중」 is a claim about the GROUP — how many accounts were given it — not
+                    about the cameras. That distinction is what makes a bare number honest here:
+                    the earlier line said 「N개 계정이 가짐」 while the reader took it for "who can
+                    see these cameras", which was a larger set. This one cannot be misread that
+                    way, and the whole-site accounts it used to name are a property of those
+                    accounts, read on their own row under 사용자.
+                  */}
+                  <HolderChip
+                    n={watching.through.length}
+                    t={t}
+                    onOpen={watching.through.length === 0 ? undefined : () => setHolders(group)}
+                  />
                   <RowActionsMenu actions={[
                     {
                       /* First, because it is the one that changes access rather than wording. */
@@ -1443,32 +1424,6 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
                   the same history under area: "cameraGroups" — every change with its author,
                   rather than only the first one.
                 */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "auto", paddingTop: "8px", borderTop: "1px solid var(--gray-100)" }}>
-                  <WatcherLine
-                    /* A person with a tick: this account was given it. */
-                    icon={<UserCheck size={12} strokeWidth={2.2} />}
-                    label={t.watchThrough}
-                    hint={t.watchThroughFull}
-                    empty={t.watchThroughNone}
-                    emptyHint={t.watchThroughNoneFull}
-                    people={watching.through}
-                    appLabelOf={appLabelOf}
-                    moreLabel={t.andMorePeople}
-                    onOpen={setPeeking}
-                  />
-                  {/* Silent when there is none. 「0 accounts see everything」 is a sentence about
-                      nothing, the same rule the delete dialog's holder count already follows. */}
-                  <WatcherLine
-                    /* A globe: nothing to do with this group — these accounts hold the whole site. */
-                    icon={<Globe size={12} strokeWidth={2.2} />}
-                    label={t.watchEvery}
-                    hint={t.watchEveryFull}
-                    people={watching.unrestricted}
-                    appLabelOf={appLabelOf}
-                    moreLabel={t.andMorePeople}
-                    onOpen={setPeeking}
-                  />
-                </div>
               </div>
             );
           })}
@@ -1476,6 +1431,32 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
         </div>
       )}
 
+      {/*
+        THE NAMES, ONE PRESS AWAY. Read-only and by name, mirroring the preset tab's FollowerList
+        for the same reason the AccountPeek below gives: the panel that CHANGES an account belongs
+        to the 사용자 rail row, and two panels writing one account drift the day either gains a
+        field. Only the accounts given this group — the unnarrowed ones are not holders of it.
+      */}
+      {holders && (() => {
+        const held = accountsWatching(
+          (allGroups.find(g => g.id === holders.id)?.cameraIds ?? []),
+          projectId, portalUsers, allGroups,
+        ).through;
+        return (
+          <Drawer title={t.holdersTitle(holders.label)} width="420px" onClose={() => setHolders(null)}>
+            <div style={{ padding: "4px 20px 20px", display: "flex", flexDirection: "column", gap: "2px" }}>
+              {held.map(u => (
+                <button key={u.id} type="button" onClick={() => { setHolders(null); setPeeking(u); }}
+                  className="portal-btn-quiet"
+                  style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "1px", width: "calc(100% + 24px)", margin: "0 -12px", padding: "8px 12px", border: "none", borderRadius: "8px", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{u.name}</span>
+                  <span style={{ fontSize: "11px", color: "var(--gray-500)" }}>{appLabelOf(u)}</span>
+                </button>
+              ))}
+            </div>
+          </Drawer>
+        );
+      })()}
       {peeking && (
         <AccountPeek
           /* Read from the store by id rather than from the click — the snapshot taken when the
