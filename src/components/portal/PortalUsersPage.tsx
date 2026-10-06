@@ -2847,6 +2847,21 @@ const PANEL_CAPTION: React.CSSProperties = {
  */
 const PANEL_GROUP: React.CSSProperties = {
   display: "flex", flexDirection: "column",
+  /*
+   * PULLED OUT BY THE ROWS' OWN PADDING (owner, 2026-10-06: 큰 제목있고 그 아래 작은제목들은
+   * 들여쓰기 되어있는데 안 들여쓰는게 나은것같은데).
+   *
+   * MEASURED: captions at x 941, every row label at 953 — the 12px is the row button's own
+   * horizontal padding, nothing else. While the group wore a tint that 12px read as the box's
+   * inside edge; with the tint gone it is an indent with no reason, and a heading whose items
+   * start 12px to its right reads as a list nested under it rather than the group it names.
+   *
+   * The negative margin, rather than taking the padding off the buttons: the padding is what the
+   * pointer tint fills, and a row whose highlight stops at the text is a smaller target that
+   * looks like a mistake. So the text lines up and the tint bleeds past it, which is what the
+   * 로그인 수단 block below already does with its own buttons.
+   */
+  margin: "0 -12px",
 };
 
 /**
