@@ -788,7 +788,13 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
             It used to be gender+age always, which meant a card badged VIP said "M 45yo" where its
             name belonged: the most important card on the wall omitted the one thing that made it
             important, while the register had the name all along. */}
-        <div style={{ display:"flex", gap:"4px", fontSize:"12px", fontWeight:600, color:"var(--gray-900)",
+        {/* RESERVES THE INSET'S FOOTPRINT (60 + its 6px right offset + 6 of air, less the 11px the
+            footer is already inset) so the line ends in 「…」 instead of disappearing under the
+            photo. `title` carries the whole name, because a truncated one is a question the card
+            should still be able to answer. */}
+        <div title={p.personName ?? undefined}
+          style={{ display:"flex", gap:"4px", fontSize:"12px", fontWeight:600, color:"var(--gray-900)",
+          paddingRight:"61px",
           overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flexShrink:0 }}>
           {p.personName
             ? <span style={{ fontWeight:700 }}>{p.personName}</span>
@@ -805,21 +811,23 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
         </div>
       </div>
       {/*
-        LIFTED CLEAR OF THE FOOTER (owner, 2026-10-06: 데이터에 모니터링에 아래쪽 사진에 이름도
-        가려지넹).
+        BACK ON THE CORNER, straddling the capture and the footer (owner, 2026-10-07: 작은
+        이미지가 위로 올라갔는데 … 너무 몸까지 다 가려져서 처음시안대로 하고싶거든).
 
-        MEASURED: at bottom 40 the inset reached 36px up into the 76px footer, so the last 56px of
-        the 130px identity line was painted underneath it — and the line believed it had all 130,
-        so `textOverflow: ellipsis` never fired. 「Suriani binte Kadir」 stopped mid-word behind a
-        photo with nothing saying it continued.
+        It was lifted to bottom 82 on 2026-10-06 to stop it covering the name, and that cost more
+        than it bought: clear of the footer it sits in the middle of the body, over the one part of
+        the capture an operator is reading.
 
-        Reserving the space instead was tried and measured first: padding the footer 72px on the
-        right left the name 69px, which truncated 「Priya Raman」 — an eleven-character name losing
-        a character to make room for a thumbnail is a worse trade than moving the thumbnail. At
-        bottom 82 (the footer's 76 + 6 of air) the inset sits wholly on the capture, 311→371 inside
-        a photo area that runs 199→377, and the name gets the whole line back.
+        THE NAME IS HANDLED ON THE LINE INSTEAD — see the identity row's own note. The bug being
+        fixed there was never the overlap; it was that the row believed it had the full 130px and
+        so never drew 「…」, which let a name stop mid-word behind a photo with nothing saying it
+        continued. The row now reserves the inset's footprint, so it truncates honestly and the
+        whole name is on the element's title.
+
+        The geometry is what it is: a 60px photo on a 150px card takes 56px from the line beside
+        it. That is the trade this layout makes, and it is now visible rather than silent.
       */}
-      <div style={{ position:"absolute", right:"6px", bottom:"82px", width:"60px", height:"60px",
+      <div style={{ position:"absolute", right:"6px", bottom:"40px", width:"60px", height:"60px",
         borderRadius:RADIUS.inner, overflow:"hidden", transform:"translateZ(0)",
         // Only VIP gets a ring (brand purple) — Unknown has nothing to call out, and RedFace
         // already gets its own dedicated "REDFACE" badge on this card (below).
