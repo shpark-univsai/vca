@@ -1182,6 +1182,27 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
       const sayableCameraCount = (label: string, installed: number): number | null =>
         districts.filter(d => d.label === label).length > 1 ? null : installed;
 
+      /**
+       * WHILE ONE PERSON IS PICKED, THIS MAP STOPS COUNTING EVERYBODY ELSE (owner, 2026-10-07:
+       * 특정 한 사람의 트레킹을 보고있는데 아래 몇명인지 뱃지가 없어도돼).
+       *
+       * The 「N명」 pill answers 「how many people did this camera see today」. A selected trail
+       * asks a different question — 「where did THIS person go」 — and the two answers land on the
+       * same pixels: the numbered trail node sits on the camera dot, with the pill tucked under
+       * it at left:13px/top:-11px. Under 02 the number reads as part of that stop, so a camera
+       * that happened to see four other people all morning says 「4명」 beside one person's second
+       * sighting.
+       *
+       * ALL CAMERAS, not only the ones on the trail. A map where some dots carry a figure and
+       * some do not, with nothing on screen saying why, is harder to read than one that answers
+       * a single question at a time. Clearing the selection brings every pill back on the same
+       * tick the trail comes off — this effect already lists selectedEvent.
+       *
+       * Only the pill goes. The ring, the dot and the hover card stay: the hover is where
+       * 「today's headcount」 is still a fair question, and it is one gesture away.
+       */
+      const oneSubjectPicked = !!selectedEvent;
+
       if (districtFilter && zoom <= CLUSTER_ZOOM_BREAKPOINT) {
         // ── A district is picked, but the map is pulled back out ──
         //
@@ -1333,7 +1354,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // here at all" became the same marker. It is also the threshold the camera layer has
           // always used (see peopleAt, whose singular branch exists for this), so one figure now
           // appears under the same rule on both layers of this map.
-          const countPill = people > 0
+          const countPill = people > 0 && !oneSubjectPicked
             ? `<div style="position:absolute;left:13px;top:-11px;padding:1px 6px;border-radius:var(--radius-pill);
                   background:var(--gray-900);border:1.5px solid white;font-family:'SUIT',sans-serif;
                   font-size:10px;font-weight:800;color:white;letter-spacing:-0.2px;white-space:nowrap">
@@ -1632,7 +1653,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         cameras.forEach(cam => {
           const key = coordKey(cam.lat, cam.lng);
           const people = (peopleByCamera.get(cam.code) ?? peopleByCamera.get(key) ?? new Set()).size;
-          const countPill = people > 0
+          const countPill = people > 0 && !oneSubjectPicked
             ? `<div style="position:absolute;left:13px;top:-11px;padding:1px 6px;border-radius:var(--radius-pill);
                   background:var(--gray-900);border:1.5px solid white;font-family:'SUIT',sans-serif;
                   font-size:10px;font-weight:800;color:white;letter-spacing:-0.2px;white-space:nowrap">
