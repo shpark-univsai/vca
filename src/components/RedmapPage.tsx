@@ -1244,7 +1244,30 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           they did in less width, and the % readout beside it says where you are. Past that, the
           vca-tb-* rules in globals.css drop the "Search by image" hints (the dashed pill and its
           icon already say "attach an image"), then the word "Similarity". */}
-      <div className="vca-redmap-toolbar" style={{
+      {/*
+        ENTER RUNS THE SEARCH (owner, 2026-10-07, same ask as the chip width below).
+        
+        This toolbar had NO keyboard path to its own primary action — no form, no key handler.
+        That is worst exactly where it is felt most: in 차량 mode the hand is already on the
+        keyboard typing a plate, and the only way to submit was to let go and cross 638px of
+        mouse travel. Enter costs 0px of travel, moves no control and changes no layout, which
+        is a different order of thing from the ~121px a re-aligned toolbar would have saved.
+
+        Captured on the toolbar rather than on one input: the mode toggle, the date trigger and
+        the chips are all buttons, and a plate typed into the field is only one of the ways a
+        query gets ready. `defaultPrevented` leaves the date popover's own Enter (and anything
+        else that already handled the key) alone, and Shift+Enter is left free in case a field
+        ever wants it. `handleSearch` refuses an empty query by itself — see hasQuery — so Enter
+        with nothing attached says the same thing the button says rather than running a search
+        of nothing.
+      */}
+      <div className="vca-redmap-toolbar"
+        onKeyDown={e => {
+          if (e.key !== "Enter" || e.shiftKey || e.defaultPrevented || searching) return;
+          e.preventDefault();
+          handleSearch();
+        }}
+        style={{
         backgroundColor: "white", borderBottom: BORDER,
         padding: "0 24px", height: "52px",
         display: "flex", alignItems: "center", flexWrap: "nowrap",
@@ -1347,15 +1370,39 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                       <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)", whiteSpace: "nowrap" }}>
                         {key === "face" ? <FaceIcon color={iconColor} /> : <BodyIcon color={iconColor} />} {label}
                       </span>
-                      {active ? (
-                        <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--primary-400)", whiteSpace: "nowrap" }}>
+                      {/*
+                        BOTH STATES OCCUPY ONE CELL, so the chip does not change width when a
+                        photo goes on (owner, 2026-10-07: 서치퍼슨이 너무 오른쪽 끝에 있어서
+                        이동범위가 먼데).
+
+                        WHAT WAS ACTUALLY WRONG was not the distance, it was that the distance
+                        MOVED. Measured at 1512: the chip grows 70px → 134px when a photo is
+                        attached, so the two chips eat 129px and the gap before Reset falls from
+                        269px to 141px — and the button the hand is travelling towards slides
+                        128px while it travels. Above 1600 the hint is visible and the swap runs
+                        the other way (167 → 134), so the gap GROWS, 483 → 549. Which direction
+                        the target moves depends on the window width.
+
+                        Pinning a px width would be wrong: these are two translated strings, and
+                        「이미지로 검색」 / 「Search by image」 are not the same length. A one-cell
+                        grid holding both makes the slot as wide as the wider one in whatever
+                        language is on, and `visibility: hidden` keeps the other one's box. Below
+                        1600 the hint is `display: none` (globals.css) so it leaves the grid
+                        entirely and the slot is simply the width of 「첨부됨」 — stable either way.
+
+                        Moving the actions off the right edge was measured and dropped: it buys
+                        121px and costs 128px of movement, 189–383px more when the mode switches,
+                        and every other filter row in this product and the Portal (12 of 12) keeps
+                        its actions at the right edge.
+                      */}
+                      <span className="vca-tb-slot">
+                        <span data-on={active} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", fontWeight: 600, color: "var(--primary-400)", whiteSpace: "nowrap" }}>
                           <CheckIconSm /> {t.loaded}
                         </span>
-                      ) : (
-                        <span className="vca-tb-hint" style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", whiteSpace: "nowrap" }}>
+                        <span className="vca-tb-hint" data-on={!active} style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", whiteSpace: "nowrap" }}>
                           {t.searchByImageShort}
                         </span>
-                      )}
+                      </span>
                     </button>
                     {/* Loaded state, on hover: the whole pill becomes "delete". Detach is the only
                         action offered here — pairing it with a "change" half made one small chip

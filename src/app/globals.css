@@ -947,6 +947,20 @@ body {
    space — so what is left to give is the "Search by image" hints (the dashed pill and its
    face/body icon already say what the chip is for), then the word "Similarity", by which point the
    slider and its % reading are the only thing beside it. */
+/*
+ * The chip's second slot: both wordings stacked in ONE grid cell, so the chip keeps its width
+ * whether or not a photo is on it. See the note at the markup in RedmapPage — the toolbar's
+ * primary button used to slide 128px while the hand was travelling towards it.
+ *
+ * `visibility: hidden` rather than `display: none` on the off state: the box has to stay for the
+ * cell to size to the wider of the two. The hint's own `display: none` below 1600 is deliberate
+ * and still applies — it drops out of the grid there, leaving the slot at the width of the
+ * 「attached」 wording, which is stable on its own.
+ */
+.vca-tb-slot { display: grid; align-items: center; }
+.vca-tb-slot > * { grid-area: 1 / 1; }
+.vca-tb-slot > [data-on="false"] { visibility: hidden; }
+
 @media (max-width: 1600px) { .vca-tb-hint { display: none; } }
 @media (max-width: 1400px) { .vca-tb-label { display: none; } }
 /* Two more steps, measured 2026-09-29: the row's content is 1197px wide and the shell clips
