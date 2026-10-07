@@ -141,6 +141,10 @@ const T = {
     vipRetention: "VIP listing period",
     vipRetentionNote: "How long a new VIP listing lasts here. It fills the end date on registration, and an expired listing stops raising detections. Listings already on the list keep the date they were given.",
     vipRetentionInherited: (n: number) => `${n} days — deployment default`,
+    publicAuthority: "Public authority",
+    publicAuthorityNote: "A public authority that hands personal information to a third party has to publish the fact — gazette or its own site, within 30 days, and a website posting stays up at least 10 days (법 제18조제4항). Turning this on makes the export register ask whether each third-party release was published; it is not derived from the site type, because who owns a deployment is not what 스마트시티 or 스마트스쿨 describes.",
+    publicAuthorityOn: "Yes — the register asks about publication",
+    publicAuthorityOff: "Not answered",
     watermark: "Viewer watermark",
     watermarkOn: "Stamped with name and time",
     watermarkOff: "Not stamped",
@@ -290,6 +294,10 @@ const T = {
     vipRetention: "VIP 등록 유효기간",
     vipRetentionNote: "이 현장에서 새 VIP 등록이 얼마나 유지되는지입니다. 등록할 때 만료일을 채우고, 만료된 등록은 검출 알림을 올리지 않습니다. 이미 명단에 있는 사람의 날짜는 그대로 둡니다.",
     vipRetentionInherited: (n: number) => `${n}일 · 배포 기본값`,
+    publicAuthority: "공공기관 여부",
+    publicAuthorityNote: "공공기관이 개인정보를 제3자에게 제공하면 그 사실을 게재해야 합니다 — 관보 또는 자체 홈페이지에, 제공일로부터 30일 안에, 홈페이지는 10일 이상(법 제18조제4항). 켜면 반출 기록이 제3자 제공마다 게재했는지 묻습니다. 사이트 유형에서 끌어내지 않습니다 — 스마트시티·스마트스쿨은 무엇을 보는지지 누가 운영하는지가 아닙니다.",
+    publicAuthorityOn: "예 — 기록이 게재 여부를 묻습니다",
+    publicAuthorityOff: "답하지 않음",
     watermark: "열람자 워터마크",
     watermarkOn: "이름과 시각을 찍음",
     watermarkOff: "찍지 않음",
@@ -469,6 +477,7 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
   const setAccessLogRetention = useVcaStore(s => s.setAccessLogRetention);
   const setProjectVipRetention = useVcaStore(s => s.setProjectVipRetention);
   const setEvidenceWatermark = useVcaStore(s => s.setEvidenceWatermark);
+  const setPublicAuthority = useVcaStore(s => s.setPublicAuthority);
   /* What the row shows for a site that has not set its own — the deployment's number, not a blank.
      See the note on the VIP period row. */
   const vipFallbackDays = getComplianceConfig().vipDefaultValidDays;
@@ -1045,6 +1054,26 @@ export default function PortalSettingsPage({ projectId }: { projectId: string })
                 from then on a still on its own cannot be tied back to a session. The access log is
                 named in the same breath because it is NOT affected, and an administrator reading
                 "no viewer recorded" would otherwise reasonably fear it was. */}
+            {/* Before the watermark, with the other two 「this installation is …」 answers: it is a
+                fact about the customer rather than a preference, and it gates a column on another
+                screen. See Project.publicAuthority. */}
+            <PairItem label={t.publicAuthority} hint={t.publicAuthorityNote}>
+              {maySetPolicy ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <Switch
+                    checked={project.publicAuthority === true}
+                    onChange={on => { setPublicAuthority(project.id, on); showToast({ variant: "success", title: t.settingSaved, desc: t.publicAuthority }); }}
+                    label={t.publicAuthority}
+                  />
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: project.publicAuthority === true ? "var(--gray-900)" : "var(--gray-400)" }}>
+                    {project.publicAuthority === true ? t.publicAuthorityOn : t.publicAuthorityOff}
+                  </span>
+                  <LastChanged projectId={project.id} target="Public authority" lang={lang} t={t} />
+                </div>
+              ) : (
+                project.publicAuthority === true ? t.publicAuthorityOn : t.publicAuthorityOff
+              )}
+            </PairItem>
             <PairItem label={t.watermark} hint={t.watermarkNote}>
               {maySetPolicy ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>

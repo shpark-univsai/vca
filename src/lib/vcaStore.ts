@@ -193,6 +193,23 @@ export interface Project {
    * number nobody chose — the same rule `retentionDays` follows.
    */
   accessLogRetentionMonths?: number;
+  /**
+   * Whether this installation is a 공공기관 (owner, 2026-10-07).
+   *
+   * It gates ONE thing, and that is why it is a setting rather than a guess: 법 제18조제4항 makes a
+   * public authority that hands personal information to a third party publish the fact — in the
+   * gazette or on its own site, within 30 days, and a website posting has to stay up at least 10
+   * days. A private customer has no such duty, and a 「게재」 column on their register would be a
+   * question about an obligation they do not have.
+   *
+   * NOT DERIVED FROM `type`. 스마트시티 · 스마트스쿨 describe what the site watches, not who owns
+   * it; a private operator can run a smart-city deployment and a public one can run a school. The
+   * only honest source is somebody saying so.
+   *
+   * Absent means nobody has answered, and the register then draws no 게재 column — the same rule
+   * `retentionDays` follows. A false default here would hide a legal duty behind a guess.
+   */
+  publicAuthority?: boolean;
   licenseChannelLimit?: number;
   licensePlan?: string;
   // A date string, or the literal "Unlimited" for a plan with no expiry.
@@ -935,6 +952,17 @@ export interface ExportRecord {
    * the screen says so rather than guessing.
    */
   disposition?: "internal" | "thirdParty" | "subject";
+  /**
+   * When the 제3자 제공 was published, for a 공공기관 (법 제18조제4항 — see Project.publicAuthority).
+   *
+   * Set by a person after the fact, like `reviewedAt` above: nothing in this console publishes
+   * anything, so this records that somebody did it elsewhere. Unset on a 제공 row older than 30
+   * days is the one state this register can call overdue on its own.
+   */
+  publishedAt?: string;
+  publishedBy?: string;
+  /** Gazette or the body's own website — the two the article names. The second has its own 10-day floor. */
+  publishedWhere?: "gazette" | "website";
 }
 
 /**
@@ -1397,6 +1425,8 @@ interface VcaStoreState {
    * that clears one. A reviewer who can delete their own confirmation has not confirmed anything.
    */
   recordExportReviewed: (e: { exportId: string; note?: string }) => void;
+  /** Records that a 제3자 제공 was published (법 제18조제4항) — see ExportRecord.publishedAt. */
+  recordExportPublished: (e: { exportId: string; where: "gazette" | "website" }) => void;
   /** What the shift did about a detection. Replaces the row rather than stacking — see DetectionHandling. */
   setDetectionHandling: (e: {
     eventId: string;
@@ -1430,6 +1460,8 @@ interface VcaStoreState {
   updateProjectMail: (projectId: string, updates: Pick<Project, "mailDomain" | "smtp">) => void;
   setProjectTimeZone: (projectId: string, timeZone: string) => void;
   setEvidenceWatermark: (projectId: string, on: boolean) => void;
+  /** 공공기관 여부 — see Project.publicAuthority. */
+  setPublicAuthority: (projectId: string, on: boolean) => void;
   /** null clears it back to "not decided". See Project.retentionDays. */
   setProjectRetention: (projectId: string, days: number | null) => void;
   /** null clears it back to "not decided", and then the deployment default applies. See
@@ -5640,6 +5672,23 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
     }),
   // Mail settings write to the audit log the way license changes do — an admin changing where
   // invites are sent is exactly the kind of thing someone has to be able to trace later.
+  setPublicAuthority: (projectId, on) =>
+    set(state => ({
+      projects: state.projects.map(p => (p.id === projectId ? { ...p, publicAuthority: on } : p)),
+      /* Audited both ways. Turning it OFF stops the register asking whether a 제3자 제공 was
+         published, which is a duty disappearing from the screen — exactly the kind of change a
+         later reader needs to find a name against. */
+      auditLog: [
+        clientAudit({
+          projectId,
+          area: "settings",
+          target: "Public authority",
+          action: on ? "Marked a public authority" : "No longer marked a public authority — the register stops asking about publication",
+          message: on ? "Site marked as a public authority" : "Site no longer marked as a public authority — the export register stops asking whether a third-party release was published",
+          before: on ? "No" : "Yes", after: on ? "Yes" : "No",
+          actor: SIGNED_IN_USER.name, at: new Date().toISOString(),
+        }), ...state.auditLog].slice(0, AUDIT_LOG_LIMIT),
+    })),
   setEvidenceWatermark: (projectId, on) =>
     set(state => ({
       projects: state.projects.map(p => (p.id === projectId ? { ...p, evidenceWatermark: on } : p)),
@@ -5914,6 +5963,23 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
               reviewedBy: me?.name ?? SIGNED_IN_USER.name,
               reviewedByEmail: me?.email ?? SIGNED_IN_USER.email,
               reviewNote: note }
+          : e),
+      };
+    }),
+  recordExportPublished: ({ exportId, where }) =>
+    set(state => {
+      const held = state.exportLog.find(e => e.id === exportId);
+      /* FIRST STAMP WINS, like the review above, and for the same reason — and only on a 제3자
+         제공: publishing is what that disposition owes, and stamping it on an 내부 이용 row would
+         claim a duty was discharged that never existed. */
+      if (!held || held.publishedAt || held.disposition !== "thirdParty") return state;
+      const me = currentPortalUser(state.portalUsers);
+      return {
+        exportLog: state.exportLog.map(e => e.id === exportId
+          ? { ...e,
+              publishedAt: new Date().toISOString(),
+              publishedBy: me?.name ?? SIGNED_IN_USER.name,
+              publishedWhere: where }
           : e),
       };
     }),

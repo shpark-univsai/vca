@@ -11,7 +11,7 @@ import {
   CARD_BORDER, CARD_RADIUS, TABLE_RULE, CONTROL_HEIGHT, PANEL_SHADOW, TABLE_COLUMN_GAP, TABLE_HEADER_COLOR, TOOLBAR_GAP,
   ActiveFilterCount, BORDER, Drawer, FilterSelect, PairGrid, PairItem, PanelPrimary, SortableHeader,
   SummaryStrip, TableEmpty, TableSkeleton, TableLoadFailed, sortRows, useTableSort } from "./PortalShared";
-import { CheckCircle2, ChevronRight, FileOutput, FileSpreadsheet, Layers, ScanFace, ShieldAlert, SearchCheck } from "lucide-react";
+import { CheckCircle2, ChevronRight, FileOutput, FileSpreadsheet, Layers, ScanFace, ShieldAlert, SearchCheck, Megaphone } from "lucide-react";
 import { RADIUS } from "../shared/controls";
 
 /**
@@ -173,6 +173,13 @@ const T = {
     statTotal: "files", statTotalLabel: "left this project",
     statFaces: "people", statFacesLabel: "had a face leave",
     statUnreviewed: "files", statUnreviewedLabel: "not checked yet",
+    publishHeading: "Publication", publishedWhere: "Published in", publishedAtLabel: "Published",
+    publishedBy: "Recorded by", publishGazette: "Gazette", publishWebsite: "The body's own site",
+    publishPending: "Not recorded as published yet.",
+    publishOverdue: "More than 30 days have passed with no publication recorded.",
+    publishMarkGazette: "Published in the gazette", publishMarkWebsite: "Published on our site",
+    statUnpublished: "not published in time", statUnpublishedUnit: "releases",
+    statUnpublishedWhy: "A public authority publishes a third-party release within 30 days — gazette or its own site (법 제18조제4항). These passed 30 days with nothing recorded. Mark one from its row once it has been published.",
     statUnreviewedTitle: "Show only these",
     statUnreviewedWhy: "The review runs at least monthly and has to establish why each file left. A file nobody has checked yet is the review's own queue, not a fault.",
     statNoReason: "no reason, not checked", statNoReasonUnit: "files",
@@ -256,6 +263,13 @@ const T = {
     statTotal: "건", statTotalLabel: "반출된 파일",
     statFaces: "명", statFacesLabel: "얼굴이 반출된 사람",
     statUnreviewed: "건", statUnreviewedLabel: "점검 안 한 파일",
+    publishHeading: "게재", publishedWhere: "게재한 곳", publishedAtLabel: "게재 시각",
+    publishedBy: "기록한 사람", publishGazette: "관보", publishWebsite: "자체 홈페이지",
+    publishPending: "아직 게재 기록이 없습니다.",
+    publishOverdue: "제공한 지 30일이 지났는데 게재 기록이 없습니다.",
+    publishMarkGazette: "관보에 게재함", publishMarkWebsite: "홈페이지에 게재함",
+    statUnpublished: "기한 넘긴 게재", statUnpublishedUnit: "건",
+    statUnpublishedWhy: "공공기관은 제3자 제공을 30일 안에 관보나 자체 홈페이지에 게재해야 합니다(법 제18조제4항). 30일이 지났는데 게재 기록이 없는 건들입니다. 게재한 뒤 해당 행에서 표시하세요.",
     statUnreviewedTitle: "이 행만 보기",
     statUnreviewedWhy: "점검은 월 1회 이상 하고, 파일이 왜 나갔는지 확인해야 합니다. 아직 아무도 보지 않은 파일은 결함이 아니라 점검할 목록입니다.",
     statNoReason: "사유 없고 점검도 안 됨", statNoReasonUnit: "건",
@@ -382,6 +396,7 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
   const exportLog = useVcaStore(s => s.exportLog);
   const recordListExport = useVcaStore(s => s.recordListExport);
   const recordExportReviewed = useVcaStore(s => s.recordExportReviewed);
+  const recordExportPublished = useVcaStore(s => s.recordExportPublished);
   const project = useVcaStore(s => s.projects.find(p => p.id === projectId));
   // The project's zone, not the reviewer's browser — a file is filed under the day it left the
   // site. `at` is an ISO instant, so printing a slice of it would file every late-evening export
@@ -521,6 +536,21 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
      personal data as much as a still is, and the duty is about the download rather than about
      whether a face was in it. */
   const unreviewedCount = projectRecords.filter(e => !e.reviewedAt).length;
+  /*
+   * 제3자 제공 that a 공공기관 has not published, past the 30 days 법 제18조제4항 allows.
+   *
+   * Only counted where the site has SAID it is a public authority — see Project.publicAuthority.
+   * On every other installation this is not a duty, and a counter for it would be the screen
+   * inventing an obligation. Rows still inside the 30 days are not overdue and are not amber: the
+   * clock has not run out, and colouring them would teach the reader to ignore the colour.
+   */
+  const isPublicAuthority = project?.publicAuthority === true;
+  const publishOverdue = (e: ExportRecord) => {
+    if (!isPublicAuthority || e.disposition !== "thirdParty" || e.publishedAt) return false;
+    const days = (Date.now() - new Date(e.at).getTime()) / 86_400_000;
+    return days > 30;
+  };
+  const publishOverdueCount = projectRecords.filter(publishOverdue).length;
   const faceCount = new Set(projectRecords.filter(e => e.subject).map(e => e.subject)).size;
 
   const rows = projectRecords
@@ -694,6 +724,14 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
             unit: t.statNoReasonUnit, label: t.statNoReason, tone: "warning" as const,
             explanation: t.statNoReasonWhy,
             onClick: () => toggleReview("noReason"), active: reviewFilter === "noReason", title: t.statNoReasonTitle,
+          }] : []),
+          /* The same rule the amber card above follows: drawn only when somebody has to act. A
+             public authority 30 days past a 제3자 제공 with nothing published is the one state
+             this register can call overdue by itself. */
+          ...(publishOverdueCount > 0 ? [{
+            key: "unpublished", icon: <Megaphone size={14} strokeWidth={2.4} />, figure: publishOverdueCount,
+            unit: t.statUnpublishedUnit, label: t.statUnpublished, tone: "warning" as const,
+            explanation: t.statUnpublishedWhy,
           }] : []),
         ]} state={listState} />
       )}
@@ -1023,6 +1061,54 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
             facts and no control — no edit, no revert (see the header). Not done, it is the one
             thing missing from the record and a field to put it in.
           */}
+          {/*
+            THE 게재, ABOVE THE 점검 AND ONLY WHERE IT IS A DUTY (법 제18조제4항).
+
+            A public authority publishes a third-party release within 30 days. Nothing here does
+            the publishing — it happens in a gazette or on the body's own site — so this records
+            that somebody did it, the same shape the review below uses. Drawn only on a 제3자 제공
+            row of an installation that has said it is a public authority: on a 내부 이용 row or a
+            private customer's register it would be a question about a duty that does not exist.
+          */}
+          {isPublicAuthority && openRow.disposition === "thirdParty" && (
+            <div style={{ marginTop: "28px", paddingTop: "20px", borderTop: BORDER }}>
+              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.6px", color: "var(--gray-500)", marginBottom: "16px" }}>
+                {t.publishHeading.toUpperCase()}
+              </p>
+              {openRow.publishedAt ? (
+                <PairGrid spaced>
+                  <PairItem label={t.publishedWhere}>
+                    {openRow.publishedWhere === "gazette" ? t.publishGazette : t.publishWebsite}
+                  </PairItem>
+                  <PairItem label={t.publishedAtLabel}>{stamp(openRow.publishedAt)}</PairItem>
+                  <PairItem label={t.publishedBy}>{openRow.publishedBy ?? ""}</PairItem>
+                </PairGrid>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <p style={{ fontSize: "12px", color: publishOverdue(openRow) ? "var(--warning-500)" : "var(--gray-600)", lineHeight: 1.5 }}>
+                    {publishOverdue(openRow) ? t.publishOverdue : t.publishPending}
+                  </p>
+                  {/* Two buttons rather than a picker: the article names exactly two places, and a
+                      dropdown of two is a click more for the same answer. */}
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {(["gazette", "website"] as const).map(where => (
+                      <button key={where} type="button" className="portal-btn-quiet"
+                        /* No toast: the block it sits in swaps to the three recorded facts the
+                           moment this is pressed, which is the same answer a toast would give and
+                           it stays on screen. */
+                        onClick={() => recordExportPublished({ exportId: openRow.id, where })}
+                        style={{ height: CONTROL_HEIGHT, padding: "0 12px", borderRadius: RADIUS.control, border: "none",
+                          backgroundColor: "var(--gray-50)", color: "var(--gray-700)", fontSize: "12px", fontWeight: 700,
+                          cursor: "pointer", fontFamily: "inherit" }}>
+                        {where === "gazette" ? t.publishMarkGazette : t.publishMarkWebsite}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ marginTop: "28px", paddingTop: "20px", borderTop: BORDER }}>
             <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.6px", color: "var(--gray-500)", marginBottom: "16px" }}>
               {t.reviewHeading.toUpperCase()}
