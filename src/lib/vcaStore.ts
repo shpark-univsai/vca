@@ -2903,6 +2903,25 @@ export const APP_SCREENS: AppScreen[] = ["live", "bestframe", "redmap", "reid", 
  * nothing you may do in it is not a grant worth keeping.
  */
 export type AppAction =
+  /**
+   * 프레임 반출 — 베스트 프레임 상세의 「프레임 반출」 버튼 (owner, 2026-10-07: 꺼진채 시작이
+   * 맞는것같아 권한을 만들어야겠다).
+   *
+   * THIS GRANT CAME BACK, AND THE THING IT GUARDS IS NOT THE THING THAT WAS REMOVED. The 2026-09-28
+   * decision took `export` out with the old 「증거 내보내기」 — a file that carried no frame
+   * (`frame_sha256` null by design), said in its own notes that nothing proved which installation
+   * made it, and went out with `purpose: null` because the app never asked. What shipped in v10 is
+   * the opposite on each count: the bytes ARE the frame, the screen collects the 목적 외 이용·제3자
+   * 제공 대장 fields before it releases anything, and the row is read in the Portal's 반출 기록.
+   *
+   * So the door is back, and it needs a lock. Until this existed, ANY account that could reach
+   * 베스트 프레임 상세 could put a face in a file.
+   *
+   * NOBODY HOLDS IT BY DEFAULT. An existing account's `appActions` simply does not contain it, so
+   * the button refuses for everyone until an administrator grants it — which is the point: a face
+   * leaving the building should have a name attached to whoever opened that door.
+   */
+  | "export"
   | "systemStatus"
   | "liveView"
   /**
@@ -3064,7 +3083,7 @@ export type AppAction =
  */
 export const APP_ACTIONS: AppAction[] = [
   "liveView", "dashboardTrail", "systemStatus",
-  "liveWall", "history", "bestframeEnrolled", "bestframeVip", "bestframeVehicle", "bestframeUnknown",
+  "liveWall", "history", "bestframeEnrolled", "bestframeVip", "bestframeVehicle", "bestframeUnknown", "export",
   "liveMonitoring", "monitoringVip", "monitoringUnknown", "liveMonitoringSearch",
   "reid", "reidSearch",
   "redface",
@@ -3089,18 +3108,17 @@ export const APP_ACTION_PARENT: Partial<Record<AppAction, AppAction>> = {
      with it. The two are now siblings — one opens the unsearched pane, the other opens the search
      — and `screensForActions` opens the tab for either. */
   /*
-   * `export` IS GONE (owner, 2026-09-28: 내보내기 기능이 꼭 필요한가야.. → ① 앱에서 빼고 외부
-   * 요청으로 일원화).
+   * `export` HAS NO PARENT, deliberately.
    *
-   * It was a step on 레드맵, then briefly a grant across two screens once Best Frame gained the
-   * same button. The question underneath was whether the app should have the door at all, and the
-   * answer was no: the file carried no frame (`frame_sha256` null by design), said in its own
-   * integrity notes that nothing in it proves which installation produced it, and went out with
-   * `purpose: null` because the app never asked. Portal's 외부 요청 already releases material with
-   * a legal basis, the requester's stated purpose, a decision note, the handover method, who
-   * received it and whether third-party faces were obscured.
+   * It is a capability rather than a step on one screen: a frame can be opened from the live wall
+   * or from past records, and both of those are already gated on their own. Hanging it under one
+   * of them would make the other path's export turn off for the wrong reason.
    *
-   * One audited door instead of two, and the ungoverned one was the one that left.
+   * Held alone it opens nothing — the same shape `systemStatus` has — and that is correct: the
+   * grant says 「may take a frame out」, not 「may look at frames」.
+   *
+   * (The 2026-09-28 removal of this key is answered where the type is declared: what it guarded
+   * then and what it guards now are different doors.)
    */
 };
 

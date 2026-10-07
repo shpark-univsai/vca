@@ -56,6 +56,7 @@ const T = {
     minute: "Min",
     weekdays: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
     exportFrame: "Export frame",
+    exportNoGrant: "This account was not given frame export. An administrator grants it in Portal, under Users & Permissions.",
     exportSubject: "Subject",
     exportFootage: "Footage",
     exportFile: "File",
@@ -131,6 +132,7 @@ const T = {
     minute: "분",
     weekdays: ["일", "월", "화", "수", "목", "금", "토"],
     exportFrame: "프레임 반출",
+    exportNoGrant: "이 계정에는 프레임 반출 권한이 없습니다. Portal의 사용자 및 권한에서 관리자가 켭니다.",
     exportSubject: "대상",
     exportFootage: "영상 범위",
     exportFile: "파일",
@@ -1504,6 +1506,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   const [exportOpen, setExportOpen] = useState(false);
   const projects = useVcaStore(s => s.projects);
   const exportPortalUsers = useVcaStore(s => s.portalUsers);
+  /* 프레임 반출 권한 — see the button's own note. No existing account holds it, by design. */
+  const mayExport = holdsAppAction(exportPortalUsers, "export");
   const recordFootageExport = useVcaStore(s => s.recordFootageExport);
   const exportProjectId = useActiveProjectId();
   const { showToast } = useToast();
@@ -1718,10 +1722,23 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               Absent with no still — a camera can arrive without one, and there is then no frame
               to copy (the feed above shows the same nothing). */}
           <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+            {/*
+              SHOWN AND REFUSED, NOT HIDDEN (grant: `export`, added 2026-10-07 — see its note on
+              AppAction). An operator told over the radio to send the file has to be able to learn
+              that the grant is missing; a button that is simply absent sends them looking for a
+              screen that does not exist, and then asking the wrong person.
+
+              Nobody holds this grant until an administrator ticks it, which is the owner's call
+              and the point of adding it: before today, anyone who could reach this page could put
+              a face in a file.
+            */}
             {data.bgUrl && (
-              <button onClick={() => { setDateOpen(false); setTimeOpen(false); setExportOpen(true); }}
-                className={HOVER_QUIET}
-                style={{ display:"inline-flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:RADIUS.control, padding:"6px 12px", border:"1px solid var(--gray-300)", cursor:"pointer", fontFamily:"inherit", fontSize:"12px", fontWeight:700, color:"var(--gray-900)" }}>
+              <button
+                onClick={mayExport ? () => { setDateOpen(false); setTimeOpen(false); setExportOpen(true); } : undefined}
+                disabled={!mayExport}
+                title={mayExport ? undefined : t.exportNoGrant}
+                className={mayExport ? HOVER_QUIET : undefined}
+                style={{ display:"inline-flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:RADIUS.control, padding:"6px 12px", border:"1px solid var(--gray-300)", cursor: mayExport ? "pointer" : "not-allowed", fontFamily:"inherit", fontSize:"12px", fontWeight:700, color: mayExport ? "var(--gray-900)" : "var(--gray-300)" }}>
                 <ImageDown size={14} strokeWidth={2} aria-hidden="true" />
                 {t.exportFrame}
               </button>

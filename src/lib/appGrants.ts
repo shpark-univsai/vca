@@ -88,6 +88,9 @@ export const APP_GRANT_LABELS = {
       reid: "Data > Re-ID Analysis",
       reidSearch: "Search on Re-ID Analysis",
       redface: "Data > RedFace",
+      /* The verb, not the screen — this one is a capability rather than a tab, and three readers
+         print this table with no caption over it. 「Best Frame」 is where the button is. */
+      export: "Best Frame \u00b7 export a frame",
       trail: "Redmap",
     } satisfies Record<AppAction, string>,
     /**
@@ -128,6 +131,7 @@ export const APP_GRANT_LABELS = {
       monitoringUnknown: "Strangers",
       reid: "Re-ID Analysis",
       redface: "RedFace",
+      export: "Export a frame",
       /* Not 「Movement trails」 — that is the dashboard row two groups up, and one name over two
          different grants is the thing this list exists to prevent. This one is the map. */
       trail: "Trail map",
@@ -160,6 +164,7 @@ export const APP_GRANT_LABELS = {
       reid: "What the server joins up live out of those detections",
       reidSearch: "Looking a particular person up in that result",
       redface: "Face search",
+      export: "Takes a frame out as a file. The screen asks who it is for and under what authority before it releases anything, and the Portal's export register keeps the row.",
       trail: "One person's route on the map",
     } satisfies Record<AppAction, string>,
   },
@@ -183,6 +188,7 @@ export const APP_GRANT_LABELS = {
       reid: "데이터 > Re-ID 분석",
       reidSearch: "Re-ID 분석에서 검색",
       redface: "데이터 > RedFace",
+      export: "베스트 프레임 \u00b7 프레임 반출",
       trail: "레드맵",
     } satisfies Record<AppAction, string>,
     /** 영어 쪽 주석 참조 — 캡션 아래에서 쓰는 짧은 이름. `actionName`은 목록 밖에서도 쓰므로 그대로 둔다. */
@@ -201,6 +207,7 @@ export const APP_GRANT_LABELS = {
       monitoringUnknown: "모르는 사람",
       reid: "Re-ID 분석",
       redface: "RedFace",
+      export: "프레임 반출",
       /* 「동선 추적」 — the app's own word: the dashboard sidebar's filter chip and Redmap's own
          「… 동선 추적 중」 both say it. */
       /* 「동선 추적」은 두 묶음 위 대시보드 줄의 이름입니다. 한 이름이 서로 다른 권한 둘을
@@ -228,6 +235,7 @@ export const APP_GRANT_LABELS = {
       reid: "모니터링에서 잡힌 사람들을 서버가 실시간으로 이어 붙인 결과를 봅니다",
       reidSearch: "그 결과에서 특정 인물을 직접 찾습니다",
       redface: "얼굴로 찾습니다",
+      export: "프레임을 파일로 내보냅니다. 누구에게 어떤 근거로 주는지 화면이 먼저 묻고, 포털의 반출 기록에 줄이 남습니다.",
       trail: "지도 위에 한 사람의 경로를 그립니다",
     } satisfies Record<AppAction, string>,
   },

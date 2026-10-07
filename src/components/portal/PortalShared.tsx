@@ -2507,6 +2507,10 @@ export const GRANT_TREE: GrantGroupDef[] = [
       { action: "bestframeVip" },
       { action: "bestframeVehicle" },
       { action: "bestframeUnknown" },
+      /* Last in the group, and not indented under anything: it is a verb rather than a fourth
+         thing to look at, and a frame can be opened from the live wall or from past records, so
+         it hangs off neither (see APP_ACTION_PARENT). Nobody holds it until somebody ticks it. */
+      { action: "export" },
     ],
   },
   {
