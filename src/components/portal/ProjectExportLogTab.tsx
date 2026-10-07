@@ -175,6 +175,7 @@ const T = {
     statUnreviewed: "files", statUnreviewedLabel: "not checked yet",
     publishHeading: "Publication", publishedWhere: "Published in", publishedAtLabel: "Published",
     publishedBy: "Recorded by", publishGazette: "Gazette", publishWebsite: "The body's own site",
+    publishKeepUp: "A website posting stays up at least 10 days.",
     publishPending: "Not recorded as published yet.",
     publishOverdue: "More than 30 days have passed with no publication recorded.",
     publishMarkGazette: "Published in the gazette", publishMarkWebsite: "Published on our site",
@@ -265,6 +266,7 @@ const T = {
     statUnreviewed: "건", statUnreviewedLabel: "점검 안 한 파일",
     publishHeading: "게재", publishedWhere: "게재한 곳", publishedAtLabel: "게재 시각",
     publishedBy: "기록한 사람", publishGazette: "관보", publishWebsite: "자체 홈페이지",
+    publishKeepUp: "홈페이지 게재는 10일 이상 유지해야 합니다.",
     publishPending: "아직 게재 기록이 없습니다.",
     publishOverdue: "제공한 지 30일이 지났는데 게재 기록이 없습니다.",
     publishMarkGazette: "관보에 게재함", publishMarkWebsite: "홈페이지에 게재함",
@@ -1082,6 +1084,15 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
                   </PairItem>
                   <PairItem label={t.publishedAtLabel}>{stamp(openRow.publishedAt)}</PairItem>
                   <PairItem label={t.publishedBy}>{openRow.publishedBy ?? ""}</PairItem>
+                  {/* THE 10-DAY CLAUSE, SAID WHERE IT BECOMES A DUTY. 법 제18조제4항 sets two
+                      things: publish within 30 days, and a website posting stays up at least ten.
+                      The second binds nobody until the website is the answer — on a gazette row it
+                      is noise, and in the settings tip, where the switch is turned on, it was part
+                      of what made that tip three times the length of its neighbours. This console
+                      cannot see the posting, so it states the rule and stops there. */}
+                  {openRow.publishedWhere === "website" && (
+                    <p style={{ fontSize: "12px", color: "var(--gray-600)", lineHeight: 1.5 }}>{t.publishKeepUp}</p>
+                  )}
                 </PairGrid>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
