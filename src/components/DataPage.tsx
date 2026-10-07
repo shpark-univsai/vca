@@ -761,9 +761,10 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
             {p.cam}
           </span>
         )}
-        {p.status === "VIP" && p.score !== null && (
-          <span style={{ marginLeft:"auto", display:"flex" }}><ScoreBadge score={p.score} /></span>
-        )}
+        {/* NO SCORE ON THE TILE (owner, 2026-10-07: 카드엔 유사도를 빼자). The wall is read at a
+            glance and the word is the answer; the number is one click away in the detail panel,
+            which is where somebody who is weighing a match is already going. The label it leaves
+            behind is floored at VIP_LABEL_MIN_SCORE so it can be read as a claim. */}
       </div>
       {p.status === "RedFace" && (
         <div style={{ position:"absolute", bottom:"52px", left:8, fontSize:"10px", fontWeight:800, color:"white",
@@ -1197,7 +1198,10 @@ function makeLiveItem(seed: number, camId: string, index: number, vipRegistry: P
   const cycled = LIVE_FEED_STATUS_CYCLE[passageSeed % LIVE_FEED_STATUS_CYCLE.length];
   // Nobody enrolled here, so nothing here can be a match.
   const matched = cycled === "VIP" && vipRegistry.length > 0 ? vipRegistry[passageSeed % vipRegistry.length] : null;
-  const status = cycled === "VIP" && !matched ? "Unknown" : cycled;
+  /* A VIP with nobody enrolled behind it, or with a match too weak to name, is 미확인 — see
+     VIP_LABEL_MIN_SCORE. The score is read here rather than below so the two cannot disagree. */
+  const vipScore = cycled === "VIP" ? VIP_SCORE_CYCLE[passageSeed % VIP_SCORE_CYCLE.length] : null;
+  const status = cycled === "VIP" && (!matched || (vipScore ?? 0) < VIP_LABEL_MIN_SCORE) ? "Unknown" : cycled;
   // Leftmost card in the feed is the most recent capture — later positions step further back in
   // time. date/time both come from this SAME instant now, instead of date cycling independently.
   // `index` walks frames, not arrivals: every BURST_FRAMES of them are one passage, seconds apart.
@@ -1230,7 +1234,7 @@ function makeLiveItem(seed: number, camId: string, index: number, vipRegistry: P
     // is where the live wall's identical percentages came from.
     // Per detection, not a constant — this line held a literal 87.8, which is where the live
     // wall's identical percentages came from.
-    score: status === "VIP" ? VIP_SCORE_CYCLE[passageSeed % VIP_SCORE_CYCLE.length] : null,
+    score: status === "VIP" ? vipScore : null,
     cam: camId,
     personName: matched?.name,
     // The ENROLLED face when the register has one, never a crop of the capture — the card's inset
@@ -2714,6 +2718,24 @@ const REID_SCORE_CYCLE: (number | null)[] = [null,null,84.1,null,null,null,91.6,
  */
 const VIP_SCORE_CYCLE = Array.from({ length: 17 }, (_, i) => Math.round((83 + ((i * 7) % 17)) * 10) / 10 + (i % 3) * 0.3);
 
+/**
+ * BELOW THIS, A MATCH IS NOT CALLED A VIP ON THE WALL (owner, 2026-10-07: 80프로 이상만 vip로
+ * 필터링해서 보여주자).
+ *
+ * The card stopped printing the number, so the word 「VIP」 is now the whole claim — and a word
+ * cannot carry 「probably」. A 72% match labelled the same as a 99% one is the plausible-looking
+ * value this product keeps paying for, so the label needs a floor it can stand on.
+ *
+ * NOTE, HONESTLY: with the seeded scores (83–99) nothing on screen changes today. This is the
+ * rule arriving before the data that will test it — when the server sends real match rates, a
+ * weak one will read as 미확인 rather than as a name.
+ *
+ * THE SERVER OWNS THE REAL ONE. A browser deciding what counts as an identification is a
+ * threshold the operator cannot see and the record cannot cite; this is a display floor until
+ * the matcher reports its own, and the handoff says so.
+ */
+const VIP_LABEL_MIN_SCORE = 80;
+
 
 /**
  * The codes of the cameras registered at the site on screen — what every search on this page is
@@ -4152,12 +4174,19 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
                     backgroundColor: active ? "var(--primary-100)" : block ? "var(--gray-100)" : "white",
                     border: active ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
                     cursor: block ? "default" : "pointer", flexShrink:0,
+                    /* The grid gives each chip a fixed track, so a long name ran past the border
+                       instead of stopping at it (owner, 2026-10-07: vip 뱃지에 이름이 넘치는뎅).
+                       `minWidth: 0` is the half that matters — without it a flex item refuses to
+                       shrink below its content and no amount of overflow on the child helps. The
+                       whole name is on the button's title either way. */
+                    minWidth:0, maxWidth:"100%", overflow:"hidden",
                   }}>
                   {person.photoUrl
                     ? <img src={person.photoUrl} alt="" style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", opacity: block ? 0.45 : 1 }} />
                     : <span style={{ width:"28px", height:"28px", borderRadius:"50%", backgroundColor:"var(--gray-200)", flexShrink:0 }} />}
-                  <span style={{ display:"flex", flexDirection:"column", alignItems:"flex-start" }}>
-                    <span style={{ fontSize:"11px", fontWeight:600, color: block ? "var(--gray-500)" : "var(--gray-900)", whiteSpace:"nowrap" }}>{person.name}</span>
+                  <span style={{ display:"flex", flexDirection:"column", alignItems:"flex-start", minWidth:0 }}>
+                    <span style={{ fontSize:"11px", fontWeight:600, color: block ? "var(--gray-500)" : "var(--gray-900)",
+                      whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:"100%" }}>{person.name}</span>
                     {block && <span style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-400)", whiteSpace:"nowrap" }}>{blockLabel[block]}</span>}
                   </span>
                 </button>
