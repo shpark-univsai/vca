@@ -814,7 +814,15 @@ export interface ExportRecord {
   projectId?: string;
   kind: ExportKind;
   /** Which list left — the tab a reader would go back to. Lists only. */
-  list?: "vips" | "searchLog" | "activity" | "roster" | "cameras" | "accessLog" | "exportLog" | "handlingLog";
+  /*
+   * The two 「건너뛴 행」 files are here because they were leaving unrecorded (found 2026-10-06,
+   * fixed 2026-10-07). Both carry real people: the VIP one holds name · memo · photo filename,
+   * the roster one name · 사번 · 부서 · 이메일 · 권한. The register's own rule is that the duty is
+   * about the DOWNLOAD rather than about whether a face was in it, so a list of staff leaving as
+   * a file is a row like any other. 「전부 적힌다」 loses its meaning the first time it is false.
+   */
+  list?: "vips" | "searchLog" | "activity" | "roster" | "cameras" | "accessLog" | "exportLog" | "handlingLog"
+    | "vipImportSkipped" | "rosterImportSkipped";
   /** Which app screen it left from — frames and result sets only. */
   surface?: "bestframe" | "reid" | "redmap" | "redface" | "live";
   /**
@@ -5795,6 +5803,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         vips: "VIP registry", searchLog: "search access log", activity: "activity log",
         roster: "staff roster", cameras: "camera list",
         accessLog: "access log", exportLog: "export log", handlingLog: "handling log",
+        vipImportSkipped: "VIP import — skipped rows", rosterImportSkipped: "staff import — skipped rows",
       };
       /* The screen the button was pressed on, so an export lands under the list it emptied rather
          than all five landing under one name. Both records read the same `list` key, so they
@@ -5803,6 +5812,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         vips: "vip", searchLog: "records", activity: "records",
         roster: "roster", cameras: "cameras",
         accessLog: "records", exportLog: "records", handlingLog: "records",
+        vipImportSkipped: "vip", rosterImportSkipped: "roster",
       };
       return {
         // Append, never replace — the same rule as evidenceExports. Exporting the same list twice

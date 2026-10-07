@@ -127,7 +127,13 @@ const T = {
     /* What the rows cannot say. The second sentence is not a disclaimer, it is the answer to the
        question the next reader asks when they find a row naming this screen. */
     foot: "A row is written whenever the console produces a file, and exporting this log is itself one of them.",
-    ownerOnly: "Only the owner and auditors read this log.",
+    /* TRUE AS WRITTEN, which it was not until 2026-10-07. It said 「Only the owner and auditors
+       read this log」 while an admin could open the tab just as easily — no gate exists on the
+       rail, at the mount point or inside any of the four record tabs, and this register carries
+       subject names and the reasons somebody gave for looking at them.
+       RESTRICTING IT IS A DECISION, NOT A BUG FIX, so the sentence was corrected rather than the
+       door quietly narrowed: taking a tab away from admins is the owner's call to make. */
+    ownerOnly: "Anyone who can enter Portal reads this log — owner, admin and auditor.",
     empty: "Nothing has been exported from this project yet.",
     noMatch: "No exports match these filters.",
     loadFailed: "Could not load the export log.",
@@ -137,10 +143,15 @@ const T = {
     kindList: "List", kindFrame: "Frame", kindResults: "Result set",
     /* The Portal tab a reader would go back to — the list's own name on the rail, not the store's
        internal key. */
+    /* Every key ExportRecord.list can hold. Three were missing and printed as the raw key —
+       「handlingLog」 appeared verbatim in the 「반출된 것」 column of a register a 공공기관 customer
+       is inspected against (2026-10-07). A map typed `Record<string, string>` cannot catch that,
+       so the test is: this list has one line per member of that union. */
     listName: {
       vips: "VIP registry", searchLog: "Search log", activity: "Activity log",
       roster: "Awaiting sign-up", cameras: "Input sources",
-      accessLog: "Access log", exportLog: "Export log",
+      accessLog: "Access log", exportLog: "Export log", handlingLog: "Handling log",
+      vipImportSkipped: "VIP import — skipped rows", rosterImportSkipped: "Staff import — skipped rows",
     } as Record<string, string>,
     unitRows: (n: number) => `${n} row${n === 1 ? "" : "s"}`,
     unitFrames: (n: number) => `${n} frame${n === 1 ? "" : "s"}`,
@@ -209,7 +220,7 @@ const T = {
   },
   ko: {
     foot: "콘솔이 파일을 만들 때마다 한 줄이 적히고, 이 기록을 내보내는 것도 그중 한 줄이 됩니다.",
-    ownerOnly: "이 기록은 최고관리자와 읽기 전용 관리자가 읽습니다.",
+    ownerOnly: "Portal에 들어올 수 있는 계정이면 읽습니다 — 최고관리자·관리자·읽기 전용 관리자.",
     empty: "이 프로젝트에서 반출된 것이 없습니다.",
     noMatch: "조건에 맞는 반출 기록이 없습니다.",
     loadFailed: "반출 기록을 불러오지 못했습니다.",
@@ -220,7 +231,8 @@ const T = {
     listName: {
       vips: "VIP 등록", searchLog: "조회 기록", activity: "변경 기록",
       roster: "가입 대기", cameras: "입력 소스",
-      accessLog: "접속 기록", exportLog: "반출 기록",
+      accessLog: "접속 기록", exportLog: "반출 기록", handlingLog: "처리 기록",
+      vipImportSkipped: "VIP 가져오기 — 건너뛴 행", rosterImportSkipped: "가입 대기 가져오기 — 건너뛴 행",
     } as Record<string, string>,
     unitRows: (n: number) => `${n}행`,
     unitFrames: (n: number) => `${n}장`,
@@ -472,7 +484,27 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
    * check is for; leaving the row in the amber count afterwards would mean the one thing a
    * reviewer can do never changes anything on screen.
    */
-  const unexplained = (e: ExportRecord) => e.kind !== "list" && !hasReason(e) && !e.reviewedAt;
+  /**
+   * THE AXIS IS PERSONAL DATA, NOT FILE SHAPE (2026-10-07).
+   *
+   * This read `e.kind !== "list"`, so a CSV of 122 registered people with their basis for listing
+   * and last detection could leave with no reason given and never appear in 「사유 없음」, while a
+   * single frame did. An auditor reads that counter to find downloads nobody justified, and it was
+   * pointed exactly the wrong way round.
+   *
+   * The comment four lines below said so already — 「A spreadsheet of 122 registered people is a
+   * download of personal data as much as a still is, and the duty is about the download rather
+   * than about whether a face was in it」 — it just governed the row beneath it rather than this
+   * one.
+   *
+   * The two lists left out are the two that are not about people: the camera register, and the
+   * change log (whose names are this console's own operators acting on it, which every audit log
+   * carries by definition). Frames and result sets always count.
+   */
+  const IMPERSONAL_LISTS: ReadonlySet<string> = new Set(["cameras", "activity"]);
+  const carriesPersonalData = (e: ExportRecord) =>
+    e.kind !== "list" || !e.list || !IMPERSONAL_LISTS.has(e.list);
+  const unexplained = (e: ExportRecord) => carriesPersonalData(e) && !hasReason(e) && !e.reviewedAt;
   const noReasonCount = projectRecords.filter(unexplained).length;
   /* EVERY row, not only the frames. A spreadsheet of 122 registered people is a download of
      personal data as much as a still is, and the duty is about the download rather than about

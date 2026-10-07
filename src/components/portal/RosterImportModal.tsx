@@ -149,6 +149,7 @@ interface FileError { title: string; body: string }
 
 export default function RosterImportModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
   const staffRoster = useVcaStore(s => s.staffRoster);
+  const recordListExport = useVcaStore(s => s.recordListExport);
   const addRosterEntries = useVcaStore(s => s.addRosterEntries);
   const issueRegistrationCodes = useVcaStore(s => s.issueRegistrationCodes);
   const { showToast } = useToast();
@@ -244,6 +245,9 @@ export default function RosterImportModal({ projectId, onClose }: { projectId: s
 
   const downloadSkipped = () => {
     if (!result) return;
+    /* RECORDED, like every other file this console produces (2026-10-07). This download was
+       leaving no row at all, and it carries real people — see ExportRecord.list. */
+    recordListExport({ projectId, list: "rosterImportSkipped", rowCount: result.skipped.length });
     downloadCsv("staff-roster-skipped.csv", [
       [t.colLine, t.colName, t.colEmployeeId, t.colDepartment, t.colEmail, t.colPermission, t.colReason],
       ...result.skipped.map(s => [

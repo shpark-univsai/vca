@@ -135,7 +135,13 @@ const T = {
     intro: "A handling is recorded against a detection in the monitoring app, and detections are not divided by project, so these rows are the whole installation's.",
     notHere: "A detection nobody has touched has no row here; those are in the monitoring app's events list.",
     oneRow: "Each detection keeps one row, showing where it got to — the steps before that are not kept.",
-    ownerOnly: "Only the owner and auditors read this log.",
+    /* TRUE AS WRITTEN, which it was not until 2026-10-07. It said 「Only the owner and auditors
+       read this log」 while an admin could open the tab just as easily — no gate exists on the
+       rail, at the mount point or inside any of the four record tabs, and this register carries
+       subject names and the reasons somebody gave for looking at them.
+       RESTRICTING IT IS A DECISION, NOT A BUG FIX, so the sentence was corrected rather than the
+       door quietly narrowed: taking a tab away from admins is the owner's call to make. */
+    ownerOnly: "Anyone who can enter Portal reads this log — owner, admin and auditor.",
     empty: "Nothing has been dealt with yet.",
     noMatch: "No records match these filters.",
     loadFailed: "Could not load the handling log.",
@@ -172,7 +178,7 @@ const T = {
     intro: "처리는 모니터링 앱의 감지에 기록되고, 감지는 프로젝트로 나뉘지 않습니다. 그래서 이 목록은 설치본 전체의 것입니다.",
     notHere: "아무도 손대지 않은 감지는 여기 없습니다. 그것은 모니터링 앱의 감지 목록에 있습니다.",
     oneRow: "감지마다 한 줄이고, 그 줄은 어디까지 갔는지를 보여줍니다. 그 전 단계는 남지 않습니다.",
-    ownerOnly: "이 기록은 최고관리자와 읽기 전용 관리자가 읽습니다.",
+    ownerOnly: "Portal에 들어올 수 있는 계정이면 읽습니다 — 최고관리자·관리자·읽기 전용 관리자.",
     empty: "처리한 감지가 없습니다.",
     noMatch: "조건에 맞는 기록이 없습니다.",
     loadFailed: "처리 기록을 불러오지 못했습니다.",

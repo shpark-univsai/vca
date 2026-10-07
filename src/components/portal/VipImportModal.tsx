@@ -224,6 +224,7 @@ export default function VipImportModal({
   onDownloadTemplate: () => void;
 }) {
   const persons = useVcaStore(s => s.persons);
+  const recordListExport = useVcaStore(s => s.recordListExport);
   const addPersons = useVcaStore(s => s.addPersons);
   const { showToast } = useToast();
   const [lang] = usePortalLanguage();
@@ -415,6 +416,9 @@ export default function VipImportModal({
     if (!result) return;
     // The photo column comes along, so the fixed file can be re-imported as it stands rather than
     // losing which image each row asked for.
+    /* RECORDED, like every other file this console produces (2026-10-07). This download was
+       leaving no row at all, and it carries real people — see ExportRecord.list. */
+    recordListExport({ projectId, list: "vipImportSkipped", rowCount: result.skipped.length });
     downloadCsv("vip-import-skipped.csv", [
       [t.colLine, t.colName, t.colMemo, t.colPhoto, t.colReason],
       ...result.skipped.map(s => [String(s.row.line), s.row.name, s.row.description, s.row.photoFile, s.reasons.join("; ")]),

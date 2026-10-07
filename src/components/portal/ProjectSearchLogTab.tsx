@@ -84,7 +84,13 @@ const T = {
     statTotal: "look-ups", statTotalLabel: "recorded",
     statNoRef: "no reference", statNoRefUnit: "look-ups",
     statOperators: "operators", statOperatorsLabel: "searched",
-    ownerOnly: "Only the owner and auditors read this log.",
+    /* TRUE AS WRITTEN, which it was not until 2026-10-07. It said 「Only the owner and auditors
+       read this log」 while an admin could open the tab just as easily — no gate exists on the
+       rail, at the mount point or inside any of the four record tabs, and this register carries
+       subject names and the reasons somebody gave for looking at them.
+       RESTRICTING IT IS A DECISION, NOT A BUG FIX, so the sentence was corrected rather than the
+       door quietly narrowed: taking a tab away from admins is the owner's call to make. */
+    ownerOnly: "Anyone who can enter Portal reads this log — owner, admin and auditor.",
     csvAt: "When", csvActor: "Searched by", csvPurpose: "Purpose", csvReference: "Reference",
     csvActorEmail: "Operator address",
     csvTarget: "Searched for", csvSurface: "Screen", csvResults: "Results", csvIp: "IP address",
@@ -111,7 +117,7 @@ const T = {
     statTotal: "건", statTotalLabel: "기록된 조회",
     statNoRef: "참조번호 없음", statNoRefUnit: "건",
     statOperators: "명", statOperatorsLabel: "조회한 사람",
-    ownerOnly: "이 기록은 최고관리자와 읽기 전용 관리자가 읽습니다.",
+    ownerOnly: "Portal에 들어올 수 있는 계정이면 읽습니다 — 최고관리자·관리자·읽기 전용 관리자.",
     csvAt: "시각", csvActor: "조회한 사람", csvPurpose: "목적", csvReference: "참조번호",
     csvActorEmail: "조회자 주소",
     csvTarget: "조회 대상", csvSurface: "화면", csvResults: "결과", csvIp: "IP 주소",

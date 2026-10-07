@@ -147,7 +147,13 @@ const T = {
     retentionSet: (n: number) => `Records are kept for ${n} months.`,
     retentionShort: (n: number) => `Records are kept for ${n} months, short of the ${RETENTION_FLOOR_MONTHS} required.`,
     retentionUnset: `How long records are kept has not been set; ${RETENTION_FLOOR_MONTHS} months is the minimum.`,
-    ownerOnly: "Only the owner and auditors read this log.",
+    /* TRUE AS WRITTEN, which it was not until 2026-10-07. It said 「Only the owner and auditors
+       read this log」 while an admin could open the tab just as easily — no gate exists on the
+       rail, at the mount point or inside any of the four record tabs, and this register carries
+       subject names and the reasons somebody gave for looking at them.
+       RESTRICTING IT IS A DECISION, NOT A BUG FIX, so the sentence was corrected rather than the
+       door quietly narrowed: taking a tab away from admins is the owner's call to make. */
+    ownerOnly: "Anyone who can enter Portal reads this log — owner, admin and auditor.",
     empty: "Nothing recorded yet.",
     noMatch: "No records match these filters.",
     loadFailed: "Could not load the access log.",
@@ -187,7 +193,7 @@ const T = {
     retentionSet: (n: number) => `기록은 ${n}개월 보관합니다.`,
     retentionShort: (n: number) => `기록은 ${n}개월 보관합니다. 법정 최소 ${RETENTION_FLOOR_MONTHS}개월보다 짧습니다.`,
     retentionUnset: `보관 기간이 설정되지 않았습니다. 법정 최소는 ${RETENTION_FLOOR_MONTHS}개월입니다.`,
-    ownerOnly: "이 기록은 최고관리자와 읽기 전용 관리자가 읽습니다.",
+    ownerOnly: "Portal에 들어올 수 있는 계정이면 읽습니다 — 최고관리자·관리자·읽기 전용 관리자.",
     empty: "기록이 없습니다.",
     noMatch: "조건에 맞는 기록이 없습니다.",
     loadFailed: "접속 기록을 불러오지 못했습니다.",
