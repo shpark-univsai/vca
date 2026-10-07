@@ -107,8 +107,12 @@ import { RADIUS } from "../shared/controls";
  */
 /* 「점검」 goes between the amount and the stamp, so the row reads 누가 · 무엇을 · 얼마나 ·
    점검됐나 · 언제 — the review sits beside the file it is about rather than at the far edge. */
+/* 「구분」 REPLACED 「종류」 IN THIS COLUMN (owner, 2026-10-07). The file's shape — 명단 · 프레임 ·
+   분석 결과 — is not what the register divides on; 개인영상정보 관리대장 divides on what the
+   handing-over WAS (이용 · 제공 · 열람). The shape is still here, as the second line of the same
+   cell, the way the actor cell carries an address under a name. */
 const COLUMN_WIDTH = {
-  actor: "1fr", kind: "0.85fr", what: "1.3fr", amount: "0.55fr", review: "0.8fr", at: "150px", open: "20px",
+  actor: "1fr", kind: "0.95fr", what: "1.3fr", amount: "0.55fr", review: "0.8fr", at: "150px", open: "20px",
 } as const;
 const COLUMNS = ["actor", "kind", "what", "amount", "review", "at", "open"] as const;
 const GRID = COLUMNS.map(c => COLUMN_WIDTH[c]).join(" ");
@@ -138,7 +142,10 @@ const T = {
     noMatch: "No exports match these filters.",
     loadFailed: "Could not load the export log.",
     retry: "Try again",
-    colActor: "Exported by", colKind: "Kind", colWhat: "What left", colAmount: "Amount",
+    colActor: "Exported by", colKind: "Disposition", colWhat: "What left", colAmount: "Amount",
+    dispInternal: "Internal use", dispThirdParty: "Third-party release", dispSubject: "Subject access",
+    /* A row written before this field existed. Not 「내부 이용」 — that would be an answer nobody gave. */
+    dispUnknown: "Not recorded",
     colReview: "Checked", colAt: "When",
     kindList: "List", kindFrame: "Frame", kindResults: "Result set",
     /* The Portal tab a reader would go back to — the list's own name on the rail, not the store's
@@ -225,7 +232,9 @@ const T = {
     noMatch: "조건에 맞는 반출 기록이 없습니다.",
     loadFailed: "반출 기록을 불러오지 못했습니다.",
     retry: "다시 시도",
-    colActor: "반출한 사람", colKind: "종류", colWhat: "반출된 것", colAmount: "분량",
+    colActor: "반출한 사람", colKind: "구분", colWhat: "반출된 것", colAmount: "분량",
+    dispInternal: "내부 이용", dispThirdParty: "제3자 제공", dispSubject: "본인 열람",
+    dispUnknown: "기록 없음",
     colReview: "점검", colAt: "시각",
     kindList: "명단", kindFrame: "프레임", kindResults: "분석 결과",
     listName: {
@@ -430,6 +439,12 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
   );
 
   const kindLabel = (k: ExportKind) => (k === "list" ? t.kindList : k === "frame" ? t.kindFrame : t.kindResults);
+  /* The register's own division — see ExportRecord.disposition. Undefined is said as 「기록 없음」
+     rather than defaulted to 내부 이용: a row written before the field existed was never asked,
+     and filling it in here would put an answer in the register that nobody gave. */
+  const dispositionLabel = (d: ExportRecord["disposition"]) =>
+    d === "thirdParty" ? t.dispThirdParty : d === "subject" ? t.dispSubject
+    : d === "internal" ? t.dispInternal : t.dispUnknown;
   /* What left, as one string — the list's own name, or the person the file is about. Used by the
      cell, by the sort and by the CSV, so the three cannot disagree. */
   const whatLeft = (e: ExportRecord) =>
@@ -485,26 +500,22 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
    * reviewer can do never changes anything on screen.
    */
   /**
-   * THE AXIS IS PERSONAL DATA, NOT FILE SHAPE (2026-10-07).
+   * THE AXIS IS THE DISPOSITION (2026-10-07, second pass).
    *
-   * This read `e.kind !== "list"`, so a CSV of 122 registered people with their basis for listing
-   * and last detection could leave with no reason given and never appear in 「사유 없음」, while a
-   * single frame did. An auditor reads that counter to find downloads nobody justified, and it was
-   * pointed exactly the wrong way round.
+   * This counter read `kind !== "list"` first, so a CSV of 122 registered people could leave with
+   * no reason given and never appear here while a single frame did. The first fix pointed it at
+   * 「does the file carry personal data」, which was closer but still a guess made from the file.
    *
-   * The comment four lines below said so already — 「A spreadsheet of 122 registered people is a
-   * download of personal data as much as a still is, and the duty is about the download rather
-   * than about whether a face was in it」 — it just governed the row beneath it rather than this
-   * one.
+   * The register's own division answers it exactly: a 제3자 제공 or a 본인 열람 WITHOUT a stated
+   * reason and a legal basis is a defect somebody has to answer for, and an 내부 이용 download is
+   * not — a console user taking a camera list for their own work owes the register nothing beyond
+   * the row itself. See ExportRecord.disposition.
    *
-   * The two lists left out are the two that are not about people: the camera register, and the
-   * change log (whose names are this console's own operators acting on it, which every audit log
-   * carries by definition). Frames and result sets always count.
+   * `undefined` counts, deliberately: a row that never recorded what kind of handing-over it was
+   * is the least explained row in the table, not the most innocent one.
    */
-  const IMPERSONAL_LISTS: ReadonlySet<string> = new Set(["cameras", "activity"]);
-  const carriesPersonalData = (e: ExportRecord) =>
-    e.kind !== "list" || !e.list || !IMPERSONAL_LISTS.has(e.list);
-  const unexplained = (e: ExportRecord) => carriesPersonalData(e) && !hasReason(e) && !e.reviewedAt;
+  const needsAReason = (e: ExportRecord) => e.disposition !== "internal";
+  const unexplained = (e: ExportRecord) => needsAReason(e) && !hasReason(e) && !e.reviewedAt;
   const noReasonCount = projectRecords.filter(unexplained).length;
   /* EVERY row, not only the frames. A spreadsheet of 122 registered people is a download of
      personal data as much as a still is, and the duty is about the download rather than about
@@ -843,8 +854,19 @@ export default function ProjectExportLogTab({ projectId }: { projectId: string }
                 <span style={{ flexShrink: 0, width: "16px", height: "16px", display: "flex", alignItems: "center", justifyContent: "center" }} aria-hidden="true">
                   {(() => { const Icon = KIND_ICON[e.kind]; return <Icon size={15} strokeWidth={2.1} color="var(--gray-400)" />; })()}
                 </span>
-                <span style={{ fontSize: "12px", color: "var(--gray-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {kindLabel(e.kind)}
+                <span style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: 0 }}>
+                  {/* 제3자 제공 carries the weight because it is the row an inspector arrives for.
+                      내부 이용 stays grey — it is a download to be reviewed, not a 대장 event. */}
+                  <span style={{
+                    fontSize: "12px", fontWeight: e.disposition === "thirdParty" ? 700 : 600,
+                    color: e.disposition === "thirdParty" ? "var(--gray-900)" : "var(--gray-500)",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {dispositionLabel(e.disposition)}
+                  </span>
+                  <span style={{ fontSize: "11px", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {kindLabel(e.kind)}
+                  </span>
                 </span>
               </span>
 

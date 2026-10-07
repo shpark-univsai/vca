@@ -908,6 +908,33 @@ export interface ExportRecord {
    * logs before it returns bytes.
    */
   recordedBy?: "client" | "server";
+  /**
+   * WHAT KIND OF HANDING-OVER THIS WAS — the axis the law actually uses (owner, 2026-10-07).
+   *
+   * The register used to be organised by `kind`: 명단 · 프레임 · 분석 결과, which is the SHAPE OF
+   * THE FILE. A camera list and a face handed to the police sat in the same table at the same
+   * weight, and the seven 대장 columns were asked for on one and not the other because of how the
+   * bytes were packaged.
+   *
+   * 개인영상정보 관리대장 divides by what the handing-over WAS: 이용 · 제공 · 열람 · 파기. That is
+   * the division that decides the duties:
+   *   internal   — a console user downloading for their own work. Not a 대장 event; still a
+   *                download, so the monthly review still reads it.
+   *   thirdParty — it left the building (수사기관, another body). The register's items are
+   *                required, and a 공공기관 also has to publish within 30 days (법 제18조제4항).
+   *   subject    — the data subject received their own footage. This is 열람 (법 제35조), NOT a
+   *                제3자 제공, and it is the one path that obliges de-identifying other people in
+   *                the frame. Filing it under a 제3자 제공 register is a classification error.
+   *
+   * 파기 IS NOT HERE because nothing in this product destroys footage — retention deletion happens
+   * on the recorder. A value no screen can produce would be a column that looks answered.
+   *
+   * IT CANNOT BE INFERRED FROM THE FILE, and that is the honest limit: an export taken as
+   * `internal` and then e-mailed outside is a 제공 the register never sees. The frame dialog asks
+   * (요청 구분), so that path knows; a Portal CSV does not ask, so it is `internal` by default and
+   * the screen says so rather than guessing.
+   */
+  disposition?: "internal" | "thirdParty" | "subject";
 }
 
 /**
@@ -5819,6 +5846,9 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
         // is two files in the world, and the second one is often the one that left the building.
         exportLog: [
           { id: `export-${++exportSeq}`, kind: "list", projectId, list, rowCount,
+            /* Nobody asked, so the honest answer is the one the act itself supports: a console
+               user took a file for their own work. See ExportRecord.disposition. */
+            disposition: "internal" as const,
             actor: SIGNED_IN_USER.name, actorEmail: SIGNED_IN_USER.email, at, recordedBy: "client" },
           ...state.exportLog,
         ],
@@ -5842,9 +5872,14 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   recordFootageExport: ({ projectId, kind, surface, subject, rowCount, ...register }) =>
     set(state => {
       const at = new Date().toISOString();
+      /* The dialog already asks this — 요청 구분 — it just was not being stored as the thing it
+         is. 본인 is 열람, the other two left the building. See ExportRecord.disposition. */
+      const disposition = register.requesterKind === "subject" ? "subject" as const
+        : register.requesterKind ? "thirdParty" as const
+        : undefined;
       return {
         exportLog: [
-          { id: `export-${++exportSeq}`, kind, projectId, surface, subject, rowCount, ...register,
+          { id: `export-${++exportSeq}`, kind, projectId, surface, subject, rowCount, ...register, disposition,
             actor: SIGNED_IN_USER.name, actorEmail: SIGNED_IN_USER.email, at, recordedBy: "client" },
           ...state.exportLog,
         ],
