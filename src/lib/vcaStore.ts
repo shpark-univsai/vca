@@ -1947,6 +1947,10 @@ const PROJECTS: Project[] = [
   {
     id: "proj-sg", teamId: "team-univs", name: "Marina Bay & CBD Surveillance Network", type: "smart_city",
     timeZone: "Asia/Singapore",
+    /* Answered YES because the operator of this site is 「City of Singapore — Smart Infrastructure
+       Office」, a government body — not because of `type` above, which says what the cameras watch.
+       The other seeded project leaves it unanswered, so both states are on screen somewhere. */
+    publicAuthority: true,
     licensePlan: "Enterprise", licenseChannelLimit: 100, licenseExpiresAt: "2029-06-04",
     computeInstance: "vca.large", gpuCount: 4, modelVersion: "model_v2_prod", lastMigration: "v2_alert_schema",
     lastBackupAt: auditAt(19 * 60),
@@ -5045,6 +5049,132 @@ const ACCESS_LOG_SEED: AccessRecord[] = [
   { id: "acc-8", teamId: "team-univs", at: "2026-09-30 18:52", kind: "refused", identifier: "admin@smartcity.gov.sg", door: "portal", ip: "203.0.113.77" },
 ];
 
+/*
+ * ───── 반출 기록과 조회 기록의 목업 (owner, 2026-10-07: 포탈 목업으로 기록탭들에 데이터
+ * 임시로 넣어주라 · 보고싶어서) ─────
+ *
+ * Both lists shipped EMPTY, which is honest — nothing had exported or searched yet — but it meant
+ * the two screens that carry the most design in this release could only be read by making a
+ * download happen first, and the 게재 block, the overdue card and the 구분 axis could not be seen
+ * at all. These stand in until the server writes the real ones.
+ *
+ * THE RULE THE AUDIT SEED SET APPLIES HERE TOO: every row names something this product can
+ * actually do. A list row names one of the CSV buttons the Portal really has; a frame row names
+ * the app's export dialog and carries only the fields that dialog asks for; no row carries a
+ * stated purpose, because requireSearchPurpose is off and nobody was asked — inventing one would
+ * put a claim in the record the operator never made.
+ *
+ * `recordedBy: "client"` throughout, which is the truthful answer for a mock: the browser assembled
+ * these. It flips to "server" the day an export is a call that logs before it returns bytes.
+ */
+const EXPORT_LOG_SEED: ExportRecord[] = [
+  /* ── 내부 이용: the Portal's own CSV buttons. Not a 대장 event, still a download, so the
+        monthly review reads them. No recipient, no legal basis — nobody was asked for one. */
+  { id: "exp-1", projectId: "proj-sg", kind: "list", list: "vips", rowCount: 122, disposition: "internal",
+    actor: "Aaron Sim", actorEmail: "aaron.sim@smartcity.gov.sg", at: "2026-10-06 15:22", recordedBy: "client" },
+  { id: "exp-2", projectId: "proj-sg", kind: "list", list: "cameras", rowCount: 62, disposition: "internal",
+    actor: "Marcus Lee", actorEmail: "marcus.lee@smartcity.gov.sg", at: "2026-10-02 10:48", recordedBy: "client",
+    reviewedAt: "2026-10-05 09:30", reviewedBy: "Grace Tan", reviewedByEmail: "grace.tan@smartcity.gov.sg",
+    reviewNote: "Inventory for the quarterly asset count. No personal data in the file." },
+  { id: "exp-3", projectId: "proj-sg", kind: "list", list: "roster", rowCount: 38, disposition: "internal",
+    actor: "Grace Tan", actorEmail: "grace.tan@smartcity.gov.sg", at: "2026-09-29 17:05", recordedBy: "client" },
+  /* The skipped-rows file from a VIP import — it carries name · memo · photo filename, so it is a
+     download of personal data like any other. Seeded because it was the one that used to leave
+     unrecorded, and a reader should be able to see that it no longer does. */
+  { id: "exp-4", projectId: "proj-sg", kind: "list", list: "vipImportSkipped", rowCount: 7, disposition: "internal",
+    actor: "Nadia Rahman", actorEmail: "nadia.rahman@smartcity.gov.sg", at: "2026-09-18 11:14", recordedBy: "client" },
+  /* An operator saving a frame for their own shift notes. 내부 이용, so the register's seven items
+     are not required and the dialog does not ask for them. */
+  { id: "exp-5", projectId: "proj-sg", kind: "frame", surface: "bestframe", subject: "Arjun Kumar", rowCount: 1,
+    disposition: "internal", fileName: "bestframe_20261005_0214_bugis.jpg", form: "copy",
+    reason: "Shift handover — same person as the 22:10 hit at Orchard.",
+    actor: "Marcus Lee", actorEmail: "marcus.lee@smartcity.gov.sg", at: "2026-10-05 02:16", recordedBy: "client" },
+
+  /* ── 제3자 제공: it left the building. The seven 대장 items are required, and a 공공기관 also
+        has to publish within 30 days (법 제18조제4항). */
+  /* PAST THE 30 DAYS AND NOT PUBLISHED — the one state this register can call overdue on its own,
+     and the reason the amber card exists. 42 days old as of the day this was written. */
+  { id: "exp-6", projectId: "proj-sg", kind: "frame", surface: "bestframe", subject: "Alexander Wright", rowCount: 1,
+    disposition: "thirdParty", requesterKind: "police",
+    fileName: "bestframe_20260826_1940_marina.jpg", recipient: "Marina Bay Police Division · 수사2팀",
+    legalBasis: "개인정보 보호법 제18조제2항제7호", period: "2026-08-26 19:30–19:50 · Marina Bay 4대",
+    form: "copy", reference: "2026-형제-4471",
+    reason: "Criminal investigation — written request on file.",
+    actor: "Grace Tan", actorEmail: "grace.tan@smartcity.gov.sg", at: "2026-08-26 20:11", recordedBy: "client" },
+  /* Published on the body's own site — the row that shows the 10-day floor, which only binds on
+     this path and is said here rather than in the settings tip. */
+  { id: "exp-7", projectId: "proj-sg", kind: "frame", surface: "bestframe", subject: "Rachel Ong", rowCount: 1,
+    disposition: "thirdParty", requesterKind: "police",
+    fileName: "bestframe_20260912_0835_tampines.jpg", recipient: "Tampines Police Division · 형사과",
+    legalBasis: "개인정보 보호법 제18조제2항제7호", period: "2026-09-12 08:30–08:40 · Tampines Hub",
+    form: "copy", reference: "2026-형제-4620",
+    reason: "Criminal investigation — written request on file.",
+    publishedAt: "2026-09-20 14:02", publishedBy: "Grace Tan", publishedWhere: "website",
+    actor: "Nadia Rahman", actorEmail: "nadia.rahman@smartcity.gov.sg", at: "2026-09-12 09:40", recordedBy: "client",
+    reviewedAt: "2026-10-01 10:12", reviewedBy: "Aaron Sim", reviewedByEmail: "aaron.sim@smartcity.gov.sg" },
+  /* Published in the gazette — the same block, three facts and no control, and no 10-day line
+     because that clause does not bind on this path. */
+  { id: "exp-8", projectId: "proj-sg", kind: "results", surface: "redmap", subject: "Michael Tan", rowCount: 14,
+    disposition: "thirdParty", requesterKind: "thirdParty",
+    fileName: "redmap_trail_20260903_michael_tan.csv", recipient: "국가인권위원회 조사총괄과",
+    legalBasis: "개인정보 보호법 제18조제2항제5호", period: "2026-08-28 ~ 2026-09-02 · 전 구역",
+    form: "copy", reference: "2026-진정-0912",
+    reason: "Statutory request from another public body.",
+    publishedAt: "2026-09-15 09:30", publishedBy: "Grace Tan", publishedWhere: "gazette",
+    actor: "Grace Tan", actorEmail: "grace.tan@smartcity.gov.sg", at: "2026-09-03 16:25", recordedBy: "client" },
+
+  /* ── 열람 (법 제35조): the data subject received their own footage. NOT a 제3자 제공 — filing it
+        under that register would be a classification error — and it is the one path 표준지침
+        제46조's de-identification duty binds on, because other identifiable people are in frame. */
+  { id: "exp-9", projectId: "proj-sg", kind: "frame", surface: "bestframe", subject: "Grace Lim", rowCount: 1,
+    disposition: "subject", requesterKind: "subject",
+    fileName: "bestframe_20260925_1152_novena.jpg", recipient: "Grace Lim (정보주체 본인)",
+    legalBasis: "개인정보 보호법 제35조", period: "2026-09-25 11:50–11:55 · Novena",
+    form: "screen", reference: "열람-2026-0031",
+    reason: "Access request by the data subject.",
+    actor: "Aaron Sim", actorEmail: "aaron.sim@smartcity.gov.sg", at: "2026-09-25 14:40", recordedBy: "client" },
+
+  /* NO REASON RECORDED — the row the 「사유 없음」 filter and its counter exist for. A result set of
+     eleven faces left with nothing said about why, and nobody has reviewed it. Left deliberately
+     incomplete: a seeded register in which every row is in order teaches the reader that the two
+     counters above the table never fire. */
+  { id: "exp-10", projectId: "proj-sg", kind: "results", surface: "reid", subject: "James Wilson", rowCount: 11,
+    disposition: "thirdParty", requesterKind: "thirdParty",
+    fileName: "reid_candidates_20261003_1420.csv",
+    actor: "Wei Chen", actorEmail: "wei.chen@smartcity.gov.sg", at: "2026-10-03 14:22", recordedBy: "client" },
+];
+
+/*
+ * 조회 기록 — who looked somebody up.
+ *
+ * NO PURPOSE ON ANY ROW, and that is the setting rather than a gap: requireSearchPurpose is off on
+ * this installation, so nobody was asked and there is nothing to record. The screen's purpose
+ * filter stays empty until the switch is turned on, which is what it should look like.
+ *
+ * Volume on purpose — searches run to dozens a day against a handful of setting changes a quarter,
+ * which is the reason the two lists were never merged into one table.
+ */
+const SEARCH_LOG_SEED: SearchAccessRecord[] = [
+  { id: "sl-1", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-07 09:41", actor: "Marcus Lee", actorEmail: "marcus.lee@smartcity.gov.sg", target: "Arjun Kumar", surface: "reid", resultCount: 6, ip: "10.20.4.31" },
+  { id: "sl-2", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-07 09:12", actor: "Nadia Rahman", actorEmail: "nadia.rahman@smartcity.gov.sg", target: "업로드 이미지 1장", surface: "redface", resultCount: 0, ip: "10.20.4.7" },
+  { id: "sl-3", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-07 08:35", actor: "Marcus Lee", actorEmail: "marcus.lee@smartcity.gov.sg", target: "Rachel Ong", surface: "redmap", resultCount: 14, ip: "10.20.4.31" },
+  { id: "sl-4", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-06 22:50", actor: "Aaron Sim", actorEmail: "aaron.sim@smartcity.gov.sg", target: "Alexander Wright", surface: "live", resultCount: 2, ip: "10.20.1.52" },
+  { id: "sl-5", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-06 19:04", actor: "Wei Chen", actorEmail: "wei.chen@smartcity.gov.sg", target: "Michael Tan", surface: "reid", resultCount: 9, ip: "10.20.4.66" },
+  { id: "sl-6", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-06 17:22", actor: "Marcus Lee", actorEmail: "marcus.lee@smartcity.gov.sg", target: "Grace Lim", surface: "redmap", resultCount: 3, ip: "10.20.4.31" },
+  { id: "sl-7", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-06 14:58", actor: "Nadia Rahman", actorEmail: "nadia.rahman@smartcity.gov.sg", target: "James Wilson", surface: "reid", resultCount: 11, ip: "10.20.4.7" },
+  { id: "sl-8", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-06 11:30", actor: "Aaron Sim", actorEmail: "aaron.sim@smartcity.gov.sg", target: "Priya Nair", surface: "redface", resultCount: 4, ip: "10.20.1.52" },
+  { id: "sl-9", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-05 23:17", actor: "Marcus Lee", actorEmail: "marcus.lee@smartcity.gov.sg", target: "Arjun Kumar", surface: "live", resultCount: 1, ip: "10.20.4.31" },
+  { id: "sl-10", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-05 20:44", actor: "Wei Chen", actorEmail: "wei.chen@smartcity.gov.sg", target: "Daniel Ho", surface: "redmap", resultCount: 0, ip: "10.20.4.66" },
+  { id: "sl-11", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-05 16:02", actor: "Nadia Rahman", actorEmail: "nadia.rahman@smartcity.gov.sg", target: "Aisha Rahman", surface: "reid", resultCount: 5, ip: "10.20.4.7" },
+  { id: "sl-12", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-04 13:51", actor: "Aaron Sim", actorEmail: "aaron.sim@smartcity.gov.sg", target: "업로드 이미지 2장", surface: "redface", resultCount: 7, ip: "10.20.1.52" },
+  { id: "sl-13", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-03 14:20", actor: "Wei Chen", actorEmail: "wei.chen@smartcity.gov.sg", target: "James Wilson", surface: "reid", resultCount: 11, ip: "10.20.4.66" },
+  { id: "sl-14", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-02 09:36", actor: "Marcus Lee", actorEmail: "marcus.lee@smartcity.gov.sg", target: "Kevin Tan", surface: "redmap", resultCount: 8, ip: "10.20.4.31" },
+  { id: "sl-15", projectId: "proj-sg", teamId: "team-univs", at: "2026-10-01 21:08", actor: "Nadia Rahman", actorEmail: "nadia.rahman@smartcity.gov.sg", target: "Siti Aminah", surface: "live", resultCount: 2, ip: "10.20.4.7" },
+  { id: "sl-16", projectId: "proj-sg", teamId: "team-univs", at: "2026-09-30 18:12", actor: "Aaron Sim", actorEmail: "aaron.sim@smartcity.gov.sg", target: "Ryan Ng", surface: "reid", resultCount: 3, ip: "10.20.1.52" },
+  { id: "sl-17", projectId: "proj-sg", teamId: "team-univs", at: "2026-09-29 15:40", actor: "Marcus Lee", actorEmail: "marcus.lee@smartcity.gov.sg", target: "Farah Ibrahim", surface: "redface", resultCount: 6, ip: "10.20.4.31" },
+  { id: "sl-18", projectId: "proj-sg", teamId: "team-univs", at: "2026-09-28 10:25", actor: "Wei Chen", actorEmail: "wei.chen@smartcity.gov.sg", target: "Nadia Yusof", surface: "redmap", resultCount: 12, ip: "10.20.4.66" },
+];
+
 const AUDIT_LOG_SEED: AuditEvent[] = [
   { id: "audit-1", projectId: "proj-sg", area: "cameras", target: "CAM-NOV-001", action: "RTSP URL updated", message: "Camera CAM-NOV-001 RTSP URL updated", actor: "Grace Tan", at: auditAt(20), recordedBy: "server" },
   { id: "audit-2", projectId: "proj-sg", area: "vip", target: "Wei Chen", action: "Registered", message: "VIP Wei Chen registered", actor: "Marcus Lee", at: auditAt(65), recordedBy: "server" },
@@ -5283,7 +5413,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
   ],
   searchPurpose: null,
   // No seed. These are events, and an installation that has run no searches has none.
-  searchAccessLog: [],
+  searchAccessLog: SEARCH_LOG_SEED,
   detectionJudgements: [],
   /*
    * SEEDED, for the reason the access log is — see ACCESS_LOG_SEED.
@@ -5299,7 +5429,7 @@ export const useVcaStore = create<VcaStoreState>((set, get) => ({
    * of this screen see the same thing.
    */
   detectionHandlings: HANDLING_SEED,
-  exportLog: [],
+  exportLog: EXPORT_LOG_SEED,
   /*
    * SEEDED, unlike the look-up log beside it, and the difference is not an inconsistency.
    *
