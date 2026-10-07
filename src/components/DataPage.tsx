@@ -741,12 +741,30 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
         background:"linear-gradient(to top, rgba(24, 17, 39,0.72), rgba(24, 17, 39,0))", pointerEvents:"none" }} />
       {/* Only shown in the flat "All Cameras" view — grouped-by-camera carousels already
           show the camera name in their section header, so this would be a duplicate there. */}
-      {showCam && (
-        <div style={{ position:"absolute", top:7, left:8, fontSize:"10px", fontWeight:800, color:"white",
-          backgroundColor:"var(--label-plate)", padding:"4px 6px", borderRadius:RADIUS.pill, letterSpacing:"-0.2px" }}>
-          {p.cam}
-        </div>
-      )}
+      {/*
+        ONE ROW, NOT TWO ABSOLUTE CORNERS (owner, 2026-10-07: 유사도를 카메라이름옆으로 옮겼잖아
+        카메라 이름이랑 가로 중앙에 배치시켜줘).
+
+        Both sat at `top: 7` and looked misaligned, because top-aligning two chips only lines up
+        their boxes when the boxes are the same height — the camera plate is 22px and the score
+        badge 19, so their text sat three pixels apart. A row that centres them puts the two
+        LABELS on one line, which is what the eye was asking for.
+
+        `marginLeft: auto` on the score rather than `space-between`: the camera plate is only drawn
+        in the flat view, and with space-between a lone score would slide to the left edge.
+      */}
+      <div style={{ position:"absolute", top:7, left:8, right:8, zIndex:2,
+        display:"flex", alignItems:"center", gap:"6px", pointerEvents:"none" }}>
+        {showCam && (
+          <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--label-plate)",
+            padding:"4px 6px", borderRadius:RADIUS.pill, letterSpacing:"-0.2px", whiteSpace:"nowrap" }}>
+            {p.cam}
+          </span>
+        )}
+        {p.status === "VIP" && p.score !== null && (
+          <span style={{ marginLeft:"auto", display:"flex" }}><ScoreBadge score={p.score} /></span>
+        )}
+      </div>
       {p.status === "RedFace" && (
         <div style={{ position:"absolute", bottom:"52px", left:8, fontSize:"10px", fontWeight:800, color:"white",
           backgroundColor:"var(--danger-400)", padding:"1px 5px", borderRadius:RADIUS.pill, letterSpacing:"0.3px" }}>
@@ -777,9 +795,17 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
       <div style={{ position:"absolute", left:"-1px", right:"-1px", bottom:"-2px", height:"76px", backgroundColor:"white",
         border:"none", borderTop:"none", boxShadow:"none", margin:0, marginBottom:0,
         padding:"7px 11px 10px", boxSizing:"border-box", display:"flex", flexDirection:"column", gap:"2px" }}>
+        {/* THE SCORE LEFT THIS LINE — it is on the capture now, opposite the camera code (owner,
+            2026-10-07: %뱃지가 크롭된 얼굴에 겹쳐져서 가려져서). MEASURED across 2,066 cards: it
+            never actually overlapped, the gap was 9px on every one — but the inset carries a 2px
+            ring, so seven pixels of air between a number and a photograph reads as touching, and
+            the eye is right even where the geometry is not.
+
+            Nothing on this line could have given it room. A 60px inset in a 150px footer takes the
+            right 66px of EVERY line it crosses, so the fix was to stop this line being one of
+            them. Left behind is the status word alone, 28px of a 128px line. */}
         <div style={{ display:"flex", alignItems:"baseline", gap:"3px" }}>
           <span style={{ fontSize:"12px", fontWeight:800, color:status.text, letterSpacing:"-0.2px" }}>{attr(p.status, lang)}</span>
-          {p.status === "VIP" && p.score !== null && <ScoreBadge score={p.score} />}
         </div>
         {/* The identity line. A name when the register knows one, and the best available
             description when it does not — those are answers to the same question, so they share
@@ -788,13 +814,11 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
             It used to be gender+age always, which meant a card badged VIP said "M 45yo" where its
             name belonged: the most important card on the wall omitted the one thing that made it
             important, while the register had the name all along. */}
-        {/* RESERVES THE INSET'S FOOTPRINT (60 + its 6px right offset + 6 of air, less the 11px the
-            footer is already inset) so the line ends in 「…」 instead of disappearing under the
-            photo. `title` carries the whole name, because a truncated one is a question the card
-            should still be able to answer. */}
+        {/* NO RESERVATION — the inset clears this line by 2px now (see its note). `title` stays:
+            a name longer than the card still truncates at the card's own edge, and a truncated
+            name is a question the card should be able to answer. */}
         <div title={p.personName ?? undefined}
           style={{ display:"flex", gap:"4px", fontSize:"12px", fontWeight:600, color:"var(--gray-900)",
-          paddingRight:"61px",
           overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flexShrink:0 }}>
           {p.personName
             ? <span style={{ fontWeight:700 }}>{p.personName}</span>
@@ -818,16 +842,22 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
         than it bought: clear of the footer it sits in the middle of the body, over the one part of
         the capture an operator is reading.
 
-        THE NAME IS HANDLED ON THE LINE INSTEAD — see the identity row's own note. The bug being
-        fixed there was never the overlap; it was that the row believed it had the full 130px and
-        so never drew 「…」, which let a name stop mid-word behind a photo with nothing saying it
-        continued. The row now reserves the inset's footprint, so it truncates honestly and the
-        whole name is on the element's title.
+        AND 8px HIGHER THAN THE ORIGINAL 40, WHICH IS WHAT LETS THE NAME KEEP ITS WHOLE LINE.
+        MEASURED, card by card: the footer's three rows sit at 386–405 (status + score), 407–425
+        (the name) and 430–445 (the time). At bottom 40 the inset ran to 413 — six pixels into the
+        name's row, enough to slice the tops off its last letters, and the row believed it had the
+        full width so it never drew 「…」 either. At bottom 48 the inset ends at 405 and the name
+        starts at 407: it clears by two pixels and needs no space reserved for it.
 
-        The geometry is what it is: a 60px photo on a 150px card takes 56px from the line beside
-        it. That is the trade this layout makes, and it is now visible rather than silent.
+        Reserving 61px on the line was the previous attempt and it cost ten characters of every
+        name to protect against a six-pixel sliver. Eight pixels of thumbnail buys all of it back,
+        and the thumbnail still sits on the corner where it was drawn — it straddles the capture
+        and the footer exactly as before, eight pixels further up.
+
+        It still overlaps the status row above (386–405), and that row is fine: the score badge
+        ends at x 1155 against the inset's 1164, nine pixels clear.
       */}
-      <div style={{ position:"absolute", right:"6px", bottom:"40px", width:"60px", height:"60px",
+      <div style={{ position:"absolute", right:"6px", bottom:"48px", width:"60px", height:"60px",
         borderRadius:RADIUS.inner, overflow:"hidden", transform:"translateZ(0)",
         // Only VIP gets a ring (brand purple) — Unknown has nothing to call out, and RedFace
         // already gets its own dedicated "REDFACE" badge on this card (below).
