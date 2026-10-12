@@ -1809,6 +1809,7 @@ function LiveSearchSidebar({
                   chosen target reuses its own toggle rather than a second code path, and the card
                   photo is the context, not a selection. */}
               <ImageDropzoneBox icon={<DefaultFaceIconSm />} label={t.face} previewSrc={faceSrc} aspect="square"
+                attached={!!uploadedFace}
                 onClick={() => faceInputRef.current?.click()}
                 onClear={uploadedFace ? clearUploadedFace
                   : selectedTarget >= 0 ? () => selectRecentTarget(selectedTarget)
@@ -1818,6 +1819,7 @@ function LiveSearchSidebar({
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
               <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>{t.targetBody}</span>
               <ImageDropzoneBox icon={<FullBodyIconSm />} label={t.body} previewSrc={bodySrc} aspect="portrait"
+                attached={!!uploadedBody}
                 onClick={() => bodyInputRef.current?.click()}
                 onClear={uploadedBody ? clearUploadedBody
                   : selectedTarget >= 0 ? () => selectRecentTarget(selectedTarget)
@@ -3392,12 +3394,16 @@ function ImageDropzoneHoverStyleTag() {
     `}</style>
   );
 }
-function ImageDropzoneBox({ icon, label, previewSrc, onClick, onClear, aspect }: {
+function ImageDropzoneBox({ icon, label, previewSrc, onClick, onClear, aspect, attached }: {
   icon: React.ReactNode; label: string; previewSrc?: string; onClick?: () => void;
   /** Only passed when the preview is an image the USER attached — previewSrc also covers the
    *  selected target's own photo, which there's nothing to detach from. */
   onClear?: () => void;
   aspect?: "square"|"portrait";
+  /** True when the preview is a file the user attached here, false when it came with a target they
+   *  picked. Same distinction the RedFace picker draws, and drawn the same way: the borrowed photo
+   *  carries a faint primary wash so it does not claim to be something you put there. */
+  attached?: boolean;
 }) {
   const [lang] = useLanguage();
   // aspect is opt-in (Live Monitoring's Photo tab, where face/body previews sit one above the
@@ -3414,16 +3420,37 @@ function ImageDropzoneBox({ icon, label, previewSrc, onClick, onClear, aspect }:
     <div onClick={onClick} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       className={onClick ? "vca-image-dropzone-clickable" : undefined} style={{
       // A drop zone is a surface you drop onto, not a control in a row — same step as a popover.
-      ...sizeStyle, borderRadius:RADIUS.panel, border:"1px dashed var(--gray-300)", backgroundColor:"white",
-      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"12px", overflow:"hidden", position:"relative",
-      padding:"20px 12px", boxSizing:"border-box" }}>
+      ...sizeStyle, borderRadius:RADIUS.panel, overflow:"hidden", position:"relative", boxSizing:"border-box",
+      /* An attached photo is shown, not hinted at. It used to sit at opacity 0.15 behind the icon
+         and the word 「얼굴」 — a wash you could not identify (owner, 2026-10-12: 흐릿하게 보이는데
+         … 지금 첨부한게 뭔지 알수있을것같아). The RedFace picker and 레드맵 both draw the same
+         photo solid, so this was the one screen of the three that hid it. Filled state borrowed
+         from the picker exactly: solid --primary-300 edge over --primary-100 instead of the empty
+         zone's dashed grey, so "has a photo" still reads before you look at the photo. */
+      ...(previewSrc
+        ? { border:"1px solid var(--primary-300)", backgroundColor:"var(--primary-100)" }
+        : { border:"1px dashed var(--gray-300)", backgroundColor:"white",
+            display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"12px",
+            padding:"20px 12px" }) }}>
       {onClick && <ImageDropzoneHoverStyleTag />}
-      {previewSrc && <img src={previewSrc} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", opacity:0.15 }} />}
-      <div style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
-        {icon}
-        <span className="vca-dropzone-label" style={{ fontSize:"11px", color:"var(--gray-400)" }}>{label}</span>
-        {onClick && hovered && <span style={{ fontSize:"10px", fontWeight:700, color:"var(--primary-400)" }}>{previewSrc ? T[lang].clickToChange : T[lang].clickToUpload}</span>}
-      </div>
+      {previewSrc ? (
+        <>
+          <img src={previewSrc} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+          {attached === false && <div style={{ position:"absolute", inset:0, backgroundColor:"color-mix(in srgb, var(--primary-400) 15%, transparent)" }} />}
+          {onClick && (
+            <div className="vca-dropzone-hint" style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
+              backgroundColor:"var(--scrim-media)", opacity:0 }}>
+              <span style={{ fontSize:"11px", fontWeight:700, color:"white" }}>{T[lang].clickToChange}</span>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
+          {icon}
+          <span className="vca-dropzone-label" style={{ fontSize:"11px", color:"var(--gray-400)" }}>{label}</span>
+          {onClick && hovered && <span style={{ fontSize:"10px", fontWeight:700, color:"var(--primary-400)" }}>{T[lang].clickToUpload}</span>}
+        </div>
+      )}
       {onClear && hovered && (
         <RemoveImageButton label={T[lang].removeImage(label.toLowerCase())} onRemove={onClear} />
       )}
