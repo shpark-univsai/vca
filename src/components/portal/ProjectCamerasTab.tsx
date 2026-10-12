@@ -2698,9 +2698,30 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
             const statusTone: StatusTone = cam.status === "online" ? "normal"
               : awaiting ? "waiting"
               : "fault";
-            const statusText = statusTone === "normal" ? "var(--gray-500)" : TONE_STYLE[statusTone].fg;
+            /*
+             * THE DOT CARRIES THE STATE, THE WORD JUST NAMES IT (owner, 2026-10-12, after
+             * measuring this page: 하루종일 보는 사람 입장에서 수정해야겠네).
+             *
+             * Measured on the register as it stands: of twelve rows on a page, TEN were amber —
+             * nine 「Offline」 and one 「Refusing the connection」 — against two grey 「Connected」.
+             * A colour that ten rows out of twelve share is not a warning any more, it is the
+             * background; and ten 12px labels at full chroma are tiring to sit in front of all
+             * day, which is what this screen is for.
+             *
+             * So the fault colour moves to the 6px dot and the label goes grey. Nothing is hidden:
+             * the dot still separates a fault from a working camera at a glance, and the amber is
+             * now a mark the eye can find instead of a wash it has to read through.
+             *
+             * 「Connected」 gains a green dot. It was --gray-300, which on a row whose label is
+             * also grey said nothing — 「working」 and 「we have not heard」 looked the same.
+             *
+             * WHAT THIS DOES NOT DO is rank the two faults. Splitting 「연결 거부」 into red was
+             * considered and dropped, for the reason written above this block: the screen cannot
+             * justify the ranking, and the two words already carry the difference.
+             */
+            const statusText = "var(--gray-500)";
             const statusWeight = statusTone === "normal" ? 600 : 700;
-            const statusDot = statusTone === "normal" ? "var(--gray-300)" : TONE_STYLE[statusTone].fg;
+            const statusDot = statusTone === "normal" ? "var(--success-400)" : TONE_STYLE[statusTone].fg;
             return (
               <div key={row.id} {...rowInteraction}>
                 {checkbox}
@@ -2831,7 +2852,11 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     again in the browser is a hydration mismatch. */}
                 <span style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
                   <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0, backgroundColor: statusDot }} />
+                    {/* 8px, not 6 (owner, 2026-10-12: 점 크기를 살짝만 더 키워줘). The dot does
+                        more work than it used to — the label beside it went grey, so this is now
+                        the only thing on the row carrying the state. 6px was sized for a mark
+                        sitting next to a coloured word that said the same thing. */}
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", flexShrink: 0, backgroundColor: statusDot }} />
                     <span style={{ fontSize: "12px", fontWeight: statusWeight, color: statusText }}>{statusLabel}</span>
                   </span>
                   {awaiting ? (
