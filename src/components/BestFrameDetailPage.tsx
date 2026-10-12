@@ -2269,12 +2269,15 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       // The row no longer clips, so the two end cells carry its corners.
                       borderRadius: h === 0 ? `${RADIUS.inner} 0 0 ${RADIUS.inner}`
                         : h === HOURS_IN_DAY - 1 ? `0 ${RADIUS.inner} ${RADIUS.inner} 0` : 0,
-                      /* Lifted, like the selected thumbnail above it — the same gesture in a row
-                         20px tall. Mostly vertical: 4% of 20px is less than a pixel and would not
-                         be seen, so the cell grows up and down out of the row and reads as a chip
-                         raised off the rule. zIndex keeps it over its neighbours' edges. */
-                      ...(active ? { transform:"scale(1.02, 1.4)", zIndex:1 } : null),
-                      position:"relative", transition:"transform 0.14s ease",
+                      /* Lifted, like the selected thumbnail above it — but by GROWING, not by
+                         scaling. A non-uniform transform (it was scale(1.02, 1.4)) stretches
+                         everything inside with it: the crown came out squashed and the 2px ring
+                         came out 2px across and 2.8px down (owner, 2026-10-12: 억지로 늘려놔서
+                         잘리고 왕관모양 이상하고). A real height with matching negative margins
+                         grows the box and leaves its contents alone, and the row keeps its own
+                         20px so nothing below it moves. zIndex lifts it over its neighbours. */
+                      ...(active ? { height:"28px", marginTop:"-4px", marginBottom:"-4px", zIndex:1 } : null),
+                      position:"relative",
                       /* Three steps, in order of what the operator needs: --gray-200 nothing
                          happened here, --gray-400 this hour holds records, SELECTED this is the
                          one you are on. Unknown (no camera id) falls back to the plain ground
@@ -2369,8 +2372,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       border: active ? "2px solid transparent" : "none",
                       borderRadius: m === 0 ? `${RADIUS.inner} 0 0 ${RADIUS.inner}`
                         : m === MINUTES_IN_HOUR - 1 ? `0 ${RADIUS.inner} ${RADIUS.inner} 0` : 0,
-                      ...(active ? { transform:"scale(1.02, 1.5)", zIndex:1 } : null),
-                      position:"relative", transition:"transform 0.14s ease",
+                      // Grown, not scaled — see the note on the hour cell.
+                      ...(active ? { height:"22px", marginTop:"-4px", marginBottom:"-4px", zIndex:1 } : null),
+                      position:"relative",
                       /* Same two channels as the hour rule, counted inside the selected hour. */
                       /* The cell a crown sits in takes --primary-100 behind it (owner, 2026-10-12:
                          왕관이 있는 시간엔 배경색 primary 100을 칠해줘), so a row of 24 reads as
