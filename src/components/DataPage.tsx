@@ -6317,8 +6317,17 @@ function RedFaceContent({ seedCard, seedLabel, onSeedConsumed, onGoAnalyzeFrame 
             backdropFilter:"blur(9px)", backgroundColor:"var(--scrim)" }}
         >
           {/* Centred with an even 24px, instead of 6vh from the top: 6vh + 92vh + 24px is more
-              than a window, which is what pushed the footer past the bottom edge. */}
-          <div style={{ minHeight:"100%", boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"center", padding:"24px" }}>
+              than a window, which is what pushed the footer past the bottom edge.
+
+              `height`, not `minHeight` (2026-10-12). With minHeight the wrapper had no height of
+              its own — it grew with the card — so the card's own `maxHeight:"100%"` (4426) resolved
+              against auto and capped nothing, and the column's `overflowY:auto` (4475) never once
+              fired. Measured: 「Set as primary target」 sat 76px below the fold at 1366×768 and 44px
+              at 1280×800 WITH the attribute section still collapsed, and 224px below at 1512×950
+              once it was opened — and on first entry that button is the only way out of this
+              dialog. The comment above records the same symptom being fixed before; it came back
+              because the cap was written against a parent that had no height. */}
+          <div style={{ height:"100%", boxSizing:"border-box", display:"flex", alignItems:"center", justifyContent:"center", padding:"24px" }}>
             <PrimaryTargetPickerModal onConfirm={handleConfirm}
               onCancel={primaryTarget ? () => setPickerOpen(false) : undefined} />
           </div>
