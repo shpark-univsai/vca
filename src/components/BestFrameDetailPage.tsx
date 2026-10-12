@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import type { CSSProperties } from "react";
 import type { DetType, Detection, CamData } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { clockMinutesIn, dateKeyIn, sgtDateKey, sgtHour, sgtMinute, siteTimeZone } from "@/lib/time";
+import { clockMinutesIn, dateKeyIn, sgtClockTime, sgtDateKey, sgtHour, sgtMinute, siteTimeZone } from "@/lib/time";
 import ViewerWatermark, { viewerStampText } from "./ViewerWatermark";
 import {
   SIGNED_IN_USER, currentPortalUser, holdsAppAction, useActiveProjectId, useRetentionFloor, useVcaStore,
@@ -1625,7 +1625,21 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   const occupancy = useMemo(() => {
     const hours = new Array<number>(HOURS_IN_DAY).fill(0);
     const minutes = new Array<number>(60).fill(0);
-    if (!camId) return { hours, minutes, known: false };
+    /* The earliest second a record sits at, per hour and per minute. A crown on an hour promises
+       「something happened in here」, and the click has to land ON it: before this, clicking hour 1
+       kept whatever minute you were already at (jumpTo(h*3600 + selectedSec%3600)), so from 14:54
+       it went to 01:54 while the hit was at 01:47 — seven minutes outside the strip's 120-second
+       window, which is why the thumbnail it landed on carried no count (owner, 2026-10-12: 아래
+       시각에 왕관을 눌렀는데 위에 선택된 썸네일에 왕관 몇명인지 안뜨는건 뭐야). */
+    const hourAt = new Array<number | null>(HOURS_IN_DAY).fill(null);
+    const minuteAt = new Array<number | null>(60).fill(null);
+    const note = (daySec: number) => {
+      const h = Math.floor(daySec / 3600) % HOURS_IN_DAY;
+      const m = Math.floor((daySec % 3600) / 60);
+      if (hourAt[h] == null || daySec < hourAt[h]!) hourAt[h] = daySec;
+      if (h === currentHour && (minuteAt[m] == null || daySec < minuteAt[m]!)) minuteAt[m] = daySec;
+    };
+    if (!camId) return { hours, minutes, hourAt, minuteAt, known: false };
     const zone = siteTimeZone();
     for (const e of dayEvents) {
       if (e.cameraId !== camId) continue;
@@ -1638,6 +1652,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
       const h = sgtHour(when);
       hours[h] += 1;
       if (h === currentHour) minutes[sgtMinute(when)] += 1;
+      note(hhmmssToSec(sgtClockTime(when)));
     }
     /* And the frame that is on screen right now.
        The grid counts the store's events; the feed above draws a curated CamData frame, and the
@@ -1655,8 +1670,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
       if (!Number.isFinite(hh) || !Number.isFinite(mm)) continue;
       hours[hh % HOURS_IN_DAY] = (hours[hh % HOURS_IN_DAY] ?? 0) + 1;
       if (hh % HOURS_IN_DAY === currentHour) minutes[mm] = (minutes[mm] ?? 0) + 1;
+      note(hhmmssToSec(d.time));
     }
-    return { hours, minutes, known: true };
+    return { hours, minutes, hourAt, minuteAt, known: true };
   }, [dayEvents, camId, trackDate, currentHour, data.detections]);
   // Sample frame points evenly spread across the visible span — the thumbnails ARE these points
   // (each one is "the frame at this instant"). Real per-second timestamps don't exist for every
@@ -1672,11 +1688,35 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   // "within half a step" test double-counted: one detection at :00 is a second from both the
   // :59 and the :01 thumbnail, so the same person was drawn as two sightings.
   const vipByThumb = new Map<number, number>();
+  const markThumb = (daySec: number) => {
+    const i = Math.round((daySec - axisStartSec) / THUMB_STEP_SEC);
+    if (i < 0 || i >= THUMB_COUNT) return;
+    vipByThumb.set(i, (vipByThumb.get(i) ?? 0) + 1);
+  };
   for (const d of data.detections) {
     if (d.type !== "VIP") continue;
-    const i = Math.round((hhmmssToSec(d.time) - axisStartSec) / THUMB_STEP_SEC);
-    if (i < 0 || i >= THUMB_COUNT) continue;
-    vipByThumb.set(i, (vipByThumb.get(i) ?? 0) + 1);
+    if (d.date !== trackDate) continue;
+    markThumb(hhmmssToSec(d.time));
+  }
+  /* And the store's own hits for this camera, which is where the hour bar's crowns come from.
+     This map used to read data.detections alone, so the two rows disagreed: clicking a crown in
+     the bar jumped to that hour and the thumbnail that landed there carried no count (owner,
+     2026-10-12: 아래 시각에 왕관을 눌렀는데 위에 선택된 썸네일에 왕관 몇명인지 안뜨는건 뭐야).
+     Same crack as the one occupancy had, in the other direction — the bar knew about the store and
+     the strip did not. Both read both now.
+
+     The badge itself was never gated on selection; it draws wherever the count is above zero. The
+     reason it looked like it only appeared on the selected frame is that every detection in a
+     curated CamData frame carries ONE timestamp, so exactly one thumbnail in the window could
+     ever have a count. With the store's hits folded in, any thumbnail at a time this camera
+     actually saw someone carries one. */
+  for (const e of dayEvents) {
+    if (e.cameraId !== camId) continue;
+    if (e.personType == null) continue;
+    const when = new Date(e.timestamp);
+    if (Number.isNaN(when.getTime())) continue;
+    if (dateKeyIn(when, siteTimeZone()) !== trackDate) continue;
+    markThumb(hhmmssToSec(sgtClockTime(when)));
   }
   const centerThumbIdx = thumbFrames.reduce(
     (bestI, t, i) => (Math.abs(t - selectedSec) < Math.abs(thumbFrames[bestI] - selectedSec) ? i : bestI), 0,
@@ -2305,7 +2345,10 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 {Array.from({ length: HOURS_IN_DAY }, (_, h) => {
                   const active = h === currentHour;
                   return (
-                    <button key={h} onClick={() => jumpTo(h * 3600 + (selectedSec % 3600))}
+                    <button key={h}
+                      // Land on the record this cell is marked for, not on the minute you happened
+                      // to be at — see the note on occupancy.hourAt.
+                      onClick={() => jumpTo(occupancy.hourAt[h] ?? h * 3600 + (selectedSec % 3600))}
                       /* .vca-hover-quiet, not darken. darken is `filter: brightness(.88)`, which
                          would drag the crown's --primary-400 to a value that is in no palette —
                          and that class's own note says it is for a bare glyph with no box to fill.
@@ -2417,7 +2460,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 {Array.from({ length: MINUTES_IN_HOUR }, (_, m) => {
                   const active = m === currentMinute;
                   return (
-                    <button key={m} onClick={() => jumpTo(currentHour * 3600 + m * 60 + (selectedSec % 60))}
+                    <button key={m}
+                      onClick={() => jumpTo(occupancy.minuteAt[m] ?? currentHour * 3600 + m * 60 + (selectedSec % 60))}
                       className={active ? "vca-grad-ring vca-hover-quiet" : "vca-hover-quiet"}
                       onMouseEnter={() => setHoveredMinute(m)}
                       onMouseLeave={() => setHoveredMinute(prev => (prev === m ? null : prev))}
