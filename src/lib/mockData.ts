@@ -411,7 +411,15 @@ const DAY_VIP_IDENTITIES: { name: string; location: string; lat: number; lng: nu
 // 7am-9pm, peaks near 8am/6pm) but scaled up — 0-2 hits/hour was fine as a decorative curve, but
 // once each hit became one real, individually-plotted dot instead of client-side jitter, that was
 // too sparse to read as "a day's worth of activity."
-const HOURLY_VIP_HIT_TARGETS = [
+/**
+ * EXPORTED so the live ticker can run at this speed too (owner, 2026-10-07).
+ *
+ * It was private, and the simulator in ClientLayout invented its own rate — one sighting every
+ * 15-30s, about 160/hour, against a peak hour of 12 here. Thirteen times, on one chart: the left
+ * two thirds of the line drawn from this table, everything right of now drawn by the ticker. One
+ * curve is the site's claim about how busy it is, so there has to be one of it.
+ */
+export const HOURLY_VIP_HIT_TARGETS = [
   2, 1, 1, 1, 1, 2,
   5, 8, 10, 7, 6, 7,
   8, 7, 6, 7, 9, 11,

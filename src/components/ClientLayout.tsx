@@ -17,7 +17,7 @@ import SkeletonRedmap from "./SkeletonRedmap";
 import DetectionActivityChart, { DETECTION_CHART_TITLE } from "./DetectionActivityChart";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 import { ToastProvider, useToast } from "./Toast";
-import { LiveEvent, Device, getFacePhoto } from "@/lib/mockData";
+import { LiveEvent, Device, getFacePhoto, HOURLY_VIP_HIT_TARGETS } from "@/lib/mockData";
 import {
   useVcaStore, currentPortalUser, screensFor, holdsAppAction, cameraInScope,
   dashboardOpensFor, dashboardPanelsFor, actionsOfSignedIn,
@@ -113,7 +113,15 @@ function hashStringToIndex(s: string, mod: number): number {
 // landed on a brand-new camera — which instantly and permanently promotes them to a multi-camera
 // "Tracking" row (see addEvent in vcaStore.ts) and never lets them go back. Given only ~16
 // registered VIPs cycling through ticks every 15-30s, that meant everyone ended up as "Tracking"
-// within an hour and no plain "VIP Detection" sightings survived. Pinning each person to 3
+// within an hour and no plain "VIP Detection" sightings survived.
+//
+// BOTH OF THOSE NUMBERS HAVE MOVED (2026-10-07) and the paragraph above is kept as the record of
+// why this function exists rather than as a description of today. The register is ~122, not 16,
+// and the ticker now follows HOURLY_VIP_HIT_TARGETS rather than firing every 15-30s. The failure
+// it describes has inverted: Tracking used to be unavoidable and is now scarce, which is why the
+// cast narrows to DAY_CAST_SIZE — read that note before touching the rate again.
+//
+// Pinning each person to 3
 // regular cameras (deterministic from their id, so stable across ticks/reloads) keeps most
 // sightings repeating at the same camera (stays a plain VIP row) and bounds any real trail to at
 // most those 3 cameras, instead of growing unbounded.
@@ -121,6 +129,68 @@ function hashStringToIndex(s: string, mod: number): number {
 // (see simulationCameras), so a regular camera may be one nobody has surveyed, and a sighting at
 // it carries no coordinate. LiveEvent.lat/lng and VcaEvent.lat/lng are already optional, which is
 // where that absence goes.
+/**
+ * THE DAY'S CAST, AND THE DAY'S RATE (owner, 2026-10-07, after two measurements).
+ *
+ * ───── what was wrong, in the two numbers a customer can check ─────
+ *
+ * ① The ticker drew a fresh person from the WHOLE watched list every 15-30s. That list is ~122
+ *    today; the seeded day uses twelve. So 「VIPs seen today」 climbed — about 90 after an hour,
+ *    113 after two — while 「Registered VIP targets 122」 sat beside it on the same screen. Those
+ *    two numbers can be read against each other, and together they claimed the city had caught
+ *    every single registered target in one day. That is the number that kills a demo; the 13x
+ *    rate below is the one nobody can check.
+ *
+ * ② 15-30s is ~160 sightings an hour against this table's busiest hour of 12. Both the chart and
+ *    the two stat tiles read the SAME list (todaysDetectionHits), so they do not disagree with
+ *    each other — they go wrong together, and the contradiction lands inside one line: its left
+ *    two thirds drawn at 6/hour, everything right of now at 160.
+ *
+ * ③ And `addEvent` caps the list at 500. Starting from ~143 seeded rows at +1 a tick, that filled
+ *    in about 2.2 hours, after which the OLDEST rows — this morning — were dropped: the chart lost
+ *    its morning bars and a figure labelled 「today」 went DOWN during the day. Following the curve
+ *    pushes that to roughly 60 hours, so it cannot happen inside a session. One fix, three bugs.
+ *
+ * ───── the assumption, which is the thing to argue with ─────
+ *
+ * 「A registered VIP passes a spot these 62 cameras cover about 1.2 times a day」 (149 hits ÷ 122
+ * people). Singapore-wide, 62 cameras is a sparse net. The rate this replaces asserted sixteen
+ * times a day. If a customer's site is denser, multiply the TABLE and this follows it — the point
+ * is that the number lives in one place.
+ *
+ * ───── why the cast has to narrow TOO, not just the rate ─────
+ *
+ * Slowing the ticker alone would break Tracking. A trail needs the same person on two cameras
+ * inside twenty minutes; drawing from 122 people at a few an hour, one person comes up about once
+ * a day, and the live trail would never form again — the map would only ever draw seeded ones.
+ * Narrowing the cast concentrates the slower feed onto the same dozen people, which is also what
+ * the seeded day does.
+ *
+ * The cast turns over at local midnight and is stable within the day (hashed from the date), so a
+ * reload does not reshuffle who is out today.
+ */
+const DAY_CAST_SIZE = 12;
+
+function dayCast<T extends { id: string }>(people: T[], dateKey: string, size: number): T[] {
+  if (people.length <= size) return people;
+  return [...people]
+    .sort((a, b) => hashStringToIndex(`${a.id}@${dateKey}`, 1e6) - hashStringToIndex(`${b.id}@${dateKey}`, 1e6))
+    .slice(0, size);
+}
+
+/**
+ * Milliseconds to the next sighting, read off the curve at the hour it is now.
+ *
+ * ±40% jitter so sightings do not arrive on a metronome — a detection is an event, and an evenly
+ * spaced feed reads as a heartbeat rather than as things happening. The hour is re-read on every
+ * tick rather than once, so a session left open crosses into the evening peak by itself.
+ */
+function nextSightingDelay(): number {
+  const perHour = HOURLY_VIP_HIT_TARGETS[new Date().getHours()] || 1;
+  const mean = 3_600_000 / perHour;
+  return Math.round(mean * (0.6 + Math.random() * 0.8));
+}
+
 function regularCamerasForPerson(personId: string, pool: Camera[]): Camera[] {
   return [
     pool[hashStringToIndex(personId, pool.length)],
@@ -152,7 +222,7 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const scheduleNext = () => {
-      const delay = 15000 + Math.random() * 15000;
+      const delay = nextSightingDelay();
       timer = setTimeout(() => {
         const { addEvent } = useVcaStore.getState();
         // Scoped to the site on screen, and to the people actually being watched.
@@ -167,7 +237,11 @@ function VipAlertTicker({ onNavigate }: { onNavigate: (event: LiveEvent) => void
         // detection onto a camera from another one would move the bug rather than fix it.
         const projectId = getActiveProjectId();
         const storeNow = useVcaStore.getState();
-        const persons = watchedPersonsInProject(storeNow.persons, projectId);
+        /* The day's cast, not the whole register — see DAY_CAST_SIZE. `watchedPersonsInProject`
+           still does the filtering that matters (the site on screen, released and expired
+           listings); this only narrows who among them is out today. */
+        const watched = watchedPersonsInProject(storeNow.persons, projectId);
+        const persons = dayCast(watched, new Date().toDateString(), DAY_CAST_SIZE);
         const onlineCameras = simulationCameras(projectId);
         if (persons.length > 0 && onlineCameras.length > 0) {
           const person = persons[Math.floor(Math.random() * persons.length)];

@@ -355,6 +355,24 @@ const CLUSTER_ZOOM_BREAKPOINT = 14;
  * time gate at all, so every hit spot in a selected district pulsed however old it was.
  */
 const RECENT_VIP_WINDOW_MS = 60 * 60 * 1000;
+/**
+ * How often the window above is re-checked when nothing else has changed.
+ *
+ * The ring says 「just now」, and a claim has to be withdrawn by whoever makes it. This layer only
+ * read the clock when a detection arrived, so with the feed stopped — nobody watched at this site,
+ * every camera down, the tab in the background — the last ring kept pulsing past the hour.
+ *
+ * 30s is the longest the claim can be false, 0.83% of the window. A second would wake 3,600 times
+ * an hour for a precision nothing uses (the times beside these are written in minutes); a minute
+ * doubles the lie to save sixty wake-ups. It also matches the feed's own beat, so the map behaves
+ * the same whether detections are arriving or not. A background tab is throttled to about a minute
+ * by Chrome — nobody is looking at it, and the first tick on return corrects it.
+ *
+ * An exact setTimeout at the expiry instant would lie for 0s, but it has to be re-armed on every
+ * store write and drifts in a background tab with no tick to recover. An interval re-reads the
+ * clock each time and repairs itself.
+ */
+const RECENT_RECHECK_MS = 30_000;
 /** Where a district pill flies you to. One past the cluster breakpoint, so the pills give way to
  *  the per-camera layer as part of the same movement rather than needing a second zoom. */
 const DISTRICT_FOCUS_ZOOM = 15;
@@ -970,6 +988,15 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
   // Mirrors the map's own zoom level — read by the district-cluster/recent-activity effect to
   // decide whether to draw the zoomed-out cluster pills or the zoomed-in per-camera dots.
   const [zoom, setZoom] = useState(12);
+  /* See RECENT_RECHECK_MS. Nothing reads `nowTick` — it is in the layer effect's dependencies so
+     that the effect re-runs and re-reads the clock. That is only affordable because the effect is
+     idempotent now (see markersRef); added before the registry it would have been one more
+     full rebuild every thirty seconds. */
+  const [nowTick, setNowTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(n => n + 1), RECENT_RECHECK_MS);
+    return () => clearInterval(id);
+  }, []);
   // Routed through the future-backend stub instead of importing the mock array directly — see
   // lib/api/dashboard.ts. No pills draw during the brief pre-fetch window (empty array default),
   // same as before mapReady flips true.
@@ -1017,6 +1044,29 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
   const deviceMarkerRef = useRef<unknown>(null);
   const devicePopupRef = useRef<unknown>(null);
   const zoneLayerRef = useRef<unknown>(null);
+  /**
+   * EVERY MARKER THIS LAYER DREW, BY KEY, so one detection changes one marker (2026-10-07).
+   *
+   * The layer used to be removed whole and rebuilt whole. Three things came of that, and the
+   * first is the one that was reported: a CSS animation starts when its element enters the DOM,
+   * so re-inserting fifty-nine dots in one tick put every pulsing ring in phase — the map read
+   * as breathing in unison instead of saying WHERE something had just happened, which is the one
+   * thing the ring is for. The second: Leaflet closes a popup and a tooltip when their marker is
+   * removed, so a hover card being read, and an open card in the picked-district view, both
+   * vanished. The third: it ran on every render, not every detection (see recentEvents above).
+   *
+   * The fix is not to run the effect less — that would mean dropping dependencies, and a stale
+   * closure reading last minute's events is a worse bug than the blink. The effect keeps all of
+   * its dependencies and becomes IDEMPOTENT instead: it describes what should be on the map, and
+   * the commit pass below touches only what differs. Leaflet's DivIcon reuses the existing
+   * element and swaps its innerHTML, so a marker whose html is unchanged is never touched at
+   * all, and one that IS changed keeps its DOM node — which is why its popup and tooltip survive.
+   *
+   * The same shape already exists in this repo, with its reasons written out: the Portal's
+   * camera map keeps a markersRef and updates icons in place rather than rebuilding.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef = useRef<Map<string, { marker: any; lat: number; lng: number; html: string; popupHtml?: string; tooltipHtml?: string; z: number }>>(new Map());
   const trackingRouteLayersRef = useRef<unknown[]>([]);
   const onCameraSelectRef = useRef(onCameraSelect);
   useEffect(() => { onCameraSelectRef.current = onCameraSelect; }, [onCameraSelect]);
@@ -1046,7 +1096,21 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
   // This site's detections only. A map is the one screen where mixing two sites is worst: the
   // pins would sit in two cities and "respond to this" would point at the wrong one.
   const projectEvents = useProjectEvents();
-  const recentEvents = vcaEventsToLiveEvents(projectEvents);
+  /*
+   * MEMOISED, and this is a correctness fix rather than a tuning one (2026-10-07).
+   *
+   * `map()` hands back a new array every time, so this reference changed on EVERY render of this
+   * component — and the marker-layer effect below lists it, so the whole layer was torn down and
+   * rebuilt on every render, not on every detection. Collapsing the sidebar, opening the chart,
+   * and each detection toast appearing and then expiring all did it; a single detection cost at
+   * least three rebuilds. Every pulsing ring restarted together each time, which is why the map
+   * read as breathing in unison instead of saying which camera had just seen somebody.
+   *
+   * vcaStore says this in its own words about the lists it exposes — a filter returns a new array
+   * on every render, which is exactly what happened the first time those shipped without useMemo.
+   * This was the one place still outside that rule.
+   */
+  const recentEvents = useMemo(() => vcaEventsToLiveEvents(projectEvents), [projectEvents]);
   /**
    * Today's VIP detections at this site, one entry per sighting, with where each happened.
    *
@@ -1125,6 +1189,20 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
         (mapInstanceRef.current as { remove: () => void }).remove();
         mapInstanceRef.current = null;
       }
+      /*
+       * THE MARKER REGISTRY DIES WITH THE MAP, and forgetting this is the bug the registry makes
+       * possible. Those markers now outlive a single effect run by design, so without this they
+       * outlive the MAP too — and React's StrictMode mounts this twice in development, so the
+       * second mount would find a registry full of markers bound to a map that no longer exists.
+       * Every one of them would be treated as already present and never drawn, leaving a map with
+       * tiles and nothing on it.
+       */
+      /* The lint rule wants this copied to a local at effect setup. That would be wrong here: it
+         would clear whichever Map existed when the effect RAN, and what has to be emptied is the
+         one holding markers at teardown. It is a plain Map this component owns, not a DOM ref. */
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      markersRef.current.clear();
+      zoneLayerRef.current = null;
     };
   }, []);
 
@@ -1138,10 +1216,8 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
     const map = mapInstanceRef.current as any;
     if (!map) return;
 
-    if (zoneLayerRef.current) {
-      (zoneLayerRef.current as { remove: () => void }).remove();
-      zoneLayerRef.current = null;
-    }
+    /* The group is created once and then kept. Removing it ran `removeLayer` over every marker
+       inside, which is what closed the popups and restarted the rings — see markersRef. */
 
     // import("leaflet") is async, so by the time it resolves the map may already have been torn
     // down (tab switch unmounting this component) or this effect may have re-fired with newer
@@ -1151,7 +1227,18 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
 
     import("leaflet").then(({ default: L }) => {
       if (cancelled || !mapInstanceRef.current) return;
-      const group = L.layerGroup();
+      if (!zoneLayerRef.current) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        zoneLayerRef.current = L.layerGroup().addTo(mapInstanceRef.current as any);
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const group = zoneLayerRef.current as any;
+
+      /* What should be on the map after this pass. The branches below push into it instead of
+         creating markers; the commit at the bottom works out what actually has to change. */
+      const desired: { key: string; lat: number; lng: number; html: string;
+                       popupHtml?: string; tooltipHtml?: string; z?: number;
+                       onClick?: () => void }[] = [];
 
       /**
        * A district's camera figure, or null when this pill must not print one.
@@ -1222,19 +1309,19 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // camera id.
           const camerasHere = allCameras.filter(c => districtIdForCameraZone(c.zone, c.lat, c.lng) === home.id);
           const count = todaysHits.filter(h => districtIdAt(h.lat, h.lng) === home.id).length;
-          const icon = L.divIcon({
+          desired.push({
+            key: `home:${home.id}`, lat: home.lat, lng: home.lng,
             html: districtPillHtml(
               home.label, count, sayableCameraCount(home.label, camerasHere.length),
               camerasHere.some(c => cameraStatus.byId(c.id) === "running"),
               alertThreshold, moderateThreshold, t,
             ),
-            iconSize: [1, 1],
-            iconAnchor: [0, 0],
-            className: "vca-zone-icon",
+            /* Through the ref, as before. A click handler is bound once when the marker is first
+               created and keeps whatever it closed over, so reading the prop directly here would
+               go stale the moment the parent re-rendered. `home.id` is part of the key and cannot
+               change under this marker. */
+            onClick: () => onDistrictSelectRef.current?.(home.id),
           });
-          L.marker([home.lat, home.lng], { icon })
-            .addTo(group)
-            .on("click", () => onDistrictSelectRef.current?.(home.id));
         }
       } else if (districtFilter) {
         // ── A district was picked, close enough to see its cameras ──
@@ -1378,12 +1465,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
            * plus a figure already says on the camera layer.
            */
           const isRecent = now.getTime() - new Date(newest.timestamp).getTime() <= RECENT_VIP_WINDOW_MS;
-          const icon = L.divIcon({
-            html: `<div style="position:relative">${isRecent ? recentPingHtml(VIP_PING_COLOR) : quietCameraDotHtml()}${countPill}</div>`,
-            iconSize: [1, 1],
-            iconAnchor: [0, 0],
-            className: "vca-zone-icon",
-          });
+          const html = `<div style="position:relative">${isRecent ? recentPingHtml(VIP_PING_COLOR) : quietCameraDotHtml()}${countPill}</div>`;
           // The others, by name and face — the popup is where "who" is a fair question.
           const others = newestPerPerson.slice(1);
           const othersHtml = others.length > 0
@@ -1412,15 +1494,11 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                  ${t.spotSummary(people, spot.length)}
                </div>`
             : "";
-          L.marker([newest.lat, newest.lng], { icon })
-            .addTo(group)
-            .bindPopup(getPopupHTML(newest, lang) + spotSummary + othersHtml, {
-              offset: [0, -14], className: "vca-custom-popup", closeButton: true, autoPan: false, maxWidth: 280,
-            })
-            // This is the case that was reported: the dots sit wherever their cameras are, so one
-            // near the top edge opened a card with no room above it. Nothing flies here — the
-            // click only opens a popup — so there is no animation for the pan to fight.
-            .on("popupopen", (e: { popup: unknown }) => centerPopupIfClipped(mapInstanceRef.current, e.popup));
+          desired.push({
+            key: `spot:${newest.lat.toFixed(4)},${newest.lng.toFixed(4)}`,
+            lat: newest.lat, lng: newest.lng, html,
+            popupHtml: getPopupHTML(newest, lang) + spotSummary + othersHtml,
+          });
         });
 
         // The district's cameras with nothing to report today — the denominator, drawn.
@@ -1452,20 +1530,13 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           .filter(c => !hitSpots.some(h =>
             Math.abs(h.lat - c.lat) < SAME_SPOT_DEGREES && Math.abs(h.lng - c.lng) < SAME_SPOT_DEGREES))
           .forEach(cam => {
-            const icon = L.divIcon({
-              html: quietCameraDotHtml(),
-              iconSize: [1, 1],
-              iconAnchor: [0, 0],
-              className: "vca-zone-icon",
-            });
-            L.marker([cam.lat, cam.lng], { icon })
-              .addTo(group)
+            desired.push({
+              key: `cam:${cam.id}`, lat: cam.lat, lng: cam.lng, html: quietCameraDotHtml(),
               // 0, and not a count this branch could look up: these are the district's cameras
               // that caught NOBODY today — that is the filter directly above, and the whole
               // reason they are drawn. See cameraDotTooltipHtml on why zero stays unwritten.
-              .bindTooltip(cameraDotTooltipHtml(cam, lang, 0), {
-                direction: "top", offset: [0, -10], className: "vca-camera-tooltip", opacity: 1,
-              });
+              tooltipHtml: cameraDotTooltipHtml(cam, lang, 0),
+            });
           });
 
         // The district's own pill used to stay here, at the district's centre, so the thing you
@@ -1548,21 +1619,18 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           const cameraCount = sayableCameraCount(district.label, camerasInDistrict.length);
           if (cameraCount === null && count === 0) return;
 
-          const icon = L.divIcon({
-            html: districtPillHtml(
-              district.label, count, cameraCount, hasOnlineCamera,
-              alertThreshold, moderateThreshold, t,
-            ),
-            iconSize: [1, 1],
-            iconAnchor: [0, 0],
-            className: "vca-zone-icon",
-          });
+          const html = districtPillHtml(
+            district.label, count, cameraCount, hasOnlineCamera,
+            alertThreshold, moderateThreshold, t,
+          );
           // No tooltip. `vca-camera-tooltip` sets padding:0 because the camera-dot tooltip supplies
           // its own padded inner box — plain text through the same class renders edge-to-edge and
           // reads as a broken element. Detections-per-camera is worth showing, but not badly, and
           // this map has no tooltip component to host a sentence. The pill's two figures stand on
           // their own until there is one.
-          const marker = L.marker([district.lat, district.lng], { icon }).addTo(group);
+          /* The three `return`s above stay returns: a district with nothing to report pushes
+             NOTHING. Drawing a hidden 1x1 marker instead would hold the key and still eat the
+             click. */
           // Seventeen of these on one island overlap, and until now which one covered which was
           // decided by latitude — Leaflet's default marker stacking. So a southern district's
           // pill sat on top of a northern one's for no reason connected to the map's job, and the
@@ -1579,8 +1647,11 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
           // and zIndexOffset is added to it. A bare `count` of 15 or 31 is lost in that, which is
           // how the first attempt at this changed nothing: Geylang (15) still covered Novena (31).
           // The factor only has to exceed the map's pixel height for the count to be what decides.
-          marker.setZIndexOffset(count * 2000);
-          marker.on("click", () => onDistrictSelectRef.current?.(district.id));
+          desired.push({
+            key: `pill:${district.id}`, lat: district.lat, lng: district.lng, html,
+            z: count * 2000,
+            onClick: () => onDistrictSelectRef.current?.(district.id),
+          });
         });
       } else {
         // ── Zoomed in: one dot per camera ──
@@ -1660,15 +1731,10 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                  ${t.peopleAt(people)}
                </div>`
             : "";
-          const icon = L.divIcon({
+          desired.push({
+            key: `cam:${cam.id}`, lat: cam.lat, lng: cam.lng,
             html: `<div style="position:relative">${recentVipKeys.has(key) ? recentPingHtml(VIP_PING_COLOR) : quietCameraDotHtml()}${countPill}</div>`,
-            iconSize: [1, 1],
-            iconAnchor: [0, 0],
-            className: "vca-zone-icon",
-          });
-          L.marker([cam.lat, cam.lng], { icon })
-            .addTo(group)
-            .bindTooltip(cameraDotTooltipHtml(cam, lang, people), { direction: "top", offset: [0, -14], className: "vca-camera-tooltip", opacity: 1 })
+            tooltipHtml: cameraDotTooltipHtml(cam, lang, people),
             /**
              * `cam.name`, NOT `cam.location` — two fields with the same name in different value
              * spaces, and the wrong one emptied this filter on every camera in the register.
@@ -1695,19 +1761,68 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
              * ambiguous. The real fix is a camera id on the hit, which the contract does not carry
              * yet (HANDOFF: TrackingHop.cameraId).
              */
-            .on("click", () => onCameraSelectRef.current?.(cam.name));
+            onClick: () => onCameraSelectRef.current?.(cam.name),
+          });
         });
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      group.addTo(mapInstanceRef.current as any);
-      zoneLayerRef.current = group;
+
+      /*
+       * THE COMMIT — the only place this effect touches Leaflet.
+       *
+       * A marker whose html is identical is not touched at all, which is the whole point: one
+       * detection changes one camera's html, so fifty-eight dots keep their rings mid-cycle and
+       * whatever card is open stays open. The changed one DOES restart its ring, and that is the
+       * intended reading — it is the only thing on the map claiming "just now".
+       *
+       * `setIcon` rather than a new marker because Leaflet's DivIcon reuses the existing element
+       * and replaces its innerHTML; the node never leaves the DOM, so no `remove` fires and
+       * neither the popup nor the tooltip is closed.
+       */
+      const reg = markersRef.current;
+      const seen = new Set<string>();
+      const iconFor = (html: string) =>
+        L.divIcon({ html, iconSize: [1, 1], iconAnchor: [0, 0], className: "vca-zone-icon" });
+      for (const d of desired) {
+        seen.add(d.key);
+        const prev = reg.get(d.key);
+        if (!prev) {
+          const marker = L.marker([d.lat, d.lng], { icon: iconFor(d.html) }).addTo(group);
+          if (d.popupHtml) {
+            marker.bindPopup(d.popupHtml, {
+              offset: [0, -14], className: "vca-custom-popup", closeButton: true, autoPan: false, maxWidth: 280,
+            })
+            // The dots sit wherever their cameras are, so one near the top edge opened a card
+            // with no room above it. Nothing flies here — the click only opens a popup — so
+            // there is no animation for the pan to fight.
+            .on("popupopen", (e: { popup: unknown }) => centerPopupIfClipped(mapInstanceRef.current, e.popup));
+          }
+          if (d.tooltipHtml) {
+            marker.bindTooltip(d.tooltipHtml, { direction: "top", offset: [0, -14], className: "vca-camera-tooltip", opacity: 1 });
+          }
+          // Always on creation, not only when it changes: miss it and pill stacking falls back to
+          // Leaflet's default, which is latitude. See the note at the district pill.
+          marker.setZIndexOffset(d.z ?? 0);
+          if (d.onClick) marker.on("click", d.onClick);
+          reg.set(d.key, { marker, lat: d.lat, lng: d.lng, html: d.html, popupHtml: d.popupHtml, tooltipHtml: d.tooltipHtml, z: d.z ?? 0 });
+        } else {
+          if (prev.lat !== d.lat || prev.lng !== d.lng) prev.marker.setLatLng([d.lat, d.lng]);
+          if (prev.html !== d.html) prev.marker.setIcon(iconFor(d.html));
+          if (d.popupHtml && prev.popupHtml !== d.popupHtml) prev.marker.setPopupContent(d.popupHtml);
+          if (d.tooltipHtml && prev.tooltipHtml !== d.tooltipHtml) prev.marker.setTooltipContent(d.tooltipHtml);
+          if ((d.z ?? 0) !== prev.z) prev.marker.setZIndexOffset(d.z ?? 0);
+          Object.assign(prev, { lat: d.lat, lng: d.lng, html: d.html, popupHtml: d.popupHtml, tooltipHtml: d.tooltipHtml, z: d.z ?? 0 });
+        }
+      }
+      for (const [key, e] of reg) {
+        if (!seen.has(key)) { group.removeLayer(e.marker); reg.delete(key); }
+      }
     });
 
     return () => { cancelled = true; };
     // selectedEvent is here so that clearing the selection puts the district pills back on the
     // same tick the trail comes off. Without it this layer would keep whatever it drew when it
     // last ran, and a map that stays stripped after a deselect is worse than the overlap was.
-  }, [recentEvents, todaysHits, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang, districtFilter, cameraStatus, t, selectedEvent]);
+  }, [recentEvents, todaysHits, cameras, zoom, mapReady, alertThreshold, moderateThreshold, districts, lang, districtFilter, cameraStatus, t, selectedEvent, nowTick]);
 
   // ── District selection → zoom into that district ───────────────
   // Clicking a pill was a list filter and nothing more: the map stayed at island zoom with every
