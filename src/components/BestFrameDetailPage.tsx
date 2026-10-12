@@ -1595,8 +1595,14 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
 
   const axisSpanSec = AXIS_SPAN_SEC;
   const axisStartSec = windowCenterSec - axisSpanSec / 2;
-  const currentHour = Math.floor(selectedSec / 3600) % HOURS_IN_DAY;
-  const currentMinute = Math.floor((selectedSec % 3600) / 60);
+  /* Wrapped the way the clock wraps. `stepBy` has no floor — 「◀ 10s」 from 00:00:05 puts
+     selectedSec at -5 — and a bare `%` leaves that negative: currentHour came out -1, currentMinute
+     -1, and no cell in either bar matched. Meanwhile secToHHMMSS normalises the same value and
+     prints 23:59:55, so the screen read 「23:59:55」 with NOTHING marked on either bar. Same
+     normalisation here, so the bars follow the clock across midnight in both directions. */
+  const dayClockSec = ((selectedSec % 86400) + 86400) % 86400;
+  const currentHour = Math.floor(dayClockSec / 3600) % HOURS_IN_DAY;
+  const currentMinute = Math.floor((dayClockSec % 3600) / 60);
   // Sample frame points evenly spread across the visible span — the thumbnails ARE these points
   // (each one is "the frame at this instant"). Real per-second timestamps don't exist for every
   // visible span (a camera might have zero real hits in the current window), so this is a
@@ -2150,14 +2156,18 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   const active = h === currentHour;
                   return (
                     <button key={h} onClick={() => jumpTo(h * 3600 + (selectedSec % 3600))}
+                      /* Fill is the selected state now, so the selected cell darkens and the rest
+                         take the same gray-300 the shared toggle's unselected segments take — the
+                         two rules on HOVER_QUIET above. These cells carried no hover at all. */
+                      className={active ? "vca-hover-darken" : "vca-hover-seg"}
                       onMouseEnter={() => setHoveredHour(h)}
                       onMouseLeave={() => setHoveredHour(prev => (prev === h ? null : prev))}
                       style={{
-                      flex:1, height:"22px", padding:0, border: active ? `1px solid ${SELECTED}` : "none",
+                      flex:1, height:"22px", padding:0, border:"none",
                       // RADIUS.inner, and the minute ruler below takes the same: these are
                       // segments of one track, which is the nested case the scale names, and one
                       // ruler at two tiers cannot be two radii (they were 4px and 2px).
-                      borderRadius:RADIUS.inner, backgroundColor: active ? "var(--gray-0)" : "var(--gray-200)", cursor:"pointer",
+                      borderRadius:RADIUS.inner, backgroundColor: active ? SELECTED : "var(--gray-200)", cursor:"pointer",
                       boxSizing:"border-box",
                     }} />
                   );
@@ -2188,11 +2198,12 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   const active = m === currentMinute;
                   return (
                     <button key={m} onClick={() => jumpTo(currentHour * 3600 + m * 60 + (selectedSec % 60))}
+                      className={active ? "vca-hover-darken" : "vca-hover-seg"}
                       onMouseEnter={() => setHoveredMinute(m)}
                       onMouseLeave={() => setHoveredMinute(prev => (prev === m ? null : prev))}
                       style={{
-                      flex:1, height:"14px", padding:0, border: active ? `1px solid ${SELECTED}` : "none",
-                      borderRadius:RADIUS.inner, backgroundColor: active ? "var(--gray-0)" : "var(--gray-200)", cursor:"pointer",
+                      flex:1, height:"14px", padding:0, border:"none",
+                      borderRadius:RADIUS.inner, backgroundColor: active ? SELECTED : "var(--gray-200)", cursor:"pointer",
                       boxSizing:"border-box",
                     }} />
                   );

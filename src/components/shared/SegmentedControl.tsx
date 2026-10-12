@@ -64,9 +64,16 @@ export function SegmentedControl<T extends string>({
        *
        * THE OBJECTION THAT TURNED OUT NOT TO APPLY: globals.css records --gray-200 being refused
        * elsewhere because "that exact value already means 'not this segment' on Best Frame's hour
-       * and minute bars". It was refused there for a SELECTED row — the opposite sense. Best
-       * Frame draws `active ? --gray-0 : --gray-200`, so white means selected and --gray-200 means
-       * the unselected ground, which is exactly what it means here. Same vocabulary, not a clash.
+       * and minute bars". It was refused there for a SELECTED row — the opposite sense. On Best
+       * Frame --gray-200 is the unselected ground of those bars, which is exactly what it means
+       * here. Same vocabulary, not a clash.
+       *
+       * (Updated 2026-10-12: the sentence here used to add "Best Frame draws `active ? --gray-0 :
+       * --gray-200`, so white means selected". That stopped being true the same day — those bars
+       * had no track background, so a white selected cell was the same white as the 1-2px gaps
+       * between cells and read as a hole rather than a mark. They select with a --gray-900 fill
+       * now. Only the unselected half of the comparison still holds, and it is the half this note
+       * needs.)
        *
        * The seven other copies of this widget move with it — the three hand-drawn ones in
        * DataPage, the collapsed sidebar rail, and both skeletons — because a toggle that changes
