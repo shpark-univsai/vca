@@ -311,8 +311,11 @@ export const FIELD_STYLE: React.CSSProperties = {
  * and those two are the same picture.
  */
 export const FIELD_FOCUS: React.CSSProperties = {
-  border: "1px solid var(--gray-900)",
-  boxShadow: "0 0 0 3px var(--gray-100)",
+  /* Purple, with the app's fields (owner, 2026-10-12). Portal drew the focused edge in --gray-900
+     and the app in purple, so one product said two things about the same event. --primary-400 and
+     its own 100 for the halo; see the note on .vca-field in globals.css for why 400 and not 300. */
+  border: "1px solid var(--primary-400)",
+  boxShadow: "0 0 0 3px var(--primary-100)",
   outline: "none",
 };
 /**

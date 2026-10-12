@@ -105,7 +105,7 @@
      활성화한것처럼 보여 / 200으로 낮춰줘 — and they were right).
      
      This console already spends a darker border on MEANING: gray-400 (#94a3b8, 2.56:1) says the
-     pointer is on it, and primary-300 says it is focused or open. The value that clears WCAG
+     pointer is on it, and primary-400 says it is focused or open. The value that clears WCAG
      1.4.11 is #90909a at 3.16:1 — DARKER THAN THE HOVER STATE — so every resting field looked
      more active than a hovered one, and the whole toolbar read as clicked. A resting border that
      outranks the states above it has broken something worse than a contrast ratio.
@@ -305,7 +305,7 @@ optgroup {
    without spending the primary colour on something every field does.
 
    :where() keeps specificity at zero, so any screen that has designed its own focus treatment
-   still wins — the auth screens (primary-300 border) set `outline: none` inline and are untouched
+   still wins — the auth screens (primary-400 border) set `outline: none` inline and are untouched
    by this.
 
    :focus-visible, not :focus, so a mouse click on a button leaves no ring behind; a text field
@@ -697,7 +697,13 @@ body {
    the wrapper carry the ring is the fix; the note on the :focus-visible rule says the same. */
 .vca-auth-field:focus-within,
 .vca-field:focus-within {
-  border-color: var(--primary-300) !important;
+  /* --primary-400, not --primary-300 (owner, 2026-10-12: 보라색이 나은것같아 프라이머리라서).
+     300 measures 3.04 on white and 2.90 / 2.77 on --gray-50 / --gray-100, so on every tinted card
+     the focused edge missed the 3:1 a focus indicator has to clear — and for a keyboard user that
+     edge is the whole cursor. 400 is 6.01 / 5.74 / 5.48, and it is the purple the product actually
+     means by "primary" (270 uses against 300's 51). The ladder recorded on --line-control still
+     holds and reads better: rest 1.28 < hover 2.56 < focus 6.01. */
+  border-color: var(--primary-400) !important;
   box-shadow: 0 0 0 3px var(--primary-100);
 }
 .vca-field:focus-within :is(input, textarea, select) { outline: none; box-shadow: none; }
@@ -709,11 +715,27 @@ body {
    OUTSIDE the pill (offset 0, no inset) so it reads as the field lighting up rather than a second
    box inside it, which is the failure the note above exists for. */
 .vca-field-fill:focus-within {
-  outline: 1px solid var(--primary-300);
+  outline: 1px solid var(--primary-400);
   outline-offset: 0;
   box-shadow: 0 0 0 3px var(--primary-100);
 }
 .vca-field-fill:focus-within :is(input, textarea, select) { outline: none; box-shadow: none; }
+
+/* The verification-code boxes, in the same purple as every other field — they used to take the
+   shared near-black ring, which made this the one screen saying something different about being
+   focused.
+
+   Drawn as an OUTLINE, not a border-colour, and that is the whole point: these boxes set `border`
+   inline to carry two other meanings — --danger-400 when the code was rejected, --primary-300 when
+   the box holds a digit — and an inline border beats any rule here, so a border-colour version
+   left the focused box marked by nothing but a --primary-100 halo (1.13 on white, measured). The
+   outline is free, sits just outside the box, and stacks with both inline meanings instead of
+   fighting them. */
+.vca-code-box:focus {
+  outline: 1px solid var(--primary-400);
+  outline-offset: 0;
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
 
 /* One ring, not two. A 2px white casing with a dark hairline OUTSIDE it made every dot a
    bullseye, and at this zoom there are fifty-nine of them on one map — concentric rings repeated

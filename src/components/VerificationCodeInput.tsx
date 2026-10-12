@@ -127,15 +127,17 @@ export default function VerificationCodeInput({
           spellCheck={false}
           aria-label={lang === "ko" ? `${length}자리 중 ${i + 1}번째` : `Digit ${i + 1} of ${length}`}
           autoFocus={autoFocus && i === 0}
+          className="vca-code-box"
           style={{
             width: charset === "alnum" ? "40px" : "44px", height: "52px", textAlign: "center",
             border: error
               ? "1px solid var(--danger-400)"
               : digit ? "1px solid var(--primary-300)" : "1px solid var(--gray-300)",
-            // No `outline: none` here on purpose. These boxes had no focus style of their own —
-            // the border only marks whether a digit is filled — so suppressing the outline left a
-            // keyboard user with no way to see which of the eight they were typing into. The app's
-            // shared focus ring (globals.css) draws it now.
+            // The focused box is drawn by .vca-code-box (globals.css), in the same purple as every
+            // other field in the product — it used to take the shared near-black ring, which made
+            // this the one screen that said something different about being focused. The rule is
+            // written without !important so these two inline meanings still win: --danger-400 when
+            // the code was rejected, --primary-300 when the box holds a digit.
             borderRadius: RADIUS.control,
             fontSize: "18px", fontWeight: 700,
             color: "var(--gray-800)",

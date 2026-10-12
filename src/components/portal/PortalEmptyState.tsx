@@ -194,7 +194,7 @@ export default function PortalEmptyState({ accountManager, onOpenSettings, noTea
               autoFocus
               style={{
                 width: "100%", boxSizing: "border-box", height: "44px", padding: "0 12px", borderRadius: RADIUS.control,
-                border: nameFocused ? "1px solid var(--gray-900)" : BORDER, outline: "none",
+                border: nameFocused ? "1px solid var(--primary-400)" : BORDER, outline: "none",
                 fontSize: "14px", fontFamily: "inherit", backgroundColor: "white",
               }}
             />
