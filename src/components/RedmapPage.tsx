@@ -91,7 +91,8 @@ const T = {
     widenToSee: "Widen the date range to see them.",
     noSightingsFound: "No matching sightings found.",
     tryDifferentPhoto: "Try a different face or body photo.",
-    promptPerson: "Upload a face or body image",
+    /* A whole line now, not the opening half of one — see the render site. */
+    promptPerson: "Upload a face or body image to search",
     promptPersonAnd: "above and click",
     promptVehicle: "Enter a license plate and click",
     // The sentence's tail. In English the verb comes before the button's name, so the assembled
@@ -176,7 +177,7 @@ const T = {
     widenToSee: "기간을 넓히면 볼 수 있습니다.",
     noSightingsFound: "일치하는 감지 기록이 없습니다.",
     tryDifferentPhoto: "다른 얼굴 또는 전신 사진으로 시도해보세요.",
-    promptPerson: "얼굴 또는 전신 이미지를 올린 뒤",
+    promptPerson: "얼굴 또는 전신 이미지를 올려주세요",
     promptPersonAnd: "위에서",
     promptVehicle: "차량 번호를 입력한 뒤",
     promptTail: "을 눌러주세요",
@@ -203,8 +204,16 @@ const BORDER = "1px solid var(--line)";
 // further back. Dates only, computed once, so a server pass and the client agree except across an
 // SGT midnight, and even then only on a default the user can see and change.
 const DEFAULT_SEARCH_DAYS = 7;
+/**
+ * THE DEFAULT IS THE 「최근 7일」 PRESET, to the day (2026-10-12).
+ *
+ * It was `recentSgtStamp(7 * 24 * 60)` — the day seven days BACK, which with today included is an
+ * eight-day span, while the picker's own 「최근 7일」 counts today and the six before it. Nobody
+ * intended eight; the difference only mattered once the trigger started naming the range, because
+ * a box reading 「최근 7일」 over a different week is worse than the two dates it replaced.
+ */
 const DEFAULT_DATE_RANGE: DateRange = {
-  start: recentSgtStamp(DEFAULT_SEARCH_DAYS * 24 * 60).date,
+  start: recentSgtStamp((DEFAULT_SEARCH_DAYS - 1) * 24 * 60).date,
   end: recentSgtStamp(0).date,
 };
 
@@ -962,7 +971,6 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
     // landed on (often HIT_SET_EMPTY) — and land on "No matching sightings found," reading as
     // a real search that failed rather than a search that was never actually given anything to
     // look for. Block it before it runs and say so instead.
-    const hasQuery = mode === "car" ? licensePlate.trim().length > 0 : !!faceFileKey || !!bodyFileKey;
     if (!hasQuery) {
       showToast({ variant:"warning", title: t.emptyQueryTitle, desc: mode === "car"
         ? t.emptyQueryPlate
@@ -1109,6 +1117,44 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
   // one out meant detaching and re-attaching. With the panel open its preview offers
   // click-to-change directly.
   const hasSearchTargets = mode === "person" && !!(faceImage || bodyImage);
+  /**
+   * IS THERE ANYTHING TO RESET (owner, 2026-10-12: 데이터가 바뀌는게 생기면 그때 리셋버튼
+   * 생기게 해줘).
+   *
+   * Reset was drawn on a toolbar nobody had touched yet, where every press does nothing visible —
+   * a control whose only honest state is 「already done」. It is now the answer to a question the
+   * screen can ask: has anything moved off the state this page opens in?
+   *
+   * The list is handleReset's own, read the other way round, so the two cannot drift: mode, the
+   * similarity, the date range, the plate, and either image. `clearSearchOutcome` is covered by
+   * `hasSearched` — a run leaves results on the map, and taking them off is exactly what somebody
+   * would press this for.
+   *
+   * The dates are compared as the strings the picker writes, which is what DEFAULT_DATE_RANGE
+   * holds too; parsing them here would invent a second way of reading one value.
+   */
+  /**
+   * IS THERE ANYTHING TO SEARCH FOR (owner, 2026-10-12: 아무것도 검색 안했을땐 서치펄슨 버튼이
+   * 안보여도될것같은뎅).
+   *
+   * Same rule Reset now follows: a control whose only honest answer is 「nothing to do」 is not
+   * drawn. Pressing Search with nothing attached was never a search — handleSearch refused it and
+   * raised a toast saying so — so the button was an invitation to be told no.
+   *
+   * handleSearch keeps its own guard: Enter still reaches it from the toolbar, and a refusal
+   * there has to stay honest rather than rely on the button being hidden.
+   */
+  const hasQuery = mode === "car"
+    ? licensePlate.trim().length > 0
+    : !!faceFileKey || !!bodyFileKey;
+
+  const isDirty = mode !== "person"
+    || similarity !== 70
+    || dateRange.start !== DEFAULT_DATE_RANGE.start
+    || dateRange.end !== DEFAULT_DATE_RANGE.end
+    || licensePlate.trim().length > 0
+    || !!faceImage || !!bodyImage
+    || hasSearched;
 
   // Distinct people in the CURRENT results, in first-appearance order. Chips only render when
   // there's more than one — a single person's own sightings don't need disambiguating, and
@@ -1276,10 +1322,26 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
 
         {/* Mode toggle — the shared control now, so 사람/차량 here and EVENTS/SYSTEM on the
             dashboard are one widget rather than two drawings of one idea. See SegmentedControl. */}
+        {/*
+          WIDER THAN THE DATE BOX, NOT EQUAL TO IT (owner, 2026-10-12: 사람이랑 자동차 토글 가로폭
+          조금만 더 넓혀줘 너무 눈에 안띄어 · 조금 더 큰 카테고리 개념이라 더 넓어야할것같은).
+          
+          It was sized by its own text — two short words at 16px of padding — so the first control
+          on the row was narrower than the one beside it, and the thing that decides what the whole
+          toolbar is FOR read as the smallest thing on it. Matching the date trigger's 232px fixed
+          the accident but flattened the hierarchy: the mode is a bigger question than the span,
+          and two identical boxes say they are the same size of question.
+          
+          280 against the date's 232 — a step you can see without measuring, and the row still has
+          290px of slack at 1280px, its narrowest supported width (measured after similarity moved
+          to the panel, which freed most of this room). `fill` splits it evenly so 사람 and 차량
+          stay the same size as each other whatever the language makes of them.
+        */}
         <SegmentedControl<Mode>
           value={mode}
           onChange={setMode}
-          style={{ height: "36px" }}
+          fill
+          style={{ height: "36px", width: "280px", flexShrink: 0 }}
           options={[
             { value: "person", label: <span className="vca-tb-mode">{t.modePerson}</span>,
               icon: a => <PersonIcon color={a ? "var(--gray-900)" : "var(--gray-400)"} size={18} /> },
@@ -1431,60 +1493,48 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
               })}
             </div>
 
-            <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, backgroundColor: "var(--gray-200)" }} />
-
-            {/* Similarity — the slider alone. It used to sit beside 60/70/80/90 preset chips, but
-                the two controls set the same one number and the chips cost ~190px in a toolbar that
-                could not afford them; the slider reaches every value the chips did, plus the ones
-                between. Arrow keys still step it by 1 for anything the drag can't land on. */}
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
-              <span className="vca-tb-label" style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", whiteSpace: "nowrap" }}
-                title={bodyOnly ? t.bodyOnlyHint : undefined}
-              >{t.similarity}</span>
-              {/* Resets the browser's native range-input chrome (Chrome/Safari/Firefox each draw
-                  their own track/thumb border by default) down to a flat gray track + solid
-                  purple thumb — same treatment as Data's Smart Search Similarity slider. */}
-              <style>{`
-                .vca-similarity-slider { -webkit-appearance:none; appearance:none; background:transparent; outline:none; border:none; }
-                .vca-similarity-slider::-webkit-slider-runnable-track { height:4px; border-radius:var(--radius-pill); background:var(--gray-200); border:none; }
-                .vca-similarity-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--primary-400); border:none; margin-top:-5px; cursor:pointer; }
-                .vca-similarity-slider::-moz-range-track { height:4px; border-radius:var(--radius-pill); background:var(--gray-200); border:none; }
-                .vca-similarity-slider::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--primary-400); border:none; cursor:pointer; }
-              `}</style>
-              <input
-                className="vca-similarity-slider"
-                type="range" min={0} max={100} value={similarity}
-                onChange={e => setSimilarity(Number(e.target.value))}
-                style={{ width: "120px", flexShrink: 0, cursor: "pointer" }}
-              />
-              {/* The number and what it costs, stacked. The toolbar has no room for a second
-                  row, and the cost belongs to this control rather than to the toolbar. */}
-              <span style={{ display: "flex", flexDirection: "column", flexShrink: 0, minWidth: thresholdCost ? "84px" : "30px", lineHeight: 1.2 }}>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--primary-400)" }}>{similarity}%</span>
-                {thresholdCost && (
-                  <span style={{
-                    fontSize: "10px", fontWeight: 600, whiteSpace: "nowrap",
-                    // Amber only when the setting leaves nothing. Colouring every reduction would
-                    // paint the normal case as a problem — dropping weak candidates is the job.
-                    color: thresholdCost.kept === 0 ? "var(--warning-500)" : "var(--gray-500)",
-                  }}>
-                    {thresholdCost.kept === 0 ? t.thresholdCostNone(thresholdCost.total) : t.thresholdCost(thresholdCost.kept, thresholdCost.total)}
-                  </span>
-                )}
-              </span>
-            </div>
           </>
         )}
 
-        {/* marginLeft:auto rather than a flex:1 spacer — a spacer is one more flex item to lay out
-            and shrink, and this needs nothing but "push the actions to the right edge". */}
-        <div style={{ display: "flex", gap: "12px", flexShrink: 0, marginLeft: "auto" }}>
+        {/*
+          A CAPPED SPACER, NOT marginLeft:auto — the gap has a ceiling now (owner, 2026-10-07:
+          서치퍼슨이 너무 오른쪽 끝에 있어서 이동범위가 먼데).
+
+          `marginLeft:auto` ate every spare pixel, so the wider the window the further the hand
+          travelled: measured from the last chip to Search, 343px at 1280, 522 at 1512, 864 at
+          1920 and 1,504px at 2560. A toolbar that gets harder to use the bigger the screen is
+          backwards. `flex:1 1 auto` with a cap gives the row a ceiling of 501px at every width
+          above 1512 — the spare pixels past the cap simply stay empty at the right.
+
+          THE LEFT EDGE IS WHY THIS AND NOT CENTRING, which was measured too. Centring the whole
+          row reaches 400px, a hundred better, but it unpins the left: the row would start at 39px
+          at 1280 and 255px at 1920, so Redmap alone would have a left margin that moves with the
+          window while every other screen's toolbar starts at 24. It also drags the mode toggle,
+          the date trigger and the chips sideways on a mode switch, where today only the right
+          side moves. 101px is not worth the one line the rest of the product shares.
+
+          The spacer shrinks to 0 before anything else does (`flex-shrink` defaults to 1 while
+          every control on this row sets 0), so at narrow widths this is exactly what was here
+          before — 1280 and 1440 measure identically with and without it.
+        */}
+        {/*
+          RESET SITS WITH THE CONTROLS IT CLEARS (owner, 2026-10-12: 리셋 버튼은 similarity 에
+          조금 더 가까이 붙여줘), and only once there is something to clear (isDirty).
+          
+          It used to ride in the right-hand action group, past the capped gap, which put 「undo
+          what I set」 next to 「go」 rather than next to the settings it undoes. The left of this
+          row narrows the search and the right runs it; Reset belongs on the left.
+          
+          Appearing and disappearing moves nothing else: it is the last item before the spacer, so
+          the spacer absorbs its width and no control to its left or right shifts. Measured below.
+        */}
+        {isDirty && (
           <button
             onClick={handleReset}
             className="vca-hover-quiet"
             style={{
               display: "flex", alignItems: "center", gap: "8px",
-              height: "36px", padding: "0 20px", borderRadius: RADIUS.control,
+              height: "36px", padding: "0 14px", borderRadius: RADIUS.control,
               border: "none", backgroundColor: "transparent", cursor: "pointer",
               color: "var(--gray-600)", fontWeight: 700, fontSize: "13px", whiteSpace: "nowrap",
               fontFamily: "'SUIT', sans-serif", flexShrink: 0,
@@ -1492,20 +1542,41 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           >
             <ResetIconSm /> {t.reset}
           </button>
-          <button
-            onClick={handleSearch}
-            disabled={searching}
-            className="vca-hover-darken"
-            style={{
-              height: "36px", padding: "0 20px", borderRadius: RADIUS.control,
-              border: "none", cursor: searching ? "default" : "pointer",
-              backgroundColor: searching ? "var(--gray-600)" : "var(--gray-900)", color: "white",
-              fontWeight: 800, fontSize: "14px", letterSpacing: "-0.28px", whiteSpace: "nowrap",
-              fontFamily: "'SUIT', sans-serif", flexShrink: 0,
-            }}
-          >
-            {searching ? t.searching : mode === "car" ? t.searchVehicle : t.searchPersons}
-          </button>
+        )}
+
+        <div style={{ flex: "1 1 auto", maxWidth: "80px", minWidth: 0 }} />
+        <div style={{ display: "flex", gap: "12px", flexShrink: 0 }}>
+          {/*
+            IN 사람 MODE THIS BUTTON'S HOME IS THE PANEL, so the toolbar does not keep a copy —
+            not even an empty-state one (owner, 2026-10-12: 아무것도 검색 안했을땐 서치펄슨
+            버튼이 안보여도될것같은뎅 · 사진 첨부하면 그때 왼쪽 패널에 생기니까).
+            
+            This is NOT the rule Reset follows, and reading it that way was wrong: Reset is gated
+            on whether there is anything to undo, while this is simply a question of WHERE the
+            control lives. In 사람 the answer is the panel, which arrives with the photo; before
+            that there is nothing to search for and so nothing to draw.
+            
+            Two cases still draw it here. 차량 has no panel in any state, so it keeps the toolbar
+            button exactly as before — pressing it with no plate is refused by handleSearch, which
+            is how that mode already worked. And a panel collapsed by its own handle would
+            otherwise leave an attached photo with no way to search it from anywhere.
+          */}
+          {(mode === "car" || (hasSearchTargets && leftCollapsed)) && (
+            <button
+              onClick={handleSearch}
+              disabled={searching}
+              className="vca-hover-darken"
+              style={{
+                height: "36px", padding: "0 20px", borderRadius: RADIUS.control,
+                border: "none", cursor: searching ? "default" : "pointer",
+                backgroundColor: searching ? "var(--gray-600)" : "var(--gray-900)", color: "white",
+                fontWeight: 800, fontSize: "14px", letterSpacing: "-0.28px", whiteSpace: "nowrap",
+                fontFamily: "'SUIT', sans-serif", flexShrink: 0,
+              }}
+            >
+              {searching ? t.searching : mode === "car" ? t.searchVehicle : t.searchPersons}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1585,6 +1656,95 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                     ))}
                   </div>
                 </div>
+
+
+                {/*
+                  SIMILARITY MOVED HERE WITH THE BUTTON IT FEEDS (owner, 2026-10-12: similarity 도
+                  왼쪽 패널로 옮기는거 어때?).
+                  
+                  It is a property of the search, not of the toolbar, and with Search living under
+                  the photos the old arrangement made a person cross back up to the toolbar between
+                  picking the picture and running it. Now the panel reads top to bottom as one
+                  thing: these faces · this strictly · go.
+                  
+                  Stacked rather than the toolbar's single row — a 320px column has no width for a
+                  label, a 120px track and a figure side by side, and the track is the part that
+                  benefits from the room. 사람 only, which is where it always was: the car mode has
+                  no similarity to set and no panel to put it in.
+                  
+                  The cost line (「후보 N건 중 M건」) comes with it and is better placed here, a few
+                  pixels above the result list it is talking about.
+                */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px" }}>
+                    <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-600)" }}
+                      title={bodyOnly ? t.bodyOnlyHint : undefined}
+                    >{t.similarity}</span>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--primary-400)" }}>{similarity}%</span>
+                  </div>
+                  {/* Resets the browser's native range-input chrome (Chrome/Safari/Firefox each
+                      draw their own track/thumb border by default) down to a flat gray track +
+                      solid purple thumb — same treatment as Data's Smart Search Similarity. */}
+                  <style>{`
+                    .vca-similarity-slider { -webkit-appearance:none; appearance:none; background:transparent; outline:none; border:none; }
+                    .vca-similarity-slider::-webkit-slider-runnable-track { height:4px; border-radius:var(--radius-pill); background:var(--gray-200); border:none; }
+                    .vca-similarity-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--primary-400); border:none; margin-top:-5px; cursor:pointer; }
+                    .vca-similarity-slider::-moz-range-track { height:4px; border-radius:var(--radius-pill); background:var(--gray-200); border:none; }
+                    .vca-similarity-slider::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--primary-400); border:none; cursor:pointer; }
+                  `}</style>
+                  <input
+                    className="vca-similarity-slider"
+                    type="range" min={0} max={100} value={similarity}
+                    onChange={e => setSimilarity(Number(e.target.value))}
+                    style={{ width: "100%", cursor: "pointer" }}
+                  />
+                  {thresholdCost && (
+                    <span style={{
+                      fontSize: "11px", fontWeight: 600,
+                      // Amber only when the setting leaves nothing. Colouring every reduction
+                      // would paint the normal case as a problem — dropping weak candidates is
+                      // the job.
+                      color: thresholdCost.kept === 0 ? "var(--warning-500)" : "var(--gray-500)",
+                    }}>
+                      {thresholdCost.kept === 0 ? t.thresholdCostNone(thresholdCost.total) : t.thresholdCost(thresholdCost.kept, thresholdCost.total)}
+                    </span>
+                  )}
+                </div>
+                {/*
+                  SEARCH SITS WITH THE PHOTOS IT WILL SEARCH FOR (owner, 2026-10-12: 사진첨부
+                  직후에 열리는 왼쪽 패널에서 서치버튼 누르게끔 하면 어떨까 · 처음엔 안뜨다가).
+
+                  The toolbar version is still there for 차량, where there is no panel to put it
+                  in — the owner weighed that split and accepted it, because the vehicle mode is
+                  not in real use (「차량은 사실상 안 하고 있다고 해도 무방하다」).
+
+                  WHAT THIS IS NOT ABOUT IS TRAVEL. Measured at 1512 from where the hand actually
+                  ends up — inside the upload dialog, centre 756,261 — the toolbar button is about
+                  690px away and this one about 920px, because the panel is the opposite edge of
+                  the screen. It is further. What it is nearer to is the DECISION: the panel is
+                  where the attached photo is shown, so 「yes, that is the person — go」 happens
+                  with the picture in view instead of across the window from it.
+
+                  It appears with the targets and not before: the panel itself only mounts once
+                  something is attached (hasSearchTargets), so there is no state where this is a
+                  dead control. It stays after a search has run, because changing the similarity
+                  and going again is the normal second move.
+                */}
+                <button
+                  onClick={handleSearch}
+                  disabled={searching}
+                  className="vca-hover-darken"
+                  style={{
+                    width: "100%", height: "40px", borderRadius: RADIUS.control,
+                    border: "none", cursor: searching ? "default" : "pointer",
+                    backgroundColor: searching ? "var(--gray-600)" : "var(--gray-900)", color: "white",
+                    fontWeight: 800, fontSize: "14px", letterSpacing: "-0.28px",
+                    fontFamily: "'SUIT', sans-serif", flexShrink: 0,
+                  }}
+                >
+                  {searching ? t.searching : t.searchPersons}
+                </button>
+
                 {hasSearched && <div style={{ height: "1px", backgroundColor: "var(--gray-200)" }} />}
               </>
             )}
@@ -1656,8 +1816,16 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                   <path d="M18 18L25 25" stroke="var(--gray-200)" strokeWidth="2" strokeLinecap="round" />
                 </svg>
                 <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.5, color: "var(--gray-400)" }}>
+                  {/*
+                    사람: the second half is gone with the button it named. It read 「…올린 뒤
+                    위에서 인물 검색을 눌러주세요」, and after the move both halves of that are
+                    false — the button is not 위에서 any more, and until a photo is attached it
+                    does not exist to be pointed at. Attaching opens the panel with the button
+                    already under the photo, so there is nothing left to tell anybody.
+                    차량 keeps its own line: that button IS above, in every state.
+                  */}
                   {mode === "person"
-                    ? <>{t.promptPerson}<br />{t.promptPersonAnd} <strong style={{ color: "var(--gray-700)" }}>{t.searchPersons}</strong>{t.promptTail}</>
+                    ? t.promptPerson
                     : <>{t.promptVehicle}<br /><strong style={{ color: "var(--gray-700)" }}>{t.searchVehicle}</strong>{t.promptTail}</>
                   }
                 </p>

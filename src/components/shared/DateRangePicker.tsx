@@ -36,6 +36,8 @@ export type DateRangeValue = { start: Date | null; end: Date | null };
 // Comparing the calendar days as strings has no timezone in it at all.
 export const dateKeyOf = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** Today at 23:59:59.999 — a cap days are compared against, so today itself stays pickable. */
+export const endOfToday = () => { const d = new Date(); d.setHours(23, 59, 59, 999); return d; };
 export const dateWithinRange = (date: string, range: DateRangeValue) =>
   (!range.start || date >= dateKeyOf(range.start)) && (!range.end || date <= dateKeyOf(range.end));
 
@@ -75,13 +77,38 @@ const QUICK_RANGES: { label: Record<PickerLanguage, string>; range: () => DateRa
   { label: { en: "All dates", ko: "전체 기간" }, range: () => ({ start: ALL_TIME_START, end: ALL_TIME_END }) },
 ];
 
+/**
+ * THE NAME OF THE RANGE, WHEN IT HAS ONE (owner, 2026-10-12: 기본 세팅이 최근 일주일이잖아
+ * 그걸 처음본 사람이 알수있게 … 지금 날짜 표시보다 직관적일것같아).
+ *
+ * A collapsed trigger reading 「2026.10.06 — 2026.10.12」 makes the reader do the subtraction, and
+ * on a screen they have just opened they do not even know a default was applied — two dates look
+ * like something somebody chose. The same range written 「최근 7일」 says both at once.
+ *
+ * Matched against the presets this picker already offers, by day key rather than by timestamp:
+ * the trigger's value has been through localMidnight and back on some screens, so comparing
+ * `getTime()` would miss a range that is the same week. A range nobody has a word for — a span
+ * dragged out on the calendar — falls through and prints its dates, which is right: there is no
+ * shorter true way to say it.
+ */
+export function quickRangeLabel(value: DateRangeValue, lang: PickerLanguage): string | null {
+  if (!value.start || !value.end) return null;
+  const a = dateKeyOf(value.start), b = dateKeyOf(value.end);
+  for (const q of QUICK_RANGES) {
+    const r = q.range();
+    if (r.start && r.end && dateKeyOf(r.start) === a && dateKeyOf(r.end) === b) return q.label[lang];
+  }
+  return null;
+}
+
 const WEEKDAY_LABELS: Record<PickerLanguage, string[]> = {
   en: ["Su","Mo","Tu","We","Th","Fr","Sa"],
   ko: ["일","월","화","수","목","금","토"],
 };
 
-function DateMonthCalendar({ lang, year, month, tempStart, tempEnd, onPick, onPrev, onNext, showPrev, showNext, minDate }: {
+function DateMonthCalendar({ lang, year, month, tempStart, tempEnd, onPick, onPrev, onNext, showPrev, showNext, minDate, maxDate }: {
   minDate?: Date | null;
+  maxDate?: Date | null;
   lang: PickerLanguage;
   year: number; month: number; tempStart: Date|null; tempEnd: Date|null;
   onPick: (d: Date) => void; onPrev?: () => void; onNext?: () => void; showPrev: boolean; showNext: boolean;
@@ -118,7 +145,11 @@ function DateMonthCalendar({ lang, year, month, tempStart, tempEnd, onPick, onPr
           /* Past the retention window: not clickable, and visibly so. A day the recorder no longer
              holds has to look different from a day with nothing in it — otherwise "look somewhere
              else" and "nothing happened" are the same empty result. */
-          const gone = !!minDate && d < minDate;
+          /* And the other end: a day that has not happened yet. Every screen this picker filters
+             is a record of something already observed, so a future day can only ever return
+             nothing — and an empty result from a date that cannot have one reads as a product
+             that lost the data. See maxDate on the trigger for the one screen that opts out. */
+          const gone = (!!minDate && d < minDate) || (!!maxDate && d > maxDate);
           return (
             <button key={i} onClick={() => { if (!gone) onPick(d); }} disabled={gone} className={gone ? undefined : "vca-daterange-day"} style={{
               width:"28px", height:"28px", borderRadius:"50%", border: today && !isStart && !isEnd ? "1px solid var(--gray-900)" : "none",
@@ -140,12 +171,14 @@ function DateMonthCalendar({ lang, year, month, tempStart, tempEnd, onPick, onPr
   );
 }
 
-function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single, minDate }: {
+function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single, minDate, maxDate }: {
   lang: PickerLanguage;
   anchorRef: React.RefObject<HTMLElement | null>; value: DateRangeValue;
   onApply: (v: DateRangeValue) => void; onClose: () => void;
   /** The oldest day still held — see retentionFloor() in vcaStore. */
   minDate?: Date | null;
+  /** The newest day that can be picked — see maxDate on the trigger, which defaults it to today. */
+  maxDate?: Date | null;
   /** One day, not a span: the quick ranges go away and a click closes the answer. */
   single?: boolean;
 }) {
@@ -216,7 +249,18 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single, mi
               /* A preset that reaches past the floor is clamped rather than hidden: 「최근 6개월」
                  on a 30-day site still means "as far back as there is". */
               const start = minDate && r.start && r.start < minDate ? minDate : r.start;
-              setTempStart(start); setTempEnd(r.end);
+              /* 「이번 달」·「올해」 run to the end of the period, which is in the future for most of
+                 it. Clamped rather than hidden — the preset means what it says, it just cannot
+                 promise days that have not happened.
+                 
+                 「전체 기간」 IS EXEMPT, and this line is the one place that has to know it. Its end
+                 is the year-2100 sentinel, and clamping that to today would leave a range that is
+                 no longer equal to ALL_TIME_END — so `isAllTime` would stop matching and the
+                 trigger would print 「2000.01.01 — 2026.10.12」 instead of 「전체 기간」. The
+                 sentinel is a way of saying 「no end」, not a date anybody picked. */
+              const isAllTimePreset = !!r.end && r.end.getTime() === ALL_TIME_END.getTime();
+              const end = maxDate && r.end && !isAllTimePreset && r.end > maxDate ? maxDate : r.end;
+              setTempStart(start); setTempEnd(end);
               if (start) { setViewYear(start.getFullYear()); setViewMonth(start.getMonth()); }
             }} style={{ textAlign:"left", padding:"8px", borderRadius:RADIUS.control, border:"none", backgroundColor:"transparent", cursor:"pointer",
               fontSize:"13px", color:"var(--gray-900)", fontWeight:600, transition:"background-color 0.15s" }}>
@@ -228,11 +272,13 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single, mi
           <div style={{ display:"flex", gap:"24px" }}>
             {/* The back arrow stops at the floor's month — walking further shows only dead days. */}
             <DateMonthCalendar lang={lang} year={viewYear} month={viewMonth} tempStart={tempStart} tempEnd={tempEnd} onPick={pick}
-              minDate={minDate}
+              minDate={minDate} maxDate={maxDate}
               showPrev={!minDate || new Date(viewYear, viewMonth, 1) > minDate} showNext={false} onPrev={prevMonth} />
             <DateMonthCalendar lang={lang} year={secondYear} month={secondMonth} tempStart={tempStart} tempEnd={tempEnd} onPick={pick}
-              minDate={minDate}
-              showPrev={false} showNext={true} onNext={nextMonth} />
+              minDate={minDate} maxDate={maxDate}
+              /* The forward arrow stops at the cap's month, for the same reason the back one stops
+                 at the floor: months of nothing but dead days. */
+              showPrev={false} showNext={!maxDate || new Date(secondYear, secondMonth + 1, 1) <= maxDate} onNext={nextMonth} />
           </div>
           {/* WHY the greyed days are greyed. Without it a calendar that refuses half its months
               reads as broken; with it, it reads as a site that keeps N days. */}
@@ -255,7 +301,7 @@ function DateRangePopover({ lang, anchorRef, value, onApply, onClose, single, mi
   );
 }
 
-export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size = "md", emptyText, showIcon = true, minDate }: {
+export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size = "md", emptyText, showIcon = true, minDate, maxDate }: {
   lang: PickerLanguage;
   value: DateRangeValue; onApply: (v: DateRangeValue) => void; mode?: "split"|"merged"|"single"; size?: "md"|"sm"; emptyText?: string; showIcon?: boolean;
   /**
@@ -263,8 +309,25 @@ export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size =
    * the site has not said. Days before it cannot be picked and the popover says why.
    */
   minDate?: Date | null;
+  /**
+   * The newest day that can be picked. **Left out, it is today** (owner, 2026-10-12: 날짜 선택할때
+   * 오늘 이후 날짜는 선택 못하게 해야할것같은데 이건 공통규칙아닐까?).
+   *
+   * It is a common rule, with one exception, and the default is set so the exception is the thing
+   * somebody has to write down. Eight of the nine pickers in this product filter a record of what
+   * already happened — access, search, export, handling, detections, a Redmap trail — and on all
+   * of them a future day returns nothing because nothing can have happened yet. An empty table
+   * from a date that cannot have rows reads as data that went missing.
+   *
+   * `null` opts out, and the one caller that does is the VIP listing's 만료일: picking a day in
+   * the future is the entire point there. A new forward-looking field has to say so explicitly
+   * rather than inherit it by being written after this comment.
+   */
+  maxDate?: Date | null;
 }) {
   const t = T[lang];
+  /* `undefined` means 「not stated」 and takes the default; `null` means 「stated: no cap」. */
+  const cap = maxDate === undefined ? endOfToday() : maxDate;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const compact = size === "sm";
@@ -275,6 +338,10 @@ export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size =
   // "All time" label instead of falling through to the raw "2000.01.01 – 2100.01.01" dates.
   const isAllTime = !!value.start && !!value.end
     && value.start.getTime() === ALL_TIME_START.getTime() && value.end.getTime() === ALL_TIME_END.getTime();
+  /* 「최근 7일」 rather than the two days it works out to — see quickRangeLabel. Only in `merged`:
+     the split layout is two separate boxes with a date in each, and one name cannot sit in two
+     boxes. `single` holds one day, which has no range to name. */
+  const namedRange = mode === "merged" ? quickRangeLabel(value, lang) : null;
 
   // Same shape as CameraSelect (white fill, always-visible border, fixed height) so the two
   // sit as one consistent "filter control" language instead of two different-looking pickers
@@ -311,13 +378,13 @@ export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size =
           </span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="var(--gray-600)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
-      ) : (isEmpty && emptyText) || isAllTime ? (
+      ) : (isEmpty && emptyText) || isAllTime || namedRange ? (
         // Collapses to one box regardless of split/merged — always show the chevron here, since
         // without it this reads as a plain label instead of something clickable.
         <div onClick={toggle} style={{ ...boxStyle, justifyContent:"space-between" }}>
           <span style={{ display:"flex", alignItems:"center", gap: compact ? "6px" : "8px" }}>
             {showIcon && <CalendarIconSm size={compact ? 12 : 14} />}
-            <span style={emptyTextStyle}>{isAllTime ? t.allDates : emptyText}</span>
+            <span style={emptyTextStyle}>{isAllTime ? t.allDates : (namedRange ?? emptyText)}</span>
           </span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="var(--gray-600)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
@@ -337,7 +404,7 @@ export function DateRangeTrigger({ lang, value, onApply, mode = "merged", size =
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="var(--gray-600)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
       )}
-      {open && <DateRangePopover lang={lang} anchorRef={ref} value={value} single={single} minDate={minDate} onApply={(v) => { onApply(v); setOpen(false); }} onClose={() => setOpen(false)} />}
+      {open && <DateRangePopover lang={lang} anchorRef={ref} value={value} single={single} minDate={minDate} maxDate={cap} onApply={(v) => { onApply(v); setOpen(false); }} onClose={() => setOpen(false)} />}
     </div>
   );
 }

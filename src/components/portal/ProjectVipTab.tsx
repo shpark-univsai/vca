@@ -2677,6 +2677,10 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                     lang={lang}
                     mode="single"
                     size="sm"
+                    /* THE ONE PICKER THAT MAY LOOK FORWARD. Everywhere else a future day returns
+                       nothing, so the trigger blocks it by default — here a future day is the
+                       whole point, because this sets when a listing stops. See maxDate. */
+                    maxDate={null}
                     value={{ start: bulkExpiry ? new Date(bulkExpiry + "T00:00:00") : null, end: null }}
                     onApply={v => setBulkExpiry(v.start ? dateKeyOf(v.start) : "")}
                     emptyText={t.bulkExpiryPick}
