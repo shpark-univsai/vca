@@ -2194,7 +2194,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   rounding of their own. The gap IS that rule here: the row's background is --line,
                   so the 1px between cells is the hairline, and the ends round once on the row. */}
               <div style={{ display:"flex", gap:"1px", backgroundColor:"var(--line)",
-                borderRadius:RADIUS.inner, overflow:"hidden" }}>
+                borderRadius:RADIUS.inner, overflow:"hidden", border:"1px solid var(--line)" }}>
                 {Array.from({ length: HOURS_IN_DAY }, (_, h) => {
                   const active = h === currentHour;
                   return (
@@ -2213,9 +2213,17 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                          happened here, --gray-400 this hour holds records, SELECTED this is the
                          one you are on. Unknown (no camera id) falls back to the plain ground
                          rather than painting every hour as empty. */
+                      /* EMPTY IS WHITE, NOT GREY. --gray-100/200 rounded rectangles in a row are
+                         this product's own LOADING vocabulary — SkeletonBestFrame's `Bone` is
+                         literally that, and the only thing separating it from a real control was
+                         the pulse (owner, 2026-10-12: 이건 로딩 안같아보이는거야?). It is also the
+                         wrong way round against the field: in every time-slot grid the empty slot
+                         is white and the grey or the colour means something is there. So the row
+                         is a white grid ruled by hairlines, and ink lands only where there is a
+                         record (--gray-400) or where you are (SELECTED). */
                       backgroundColor: active ? SELECTED
                         : occupancy.known && occupancy.hours[h] > 0 ? "var(--gray-400)"
-                        : "var(--gray-100)",
+                        : "var(--gray-0)",
                       boxSizing:"border-box",
                     }} />
                   );
@@ -2243,7 +2251,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             <div style={{ position:"relative", marginTop:"8px" }}>
               {/* Same hairline grid as the hour rule above. */}
               <div style={{ display:"flex", gap:"1px", backgroundColor:"var(--line)",
-                borderRadius:RADIUS.inner, overflow:"hidden" }}>
+                borderRadius:RADIUS.inner, overflow:"hidden", border:"1px solid var(--line)" }}>
                 {Array.from({ length: MINUTES_IN_HOUR }, (_, m) => {
                   const active = m === currentMinute;
                   return (
@@ -2257,7 +2265,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       /* Same three steps as the hour rule, counted inside the selected hour. */
                       backgroundColor: active ? SELECTED
                         : occupancy.known && occupancy.minutes[m] > 0 ? "var(--gray-400)"
-                        : "var(--gray-100)",
+                        : "var(--gray-0)",
                       boxSizing:"border-box",
                     }} />
                   );
