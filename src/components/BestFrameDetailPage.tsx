@@ -1509,6 +1509,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   const dateDropdownRef = useRef<HTMLDivElement>(null);
   const timeDropdownRef = useRef<HTMLDivElement>(null);
   const thumbRefs = useRef<(HTMLDivElement | null)[]>([]);
+  /** The previous selection, kept so the strip can tell which way a jump went. Written only from
+   *  the scroll effect below, never during render. */
+  const prevSelRef = useRef(selectedSec);
 
   /* ── Frame export ─ see the block above FrameExportDialog ───────────────── */
   const [exportOpen, setExportOpen] = useState(false);
@@ -1731,11 +1734,33 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
     const el = thumbRefs.current[centerThumbIdx];
     const strip = el?.parentElement;
     if (!el || !strip) return;
+    /* Was this an explicit jump, and which way? Read off the state rather than carried in a
+       flag — a one-shot flag has to be cleared, and clearing it from in here is a setState inside
+       an effect. Only jumpTo() moves the window onto the selection, so windowCenterSec ===
+       selectedSec marks an explicit navigation; a thumbnail click leaves the window where it was,
+       and a 1s/10s step lands within the strip's own span. */
+    const prev = prevSelRef.current;
+    prevSelRef.current = selectedSec;
+    const jumped = windowCenterSec === selectedSec && Math.abs(selectedSec - prev) > AXIS_SPAN_SEC / 2;
     const e = el.getBoundingClientRect();
     const s = strip.getBoundingClientRect();
-    if (e.left >= s.left && e.right <= s.right) return;
-    el.scrollIntoView({ inline:"center", block:"nearest", behavior:"smooth" });
-  }, [centerThumbIdx]);
+    // A plain click: leave the strip alone if what was clicked is already on screen.
+    if (!jumped && e.left >= s.left && e.right <= s.right) return;
+    /* AFTER A JUMP THE LANDING FRAME IS NOT CENTRED (owner, 2026-10-12: 시간순서니까 비율에
+       맞춰서 오른쪽에 위치해있거나 왼쪽에 선택된 상태로 보여지거나). Jump forward and it lands at
+       a quarter in from the left, so the 90 seconds AFTER it — where you are heading — are the
+       part you can see; jump back and it lands three quarters over, so what came before it is
+       on screen instead. Dead centre says nothing about which way you moved, and that was the
+       whole complaint: every jump looked identical.
+
+       What this is NOT is the strip travelling across the intervening hours. It holds
+       THUMB_COUNT × THUMB_STEP_SEC = 120 seconds; 06:00 to 20:00 is 14 hours, so there is nothing
+       between the two to scroll through — rendering it would be 25,200 thumbnails. The window is
+       rebuilt at the new time and the strip scrolls, smoothly, to the off-centre landing spot. */
+    const frac = !jumped ? 0.5 : selectedSec > prev ? 0.25 : 0.75;
+    const left = strip.scrollLeft + (e.left + e.width / 2 - s.left) - s.width * frac;
+    strip.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [centerThumbIdx, selectedSec, windowCenterSec]);
 
   return (
     <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", backgroundColor:"white" }}>
