@@ -30,7 +30,6 @@ const T = {
     noPermissionBody: "Redmap only shows results from a search, so with no search permission there is nothing to show. An administrator can grant it in the Portal, under Users & Permissions.",
     close: "Close",
     dragAndDrop: "Drag and drop an image here",
-    searchTargets: "Search targets",
     searchResults: "Search results",
     excluded: "Excluded",
     restore: "Restore",
@@ -92,13 +91,9 @@ const T = {
     noSightingsFound: "No matching sightings found.",
     tryDifferentPhoto: "Try a different face or body photo.",
     /* A whole line now, not the opening half of one — see the render site. */
-    promptPerson: "Upload a face or body image to search",
-    promptPersonAnd: "above and click",
-    promptVehicle: "Enter a license plate and click",
     // The sentence's tail. In English the verb comes before the button's name, so the assembled
     // line finishes on its own; in Korean the verb comes last, and without this the prompt broke
     // off at "위에서 인물 검색" with nothing telling the reader to press it.
-    promptTail: "",
     showResults: "Show search results",
     hideResults: "Hide search results",
     newestFirst: "Newest first",
@@ -116,7 +111,6 @@ const T = {
     noPermissionBody: "Redmap은 검색으로만 결과를 보여주는 화면이라, 검색 권한 없이는 보여줄 것이 없습니다. 관리자에게 요청하면 Portal의 사용자 및 권한에서 열어 줄 수 있습니다.",
     close: "닫기",
     dragAndDrop: "이미지를 여기로 끌어다 놓으세요",
-    searchTargets: "검색 대상",
     searchResults: "검색 결과",
     excluded: "제외됨",
     restore: "복원",
@@ -177,10 +171,6 @@ const T = {
     widenToSee: "기간을 넓히면 볼 수 있습니다.",
     noSightingsFound: "일치하는 감지 기록이 없습니다.",
     tryDifferentPhoto: "다른 얼굴 또는 전신 사진으로 시도해보세요.",
-    promptPerson: "얼굴 또는 전신 이미지를 올려주세요",
-    promptPersonAnd: "위에서",
-    promptVehicle: "차량 번호를 입력한 뒤",
-    promptTail: "을 눌러주세요",
     showResults: "검색 결과 보기",
     hideResults: "검색 결과 숨기기",
     newestFirst: "최신순",
@@ -1605,7 +1595,19 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             {hasSearchTargets && (
               <>
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>{t.searchTargets}</h3>
+                  {/* 「이미지로 검색」, not 「검색 대상」 (2026-10-12). 「대상」 already carries two
+                      meanings on this screen — what you are looking for (대상 얼굴 / 최근 검색 대상)
+                      and what came back (result cards read 대상 #TS000123, with a 대상 badge) — so a
+                      third sense over the query photos is one too many. This is the word the
+                      RedFace picker puts over the SAME two photo boxes, and the word this screen's
+                      own toolbar chip already uses.
+
+                      14/800, not 16/800: 16/800 is this product's surface-title size (the RedFace
+                      dialog title, a person's name, a count, and this screen's own 「경로 기록」
+                      panel header on the right). Using it for a section INSIDE a panel made one
+                      size mean two ranks — and with results showing, three of them sit on screen
+                      at once. 14/800 is what Re-ID already uses for the same job. */}
+                  <h3 style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.searchByImageShort}</h3>
                   <div style={{ display: "flex", gap: "24px" }}>
                     {([
                       { key: "face" as const, image: faceImage, height: "100px" },
@@ -1679,7 +1681,11 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                 */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px" }}>
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-600)" }}
+                    {/* 12/700 --gray-700, the value Re-ID's own 「유사도」 uses. 13/600 is body
+                        copy in this repo (toasts, menu rows, explanatory paragraphs) and is used
+                        as a control label nowhere else, which is why this one sat below the
+                        Face/Body chips in reading order. */}
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-700)" }}
                       title={bodyOnly ? t.bodyOnlyHint : undefined}
                     >{t.similarity}</span>
                     <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--primary-400)" }}>{similarity}%</span>
@@ -1764,7 +1770,8 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             {hasSearched && (<>
             {/* ── Search Results header ── */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.32px" }}>{t.searchResults}</h3>
+              {/* 14/800 with the section above it — see the note there. */}
+              <h3 style={{ fontSize: "14px", fontWeight: 800, color: "var(--gray-900)", letterSpacing: "-0.28px" }}>{t.searchResults}</h3>
               <span style={{
                 width: "18px", height: "18px", borderRadius: "50%", backgroundColor: "var(--gray-100)",
                 color: "var(--gray-700)", fontSize: "10px", fontWeight: 600,
@@ -1818,28 +1825,14 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             )}
 
             {/* ── Search Results grid ── */}
-            {!hasSearched ? (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "24px 0" }}>
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                  <circle cx="12" cy="12" r="8" stroke="var(--gray-200)" strokeWidth="2" />
-                  <path d="M18 18L25 25" stroke="var(--gray-200)" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-                <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.5, color: "var(--gray-400)" }}>
-                  {/*
-                    사람: the second half is gone with the button it named. It read 「…올린 뒤
-                    위에서 인물 검색을 눌러주세요」, and after the move both halves of that are
-                    false — the button is not 위에서 any more, and until a photo is attached it
-                    does not exist to be pointed at. Attaching opens the panel with the button
-                    already under the photo, so there is nothing left to tell anybody.
-                    차량 keeps its own line: that button IS above, in every state.
-                  */}
-                  {mode === "person"
-                    ? t.promptPerson
-                    : <>{t.promptVehicle}<br /><strong style={{ color: "var(--gray-700)" }}>{t.searchVehicle}</strong>{t.promptTail}</>
-                  }
-                </p>
-              </div>
-            ) : searching ? (
+            {/* The 「아직 검색 전」 branch that sat here was unreachable: this whole block is
+                already inside {hasSearched && (…)} (opened ~60 lines above), so !hasSearched could
+                never be true and its prompt never reached a screen. Deleted rather than revived —
+                the empty state below already distinguishes WHY nothing came back (similarity,
+                date range, or genuinely no record), and an "not searched yet" message in the same
+                place and shape would make 「찾아봤는데 없다」 and 「아직 안 찾아봤다」 look alike,
+                which in a control room changes what the operator does. (2026-10-12) */}
+            {searching ? (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", padding: "24px 0" }}>
                 <div className="vca-skeleton-pulse" style={{ width: "28px", height: "28px", borderRadius: "50%", backgroundColor: "var(--primary-200)" }} />
                 <p style={{ fontSize: "12px", textAlign: "center", lineHeight: 1.5, color: "var(--gray-500)", fontWeight: 700 }}>
