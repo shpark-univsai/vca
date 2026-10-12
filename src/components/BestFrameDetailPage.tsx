@@ -2182,13 +2182,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               first sight there. */}
           <div style={{ padding:"0 16px 10px" }}>
             <div style={{ position:"relative" }}>
-              {/* ONE TRACK, NOT 24 BLOCKS (owner, 2026-10-12: 그냥 시각적으로 별로다).
-                  Each hour used to be its own 65x22 rounded block with a 2px gap, so the row was
-                  24 rounded rectangles — at that size the rounding reads as a dashed texture and
-                  three greys scattered through it read as a stain rather than as a reading. The
-                  ground moves to the container and is clipped once at the ends, the cells lose
-                  their own radius and gaps, and what is left is a rule with marks on it. */}
-              <div style={{ display:"flex", borderRadius:RADIUS.inner, overflow:"hidden", backgroundColor:"var(--gray-200)" }}>
+              <div style={{ display:"flex", gap:"2px" }}>
                 {Array.from({ length: HOURS_IN_DAY }, (_, h) => {
                   const active = h === currentHour;
                   return (
@@ -2200,16 +2194,18 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       onMouseEnter={() => setHoveredHour(h)}
                       onMouseLeave={() => setHoveredHour(prev => (prev === h ? null : prev))}
                       style={{
-                      // No radius and no gap: the cells are slices of the one track above, which
-                      // carries the ground and the rounded ends for all of them.
-                      flex:1, height:"12px", padding:0, border:"none", borderRadius:0, cursor:"pointer",
-                      /* Three steps, in order of what the operator needs: nothing happened here
-                         (the track's own --gray-200 shows through), --gray-400 this hour holds
-                         records, SELECTED this is the one you are on. Unknown (no camera id)
-                         leaves every cell transparent rather than painting the day as empty. */
+                      flex:1, height:"22px", padding:0, border:"none",
+                      // RADIUS.inner, and the minute ruler below takes the same: these are
+                      // segments of one track, which is the nested case the scale names, and one
+                      // ruler at two tiers cannot be two radii (they were 4px and 2px).
+                      borderRadius:RADIUS.inner, cursor:"pointer",
+                      /* Three steps, in order of what the operator needs: --gray-200 nothing
+                         happened here, --gray-400 this hour holds records, SELECTED this is the
+                         one you are on. Unknown (no camera id) falls back to the plain ground
+                         rather than painting every hour as empty. */
                       backgroundColor: active ? SELECTED
                         : occupancy.known && occupancy.hours[h] > 0 ? "var(--gray-400)"
-                        : "transparent",
+                        : "var(--gray-200)",
                       boxSizing:"border-box",
                     }} />
                   );
@@ -2235,8 +2231,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               ))}
             </div>
             <div style={{ position:"relative", marginTop:"8px" }}>
-              {/* Same one track as the hour rule above. */}
-              <div style={{ display:"flex", borderRadius:RADIUS.inner, overflow:"hidden", backgroundColor:"var(--gray-200)" }}>
+              <div style={{ display:"flex", gap:"1px" }}>
                 {Array.from({ length: MINUTES_IN_HOUR }, (_, m) => {
                   const active = m === currentMinute;
                   return (
@@ -2245,12 +2240,12 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       onMouseEnter={() => setHoveredMinute(m)}
                       onMouseLeave={() => setHoveredMinute(prev => (prev === m ? null : prev))}
                       style={{
-                      flex:1, height:"8px", padding:0, border:"none", borderRadius:0,
-                      cursor:"pointer",
-                      /* Same three steps as the hour rule, counted inside the selected hour. */
+                      flex:1, height:"14px", padding:0, border:"none",
+                      borderRadius:RADIUS.inner, cursor:"pointer",
+                      /* Same three steps as the hour bar, counted inside the selected hour. */
                       backgroundColor: active ? SELECTED
                         : occupancy.known && occupancy.minutes[m] > 0 ? "var(--gray-400)"
-                        : "transparent",
+                        : "var(--gray-200)",
                       boxSizing:"border-box",
                     }} />
                   );
