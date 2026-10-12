@@ -2538,43 +2538,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               )}
             </div>
             <div style={{ position:"relative", height:"16px", marginTop:"2px" }}>
-              {/* WHICH PART OF THIS HOUR THE STRIP ABOVE IS SHOWING (owner, 2026-10-12: 썸네일은
-                  1분씩 쪼개서 보여줘야하는건가 그래야 아래 막대랑 정보가 맞아떨어질것같은데).
-
-                  Splitting the thumbnails by minute would have made the two rows the same axis —
-                  and taken this screen's fine instrument away: 61 thumbnails at 60s is an hour per
-                  strip, so 「find the exact moment」 would be gone and the ◀1s/▶1s buttons would
-                  move inside a single frame where nothing can be seen. The strip is the close tool
-                  and the bars are the coarse one; that is what a two-tier navigator is for. What
-                  was missing was the tie between them, which is this bracket: it spans the minutes
-                  the strip currently covers, so the strip reads as a magnification of this part of
-                  the row rather than as an unrelated second timeline.
-
-                  It sits in the top half of the label row and the 00/15/30/45 labels move to its
-                  bottom edge, so this costs no vertical space — the block below the feed is already
-                  exactly as tall as the window (measured: scrollHeight === innerHeight). */}
-              {(() => {
-                const hourStart = currentHour * 3600;
-                const from = Math.max(0, Math.min(MINUTES_IN_HOUR, (axisStartSec - hourStart) / 60));
-                const to = Math.max(0, Math.min(MINUTES_IN_HOUR, (axisStartSec + axisSpanSec - hourStart) / 60));
-                if (to <= from) return null;
-                return (
-                  <div aria-hidden style={{
-                    position:"absolute", top:0, left:`${(from / MINUTES_IN_HOUR) * 100}%`,
-                    width:`${((to - from) / MINUTES_IN_HOUR) * 100}%`, minWidth:"6px", height:"5px",
-                    /* Open at the bottom and ticked at both ends — a bracket reaching up toward the
-                       strip, not a box round the minutes. --gray-500 because it is neither content
-                       (the crowns' purple) nor the selection (the gradient): it is where you are
-                       looking. */
-                    borderTop:"1px solid var(--gray-500)",
-                    borderLeft:"1px solid var(--gray-500)",
-                    borderRight:"1px solid var(--gray-500)",
-                    boxSizing:"border-box",
-                  }} />
-                );
-              })()}
               {[0, 15, 30, 45].map(m => (
-                <span key={m} style={{ position:"absolute", bottom:0, left:`${(m / MINUTES_IN_HOUR) * 100}%`, fontSize:"11px", fontWeight:600, color:"var(--gray-400)" }}>
+                <span key={m} style={{ position:"absolute", left:`${(m / MINUTES_IN_HOUR) * 100}%`, fontSize:"11px", fontWeight:600, color:"var(--gray-400)" }}>
                   {pad2(m)}
                 </span>
               ))}
