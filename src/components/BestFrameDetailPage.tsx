@@ -2165,6 +2165,22 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                         ? { ["--ring-w" as string]: `${framePx}px`, ["--ring-fill" as string]: "var(--gray-800)" }
                         : { border: `${framePx}px solid var(--gray-200)` }),
                       borderRadius:RADIUS.inner,
+                      /* The one you are on grows instead of the rest dimming (owner, 2026-10-12,
+                         choosing this over blurring the others). Blur was the other candidate and
+                         it is the wrong tool on a CCTV strip twice over: a blurred frame is a thing
+                         cameras actually produce, so it reads as motion blur in the footage rather
+                         than as UI — the note on HOVER_QUIET says the same about anything drawn
+                         inside the picture — and the strip's whole job is being scanned for the
+                         moment, which a blur removes. The others already carry grayscale(100%) and
+                         0.75 opacity; this adds nothing to them.
+
+                         Origin at the bottom because the row is aligned flex-end, so the growth
+                         goes up into the padding instead of pushing the time labels down. 4% of
+                         128x80 is ~5x3px — enough to catch the eye, small enough that the strip's
+                         rhythm still reads. zIndex lifts it over its neighbours' edges. */
+                      ...(isSelected ? { transform:"scale(1.04)", transformOrigin:"bottom center", zIndex:1 } : null),
+                      position:"relative",
+                      transition:"transform 0.14s ease",
                     }}>
                       <div style={{ width:"100%", height:"100%", overflow:"hidden", borderRadius:`calc(${RADIUS.inner} - ${framePx}px)`, position:"relative", backgroundColor:"var(--gray-800)" }}>
                         <Photo kind="frame" src={data.bgUrl ?? ""}
@@ -2227,8 +2243,11 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   --gray-300 is 1.48 there. NOT --gray-400, which is the fill that means "this hour
                   holds records": a rule in the same value as the content would read as content.
                   The ladder stands — rule 1.48 < record < selected. */}
+              {/* No `overflow:hidden` on the row: the selected cell grows past the row's edge
+                  (see its transform) and a clip would cut the lift off. The rounded ends come from
+                  the first and last cells taking the radius themselves instead. */}
               <div style={{ display:"flex", gap:"1px", backgroundColor:"var(--gray-300)",
-                borderRadius:RADIUS.inner, overflow:"hidden", border:"1px solid var(--gray-300)" }}>
+                borderRadius:RADIUS.inner, border:"1px solid var(--gray-300)" }}>
                 {Array.from({ length: HOURS_IN_DAY }, (_, h) => {
                   const active = h === currentHour;
                   return (
@@ -2245,8 +2264,17 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       // its own two ends. A radius here is what made 24 of these read as beads.
                       // The ring needs a border box to paint in, and an inline `border` beats the
                       // class, so the transparent band is declared here for the selected cell.
-                      flex:1, height:"20px", padding:0, borderRadius:0, cursor:"pointer",
+                      flex:1, height:"20px", padding:0, cursor:"pointer",
                       border: active ? "2px solid transparent" : "none",
+                      // The row no longer clips, so the two end cells carry its corners.
+                      borderRadius: h === 0 ? `${RADIUS.inner} 0 0 ${RADIUS.inner}`
+                        : h === HOURS_IN_DAY - 1 ? `0 ${RADIUS.inner} ${RADIUS.inner} 0` : 0,
+                      /* Lifted, like the selected thumbnail above it — the same gesture in a row
+                         20px tall. Mostly vertical: 4% of 20px is less than a pixel and would not
+                         be seen, so the cell grows up and down out of the row and reads as a chip
+                         raised off the rule. zIndex keeps it over its neighbours' edges. */
+                      ...(active ? { transform:"scale(1.02, 1.4)", zIndex:1 } : null),
+                      position:"relative", transition:"transform 0.14s ease",
                       /* Three steps, in order of what the operator needs: --gray-200 nothing
                          happened here, --gray-400 this hour holds records, SELECTED this is the
                          one you are on. Unknown (no camera id) falls back to the plain ground
@@ -2286,7 +2314,13 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                          allowed to say it, because what is here IS a VIP detection — the 2026-09-17
                          decision on :239 bars purple from SELECTION marks, not from content.
                          Budget: ~11 of 24 cells ≈ 0.8% of the screen. */
-                      backgroundColor:"var(--gray-0)",
+                      /* The cell a crown sits in takes --primary-100 behind it (owner, 2026-10-12:
+                         왕관이 있는 시간엔 배경색 primary 100을 칠해줘), so a row of 24 reads as
+                         bands of activity at a glance and the crown is not a lone mark floating on
+                         white. --ring-fill follows it, so a selected cell that holds records keeps
+                         the same ground inside its gradient ring. */
+                      backgroundColor: occupancy.known && occupancy.hours[h] > 0 ? "var(--primary-100)" : "var(--gray-0)",
+                      ["--ring-fill" as string]: occupancy.known && occupancy.hours[h] > 0 ? "var(--primary-100)" : "var(--gray-0)",
                       display:"flex", alignItems:"center", justifyContent:"center",
                       boxSizing:"border-box",
                     }}>
@@ -2318,8 +2352,11 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             </div>
             <div style={{ position:"relative", marginTop:"8px" }}>
               {/* Same hairline grid as the hour rule above. */}
+              {/* No `overflow:hidden` on the row: the selected cell grows past the row's edge
+                  (see its transform) and a clip would cut the lift off. The rounded ends come from
+                  the first and last cells taking the radius themselves instead. */}
               <div style={{ display:"flex", gap:"1px", backgroundColor:"var(--gray-300)",
-                borderRadius:RADIUS.inner, overflow:"hidden", border:"1px solid var(--gray-300)" }}>
+                borderRadius:RADIUS.inner, border:"1px solid var(--gray-300)" }}>
                 {Array.from({ length: MINUTES_IN_HOUR }, (_, m) => {
                   const active = m === currentMinute;
                   return (
@@ -2328,11 +2365,20 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       onMouseEnter={() => setHoveredMinute(m)}
                       onMouseLeave={() => setHoveredMinute(prev => (prev === m ? null : prev))}
                       style={{
-                      flex:1, height:"14px", padding:0, borderRadius:0,
+                      flex:1, height:"14px", padding:0, cursor:"pointer",
                       border: active ? "2px solid transparent" : "none",
-                      cursor:"pointer",
+                      borderRadius: m === 0 ? `${RADIUS.inner} 0 0 ${RADIUS.inner}`
+                        : m === MINUTES_IN_HOUR - 1 ? `0 ${RADIUS.inner} ${RADIUS.inner} 0` : 0,
+                      ...(active ? { transform:"scale(1.02, 1.5)", zIndex:1 } : null),
+                      position:"relative", transition:"transform 0.14s ease",
                       /* Same two channels as the hour rule, counted inside the selected hour. */
-                      backgroundColor:"var(--gray-0)",
+                      /* The cell a crown sits in takes --primary-100 behind it (owner, 2026-10-12:
+                         왕관이 있는 시간엔 배경색 primary 100을 칠해줘), so a row of 24 reads as
+                         bands of activity at a glance and the crown is not a lone mark floating on
+                         white. --ring-fill follows it, so a selected cell that holds records keeps
+                         the same ground inside its gradient ring. */
+                      backgroundColor: occupancy.known && occupancy.minutes[m] > 0 ? "var(--primary-100)" : "var(--gray-0)",
+                      ["--ring-fill" as string]: occupancy.known && occupancy.minutes[m] > 0 ? "var(--primary-100)" : "var(--gray-0)",
                       display:"flex", alignItems:"center", justifyContent:"center",
                       boxSizing:"border-box",
                     }}>
