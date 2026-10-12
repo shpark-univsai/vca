@@ -8,6 +8,7 @@ import { formatTimeAgo } from "@/lib/mockData";
 import { runStateOf } from "@/lib/realtime/cameraStatus";
 import BestFrameDetailPage, { DET_COLOR } from "./BestFrameDetailPage";
 import ScoreBadge from "./shared/ScoreBadge";
+import { Photo } from "./shared/Photo";
 import { RADIUS } from "./shared/controls";
 import { useToast } from "./Toast";
 import type { DetType, MonitorState, Camera, Detection, CamData, HUDState } from "@/types/detection";
@@ -659,7 +660,7 @@ function CameraCard({
         onMouseLeave={() => setFeedHovered(false)}
         style={{ flex:1, position:"relative", overflow:"hidden", backgroundColor:"var(--gray-900)", minWidth:0, minHeight:0 }}
       >
-        <img src={data.bgUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", opacity:0.9 }} />
+        <Photo kind="frame" src={data.bgUrl} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", opacity:0.9 }} />
         {feedHovered && canAnalyze && (
           <button
             onClick={onHeaderArrowClick}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Photo } from "../shared/Photo";
 import { useSearchParams } from "next/navigation";
 // 2.4, not 1.4: lucide draws in a 24-unit box and this renders at 14px — see ICON_STROKE_PX.
 import { AlertTriangle, ArrowDownWideNarrow, ArrowUpRight, CalendarX, Eye, FileDown, FileInput, FileOutput, RefreshCw, Users } from "lucide-react";
@@ -1004,7 +1005,7 @@ function RegisterVipModal({ t, person, photoUnreadable, groups, categories, proj
                 onMouseLeave={() => setPhotoHoverIndex(-1)}
                 title={photo.fileName}
                 style={{ position: "relative", display: "flex", width: `${PHOTO_TILE}px`, height: `${PHOTO_TILE}px`, borderRadius: RADIUS.control, overflow: "hidden", border: BORDER, flexShrink: 0 }}>
-                <img src={photo.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <Photo kind="face" src={photo.url} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 {/* WHICH ONE THE REST OF THE PRODUCT SHOWS. Marked rather than left to be
                     inferred from position: the table, the cards and the app all draw this face,
                     and a set of five tiles gives no other clue which one that is. */}

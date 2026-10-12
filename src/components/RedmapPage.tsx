@@ -15,6 +15,7 @@ import { DateRangeTrigger, dateKeyOf } from "./shared/DateRangePicker";
 import ScoreBadge from "./shared/ScoreBadge";
 import { SegmentedControl } from "./shared/SegmentedControl";
 import { RADIUS } from "./shared/controls";
+import { Photo } from "./shared/Photo";
 import RemoveImageButton from "./RemoveImageButton";
 import SidebarToggleIcon from "./SidebarToggleIcon";
 
@@ -1632,10 +1633,10 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                           }}
                         >
                           {image && (
-                            <img src={image} style={{
+                            <Photo kind="face" src={image} style={{
                               width: "100%", height: "100%", objectFit: "cover", display: "block",
                               opacity: hoverUpload === key ? 0.5 : 1, transition: "opacity 0.15s",
-                            }} alt="" />
+                            }} />
                           )}
                           {hoverUpload === key && (
                             <div style={{
@@ -1923,14 +1924,14 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                   >
                     <div style={{ display: "flex", gap: "4px" }}>
                       <div style={{ position: "relative", width: "63px", height: "62px", borderRadius: RADIUS.control, overflow: "hidden", flexShrink: 0 }}>
-                        <img src={hit.faceUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} alt="" />
+                        <Photo kind="face" src={hit.faceUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                         <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "var(--label-plate)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px",
                           /* A pill, like every other label plate in the app — see the note on the
                              matching plate in Sidebar's hover card. */
                           borderRadius: RADIUS.pill }}>{t.face}</span>
                       </div>
                       <div style={{ position: "relative", width: "63px", height: "62px", borderRadius: RADIUS.control, overflow: "hidden", flexShrink: 0 }}>
-                        <img src={hit.bodyUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} alt="" />
+                        <Photo kind="body" src={hit.bodyUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                         <span style={{ position: "absolute", top: "4px", left: "4px", backgroundColor: "var(--label-plate)", color: "white", fontSize: "10px", fontWeight: 600, padding: "2px 4px", borderRadius: RADIUS.pill }}>{t.body}</span>
                       </div>
                     </div>
@@ -2184,7 +2185,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                     padding: 0, border: "none", position: "relative", cursor: "pointer", display: "block",
                                   }}
                                 >
-                                  <img src={node.faceUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} alt="" />
+                                  <Photo kind="face" src={node.faceUrl} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                                   {(hoverFrameKey === node.key || openFrameKey === node.key) && (
                                     <span style={{
                                       position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
@@ -2344,7 +2345,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                             {openFrameKey === node.key && (
                               <div style={{ marginLeft: "-48px", display: "flex", flexDirection: "column", gap: "8px" }}>
                                 <div style={{ borderRadius: RADIUS.control, overflow: "hidden", border: "1px solid var(--gray-200)" }}>
-                                  <img src={frameImageSrc(node.faceUrl)} alt={`Captured frame — ${node.fullLocation} ${node.date} ${node.time}`}
+                                  <Photo kind="frame" src={frameImageSrc(node.faceUrl)} alt={`Captured frame — ${node.fullLocation} ${node.date} ${node.time}`}
                                        style={{ display: "block", width: "100%", aspectRatio: "16 / 9", objectFit: "cover" }} />
                                 </div>
                               </div>

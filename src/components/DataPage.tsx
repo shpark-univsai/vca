@@ -22,6 +22,7 @@ import ScoreBadge from "./shared/ScoreBadge";
    and one computed as `${10 - nodeBorder}px` — so "card", "panel", "control", "inner", "pill" are
    now the only five shapes here, and 50% stays only where the thing IS a circle. */
 import { RADIUS, CONTROL_HEIGHT } from "./shared/controls";
+import { Photo } from "./shared/Photo";
 import { SegmentedControl } from "./shared/SegmentedControl";
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
 import { DateRangeTrigger, dateWithinRange, fmtDate, type DateRangeValue } from "./shared/DateRangePicker";
@@ -561,11 +562,11 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
           {/* Face/Body */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px" }}>
             <div style={{ border:BORDER, borderRadius:RADIUS.panel, padding:"10px", backgroundColor:"var(--gray-50)", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
-              <img src={item.face} alt="" style={{ width:"156px", height:"156px", objectFit:"cover", borderRadius:RADIUS.inner, border:"2px solid var(--primary-400)" }} />
+              <Photo kind="face" src={item.face} style={{ width:"156px", height:"156px", objectFit:"cover", borderRadius:RADIUS.inner, border:"2px solid var(--primary-400)" }} />
               <p style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"0.5px" }}>{T[lang].face}</p>
             </div>
             <div style={{ border:BORDER, borderRadius:RADIUS.panel, padding:"10px", backgroundColor:"var(--gray-50)", display:"flex", flexDirection:"column", alignItems:"center", gap:"8px" }}>
-              <img src={item.body} alt="" style={{ width:"124px", height:"186px", objectFit:"cover", borderRadius:RADIUS.inner, border:"2px solid var(--primary-400)" }} />
+              <Photo kind="body" src={item.body} style={{ width:"124px", height:"186px", objectFit:"cover", borderRadius:RADIUS.inner, border:"2px solid var(--primary-400)" }} />
               <p style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"0.5px" }}>{T[lang].fullBody}</p>
             </div>
           </div>
@@ -736,7 +737,7 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
       boxShadow:"var(--shadow-raised)",
       transform:"translateZ(0)",
     }}>
-      <img src={p.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+      <Photo kind="face" src={p.url} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
       <div style={{ position:"absolute", left:0, right:0, bottom:"46px", height:"72px",
         background:"linear-gradient(to top, rgba(24, 17, 39,0.72), rgba(24, 17, 39,0))", pointerEvents:"none" }} />
       {/* Only shown in the flat "All Cameras" view — grouped-by-camera carousels already
@@ -873,7 +874,7 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
             insets came out as smudges: every card carried what looked like a smear of dirt.
             `face` is a separate image the data already had (the enrolled photo when the register
             has one), so there is nothing to guess. */}
-        <img src={p.face} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+        <Photo kind="face" src={p.face} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
       </div>
     </div>
   );
@@ -1804,7 +1805,7 @@ function LiveSearchSidebar({
                     border: selectedTarget === i ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
                     boxShadow: selectedTarget === i ? "0 2px 2px color-mix(in srgb, var(--primary-400) 10%, transparent)" : "none",
                   }}>
-                    <img src={t.face} alt="" style={{ width:"32px", height:"32px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
+                    <Photo kind="face" src={t.face} style={{ width:"32px", height:"32px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
                     <div style={{ textAlign:"left" }}>
                       <p style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-900)", margin:0 }}>{t.label}</p>
                       <p style={{ fontSize:"10px", color:"var(--gray-400)", margin:0 }}>{t.time}</p>
@@ -2482,7 +2483,7 @@ function FilterChip({ children, icon, avatar, onRemove }: { children:React.React
   return (
     <div style={{ display:"flex", alignItems:"center", gap:"6px", padding: avatar ? "4px 8px 4px 4px" : "6px 16px", borderRadius:RADIUS.pill,
       backgroundColor:"var(--primary-100)", border:"1px solid var(--primary-400)", fontSize:"12px", fontWeight:700, color:"var(--primary-400)", whiteSpace:"nowrap", flexShrink:0 }}>
-      {avatar && <img src={avatar} alt="" style={{ width:22, height:22, borderRadius:"50%", objectFit:"cover" }} />}
+      {avatar && <Photo kind="face" src={avatar} style={{ width:22, height:22, borderRadius:"50%", objectFit:"cover" }} />}
       {icon}{children}
       {onRemove && (
         <button onClick={onRemove} className="vca-hover-darken" style={{ background:"none", border:"none", cursor:"pointer", padding:"2px", display:"flex", color:"var(--primary-400)" }}>
@@ -2505,7 +2506,7 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
       borderRadius:RADIUS.card, overflow:"hidden", backgroundColor:"var(--gray-900)", cursor:"pointer",
       transform:"translateZ(0)",
     }}>
-      <img src={p.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+      <Photo kind="face" src={p.url} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
       <div style={{ position:"absolute", left:0, right:0, bottom:"64px", height:"80px",
         background:"linear-gradient(to top, rgba(24, 17, 39,0.72), rgba(24, 17, 39,0))", pointerEvents:"none" }} />
       <div style={{ position:"absolute", top:8, left:8, fontSize:"10px", fontWeight:800, color:"white",
@@ -2545,7 +2546,7 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
       {/* Crop of the same big photo (p.url), not p.face — that field cycles through an unrelated
           stock-photo pool, which would show a different person's face here than the body photo
           filling the rest of the card. objectPosition "top" favors the head/shoulders area. */}
-      {!p.plate && <img src={p.url} alt="" style={{ position:"absolute", right:"10px", bottom:"38px", width:"56px", height:"56px",
+      {!p.plate && <Photo kind="face" src={p.url} style={{ position:"absolute", right:"10px", bottom:"38px", width:"56px", height:"56px",
         borderRadius:RADIUS.inner, boxShadow:"0 0 0 2px white", transform:"translateZ(0)",
         objectFit:"cover", objectPosition:"top", display:"block", backgroundColor:"white" }} />}
     </div>
@@ -3172,7 +3173,7 @@ function ClusterMatchCard({ item, onClick }: { item: MatchItem; onClick?: () => 
      */
     <div onClick={onClick} className={onClick ? "vca-hover-card" : undefined} style={{ backgroundColor:"white", borderRadius:RADIUS.inner, overflow:"hidden", width:"133px", flexShrink:0, display:"flex", flexDirection:"column", gap:"8px", cursor: onClick ? "pointer" : "default" }}>
       <div style={{ position:"relative", height:"160px", overflow:"hidden" }}>
-        <img src={item.body} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+        <Photo kind="body" src={item.body} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
         <span style={{ position:"absolute", top:6, left:6 }}><ScoreBadge score={item.similarity} /></span>
       </div>
       <div style={{ padding:"0 8px 8px", display:"flex", flexDirection:"column", gap:"2px" }}>
@@ -3190,7 +3191,7 @@ function ClusterCard({ cluster, onNavigateTab, onMatchClick }: { cluster: ReidCl
     <div style={{ backgroundColor:"white", borderRadius:RADIUS.card, padding:"12px 24px", display:"flex", flexDirection:"column", gap:"16px", width:"100%", boxSizing:"border-box" }}>
       <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:"16px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"16px", minWidth:0 }}>
-          <img src={cluster.thumbnail} alt="" style={{ width:"48px", height:"48px", borderRadius:RADIUS.inner, objectFit:"cover", flexShrink:0 }} />
+          <Photo kind="frame" src={cluster.thumbnail} style={{ width:"48px", height:"48px", borderRadius:RADIUS.inner, objectFit:"cover", flexShrink:0 }} />
           <div style={{ display:"flex", flexDirection:"column", gap:"4px", minWidth:0 }}>
             <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
               <span style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.28px", whiteSpace:"nowrap" }}>{cluster.title}</span>
@@ -3446,7 +3447,7 @@ function ImageDropzoneBox({ icon, label, previewSrc, onClick, onClear, aspect, a
       {onClick && <ImageDropzoneHoverStyleTag />}
       {previewSrc ? (
         <>
-          <img src={previewSrc} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+          <Photo kind="face" src={previewSrc} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
           {attached === false && <div style={{ position:"absolute", inset:0, backgroundColor:"color-mix(in srgb, var(--primary-400) 15%, transparent)" }} />}
           {onClick && (
             <div className="vca-dropzone-hint" style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
@@ -4016,7 +4017,7 @@ function CandidateCard({ c, selected, onClick }:
           ConcentricRectangle). `RADIUS.inner` is 6 because it was written for the 8 − 2 nest
           inside a control; it is not a second name for 「whatever is inside something」. */}
       <div style={{ position:"relative", width:"128px", height:"133px", borderRadius:RADIUS.control, overflow:"hidden" }}>
-        <img src={c.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+        <Photo kind="face" src={c.url} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
         <span style={{ position:"absolute", top:6, right:6 }}><ScoreBadge score={c.similarity} /></span>
         <span style={{ position:"absolute", bottom:6, left:6, fontSize:"10px", fontWeight:600, color:"white",
           fontFamily: c.plate ? "monospace" : undefined,
@@ -4234,7 +4235,7 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
                     minWidth:0, maxWidth:"100%", overflow:"hidden",
                   }}>
                   {person.photoUrl
-                    ? <img src={person.photoUrl} alt="" style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", opacity: block ? 0.45 : 1 }} />
+                    ? <Photo kind="face" src={person.photoUrl} style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", opacity: block ? 0.45 : 1 }} />
                     : <span style={{ width:"28px", height:"28px", borderRadius:"50%", backgroundColor:"var(--gray-200)", flexShrink:0 }} />}
                   <span style={{ display:"flex", flexDirection:"column", alignItems:"flex-start", minWidth:0 }}>
                     <span style={{ fontSize:"11px", fontWeight:600, color: block ? "var(--gray-500)" : "var(--gray-900)",
@@ -4529,7 +4530,12 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
           It also takes a line out of the toggle below, which only existed because of this
           surface — see the note there.
         */}
-        <div style={{ width: hasAnyFilter ? "340px" : "480px", flexShrink:0, backgroundColor:"white", borderRight:BORDER,
+        {/* 560 before a query, not 480 (owner, 2026-10-12: 검색전에 왼쪽 너비가 더 넓어져야할것
+            같은데). With nothing to show, the right half holds one sentence while the left holds
+            every control there is — and at 480 the Recent targets strip was still clipping its
+            fourth card. The card's own width does not change, so the 80px comes out of the empty
+            half rather than growing the dialog. */}
+        <div style={{ width: hasAnyFilter ? "340px" : "560px", flexShrink:0, backgroundColor:"white", borderRight:BORDER,
           display:"flex", flexDirection:"column", overflow:"hidden", transition:"width 0.25s ease" }}>
         {/* A visible bar, not a hidden one. Until the dialog got a height cap this column never
             scrolled at all, so the hidden bar cost nothing; now it carries up to ~450px of content
@@ -4591,7 +4597,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                       border: selectedTarget === i ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
                       boxShadow: selectedTarget === i ? "0 2px 2px color-mix(in srgb, var(--primary-400) 10%, transparent)" : "none",
                     }}>
-                      <img src={t.face} alt="" style={{ width:"32px", height:"32px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
+                      <Photo kind="face" src={t.face} style={{ width:"32px", height:"32px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
                       <div style={{ textAlign:"left" }}>
                         <p style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-900)", margin:0 }}>{t.label}</p>
                         <p style={{ fontSize:"10px", color:"var(--gray-400)", margin:0 }}>{t.time}</p>
@@ -4623,7 +4629,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                   }>
                     {hasFace ? (
                       <>
-                        <img src={faceSrc} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        <Photo kind="face" src={faceSrc} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                         {!uploadedFace && <div style={{ position:"absolute", inset:0, backgroundColor:"color-mix(in srgb, var(--primary-400) 15%, transparent)" }} />}
                         <div className="vca-dropzone-hint" style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
                           backgroundColor:"var(--scrim-media)", opacity:0 }}>
@@ -4655,7 +4661,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                   }>
                     {hasBody ? (
                       <>
-                        <img src={bodySrc} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        <Photo kind="body" src={bodySrc} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                         {!uploadedBody && <div style={{ position:"absolute", inset:0, backgroundColor:"color-mix(in srgb, var(--primary-400) 15%, transparent)" }} />}
                         <div className="vca-dropzone-hint" style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center",
                           backgroundColor:"var(--scrim-media)", opacity:0 }}>
@@ -5021,7 +5027,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
               nodes below — which is three radius values for two pictures of the same kind. */}
           <div className="redface-avatar-hover" style={{ width:64, height:64, borderRadius:RADIUS.control, border:"3px solid var(--primary-400)", backgroundColor:"white",
             boxSizing:"border-box", boxShadow:"0 8px 20px color-mix(in srgb, var(--primary-400) 25%, transparent)" }}>
-            <img src={primaryTarget.face} alt="" style={{ width:"100%", height:"100%", borderRadius:RADIUS.inner, objectFit:"cover", display:"block" }} />
+            <Photo kind="face" src={primaryTarget.face} style={{ width:"100%", height:"100%", borderRadius:RADIUS.inner, objectFit:"cover", display:"block" }} />
           </div>
           <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"2px 8px", borderRadius:RADIUS.pill, letterSpacing:"0.4px" }}>{t.primaryBadge}</span>
         </div>
@@ -5046,7 +5052,7 @@ function PyramidCanvas({ primaryTarget, rows, onNodeClick, selectedNodeId, dateR
             <div className="redface-avatar-hover" onClick={() => onNodeClick(r.key, n)} style={{ position:"relative", width:r.meta!.nodeSize, height:r.meta!.nodeSize, borderRadius:RADIUS.control,
               border:`${r.meta!.nodeBorder}px solid ${r.meta!.nodeColor}`, backgroundColor:"white", boxSizing:"border-box",
               boxShadow: n.id === selectedNodeId ? "0 0 0 3px color-mix(in srgb, var(--primary-400) 45%, transparent), 0 2px 8px rgba(24, 17, 39,0.15)" : "0 2px 8px rgba(24, 17, 39,0.15)" }}>
-              <img src={n.face} alt="" style={{ width:"100%", height:"100%", borderRadius:RADIUS.inner, objectFit:"cover", display:"block" }} />
+              <Photo kind="face" src={n.face} style={{ width:"100%", height:"100%", borderRadius:RADIUS.inner, objectFit:"cover", display:"block" }} />
             </div>
             {/* The co-captures in the range on screen — the same rows the Joint Evidence panel
                 pages through when this node is opened. n.count is the pair's whole history, which
@@ -5465,7 +5471,7 @@ function SharedFrameLightbox({ event, assocLabel, index, total, onStep, onClose,
         {/* Labels come back onto the boxes here — at this width they have the room the grid cell
             denied them, and a label on the box is more direct than a legend to cross-reference. */}
         <div style={{ position:"relative", backgroundColor:"var(--gray-900)" }}>
-          <img src={event.scene} alt="" style={{ width:"100%", aspectRatio:"1194 / 685", objectFit:"cover", display:"block" }} />
+          <Photo kind="frame" src={event.scene} style={{ width:"100%", aspectRatio:"1194 / 685", objectFit:"cover", display:"block" }} />
           {[
             { label:"TARGET", color:"var(--primary-300)", left:event.boxLeft },
             { label:assocLabel, color:"var(--danger-400)", left:event.boxLeft + 17 },
@@ -5635,8 +5641,8 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
             size, and the rest below. The status badge rides the line under the names. */}
         <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
           <div style={{ display:"flex", gap:"3px", flexShrink:0 }}>
-            <img src={primary.face} alt="" style={{ width:"40px", height:"40px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
-            <img src={node.face} alt="" style={{ width:"40px", height:"40px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
+            <Photo kind="face" src={primary.face} style={{ width:"40px", height:"40px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
+            <Photo kind="face" src={node.face} style={{ width:"40px", height:"40px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:"2px", minWidth:0 }}>
             {/* "+" not an arrow: appearing in one frame together is symmetric, and an arrow would
@@ -5863,7 +5869,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
               title={t.openFrameFull}
               style={{ position:"relative", padding:0, border:"none", borderRadius:RADIUS.control, overflow:"hidden",
                 backgroundColor:"var(--gray-900)", cursor:"zoom-in", display:"block", width:"100%" }}>
-              <img src={e.scene} alt="" style={{ width:"100%", aspectRatio:"1194 / 685", objectFit:"cover", display:"block" }} />
+              <Photo kind="frame" src={e.scene} style={{ width:"100%", aspectRatio:"1194 / 685", objectFit:"cover", display:"block" }} />
               {/* Burned into the frame, the way a camera stamps its own still — the caption
                   belongs to the image, and pulling it out left every cell with a line of text
                   that only described the picture under it. The camera code is gone from here: at
@@ -6014,7 +6020,7 @@ function DataGridView({ rows, onInspect, selectedNodeId, sortDir, onToggleSort, 
             padding:"10px 20px", display:"flex", gap:"8px", alignItems:"center" }}>
             <span style={{ width:"50px", flexShrink:0, fontSize:"12px", fontWeight:700, color:"var(--gray-500)" }}>{`#${String(i+1).padStart(2,"0")}`}</span>
             <div style={{ flex:1, display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
-              <img src={r.node.face} alt="" style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
+              <Photo kind="face" src={r.node.face} style={{ width:"28px", height:"28px", borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
               <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)", whiteSpace:"nowrap" }}>{t.associateNo(String(i+1).padStart(2,"0"))}</span>
               {/* Somebody's call, where the row is read — so a shift arriving at this list can see
                   what has already been decided without opening each pair's evidence. */}
@@ -6175,7 +6181,7 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
           <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
             {primaryTarget && (
               <>
-                <img src={primaryTarget.face} alt="" style={{ width:"44px", height:"44px", borderRadius:RADIUS.inner, objectFit:"cover", border:"2px solid var(--primary-400)" }} />
+                <Photo kind="face" src={primaryTarget.face} style={{ width:"44px", height:"44px", borderRadius:RADIUS.inner, objectFit:"cover", border:"2px solid var(--primary-400)" }} />
                 <div>
                   <span title={t.primaryTargetHint} style={{ display:"inline-flex", fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--primary-400)", padding:"2px 6px", borderRadius:RADIUS.pill, letterSpacing:"-0.2px", cursor:"help" }}>{t.primaryTarget}</span>
                   <p style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", margin:"4px 0 0", letterSpacing:"-0.28px" }}>{primaryTarget.name}</p>

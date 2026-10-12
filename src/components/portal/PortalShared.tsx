@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { Photo } from "../shared/Photo";
 import { ArrowDown, ArrowUp, Check, ChevronLeft, CircleAlert, CircleCheck, CircleDashed, CircleSlash, EyeOff } from "lucide-react";
 import { APP_ACTION_CONTENT, APP_ACTIONS, SUPPORT_CONTACT, canEditPortal, canSetPolicy, canViewFaces, currentPortalUser, useVcaStore, type AppAction, type AppScreen, type ProjectType } from "@/lib/vcaStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -2197,7 +2198,7 @@ export function FacePhoto({ src, alt = "", size, radius, style, hiddenStyle }: {
     ...style,
   };
   if (mayViewFaces) {
-    return <img src={src} alt={alt} style={{ objectFit: "cover", display: "block", ...box }} />;
+    return <Photo kind="face" src={src} alt={alt} style={{ objectFit: "cover", display: "block", ...box }} />;
   }
   return (
     <span

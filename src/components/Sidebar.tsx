@@ -18,6 +18,7 @@ import { useLanguage } from "@/lib/i18n";
 import { getComplianceConfig } from "@/lib/complianceConfig";
 import { SegmentedControl } from "./shared/SegmentedControl";
 import { RADIUS } from "./shared/controls";
+import { Photo } from "./shared/Photo";
 
 // See the per-file pattern note in lib/i18n.ts. Camera names, zone names and device names are the
 // customer's own labels and stay as entered — the operator matches them against a rack, not a
@@ -332,7 +333,7 @@ function AvatarStack({ faces }: { faces: string[] }) {
     <div style={{ display:"flex", alignItems:"center" }}>
       {faces.slice(0, 3).map((url, i) => (
         <div key={i} style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i, width:24, height:24, borderRadius:"50%", border:"1px solid white", overflow:"hidden", flexShrink:0 }}>
-          <img src={url} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} alt="" />
+          <Photo kind="face" src={url} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
         </div>
       ))}
     </div>
@@ -345,7 +346,7 @@ function AvatarStack({ faces }: { faces: string[] }) {
 function PersonThumb({ isSelected, photoUrl }: { isSelected:boolean; photoUrl?:string }) {
   return (
     <div style={{ width:54, height:54, borderRadius:RADIUS.control, flexShrink:0, overflow:"hidden", outline: isSelected ? "2px solid var(--primary-400)" : "none", outlineOffset:2 }}>
-      {photoUrl && <img src={photoUrl} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} alt="" />}
+      {photoUrl && <Photo kind="face" src={photoUrl} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
     </div>
   );
 }
@@ -2101,7 +2102,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
                     // VIP one: the same purple said two different things on the same 40px tile.
                     border: event.type==="VIP" ? "2px solid var(--primary-400)" : "1.5px solid var(--gray-200)",
                     boxShadow: isSelected ? "0 0 0 2px var(--gray-900)" : "none" }}>
-                  <img src={photoUrl} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} alt="" />
+                  <Photo kind="face" src={photoUrl} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
                   {event.type === "VIP" && (
                     <div style={{ position:"absolute", top:"1px", right:"1px", width:"15px", height:"15px", borderRadius:"50%", backgroundColor:"var(--primary-400)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                       <Crown size={9} color="white" />
@@ -2152,7 +2153,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
                 <span style={{ fontSize:"10px", color:"var(--gray-400)" }}>{formatTimeAgo(event.timestamp)}</span>
               </div>
               <div style={{ display:"flex", gap:"8px", alignItems:"center" }}>
-                <img src={photoUrl} style={{ width:"36px", height:"48px", borderRadius:RADIUS.inner, objectFit:"cover", flexShrink:0 }} alt="" />
+                <Photo kind="face" src={photoUrl} style={{ width:"36px", height:"48px", borderRadius:RADIUS.inner, objectFit:"cover", flexShrink:0 }} />
                 <div>
                   <div style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-900)" }}>{event.name}</div>
                   <div style={{ fontSize:"10px", color:"var(--gray-500)", marginTop:"3px" }}>{event.location}</div>

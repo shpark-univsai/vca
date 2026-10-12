@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Photo } from "../shared/Photo";
 import { useSearchParams } from "next/navigation";
 import CameraImportModal from "./CameraImportModal";
 import CameraMapView from "./CameraMapView";
@@ -2730,7 +2731,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     height follows the picture (owner's note: "vip 화면 테이블 높이로 맞춰줘"). */}
                 <button {...stopRowClick} onClick={() => setInspectingCameraId(cam.id)} style={{ width: "48px", height: "48px", borderRadius: RADIUS.control, overflow: "hidden", backgroundColor: "var(--gray-100)", border: "none", cursor: "pointer", padding: 0 }}>
                   {cam.thumbnail
-                    ? <img src={cam.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ? <Photo kind="frame" src={cam.thumbnail} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     : <div style={{ width: "100%", height: "100%", backgroundColor: "var(--gray-100)" }} />}
                 </button>
                 <div style={{ minWidth: 0 }}>

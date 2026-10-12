@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Photo } from "../shared/Photo";
 import { Activity, ArrowUpRight, Clock, Crosshair, Cpu, Link2, Map as MapIcon, MapPin, Network, Play, Server as ServerIcon } from "lucide-react";
 import { useVcaStore, type Camera } from "@/lib/vcaStore";
 import { BORDER, Drawer } from "./PortalShared";
@@ -163,7 +164,7 @@ export default function CameraDetailPanel({ camera, onClose, onOpenInCameras }: 
             {/* Nothing rather than somebody else's corridor. A camera registered through Portal
                 has no captured frame, and this box is captioned as one. */}
             {camera.thumbnail && (
-              <img src={camera.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
+              <Photo kind="frame" src={camera.thumbnail} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: online ? 1 : 0.4 }} />
             )}
             {/* The badge says what the frame is: a still until somebody presses play, live once the
                 server is streaming. It read "LIVE" over a static thumbnail before, which is the

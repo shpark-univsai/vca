@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Photo } from "../shared/Photo";
 import { Film as FilmIcon, Image as ImageIcon, Play, ShieldCheck } from "lucide-react";
 import { type UploadedMedia } from "@/lib/vcaStore";
 import { uploadFileUrl } from "@/lib/uploadBlobs";
@@ -131,7 +132,7 @@ export default function UploadPreviewModal({ upload, onClose }: { upload: Upload
         )}
         {fileUrl && isImage && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={fileUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+          <Photo kind="frame" src={fileUrl} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
         )}
         {!(fileUrl && (playing || isImage)) && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", padding: "24px", textAlign: "center" }}>

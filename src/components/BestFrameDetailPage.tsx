@@ -12,6 +12,7 @@ import {
 import type { ExportRecord } from "@/lib/vcaStore";
 import { useToast } from "./Toast";
 import ScoreBadge from "./shared/ScoreBadge";
+import { Photo } from "./shared/Photo";
 import { RADIUS } from "./shared/controls";
 import { CircleAlert, ImageDown } from "lucide-react";
 
@@ -723,7 +724,7 @@ function ReelCard({ det, targetNo, frameUrl, isFocused, onClick }: { det: Detect
                   is that person, not a frame with that person somewhere in it. The big analysis
                   frame on the left still draws every box (detBoxBorder, below): there one image
                   holds all the detections and a box is the only way to say which is which. */}
-              <img src={frameUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+              <Photo kind="frame" src={frameUrl} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
             </div>
           )}
           {/* Which box on the feed this card belongs to. On imagery it takes the plate treatment
@@ -1809,7 +1810,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               maxHeight:"100%", aspectRatio:"16/9", flexShrink:0, borderRadius:RADIUS.panel, overflow:"hidden", backgroundColor:"var(--gray-900)",
             }}
           >
-            <img src={data.bgUrl ?? ""} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", opacity:0.9 }} />
+            <Photo kind="frame" src={data.bgUrl ?? ""} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", opacity:0.9 }} />
             <div style={{ position:"absolute", inset:0, pointerEvents:"none", background:"linear-gradient(to bottom,rgba(24, 17, 39,0) 50%,rgba(24, 17, 39,0.04) 50%)", backgroundSize:"100% 4px" }} />
             {/* Plain white. --label-plate is already the dimming — a 0.8 alpha on top of it was
                 the only dimmed white text in the app, and it was on the one plate that carries
@@ -2140,7 +2141,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       borderRadius:RADIUS.inner,
                     }}>
                       <div style={{ width:"100%", height:"100%", overflow:"hidden", borderRadius:`calc(${RADIUS.inner} - ${framePx}px)`, position:"relative", backgroundColor:"var(--gray-800)" }}>
-                        <img src={data.bgUrl ?? ""} alt=""
+                        <Photo kind="frame" src={data.bgUrl ?? ""}
                           style={{ width:"100%", height:"100%", objectFit:"cover", display:"block", filter: isSelected ? "none" : "grayscale(100%)", opacity: isSelected ? 1 : 0.75 }} />
                         {/* How many VIPs this frame caught — the detections' own timestamps, not
                             a stand-in. This chip used to be a headcount from a seeded mock, which
@@ -2206,10 +2207,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   const active = h === currentHour;
                   return (
                     <button key={h} onClick={() => jumpTo(h * 3600 + (selectedSec % 3600))}
-                      /* Fill is the selected state now, so the selected cell darkens and the rest
-                         take the same gray-300 the shared toggle's unselected segments take — the
-                         two rules on HOVER_QUIET above. These cells carried no hover at all. */
-                      className={active ? "vca-hover-darken" : "vca-hover-seg"}
+                      /* darken, not a tint: these cells' fill carries whether the hour holds
+                         records, and a hover that repaints the background would erase that. */
+                      className="vca-hover-darken"
                       onMouseEnter={() => setHoveredHour(h)}
                       onMouseLeave={() => setHoveredHour(prev => (prev === h ? null : prev))}
                       style={{
@@ -2228,9 +2228,17 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                          is white and the grey or the colour means something is there. So the row
                          is a white grid ruled by hairlines, and ink lands only where there is a
                          record (--gray-400) or where you are (SELECTED). */
-                      backgroundColor: active ? SELECTED
-                        : occupancy.known && occupancy.hours[h] > 0 ? "var(--gray-400)"
-                        : "var(--gray-0)",
+                      /* TWO THINGS, TWO CHANNELS. Both used to be a fill, one step darker than
+                         the other, so the row read as a density ramp — the owner read the grey as
+                         「few VIPs」 and the black as 「many」 (2026-10-12), which is not what either
+                         says. It also could not work as a ramp: --gray-400 is slate (hue 215°) and
+                         SELECTED is the purple end (259°), two different families of this ramp by
+                         deliberate design, so the light one simply looked out of place beside the
+                         dark one. Content is the FILL, position is a BORDER (inset, so it cannot
+                         push the grid around) — and a selected hour that holds records now shows
+                         both at once instead of one hiding the other. */
+                      backgroundColor: occupancy.known && occupancy.hours[h] > 0 ? "var(--gray-400)" : "var(--gray-0)",
+                      boxShadow: active ? `inset 0 0 0 2px ${SELECTED}` : "none",
                       boxSizing:"border-box",
                     }} />
                   );
@@ -2263,16 +2271,15 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   const active = m === currentMinute;
                   return (
                     <button key={m} onClick={() => jumpTo(currentHour * 3600 + m * 60 + (selectedSec % 60))}
-                      className={active ? "vca-hover-darken" : "vca-hover-seg"}
+                      className="vca-hover-darken"
                       onMouseEnter={() => setHoveredMinute(m)}
                       onMouseLeave={() => setHoveredMinute(prev => (prev === m ? null : prev))}
                       style={{
                       flex:1, height:"14px", padding:0, border:"none", borderRadius:0,
                       cursor:"pointer",
                       /* Same three steps as the hour rule, counted inside the selected hour. */
-                      backgroundColor: active ? SELECTED
-                        : occupancy.known && occupancy.minutes[m] > 0 ? "var(--gray-400)"
-                        : "var(--gray-0)",
+                      backgroundColor: occupancy.known && occupancy.minutes[m] > 0 ? "var(--gray-400)" : "var(--gray-0)",
+                      boxShadow: active ? `inset 0 0 0 2px ${SELECTED}` : "none",
                       boxSizing:"border-box",
                     }} />
                   );
