@@ -183,11 +183,20 @@
   --danger-200: #fcc5cf;
   --danger-400: #f43f5e;
   --danger-500: #d91616;
+  /* 600 — the step small text sits on a tinted ground with. Added 2026-10-12 after measuring
+     every semantic chip in the product: the darkest foreground each family had was its 500 (400 for
+     success), and on that family own --100 ground it came out 2.85-4.47 — under 4.5 for the 10-12px
+     labels these chips carry. Same hue and saturation as the 500, lightness taken down until it
+     clears 4.5 on the --200 ground too, so it is one more step of the same colour rather than a new
+     one. Figma: 「Sementic / <family>」 600 (owner added it there first). USE: 100/200 are grounds,
+     300-500 are dots, icons and edges, 600 is small text. */
+  --danger-600: #b71313;
 
   /* Semantic — Success */
   --success-100: #e1f3e7;
   --success-200: #b9e3c9;
   --success-400: #16a34a;
+  --success-600: #0f6d32;
 
   /* Semantic — Warning */
   --warning-100: #fdece1;
@@ -195,11 +204,13 @@
   --warning-300: #ff7729;
   --warning-400: #ff5e00;
   --warning-500: #cc4b00;
+  --warning-600: #a23b00;
 
   /* Semantic — Info */
   --info-100: #f0f8ff;
   --info-200: #d3e0fd;
   --info-500: #0973dc;
+  --info-600: #0862bb;
 
   /* Category hues. Two families that mean nothing.
    *

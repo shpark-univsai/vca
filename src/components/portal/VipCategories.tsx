@@ -296,15 +296,15 @@ export function VipCategoryModal({ teamId, categories, canEdit, onClose }: {
 export function categoryTint(color: VipCategoryColor): { bg: string; fg: string; dot: string } {
   switch (color) {
     case "primary": return { bg: "var(--primary-100)", fg: "var(--primary-400)", dot: "var(--primary-400)" };
-    case "info":    return { bg: "var(--info-100)",    fg: "var(--info-500)",    dot: "var(--info-500)" };
+    case "info":    return { bg: "var(--info-100)",    fg: "var(--info-600)",    dot: "var(--info-500)" };
     case "teal":    return { bg: "var(--teal-100)",    fg: "var(--teal-500)",    dot: "var(--teal-500)" };
     case "magenta": return { bg: "var(--magenta-100)", fg: "var(--magenta-500)", dot: "var(--magenta-500)" };
     // The three below are no longer offered — see VIP_CATEGORY_COLORS — but categories
     // created before that still carry them, and a chip that cannot resolve its colour is worse
     // than one drawn in a colour we would not pick again.
-    case "danger":  return { bg: "var(--danger-100)",  fg: "var(--danger-500)",  dot: "var(--danger-400)" };
-    case "warning": return { bg: "var(--warning-100)", fg: "var(--warning-500)", dot: "var(--warning-500)" };
-    case "success": return { bg: "var(--success-100)", fg: "var(--success-400)", dot: "var(--success-400)" };
+    case "danger":  return { bg: "var(--danger-100)",  fg: "var(--danger-600)",  dot: "var(--danger-400)" };
+    case "warning": return { bg: "var(--warning-100)", fg: "var(--warning-600)", dot: "var(--warning-500)" };
+    case "success": return { bg: "var(--success-100)", fg: "var(--success-600)", dot: "var(--success-400)" };
     default:        return { bg: "var(--gray-100)",    fg: "var(--gray-700)",    dot: "var(--gray-400)" };
   }
 }

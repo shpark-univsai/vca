@@ -2667,8 +2667,8 @@ function SetupCodeBadge({ issuedAt }: { issuedAt?: string }) {
   const days = nowMs === null ? null : codeDaysRemaining(issuedAt, SETUP_CODE_TTL_DAYS, nowMs);
   const expired = days === 0;
   const tone = expired
-    ? { bg: "var(--danger-100)", color: "var(--danger-500)" }
-    : { bg: "var(--info-100)", color: "var(--info-500)" };
+    ? { bg: "var(--danger-100)", color: "var(--danger-600)" }
+    : { bg: "var(--info-100)", color: "var(--info-600)" };
 
   return (
     <span
@@ -2695,8 +2695,8 @@ function TempPasswordBadge({ issuedAt }: { issuedAt: string }) {
   const expiresMs = issuedMs + TEMP_PASSWORD_VALIDITY_HOURS * 60 * 60 * 1000;
   const expired = nowMs !== null && nowMs > expiresMs;
   const tone = expired
-    ? { bg: "var(--danger-100)", color: "var(--danger-500)" }
-    : { bg: "var(--warning-200)", color: "var(--warning-500)" };
+    ? { bg: "var(--danger-100)", color: "var(--danger-600)" }
+    : { bg: "var(--warning-200)", color: "var(--warning-600)" };
 
   return (
     <span

@@ -210,16 +210,16 @@ const T = {
 type Dict = typeof T.en;
 
 const STATE_TONE: Record<string, { bg: string; fg: string }> = {
-  open: { bg: "var(--warning-100)", fg: "var(--warning-500)" },
-  progress: { bg: "var(--info-100)", fg: "var(--info-500)" },
-  done: { bg: "var(--success-100)", fg: "var(--success-400)" },
+  open: { bg: "var(--warning-100)", fg: "var(--warning-600)" },
+  progress: { bg: "var(--info-100)", fg: "var(--info-600)" },
+  done: { bg: "var(--success-100)", fg: "var(--success-600)" },
   closed: { bg: "var(--gray-100)", fg: "var(--gray-600)" },
 };
 
 const DISPO_TONE: Record<ErasureDisposition, { bg: string; fg: string }> = {
-  erase: { bg: "var(--danger-100)", fg: "var(--danger-500)" },
-  retain: { bg: "var(--info-100)", fg: "var(--info-500)" },
-  undecided: { bg: "var(--warning-100)", fg: "var(--warning-500)" },
+  erase: { bg: "var(--danger-100)", fg: "var(--danger-600)" },
+  retain: { bg: "var(--info-100)", fg: "var(--info-600)" },
+  undecided: { bg: "var(--warning-100)", fg: "var(--warning-600)" },
   "out-of-reach": { bg: "var(--gray-100)", fg: "var(--gray-600)" },
 };
 

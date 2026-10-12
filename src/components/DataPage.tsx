@@ -5304,7 +5304,7 @@ function dominantTimeBucket(events: CooccurEvent[]) {
 
 const STATUS_BADGE_META: Record<RedfaceNode["status"], { bg:string; text:string }> = {
   VIP: { bg:"var(--primary-100)", text:"var(--primary-400)" },
-  Suspect: { bg:"var(--warning-200)", text:"var(--warning-500)" },
+  Suspect: { bg:"var(--warning-200)", text:"var(--warning-600)" },
   Unknown: { bg:"var(--gray-100)", text:"var(--gray-500)" },
 };
 
@@ -5923,8 +5923,8 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
 }
 
 const TIER_BADGE_META: Record<"tier1"|"tier2"|"tier3", { bg:string; text:string; label:Record<AppLanguage, string> }> = {
-  tier1: { bg:"var(--danger-100)", text:"var(--danger-400)", label:{ en:"Tier 1 (red zone)", ko:"1단계 (적색 구간)" } },
-  tier2: { bg:"var(--warning-200)", text:"var(--warning-500)", label:{ en:"Tier 2 (orange zone)", ko:"2단계 (주황 구간)" } },
+  tier1: { bg:"var(--danger-100)", text:"var(--danger-600)", label:{ en:"Tier 1 (red zone)", ko:"1단계 (적색 구간)" } },
+  tier2: { bg:"var(--warning-200)", text:"var(--warning-600)", label:{ en:"Tier 2 (orange zone)", ko:"2단계 (주황 구간)" } },
   tier3: { bg:"var(--gray-100)", text:"var(--gray-600)", label:{ en:"Tier 3 (slate zone)", ko:"3단계 (회색 구간)" } },
 };
 const COCAPTURE_COLOR: Record<"tier1"|"tier2"|"tier3", string> = {
@@ -6168,8 +6168,8 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
   ];
 
   const tierRows = [
-    { on:tier1On, toggle:() => setTier1On(o => !o), bg:"var(--danger-100)", text:"var(--danger-400)", short:"Tier 1", label:"Tier 1 red zone (>100)", count:REDFACE_TIER1.length, badgeBg:"var(--danger-400)" },
-    { on:tier2On, toggle:() => setTier2On(o => !o), bg:"var(--warning-100)", text:"var(--warning-500)", short:"Tier 2", label:"Tier 2 orange zone (10~99)", count:REDFACE_TIER2.length, badgeBg:"var(--warning-400)" },
+    { on:tier1On, toggle:() => setTier1On(o => !o), bg:"var(--danger-100)", text:"var(--danger-600)", short:"Tier 1", label:"Tier 1 red zone (>100)", count:REDFACE_TIER1.length, badgeBg:"var(--danger-400)" },
+    { on:tier2On, toggle:() => setTier2On(o => !o), bg:"var(--warning-100)", text:"var(--warning-600)", short:"Tier 2", label:"Tier 2 orange zone (10~99)", count:REDFACE_TIER2.length, badgeBg:"var(--warning-400)" },
     { on:tier3On, toggle:() => setTier3On(o => !o), bg:"var(--gray-100)", text:"var(--gray-700)", short:"Tier 3", label:"Tier 3 slate zone (<10)", count:REDFACE_TIER3.length, badgeBg:"var(--gray-600)" },
   ];
 

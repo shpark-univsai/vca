@@ -62,8 +62,8 @@ function csvEscape(value: string): string {
 }
 const PRIORITY_COLOR: Record<NonNullable<Person["priorityLabel"]>, { bg: string; color: string }> = {
   normal: { bg: "var(--gray-100)", color: "var(--gray-600)" },
-  high: { bg: "var(--warning-200)", color: "var(--warning-500)" },
-  very_high: { bg: "var(--danger-100)", color: "var(--danger-500)" },
+  high: { bg: "var(--warning-200)", color: "var(--warning-600)" },
+  very_high: { bg: "var(--danger-100)", color: "var(--danger-600)" },
 };
 
 // Priority values stored on Person are canonical English identifiers (see PRIORITY_LABELS above

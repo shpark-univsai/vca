@@ -739,7 +739,7 @@ export const PANEL_SHADOW = "0 1px 2px rgba(24,17,39,0.03), 0 1px 3px rgba(24,17
  */
 export const TYPE_META: Record<ProjectType, { label: string; bg: string; color: string }> = {
   smart_city: { label: "Smart City", bg: "var(--primary-100)", color: "var(--primary-400)" },
-  smart_school: { label: "Smart School", bg: "var(--success-100)", color: "var(--success-400)" },
+  smart_school: { label: "Smart School", bg: "var(--success-100)", color: "var(--success-600)" },
 };
 
 /** The project type's name in the reader's language. */

@@ -128,7 +128,7 @@ const FAILED: AccessEventKind[] = ["refused", "lockedOut"];
 const OUTCOME_STYLE: Record<AccessEventKind, { bg: string; fg: string; weight: number }> = {
   signIn: { bg: "var(--gray-100)", fg: "var(--gray-600)", weight: 600 },
   signOut: { bg: "transparent", fg: "var(--gray-400)", weight: 600 },
-  refused: { bg: "var(--danger-100)", fg: "var(--danger-500)", weight: 700 },
+  refused: { bg: "var(--danger-100)", fg: "var(--danger-600)", weight: 700 },
   lockedOut: { bg: "var(--danger-500)", fg: "var(--gray-0)", weight: 700 },
 };
 
