@@ -1141,6 +1141,26 @@ input:autofill {
  * `:not(:disabled)` throughout: a control that cannot be pressed must not answer the pointer as
  * if it could.
  */
+/*
+ * A SEGMENTED CONTROL'S UNSELECTED SEGMENT, ON HOVER (owner, 2026-10-12: 호버해서 보이게해서
+ * 수정해줘). Its own class because the direction has to be the opposite of every other hover
+ * here, and two reviewers caught that before it shipped.
+ *
+ * This widget already spends LIGHT on "selected": a white pill with --shadow-raised. So a hover
+ * that lightens walks toward the selected state — measured, --gray-100 against the white pill is
+ * 1.096, the same number this change exists to get away from, and a two-segment toggle with both
+ * halves pale stops saying which mode you are in. The picker rule a few hundred lines up says the
+ * same thing in its own words: hover and selected do not differ by fill.
+ *
+ * So hover goes DARKER than the track, not lighter: --gray-300 is 1.202 against the --gray-200
+ * track and 1.482 against the white pill. Pressable reads as "sinks", selected reads as "lifts".
+ *
+ * `!important` because the segments set `backgroundColor` inline and inline beats any selector.
+ * Applied conditionally — never to a selected segment, or hovering the white pill would grey it.
+ */
+.vca-hover-seg { transition: background-color .12s; }
+.vca-hover-seg:hover:not(:disabled) { background-color: var(--gray-300) !important; }
+
 .vca-hover-row { transition: background-color .12s; }
 .vca-hover-row:hover:not(:disabled) { background-color: var(--gray-50) !important; }
 

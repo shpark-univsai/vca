@@ -52,7 +52,27 @@ export function SegmentedControl<T extends string>({
   return (
     <div style={{
       display: "flex", alignItems: "center", flexShrink: 0,
-      backgroundColor: "var(--gray-100)",
+      /*
+       * --gray-200, not --gray-100 (owner, 2026-10-12: 토글 컬러 너무 탁해보여, then 지적한거 다
+       * 수정하고싶은데 after two adversarial reviews).
+       *
+       * WHY IT LOOKED FAINT, which neither the owner nor I had: on the two screens where the
+       * complaint started, the map's own ground IS --gray-100 — 9px from this track on Redmap,
+       * 21px on the dashboard. The track was the same grey as the enormous thing beside it, so it
+       * could not read as a surface. Against the white selected pill it measured 1.096, which is
+       * an outline, not a face. --gray-200 takes that to 1.233.
+       *
+       * THE OBJECTION THAT TURNED OUT NOT TO APPLY: globals.css records --gray-200 being refused
+       * elsewhere because "that exact value already means 'not this segment' on Best Frame's hour
+       * and minute bars". It was refused there for a SELECTED row — the opposite sense. Best
+       * Frame draws `active ? --gray-0 : --gray-200`, so white means selected and --gray-200 means
+       * the unselected ground, which is exactly what it means here. Same vocabulary, not a clash.
+       *
+       * The seven other copies of this widget move with it — the three hand-drawn ones in
+       * DataPage, the collapsed sidebar rail, and both skeletons — because a toggle that changes
+       * grey when you collapse a panel, or when the skeleton hands over, is worse than a faint one.
+       */
+      backgroundColor: "var(--gray-200)",
       borderRadius: RADIUS.control,
       /* 2px, and the segments are 6px, so the inner corner sits concentric inside the outer one
          rather than floating in it — outer radius minus padding, which is the one thing every
@@ -71,6 +91,9 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(opt.value)}
             title={opt.title}
             aria-pressed={active}
+            /* Only while unselected — see .vca-hover-seg. On the selected pill it would grey out
+               the one thing that says which mode is on. */
+            className={active ? undefined : "vca-hover-seg"}
             style={{
               flex: fill ? 1 : undefined,
               padding: sm ? "3px 9px" : "0 16px",
@@ -82,7 +105,11 @@ export function SegmentedControl<T extends string>({
               fontFamily: "inherit",
               backgroundColor: active ? "white" : "transparent",
               boxShadow: active ? "var(--shadow-raised)" : "none",
-              color: active ? "var(--gray-900)" : "var(--gray-500)",
+              /* One step down with the track. --gray-500 on --gray-200 measures 3.87 where it
+                 was 4.35 on --gray-100; --gray-600 restores it. The reviews caught this — a
+                 darker ground that leaves its label behind trades one legibility problem for
+                 another. */
+              color: active ? "var(--gray-900)" : "var(--gray-600)",
               fontSize: sm ? "10px" : "13px",
               fontWeight: active ? 800 : 600,
               letterSpacing: sm ? "-0.1px" : "-0.26px",

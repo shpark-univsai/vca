@@ -1185,7 +1185,9 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
   };
 
   const inputBase: React.CSSProperties = {
-    background: "none", border: "none", outline: "none",
+    /* outline AND box-shadow — clearing only the outline leaves the shared ring's 3px halo
+       drawing a second rectangle inside the field. The wrapper (.vca-field) carries the ring. */
+    background: "none", border: "none", outline: "none", boxShadow: "none",
     fontSize: "13px", fontWeight: 600, color: "var(--gray-800)",
     fontFamily: "'SUIT', sans-serif",
   };
@@ -1360,7 +1362,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             {/* License plate */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
               <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-500)", whiteSpace: "nowrap" }}>{t.licensePlate}</span>
-              <div style={{
+              <div className="vca-field" style={{
                 display: "flex", alignItems: "center", gap: "6px",
                 border: BORDER,
                 /* A field you type into, 36px, in a row whose date trigger is 8px — the pill said

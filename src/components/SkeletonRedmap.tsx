@@ -21,9 +21,14 @@ function SearchBarSkeleton() {
     }}>
       {/* Mode toggle — 8px track, 6px segments, the shape shared/SegmentedControl draws. It was a
           pill here and a pill there; both moved together. */}
-      <div style={{ display: "flex", alignItems: "center", backgroundColor: "var(--gray-100)", borderRadius: "var(--radius-control)", padding: "2px", gap: "2px" }}>
+      {/* --gray-200, with the real toggle — otherwise the track darkens a step in the frame the
+          skeleton hands over, which is exactly the layout-jump this file exists to avoid.
+          The unselected bone goes to --gray-300 for the same reason in reverse: at
+          --gray-200 it would dissolve into the track it sits on and the toggle would look
+          like one segment while loading and two after. */}
+      <div style={{ display: "flex", alignItems: "center", backgroundColor: "var(--gray-200)", borderRadius: "var(--radius-control)", padding: "2px", gap: "2px" }}>
         <Bone w="76px" h="32px" color="white" radius="var(--radius-inner)" />
-        <Bone w="76px" h="32px" color="var(--gray-200)" radius="var(--radius-inner)" />
+        <Bone w="76px" h="32px" color="var(--gray-300)" radius="var(--radius-inner)" />
       </div>
 
       <div style={{ width: "1px", height: "20px", backgroundColor: "var(--gray-200)", margin: "0 16px" }} />

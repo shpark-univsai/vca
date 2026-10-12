@@ -2401,14 +2401,22 @@ function SimilarityControl({ value, onChange, height = 36, cost }: { value:numbe
           SegmentedControl draws (8px outer, 6px segments) rather than the pill it had. The pill
           here was the slider's shape — and the track below IS a pill, which is the case the rule
           keeps it for. */}
-      <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:RADIUS.control, padding:"2px", height }}>
+      {/* Hand-drawn copy of SegmentedControl — the track, the label and the hover move with it,
+          or this dialog ends up with two greys side by side. See that component's note. */}
+      <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-200)", borderRadius:RADIUS.control, padding:"2px", height }}>
         {[60,70,80,90].map(v => {
           const active = value === v;
           return (
-            <button key={v} onClick={() => onChange(v)} style={{
+            <button key={v} onClick={() => onChange(v)} className={active ? undefined : "vca-hover-seg"} style={{
               flex:1, borderRadius:RADIUS.inner, border:"none", cursor:"pointer",
               backgroundColor: active ? "white" : "transparent",
-              color: active ? "var(--primary-400)" : "var(--gray-400)", fontWeight: active ? 700 : 600, fontSize:"12px",
+              /* --gray-500, one step down with the track: --gray-400 on --gray-200 measures 2.08.
+                 And boxShadow explicitly none — unlike the shared component these buttons set no
+                 inline shadow, so the global focus halo (3px --gray-100) is live here and on a
+                 --gray-200 track it would bleed past the 2px padding into the next segment, in
+                 the same grey as the hover. */
+              color: active ? "var(--primary-400)" : "var(--gray-500)", fontWeight: active ? 700 : 600, fontSize:"12px",
+              boxShadow: "none",
             }}>{v}%</button>
           );
         })}
@@ -3944,7 +3952,18 @@ function CandidateCard({ c, selected, onClick }:
       tabIndex={0}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
       aria-pressed={selected}
-      className="vca-hover-row"
+      /*
+        `vca-hover-card`, not `vca-hover-row` — a regression from inverting the panel tints
+        (2026-10-12). `vca-hover-row` paints the hover ground --gray-50, which is now exactly
+        the colour of the results panel behind these cards: a card the pointer is ON went from
+        1.046 contrast against its ground to 1.000, so hovering made the card DISAPPEAR.
+        
+        `vca-hover-card` is the treatment written for this case — its own note says it exists for
+        cards whose whole body is the target and that it draws an OUTLINE rather than a border,
+        because some of them already use the border to mean 「picked」. These do: a selected card
+        takes a --primary-400 border. So the card keeps its white and gains a grey outline.
+      */
+      className="vca-hover-card"
       style={{
       position:"relative", width:"144px", backgroundColor:"white",
       border: selected ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
@@ -4121,15 +4140,16 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
           </button>
         )}
       </div>
+        {/* Hand-drawn copy of SegmentedControl — moves with it. See that component's note. */}
         {layout === "grid" && (
-          <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:RADIUS.control, padding:"2px", flexShrink:0 }}>
+          <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-200)", borderRadius:RADIUS.control, padding:"2px", flexShrink:0 }}>
             {([["reg", t.sortRegistered], ["abc", t.sortAbc]] as const).map(([id, label]) => {
               const active = sortMode === id;
               return (
-                <button key={id} onClick={() => setSortMode(id)} style={{
+                <button key={id} onClick={() => setSortMode(id)} className={active ? undefined : "vca-hover-seg"} style={{
                   padding:"4px 8px", borderRadius:RADIUS.inner, border:"none", cursor:"pointer",
                   backgroundColor: active ? "white" : "transparent",
-                  color: active ? "var(--gray-900)" : "var(--gray-400)", fontWeight: active ? 700 : 600, fontSize:"10px",
+                  color: active ? "var(--gray-900)" : "var(--gray-500)", fontWeight: active ? 700 : 600, fontSize:"10px",
                   boxShadow: active ? "var(--shadow-raised)" : "none",
                 }}>{label}</button>
               );
@@ -4524,7 +4544,10 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                 <RegistryVipPicker selected={vipPerson} onSelect={selectVIP} />
               </div>
 
-              <div style={{ height:"1px", backgroundColor:"var(--gray-200)" }} />
+              {/* No rule between the sections (owner, 2026-10-12: 중간에 라인 지워줘). The column
+                  already separates them: a 16px gap and a bold heading open each one. A line on
+                  top of that is a second mark for a break the eye has already taken, and it was
+                  the only one in the column — five sections, one rule, no rule saying why there. */}
 
               <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
                 <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.searchByImage}</span>
@@ -6127,13 +6150,14 @@ function AssociateGraphView({ primaryTarget, onSwitchTarget, onGoAnalyzeFrame }:
               <ResetIconSm /> Reset
             </button>
           </div>
-          <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-100)", borderRadius:RADIUS.control, padding:"4px" }}>
+          {/* Hand-drawn copy of SegmentedControl — moves with it. See that component's note. */}
+          <div style={{ display:"flex", gap:"2px", backgroundColor:"var(--gray-200)", borderRadius:RADIUS.control, padding:"4px" }}>
             {(["pyramid","grid"] as const).map(v => {
               const active = view === v;
               return (
-                <button key={v} onClick={() => setView(v)} title={v === "pyramid" ? t.viewPyramid : t.viewGrid} style={{ display:"flex", alignItems:"center", gap:"6px", padding:"6px 12px",
+                <button key={v} onClick={() => setView(v)} title={v === "pyramid" ? t.viewPyramid : t.viewGrid} className={active ? undefined : "vca-hover-seg"} style={{ display:"flex", alignItems:"center", gap:"6px", padding:"6px 12px",
                   borderRadius:RADIUS.inner, border:"none", cursor:"pointer",
-                  backgroundColor: active ? "white" : "transparent", color: active ? "var(--gray-900)" : "var(--gray-500)",
+                  backgroundColor: active ? "white" : "transparent", color: active ? "var(--gray-900)" : "var(--gray-600)",
                   fontSize:"12px", fontWeight: active ? 700 : 600 }}>
                   {v === "pyramid" ? <LayersIconSm/> : <TableIconSm/>} {v === "pyramid" ? t.pyramidAndZone : t.dataGrid}
                 </button>

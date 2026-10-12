@@ -101,7 +101,10 @@ function SidebarSkeleton() {
       {/* The tab toggle, in the shape it will have when it arrives — 8px track, 6px segment, 2px
           padding, matching shared/SegmentedControl. A skeleton drawing a pill makes the control
           change shape at the moment the data lands, which reads as a layout jump. */}
-      <div style={{ width: "100%", display: "flex", gap: "2px", padding: "2px", backgroundColor: "var(--gray-100)", borderRadius: "var(--radius-control)" }}>
+      {/* --gray-200 with the real toggle, so the track does not darken a step in the frame this
+          hands over. The bones are already safe: the --gray-200 pair sits inside the white
+          selected half, and the unselected half's are --gray-300. */}
+      <div style={{ width: "100%", display: "flex", gap: "2px", padding: "2px", backgroundColor: "var(--gray-200)", borderRadius: "var(--radius-control)" }}>
         <div style={{
           flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
           padding: "8px 16px", backgroundColor: "white", borderRadius: "var(--radius-inner)", boxShadow: "0px 1px 1px rgba(24, 17, 39,0.03)",

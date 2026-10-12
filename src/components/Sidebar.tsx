@@ -2007,7 +2007,10 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
   return (
     <div onMouseLeave={() => setHovered(null)} style={{ width:"60px", flexShrink:0, height:"100%", backgroundColor:"white", ...(position === "right" ? { borderLeft: BORDER } : { borderRight: BORDER }), display:"flex", flexDirection:"column", alignItems:"center", padding:"12px 0", overflow:"hidden", position:"relative" }}>
       {/* Tab toggle */}
-      <div style={{ width:"44px", backgroundColor:"var(--gray-100)", borderRadius:RADIUS.control, padding:"4px", display:"flex", flexDirection:"column", gap:"4px", flexShrink:0 }}>
+      {/* --gray-200 with the shared control. This is the same toggle, drawn vertically for the
+          60px rail — if only the expanded one moved, collapsing the panel would change the
+          toggle's grey, which is a worse answer than the faint track was. */}
+      <div style={{ width:"44px", backgroundColor:"var(--gray-200)", borderRadius:RADIUS.control, padding:"4px", display:"flex", flexDirection:"column", gap:"4px", flexShrink:0 }}>
         {panels.events && (
         <button onClick={() => setTab("EVENTS")} aria-label={t.events} style={{ width:"36px", height:"32px", borderRadius:RADIUS.inner, border:"none", cursor:"pointer", backgroundColor: tab==="EVENTS" ? "var(--primary-400)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
