@@ -55,6 +55,12 @@ const T = {
     pickTime: "Pick hour and minute",
     hour: "Hour",
     minute: "Min",
+    /** Appended to the hour/minute tooltip when that span holds records. The count belongs HERE and
+     *  not on a thumbnail: a thumbnail is one 2-second sample, so a per-minute number drawn on it
+     *  would claim something that picture does not contain (owner, 2026-10-12: 내가 초기 썸네일을
+     *  만들고 그안에 숫자를 넣은건 딱 그 2초안에 몇명 찍혔는지긴했거든 근데 B안으로 하면
+     *  거짓말아닌가). A bar cell IS the minute, so on the cell it is true. */
+    hits: (n: number) => `· ${n}`,
     weekdays: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
     exportFrame: "Export frame",
     exportNoGrant: "This account was not given frame export. An administrator grants it in Portal, under Users & Permissions.",
@@ -131,6 +137,7 @@ const T = {
     pickTime: "시·분 선택",
     hour: "시",
     minute: "분",
+    hits: (n: number) => `· ${n}건`,
     weekdays: ["일", "월", "화", "수", "목", "금", "토"],
     exportFrame: "프레임 반출",
     exportNoGrant: "이 계정에는 프레임 반출 권한이 없습니다. Portal의 사용자 및 권한에서 관리자가 켭니다.",
@@ -253,6 +260,20 @@ export const DET_COLOR: Record<DetType, string> = { VIP: "var(--primary-400)", V
  *
  * Purple that stays purple: DET_COLOR.VIP, the VIP boxes and crowns, the VIP filter chip's own
  * fill, and the play button (a primary action, not a selection).
+ *
+ * WHAT MOVED OFF THIS CONSTANT, AND WHAT DELIBERATELY DID NOT (owner, 2026-10-12).
+ * The selected thumbnail and the selected hour/minute cell now take --gradient-select, the owner's
+ * own draft style — a gradient rather than a flat colour, because this screen already spends three
+ * colours on detection CATEGORIES and a fourth flat one would be read as a fourth category (the
+ * note on that token has the measurements).
+ *
+ * The other four selection marks STAY --gray-900, and that is a decision, not an oversight: the
+ * calendar day, the VIP/Vehicle/Unknown filter chips, the reel card's focus ring and the Jump to
+ * hour/minute list. Asked whether they should follow, the owner said to leave them. So the
+ * sentence above — one constant so the reel, the feed and the timeline cannot drift into three
+ * different "selected" — now holds for those four only. Do not "unify" the two the gradient took;
+ * they are the frame you are looking at and the moment it sits in, which is the one thing on this
+ * screen the operator is steering, and it was given its own mark on purpose.
  */
 const SELECTED = "var(--gray-900)";
 
@@ -2437,7 +2458,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   display:"flex", flexDirection:"column", alignItems:"center", pointerEvents:"none", zIndex:5,
                 }}>
                   <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:RADIUS.pill, fontFamily:"monospace", whiteSpace:"nowrap" }}>
-                    {lang === "ko" ? `${pad2(hoveredHour)}${t.hour}` : `${t.hour} ${pad2(hoveredHour)}`}
+                    {(lang === "ko" ? `${pad2(hoveredHour)}${t.hour}` : `${t.hour} ${pad2(hoveredHour)}`)
+                      + (occupancy.known && occupancy.hours[hoveredHour] > 0 ? ` ${t.hits(occupancy.hours[hoveredHour])}` : "")}
                   </span>
                   <span style={{ width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:`6px solid ${SELECTED}`, marginTop:"-2px" }} />
                 </div>
@@ -2497,7 +2519,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   display:"flex", flexDirection:"column", alignItems:"center", pointerEvents:"none", zIndex:5,
                 }}>
                   <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:RADIUS.pill, fontFamily:"monospace", whiteSpace:"nowrap" }}>
-                    {lang === "ko" ? `${pad2(hoveredMinute)}${t.minute}` : `${t.minute} ${pad2(hoveredMinute)}`}
+                    {(lang === "ko" ? `${pad2(hoveredMinute)}${t.minute}` : `${t.minute} ${pad2(hoveredMinute)}`)
+                      + (occupancy.known && occupancy.minutes[hoveredMinute] > 0 ? ` ${t.hits(occupancy.minutes[hoveredMinute])}` : "")}
                   </span>
                   <span style={{ width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:`6px solid ${SELECTED}`, marginTop:"-2px" }} />
                 </div>

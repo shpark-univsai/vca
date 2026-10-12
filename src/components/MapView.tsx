@@ -227,6 +227,31 @@ function escapeHtml(s: string): string {
     c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === '"' ? "&quot;" : "&#39;");
 }
 
+/**
+ * An <img> for a popup that is built as an HTML string, with the broken-photo fallback that
+ * `shared/Photo` gives the rest of the product.
+ *
+ * Leaflet popups take markup, not React, so the component cannot be used here — and these four
+ * were the only <img> tags left in the app with no `onError` after the sweep, which means a crop
+ * the server could not serve showed the browser's own broken-image glyph on top of a map
+ * (owner, 2026-10-12: 이건 따로 처리해줘). The handler hides the image and reveals the glyph
+ * beside it; every one of these sits in a container that already carries its own ground, so what
+ * is left is a filled tile the same size as the picture rather than an empty box with a torn icon
+ * in the corner.
+ *
+ * No retry here, unlike Photo: a popup is opened, read and closed in a second or two, and a
+ * second request firing as it closes buys nothing.
+ */
+function popupPhoto(src: string): string {
+  const glyph = `<svg viewBox="0 0 24 24" fill="none" style="width:40%;height:40%;max-width:24px;max-height:24px">`
+    + `<circle cx="12" cy="11.5" r="8.2" stroke="currentColor" stroke-width="1.6"/>`
+    + `<circle cx="9.3" cy="10" r="1.1" fill="currentColor"/><circle cx="14.7" cy="10" r="1.1" fill="currentColor"/>`
+    + `<path d="M9 14.4c.8.8 1.8 1.2 3 1.2s2.2-.4 3-1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+  return `<img src="${escapeHtml(src)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"`
+    + ` onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex'" />`
+    + `<span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;color:var(--gray-400)">${glyph}</span>`;
+}
+
 function escapeAttr(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
@@ -664,7 +689,7 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
         <div style="text-align:center">
           <div style="width:60px;height:60px;border-radius:var(--radius-inner);background:var(--gray-100);overflow:hidden">
-            <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
+            ${popupPhoto(photoUrl)}
           </div>
           <span style="font-size:10px;color:var(--gray-400);display:block;margin-top:4px;letter-spacing:-0.2px">${t.captured}</span>
         </div>
@@ -695,7 +720,7 @@ function getPopupHTML(event: LiveEvent, lang: AppLanguage): string {
       </div>
 
       <div style="background:var(--gray-900);border-radius:var(--radius-inner);height:96px;overflow:hidden;position:relative">
-        <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
+        ${popupPhoto(photoUrl)}
         <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(24, 17, 39,0.8), rgba(24, 17, 39,0) 55%)"></div>
         <span style="position:absolute;bottom:8px;left:10px;font-size:9px;color:rgba(255,255,255,0.85);font-weight:700;letter-spacing:0.5px">${t.capturedFrame}</span>
       </div>
@@ -764,7 +789,7 @@ function getMarkerHTML(photoUrl: string): string {
   return `
     <div style="width:42px;height:56px;position:relative;display:flex;flex-direction:column;align-items:center">
       <div style="width:40px;height:40px;border-radius:50%;border:2.5px solid ${color};background:var(--gray-100);overflow:hidden;position:relative;z-index:2">
-        <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
+        ${popupPhoto(photoUrl)}
       </div>
       <div style="width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:18px solid ${color};margin-top:-12px;z-index:1"></div>
       <div style="width:6px;height:6px;border-radius:50%;background:${color};margin-top:-4px;z-index:1"></div>
@@ -1476,7 +1501,7 @@ export default function MapView({ selectedEvent, onCameraSelect, onDistrictSelec
                  ${others.map(ev => `
                    <div style="display:flex;align-items:center;gap:8px;padding:3px 0">
                      <div style="width:26px;height:26px;border-radius:50%;overflow:hidden;background:var(--gray-100);flex-shrink:0">
-                       <img src="${getFacePhoto(ev.id)}" style="width:100%;height:100%;object-fit:cover;display:block" alt="" />
+                       ${popupPhoto(getFacePhoto(ev.id))}
                      </div>
                      <span style="font-size:12px;font-weight:700;color:var(--gray-900);letter-spacing:-0.24px;
                                   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${escapeHtml(ev.name)}</span>
