@@ -21,7 +21,7 @@ import ScoreBadge from "./shared/ScoreBadge";
    fifteen of the app's radius values on its own — 2, 3, 4, 5, 6, 8, 9, 10, 12, 16, 100px, 999px
    and one computed as `${10 - nodeBorder}px` — so "card", "panel", "control", "inner", "pill" are
    now the only five shapes here, and 50% stays only where the thing IS a circle. */
-import { RADIUS } from "./shared/controls";
+import { RADIUS, CONTROL_HEIGHT } from "./shared/controls";
 import { SegmentedControl } from "./shared/SegmentedControl";
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
 import { DateRangeTrigger, dateWithinRange, fmtDate, type DateRangeValue } from "./shared/DateRangePicker";
@@ -965,7 +965,10 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
         <div ref={pickerRef} style={{ position:"relative", width:"152px" }}>
           <button onClick={() => setPickerOpen(o => !o)} className="vca-hover-row" style={{
             display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
-            padding:"8px 12px", borderRadius:RADIUS.control, backgroundColor:"white", border:"1px solid var(--primary-400)",
+            /* Height from the token, not from padding. 8px + 14px line + 8px + 2px border landed on
+               39, three off the shared control height and nine off the search rail beside it. */
+            height:CONTROL_HEIGHT, boxSizing:"border-box",
+            padding:"0 12px", borderRadius:RADIUS.control, backgroundColor:"white", border:"1px solid var(--primary-400)",
             cursor:"pointer",
           }}>
             <span style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"14px", fontWeight:700, color:"var(--primary-400)",
@@ -1603,7 +1606,15 @@ function SlidingSearchPanel({ expanded, onExpand, sidebar }: { expanded: boolean
           title={T[lang].smartSearch}
           className="vca-hover-row"
           style={{
-            width:"48px", height:"48px", borderRadius:RADIUS.control,
+            /* CONTROL_HEIGHT square, not 48 (owner, 2026-10-12: 돋보기 버튼 높이랑 그옆에 카메라
+               선택 셀렉트버튼 높이가 다른게 살짝 어색해보여). It sat at 48 beside a 39px camera
+               picker — both were off the shared control height, so matching them to each other
+               would only have moved the odd value around. Both are on the token now.
+
+               WIDTH STAYS 48 — the rail's full width. Taking it to a 36 square with the height
+               made the button read as shrunken next to a 152px pill (owner, 2026-10-12: 돋보기가
+               너무 작아진것같긴하다); only the height was ever the mismatch. */
+            width:"48px", height:CONTROL_HEIGHT, borderRadius:RADIUS.control,
             backgroundColor:"white", border:"none", display:"flex", alignItems:"center", justifyContent:"center",
             cursor:"pointer", color:"var(--gray-600)", flexShrink:0,
           }}
