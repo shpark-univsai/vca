@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import type { CSSProperties } from "react";
 import type { DetType, Detection, CamData } from "@/types/detection";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { clockMinutesIn, dateKeyIn, sgtDateKey, siteTimeZone } from "@/lib/time";
+import { clockMinutesIn, dateKeyIn, sgtDateKey, sgtHour, sgtMinute, siteTimeZone } from "@/lib/time";
 import ViewerWatermark, { viewerStampText } from "./ViewerWatermark";
 import {
   SIGNED_IN_USER, currentPortalUser, holdsAppAction, useActiveProjectId, useRetentionFloor, useVcaStore,
@@ -200,6 +200,13 @@ export interface DetailProps {
    *  first — for deep links (e.g. Dashboard's "Analyze Frame") whose whole point is landing on
    *  the analysis itself, not the plain camera view. */
   autoOpenDetail?: boolean;
+  /** The camera this view was opened from. Only used to fill the hour and minute bars with which
+   *  parts of the day actually hold records for THIS camera — without it they are 24 and 60
+   *  identical cells, which answers 「몇 시가 어디냐」 (the axis labels already do) but not
+   *  「어느 시간대에 뭔가 있었나」, which is the question an operator brings to a day bar.
+   *  Optional: deep links that land on a frame rather than a camera pass no id, and the bars then
+   *  stay plain rather than claiming an emptiness they did not check. */
+  camId?: string;
 }
 
 /**
@@ -1463,7 +1470,7 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
 }
 
 /* ── Main component ──────────────────────────────────────────── */
-export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedmapTrace, autoOpenDetail, initialDate, initialTime }: DetailProps) {
+export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedmapTrace, autoOpenDetail, initialDate, initialTime, camId }: DetailProps) {
   const [lang] = useLanguage();
   const t = T[lang];
   const [selectedPerson, setSelectedPerson] = useState<Detection | null>(autoOpenDetail ? initialDet : null);
@@ -1603,6 +1610,30 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
   const dayClockSec = ((selectedSec % 86400) + 86400) % 86400;
   const currentHour = Math.floor(dayClockSec / 3600) % HOURS_IN_DAY;
   const currentMinute = Math.floor((dayClockSec % 3600) / 60);
+
+  /* Which hours and minutes of the shown day this camera actually has records in.
+     The bars used to draw 24 and 60 cells that were all --gray-200, so the only thing on the row
+     was the cell you had just clicked — a slider with 24 notches wearing a timeline's clothes.
+     Counted from the store's own events by cameraId and the site's clock, so a day with nothing
+     in it looks like a day with nothing in it. Minute counts are for the selected hour only,
+     which is what the second bar spans. */
+  const dayEvents = useVcaStore(s => s.events);
+  const occupancy = useMemo(() => {
+    const hours = new Array<number>(HOURS_IN_DAY).fill(0);
+    const minutes = new Array<number>(60).fill(0);
+    if (!camId) return { hours, minutes, known: false };
+    const zone = siteTimeZone();
+    for (const e of dayEvents) {
+      if (e.cameraId !== camId) continue;
+      const when = new Date(e.timestamp);
+      if (Number.isNaN(when.getTime())) continue;
+      if (dateKeyIn(when, zone) !== trackDate) continue;
+      const h = sgtHour(when);
+      hours[h] += 1;
+      if (h === currentHour) minutes[sgtMinute(when)] += 1;
+    }
+    return { hours, minutes, known: true };
+  }, [dayEvents, camId, trackDate, currentHour]);
   // Sample frame points evenly spread across the visible span — the thumbnails ARE these points
   // (each one is "the frame at this instant"). Real per-second timestamps don't exist for every
   // visible span (a camera might have zero real hits in the current window), so this is a
@@ -2167,7 +2198,14 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       // RADIUS.inner, and the minute ruler below takes the same: these are
                       // segments of one track, which is the nested case the scale names, and one
                       // ruler at two tiers cannot be two radii (they were 4px and 2px).
-                      borderRadius:RADIUS.inner, backgroundColor: active ? SELECTED : "var(--gray-200)", cursor:"pointer",
+                      borderRadius:RADIUS.inner, cursor:"pointer",
+                      /* Three steps, in order of what the operator needs: --gray-200 nothing
+                         happened here, --gray-400 this hour holds records, SELECTED this is the
+                         one you are on. Unknown (no camera id) falls back to the plain ground
+                         rather than painting every hour as empty. */
+                      backgroundColor: active ? SELECTED
+                        : occupancy.known && occupancy.hours[h] > 0 ? "var(--gray-400)"
+                        : "var(--gray-200)",
                       boxSizing:"border-box",
                     }} />
                   );
@@ -2203,7 +2241,11 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       onMouseLeave={() => setHoveredMinute(prev => (prev === m ? null : prev))}
                       style={{
                       flex:1, height:"14px", padding:0, border:"none",
-                      borderRadius:RADIUS.inner, backgroundColor: active ? SELECTED : "var(--gray-200)", cursor:"pointer",
+                      borderRadius:RADIUS.inner, cursor:"pointer",
+                      /* Same three steps as the hour bar, counted inside the selected hour. */
+                      backgroundColor: active ? SELECTED
+                        : occupancy.known && occupancy.minutes[m] > 0 ? "var(--gray-400)"
+                        : "var(--gray-200)",
                       boxSizing:"border-box",
                     }} />
                   );

@@ -1692,6 +1692,7 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
     return (
       <BestFrameDetailPage
         camLabel={detailView.data.camLabel}
+        camId={detailView.camId}
         data={detailView.data}
         initialDet={detailView.det}
         initialDate={detailView.date}
