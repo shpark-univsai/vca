@@ -1308,9 +1308,20 @@ async function composeFrameExport(input: FrameExportInput): Promise<Blob> {
 
 type RequesterKind = NonNullable<ExportRecord["requesterKind"]>;
 
+/* The export dialog's three fields — legal basis, recipient, purpose.
+ *
+ * These are typed into and they had NO focus state at all: the inline `outline: none` killed the
+ * shared ring's outline but left its box-shadow, so clicking one drew a --gray-100 halo (1.10 on
+ * white) around an unchanged border. Somebody writing the legal basis for a footage export had a
+ * screen with no cursor on it. The fields now take .vca-field, which is this product's answer for
+ * an input that IS its own box: the border goes --primary-400 and the halo --primary-100.
+ *
+ * And the resting edge is --line-control, the token that exists for exactly this — "the edge of a
+ * box you can type in". It was --gray-300: hue 214°, the slate half of the ramp, and at 1.48 the
+ * same lightness as a CARD edge, so these read as three cards rather than three fields. */
 const EXPORT_FIELD_STYLE: CSSProperties = {
   width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: RADIUS.control,
-  border: "1px solid var(--gray-300)", outline: "none",
+  border: "1px solid var(--line-control)", outline: "none", boxShadow: "none",
   fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", fontFamily: "inherit",
   backgroundColor: "white",
 };
@@ -1448,17 +1459,17 @@ function FrameExportDialog({ subject, footage, fileName, watermarkOn, othersInFr
           <div>
             <ExportFieldLabel text={t.exportLegalBasis} required />
             <input value={legalBasis} onChange={e => setLegalBasis(e.target.value)}
-              placeholder={t.exportLegalBasisHint} style={EXPORT_FIELD_STYLE} />
+              placeholder={t.exportLegalBasisHint} className="vca-field" style={EXPORT_FIELD_STYLE} />
           </div>
           <div>
             <ExportFieldLabel text={t.exportRecipient} />
             <input value={recipient} onChange={e => setRecipient(e.target.value)}
-              placeholder={t.exportRecipientHint} style={EXPORT_FIELD_STYLE} />
+              placeholder={t.exportRecipientHint} className="vca-field" style={EXPORT_FIELD_STYLE} />
           </div>
           <div>
             <ExportFieldLabel text={t.exportPurpose} />
             <input value={reason} onChange={e => setReason(e.target.value)}
-              placeholder={t.exportPurposeHint} style={EXPORT_FIELD_STYLE} />
+              placeholder={t.exportPurposeHint} className="vca-field" style={EXPORT_FIELD_STYLE} />
           </div>
         </div>
 
