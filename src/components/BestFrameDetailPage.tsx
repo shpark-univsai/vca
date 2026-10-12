@@ -2153,11 +2153,17 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     position:"relative", width:"128px", flexShrink:0,
                     display:"flex", flexDirection:"column", alignItems:"center", gap:"6px", cursor:"pointer",
                   }}>
-                    <div style={{
+                    <div className={isSelected ? "vca-grad-ring" : undefined} style={{
                       width:"100%", aspectRatio:"8/5", boxSizing:"border-box",
                       // The frame you are on, not a frame with a VIP in it — the crown chip and
                       // the alert marker inside the thumbnail are what say that, in purple and red.
-                      border: `${framePx}px solid ${isSelected ? SELECTED : "var(--gray-200)"}`,
+                      // Selected takes --gradient-select (the owner's own draft style) rather than
+                      // a flat colour — see the note on that token. The ring's interior is the
+                      // --gray-800 the photo sits on, so no white hairline shows if the photo is
+                      // still loading. Unselected keeps its plain --gray-200 edge.
+                      ...(isSelected
+                        ? { ["--ring-w" as string]: `${framePx}px`, ["--ring-fill" as string]: "var(--gray-800)" }
+                        : { border: `${framePx}px solid var(--gray-200)` }),
                       borderRadius:RADIUS.inner,
                     }}>
                       <div style={{ width:"100%", height:"100%", overflow:"hidden", borderRadius:`calc(${RADIUS.inner} - ${framePx}px)`, position:"relative", backgroundColor:"var(--gray-800)" }}>
@@ -2231,13 +2237,16 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                          would drag the crown's --primary-400 to a value that is in no palette —
                          and that class's own note says it is for a bare glyph with no box to fill.
                          These cells have a box, so the box tints and the crown keeps its token. */
-                      className="vca-hover-quiet"
+                      className={active ? "vca-grad-ring vca-hover-quiet" : "vca-hover-quiet"}
                       onMouseEnter={() => setHoveredHour(h)}
                       onMouseLeave={() => setHoveredHour(prev => (prev === h ? null : prev))}
                       style={{
                       // No radius of its own: the cells are panes of one grid, and the row rounds
                       // its own two ends. A radius here is what made 24 of these read as beads.
-                      flex:1, height:"20px", padding:0, border:"none", borderRadius:0, cursor:"pointer",
+                      // The ring needs a border box to paint in, and an inline `border` beats the
+                      // class, so the transparent band is declared here for the selected cell.
+                      flex:1, height:"20px", padding:0, borderRadius:0, cursor:"pointer",
+                      border: active ? "2px solid transparent" : "none",
                       /* Three steps, in order of what the operator needs: --gray-200 nothing
                          happened here, --gray-400 this hour holds records, SELECTED this is the
                          one you are on. Unknown (no camera id) falls back to the plain ground
@@ -2278,7 +2287,6 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                          decision on :239 bars purple from SELECTION marks, not from content.
                          Budget: ~11 of 24 cells ≈ 0.8% of the screen. */
                       backgroundColor:"var(--gray-0)",
-                      boxShadow: active ? `inset 0 0 0 2px ${SELECTED}` : "none",
                       display:"flex", alignItems:"center", justifyContent:"center",
                       boxSizing:"border-box",
                     }}>
@@ -2316,15 +2324,15 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   const active = m === currentMinute;
                   return (
                     <button key={m} onClick={() => jumpTo(currentHour * 3600 + m * 60 + (selectedSec % 60))}
-                      className="vca-hover-quiet"
+                      className={active ? "vca-grad-ring vca-hover-quiet" : "vca-hover-quiet"}
                       onMouseEnter={() => setHoveredMinute(m)}
                       onMouseLeave={() => setHoveredMinute(prev => (prev === m ? null : prev))}
                       style={{
-                      flex:1, height:"14px", padding:0, border:"none", borderRadius:0,
+                      flex:1, height:"14px", padding:0, borderRadius:0,
+                      border: active ? "2px solid transparent" : "none",
                       cursor:"pointer",
                       /* Same two channels as the hour rule, counted inside the selected hour. */
                       backgroundColor:"var(--gray-0)",
-                      boxShadow: active ? `inset 0 0 0 2px ${SELECTED}` : "none",
                       display:"flex", alignItems:"center", justifyContent:"center",
                       boxSizing:"border-box",
                     }}>

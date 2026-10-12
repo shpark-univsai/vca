@@ -128,6 +128,25 @@
      Figma: 「Line/control」 (added 2026-09-29). */
   --line-control: #e2e2f0;
 
+  /* SELECTION GRADIENT — the owner's own draft style (Figma 「gradients / 선형」, values read off it
+     2026-10-12: 52D5FF 0% · 0047FF 51% · DBB7FF 100%).
+
+     WHY A GRADIENT AND NOT A COLOUR. Best Frame already spends three colours on WHAT a detection
+     is — --primary-400 VIP, --type-vehicle Vehicle, --type-unknown Unknown — so any fourth flat
+     colour put on 「this is the one you are looking at」 gets read as a fourth category. That is
+     exactly why the purple selection marks were pulled out in 2026-09-17. Measured, nothing was
+     left: --info-500 is hue 210° against Vehicle's 198° (one family), --magenta-500 317° sits next
+     to VIP's 249°, and success/danger/warning already mean alarm. A gradient is the way out — it
+     belongs to no single hue, so it cannot be mistaken for a category, and it reads as a state of
+     the UI instead.
+
+     The three stops stay separate tokens so the ramp can be reused (and so a single stop can be
+     corrected) rather than being frozen inside one gradient string. */
+  --grad-select-from: #52d5ff;
+  --grad-select-mid:  #0047ff;
+  --grad-select-to:   #dbb7ff;
+  --gradient-select: linear-gradient(90deg, var(--grad-select-from) 0%, var(--grad-select-mid) 51%, var(--grad-select-to) 100%);
+
   /* A CARD'S OUTER EDGE — the one line that separates a white panel from the page.
      Defined 2026-09-29 (owner: 카드들이나 아래 테이블에 테두리가 너무 연해서 배경 보랏빛이랑
      대비가 안돼보이는거 아닌가). It was: card fill vs the ground measures 1.04:1, so the fill does
@@ -1234,3 +1253,24 @@ input:autofill {
 /* A word that is a button, with no box at rest. A fill box appearing around it is the "word that
    only became a button on hover" this file warns about elsewhere. */
 .vca-hover-underline:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
+
+
+/* A gradient ring, drawn as a border rather than painted over the content.
+
+   Two background layers do it with no pseudo-element and no mask, so it works on an element whose
+   children are already laid out (a timeline cell with a crown in it, a thumbnail with a photo in
+   it): the first layer is the element's own ground clipped to padding-box, the second is
+   --gradient-select clipped to border-box, and the transparent border lets the second show through
+   only in the border band. border-radius applies to both, so the ring follows the corner.
+
+   `--ring-w` sets the thickness (default 2px) and `--ring-fill` the interior, so the same class
+   serves a white cell and a photo tile. See the note on --gradient-select for why the selection
+   mark on this screen is a gradient and not a fourth flat colour. */
+.vca-grad-ring {
+  border: var(--ring-w, 2px) solid transparent;
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  background-image:
+    linear-gradient(var(--ring-fill, var(--gray-0)), var(--ring-fill, var(--gray-0))),
+    var(--gradient-select);
+}
