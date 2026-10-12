@@ -24,7 +24,7 @@ import ScoreBadge from "./shared/ScoreBadge";
 import { RADIUS } from "./shared/controls";
 import { SegmentedControl } from "./shared/SegmentedControl";
 import { useLanguage, type AppLanguage } from "@/lib/i18n";
-import { DateRangeTrigger, CalendarIconSm, dateWithinRange, fmtDate, type DateRangeValue } from "./shared/DateRangePicker";
+import { DateRangeTrigger, dateWithinRange, fmtDate, type DateRangeValue } from "./shared/DateRangePicker";
 
 /**
  * See the per-file pattern note in lib/i18n.ts.
@@ -1770,20 +1770,16 @@ function LiveSearchSidebar({
 
       <div className="vca-hide-scrollbar" style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:"18px" }}>
         <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:"6px", color:"var(--gray-700)" }}>
-            <CalendarIconSm size={12} color="var(--gray-700)" />
-            <span style={{ fontSize:"12px", fontWeight:700 }}>{t.dateRange}</span>
-          </div>
+          {/* No icon — see the rule noted at the RedFace dialog's headings. This one is why the
+              four were not a rule: the same 「기간」 carried a calendar here and none there. */}
+          <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>{t.dateRange}</span>
           <DateRangeTrigger lang={lang} minDate={retentionFloor} value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText={t.last7days} showIcon={false} />
         </div>
 
         {tab === "Photo" && (
           <>
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:"6px", color:"var(--gray-700)" }}>
-                <HistoryIconSm />
-                <span style={{ fontSize:"12px", fontWeight:700 }}>{t.recentTargets}</span>
-              </div>
+              <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>{t.recentTargets}</span>
               {/* Same card, scrollbar and selected-first ordering as RedFace's target picker —
                   two places offering the same list were reading as two different features, one
                   showing when each target was used and one not. */}
@@ -3313,13 +3309,6 @@ function VehicleIconSm({ size = 16 }: { size?: number } = {}) {
     </svg>
   );
 }
-function HistoryIconSm() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
-      <path d="M1.5 6C1.5 6.89002 1.76392 7.76005 2.25839 8.50007C2.75285 9.24009 3.45566 9.81686 4.27792 10.1575C5.10019 10.4981 6.00499 10.5872 6.87791 10.4135C7.75082 10.2399 8.55264 9.81132 9.18198 9.18198C9.81132 8.55264 10.2399 7.75082 10.4135 6.87791C10.5872 6.00499 10.4981 5.10019 10.1575 4.27792C9.81686 3.45566 9.24009 2.75285 8.50007 2.25839C7.76005 1.76392 6.89002 1.5 6 1.5C4.74198 1.50473 3.53448 1.99561 2.63 2.87L1.5 4M4 4H1.5V1.5M6 3.5V6L8 7" stroke="currentColor" strokeLinecap="round"/>
-    </svg>
-  );
-}
 function ImageIconSm({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -4112,11 +4101,14 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"8px", width:"100%" }}>
       <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-      <div style={{ flex:1, display:"flex", alignItems:"center", gap:"6px", height:"30px", padding:"0 8px", borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white", minWidth:0 }}>
+      {/* The ring belongs to the whole field — see `.vca-field` in globals.css. Clearing only
+          `outline` on the input leaves the shared rule's halo drawing a square grey box inside
+          this rounded one, which is what it used to do here. */}
+      <div className="vca-field" style={{ flex:1, display:"flex", alignItems:"center", gap:"6px", height:"30px", padding:"0 8px", borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white", minWidth:0, transition:"border-color 0.12s, box-shadow 0.12s" }}>
         <SearchIconSm />
         <input
           value={query} onChange={e => setQuery(e.target.value)} placeholder={t.searchRegistry}
-          style={{ flex:1, border:"none", outline:"none", background:"none", fontSize:"12px", fontWeight:500, color:"var(--gray-900)", minWidth:0 }}
+          style={{ flex:1, border:"none", outline:"none", boxShadow:"none", background:"none", fontSize:"12px", fontWeight:500, color:"var(--gray-900)", minWidth:0 }}
         />
         {query && (
           <button onClick={() => setQuery("")} aria-label={t.clearSearch} className="vca-hover-darken" style={{
@@ -4445,21 +4437,39 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
             empty space is put to use widening this panel instead (VIP/filter grids get more room
             per row). Once a target or filter is actually set, results are the thing worth
             focusing on, so this narrows back down and gives that space back to them. */}
-        <div style={{ width: hasAnyFilter ? "340px" : "480px", flexShrink:0, backgroundColor:"var(--gray-50)", borderRight:BORDER,
+        {/*
+          THE TINT MOVED TO THE OTHER SIDE (owner, 2026-10-12: 이쪽 배경색을 흰색으로 바꾸고,
+          오른쪽에 검색결과 후보들 보여지는쪽을 배경색을 넣어주면 어떨까).
+
+          The two halves do opposite jobs and had it backwards. This column is a FORM — pick a
+          target, drop an image, set a span — and a form wants its ground to sit still so the
+          fields are what the eye lands on. The right half is a GRID OF CANDIDATES, which is
+          read rather than filled in, and a grid of white cards on a tinted ground separates
+          itself: every card is an object without needing a border of its own to say so.
+
+          It also takes a line out of the toggle below, which only existed because of this
+          surface — see the note there.
+        */}
+        <div style={{ width: hasAnyFilter ? "340px" : "480px", flexShrink:0, backgroundColor:"white", borderRight:BORDER,
           display:"flex", flexDirection:"column", overflow:"hidden", transition:"width 0.25s ease" }}>
         <div className="vca-hide-scrollbar" style={{ flex:1, minHeight:0,
           padding:"20px", overflowY:"auto", display:"flex", flexDirection:"column", gap:"16px" }}>
 
           {/* The shared control — 레드맵's 사람/차량, the dashboard's EVENTS/SYSTEM and this are one
               widget now, not three drawings of one idea. See shared/SegmentedControl.
-              The grey override stays: var(--gray-100) (the component's own track) on this panel's
-              var(--gray-50) background is two near-identical light grays, so the whole well — and
-              with it VEHICLE's inactive state — barely registered against the page at all. */}
+
+              THE OVERRIDE IS GONE WITH THE GREY IT WAS FOR. It read 「var(--gray-200) plus a
+              1px var(--gray-300) border」, added because the component's own var(--gray-100)
+              track on a var(--gray-50) panel was two near-identical greys. The owner saw the
+              result as a line drawn around the toggle — 「겉에 라인이 있는것도 어색해보이는데
+              배경색을 유지하면서 그걸 없앨방법이 없어서」 — and she was right that the background
+              was what made it necessary. On white, gray-100 is a surface again and the border
+              has nothing left to do. */}
           <SegmentedControl<"PERSON"|"VEHICLE">
             value={searchType}
             onChange={setSearchType}
             fill
-            style={{ backgroundColor:"var(--gray-200)", border:"1px solid var(--gray-300)", width:"100%" }}
+            style={{ width:"100%" }}
             options={[
               { value:"PERSON",  label:"PERSON",  icon:() => <PersonIconSm/> },
               { value:"VEHICLE", label:"VEHICLE", icon:() => <VehicleIconSm/> },
@@ -4469,10 +4479,20 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
           {!isVehicle && (
             <>
               <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:"4px", color:"var(--gray-700)" }}>
-                  <HistoryIconSm />
-                  <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.recentTargets}</span>
-                </div>
+                {/* NO ICON ON A PANEL HEADING (owner, 2026-10-12: 여기에만 아이콘이 있는게
+                    어색한데). Measured before deciding: of the section headings across this
+                    dialog and the monitoring sidebar, four carried one and eighteen did not, and
+                    the four were not a rule — 「기간」 had a calendar in the sidebar and none here,
+                    the same word answering differently on two screens. They were also drawn in
+                    the heading's own --gray-700, so they were not marking anything as important
+                    either. A crown beside 「VIP 등록부」 and a clock beside 「최근」 say what the
+                    words already say, which is the subtitle-under-a-title failure.
+                    
+                    THE RULE, for the next heading somebody adds: a panel heading gets no icon.
+                    An icon is for a place that has to be told apart WITHOUT words (a tab) or that
+                    has to say it can be pressed (the collapse chevron, the calendar inside a date
+                    field). Those stay. */}
+                <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.recentTargets}</span>
                 {/* One scrolling row, same as VIP quick select right below it — the picker used to
                     show the first two of the list and silently drop the rest, so a target used an
                     hour ago wasn't reachable from here at all. Scrolling holds however many the
@@ -4500,10 +4520,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
               </div>
 
               <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:"4px", color:"var(--gray-700)" }}>
-                  <StarIconSm />
-                  <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.vipRegistry}</span>
-                </div>
+                <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.vipRegistry}</span>
                 <RegistryVipPicker selected={vipPerson} onSelect={selectVIP} />
               </div>
 
@@ -4663,7 +4680,8 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
         </div>
         </div>
 
-        <div style={{ flex:1, padding:"20px", display:"flex", flexDirection:"column", gap:"16px", overflow:"hidden" }}>
+        {/* The candidates' ground — see the note on the form column. */}
+        <div style={{ flex:1, padding:"20px", display:"flex", flexDirection:"column", gap:"16px", overflow:"hidden", backgroundColor:"var(--gray-50)" }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
               <span style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-800)" }}>{t.searchResults}</span>

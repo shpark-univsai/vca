@@ -682,10 +682,21 @@ body {
    Suppressing it left the login screen with no focus indicator at all, which for a keyboard user
    is a screen with no cursor. So the wrapper takes the ring: same colour as the shared rule,
    drawn on the box the operator actually sees. */
-.vca-auth-field:focus-within {
+/* …and the same thing wherever else this shape appears. `.vca-field` is the general name; the
+   auth one keeps its own because its markup is already written against it.
+   
+   The trap this exists for bit twice (owner, 2026-10-12: 여기 인풋 클릭하면 첨부사진처럼 박스가
+   생기는데 … 입력중 상태일땐 그 인풋창 전체가 라인이 색이 변해야하는데). An inner <input> that
+   clears only `outline` still gets the shared rule's `box-shadow: 0 0 0 3px` — and that halo is
+   drawn around the bare input, which has no corner radius of its own, so a SQUARE grey box
+   appears inside a rounded field the moment it is clicked. Clearing both on the input and letting
+   the wrapper carry the ring is the fix; the note on the :focus-visible rule says the same. */
+.vca-auth-field:focus-within,
+.vca-field:focus-within {
   border-color: var(--primary-300) !important;
   box-shadow: 0 0 0 3px var(--primary-100);
 }
+.vca-field:focus-within input { outline: none; box-shadow: none; }
 
 /* One ring, not two. A 2px white casing with a dark hairline OUTSIDE it made every dot a
    bullseye, and at this zoom there are fifty-nine of them on one map — concentric rings repeated
