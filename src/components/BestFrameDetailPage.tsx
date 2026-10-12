@@ -1719,11 +1719,22 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
     // basis field was also seeking the footage behind the scrim.
   }, [dateOpen, selectedPerson, exportOpen]);
 
-  // Keeps the selected thumbnail in view as it changes — mainly for step/jump navigation, which
-  // can land on a frame that's scrolled off to either side of the now-scrollable strip. A plain
-  // thumbnail click never needs this since whatever was clicked is already on screen.
+  /* Keeps the selected thumbnail in view as it changes — but ONLY when it is not already in view.
+     The comment here used to say "a plain thumbnail click never needs this since whatever was
+     clicked is already on screen", and then scrolled on every change anyway. So every click
+     re-centred the strip: the frame you had just aimed at slid to the middle and everything else
+     slid under your cursor, which is why the selection always appeared in the centre no matter
+     which one you picked (owner, 2026-10-12: 어느시간을 선택해도 모두 가운데에서 시간이 바뀌거든
+     … 인터렉션이 어색하다). Now a click leaves the strip where it is and the ring moves to what you
+     clicked; stepping or jumping to a frame that is off to one side still brings it in. */
   useEffect(() => {
-    thumbRefs.current[centerThumbIdx]?.scrollIntoView({ inline:"center", block:"nearest", behavior:"smooth" });
+    const el = thumbRefs.current[centerThumbIdx];
+    const strip = el?.parentElement;
+    if (!el || !strip) return;
+    const e = el.getBoundingClientRect();
+    const s = strip.getBoundingClientRect();
+    if (e.left >= s.left && e.right <= s.right) return;
+    el.scrollIntoView({ inline:"center", block:"nearest", behavior:"smooth" });
   }, [centerThumbIdx]);
 
   return (
@@ -2152,12 +2163,13 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     // STILL MISSING, and not inventable from here: the strip has no name, so a
                     // screen reader reaching that stop is told nothing. It needs one word of copy
                     // (and an aria-label on this container) from the owner.
-                    // No hover outline on the one that is already marked: .vca-hover-card draws a
-                    // --gray-400 ring just outside this card, which on the selected frame lands
-                    // around the gradient ring as a second, greyer edge (owner, 2026-10-12: 호버
-                    // 라인 해결해줘). An unselected frame still gets it — that is what says the
-                    // strip is clickable.
-                    className={isSelected ? undefined : "vca-hover-card"}
+                    /* NO HOVER OUTLINE AT ALL (owner, 2026-10-12: 이거 호버할때 라인 그려지는거
+                       지워줘 이상해). .vca-hover-card drew a --gray-400 ring around the whole card
+                       — the picture AND its time label — so pointing at a frame boxed a photo and
+                       a line of text together, and on the selected one it landed just outside the
+                       gradient ring as a second, greyer edge. The strip's affordance is the cursor
+                       and the fact that the pictures are plainly a filmstrip; it does not need a
+                       box drawn round a piece of evidence. */
                     style={{
                     position:"relative", flexShrink:0,
                     /* GROWN, NOT SCALED — see the note on the hour cell. transform let the lifted
