@@ -171,7 +171,13 @@
   --success-400: #16a34a;
 
   /* Semantic — Warning */
-  --warning-100: #fffbeb;
+  /* FDEDE3, from the Figma variable (owner, 2026-10-12: 포털에 주황색 칩 배경색이 너무 연해서
+     있는둥 없는둥 하는뎅). It was #fffbeb — contrast 1.04 against a white card, where the other
+     four 100 steps sit at 1.13-1.16, so a 32x32 warning tile on a white surface was all but
+     invisible. It was also the wrong hue: a YELLOW ground (H48) under an orange mark (H23), so
+     the tile and its icon read as two different warnings. This shares the 400's hue, which is
+     what the icon and the heading on these cards are drawn in. */
+  --warning-100: #fdede3;
   --warning-200: #fef3c7;
   --warning-300: #fce1b3;
   --warning-400: #e8600a;
