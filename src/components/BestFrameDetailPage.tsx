@@ -2191,10 +2191,17 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   divisions away instead made it a scrollbar: nothing to aim at. Every time-slot
                   grid in the field (SavvyCal, Calendly, Pin, Bonsai, Clockwise, User Interviews)
                   does the same third thing — cells share their edges, divided by a 1px rule, no
-                  rounding of their own. The gap IS that rule here: the row's background is --line,
-                  so the 1px between cells is the hairline, and the ends round once on the row. */}
-              <div style={{ display:"flex", gap:"1px", backgroundColor:"var(--line)",
-                borderRadius:RADIUS.inner, overflow:"hidden", border:"1px solid var(--line)" }}>
+                  rounding of their own. The gap IS that rule here: the row's background shows
+                  through as the hairline, and the ends round once on the row.
+
+                  The rule is --gray-300, not --line. Once the cells went white, --line measured
+                  1.23 against them and the grid stopped being readable — you could not see where
+                  one hour ended (owner, 2026-10-12: 라인색을 살짝 더 진하게 해줘야하지않아?).
+                  --gray-300 is 1.48 there. NOT --gray-400, which is the fill that means "this hour
+                  holds records": a rule in the same value as the content would read as content.
+                  The ladder stands — rule 1.48 < record < selected. */}
+              <div style={{ display:"flex", gap:"1px", backgroundColor:"var(--gray-300)",
+                borderRadius:RADIUS.inner, overflow:"hidden", border:"1px solid var(--gray-300)" }}>
                 {Array.from({ length: HOURS_IN_DAY }, (_, h) => {
                   const active = h === currentHour;
                   return (
@@ -2250,8 +2257,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             </div>
             <div style={{ position:"relative", marginTop:"8px" }}>
               {/* Same hairline grid as the hour rule above. */}
-              <div style={{ display:"flex", gap:"1px", backgroundColor:"var(--line)",
-                borderRadius:RADIUS.inner, overflow:"hidden", border:"1px solid var(--line)" }}>
+              <div style={{ display:"flex", gap:"1px", backgroundColor:"var(--gray-300)",
+                borderRadius:RADIUS.inner, overflow:"hidden", border:"1px solid var(--gray-300)" }}>
                 {Array.from({ length: MINUTES_IN_HOUR }, (_, m) => {
                   const active = m === currentMinute;
                   return (
