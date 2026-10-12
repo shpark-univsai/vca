@@ -1626,6 +1626,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
     const zone = siteTimeZone();
     for (const e of dayEvents) {
       if (e.cameraId !== camId) continue;
+      // Person hits only. addEvent also takes plain system events with no personType (see the note
+      // on VcaEvent), and a device log is not what a crown-coloured cell on a VIP timeline claims.
+      if (e.personType == null) continue;
       const when = new Date(e.timestamp);
       if (Number.isNaN(when.getTime())) continue;
       if (dateKeyIn(when, zone) !== trackDate) continue;
@@ -2236,8 +2239,26 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                          deliberate design, so the light one simply looked out of place beside the
                          dark one. Content is the FILL, position is a BORDER (inset, so it cannot
                          push the grid around) — and a selected hour that holds records now shows
-                         both at once instead of one hiding the other. */
-                      backgroundColor: occupancy.known && occupancy.hours[h] > 0 ? "var(--gray-400)" : "var(--gray-0)",
+                         both at once instead of one hiding the other.
+
+                         THE FILL IS --primary-300, NOT A GREY (owner, 2026-10-12: 그 보라빛 들어간
+                         컬러 추가한걸로 바꾸면 어떨까). Measured, this ramp runs slate from gray-50
+                         to gray-600 (210-217°) and purple only at 700-900 (258-259°), and the two
+                         purple-leaning neutrals that were added for lines (--line, --line-control,
+                         240°) sit at 91-93% lightness — too light to be a fill. So there is no
+                         mid-tone purple NEUTRAL to reach for, and the honest choice is the purple
+                         itself: --primary-300 measures 3.04 on a white cell (--gray-400 was 2.56),
+                         2.05 against the --gray-300 rule, 6.02 against the selected outline.
+                         --primary-200 was the other candidate and fails — 1.11 against the rule,
+                         so the hairlines would vanish inside a filled run.
+
+                         It is also what this product already means by that value: a dropzone that
+                         HOLDS a photo takes a --primary-300 edge, and a verification box that HOLDS
+                         a digit does the same. 「Something is here」 is the sentence. And purple is
+                         allowed to say it, because what is here IS a VIP detection — the 2026-09-17
+                         decision on :239 bars purple from SELECTION marks, not from content.
+                         Budget: ~11 of 24 cells ≈ 0.8% of the screen. */
+                      backgroundColor: occupancy.known && occupancy.hours[h] > 0 ? "var(--primary-300)" : "var(--gray-0)",
                       boxShadow: active ? `inset 0 0 0 2px ${SELECTED}` : "none",
                       boxSizing:"border-box",
                     }} />
@@ -2278,7 +2299,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       flex:1, height:"14px", padding:0, border:"none", borderRadius:0,
                       cursor:"pointer",
                       /* Same three steps as the hour rule, counted inside the selected hour. */
-                      backgroundColor: occupancy.known && occupancy.minutes[m] > 0 ? "var(--gray-400)" : "var(--gray-0)",
+                      backgroundColor: occupancy.known && occupancy.minutes[m] > 0 ? "var(--primary-300)" : "var(--gray-0)",
                       boxShadow: active ? `inset 0 0 0 2px ${SELECTED}` : "none",
                       boxSizing:"border-box",
                     }} />
