@@ -657,7 +657,7 @@ export default function PortalShell() {
                   }}
                 >
                   <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)" }}>
-                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: "var(--gray-900)" }} />
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--gray-900)" }} />
                     {fleetOnline}
                   </span>
                   {/* The offline figure is the only coloured thing left in the bar, and it earns
@@ -670,7 +670,7 @@ export default function PortalShell() {
 
                       A zero is grey, because "none offline" is not news. */}
                   <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 700, color: fleetOffline > 0 ? "var(--warning-500)" : "var(--gray-400)" }}>
-                    <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: fleetOffline > 0 ? "var(--warning-500)" : "var(--gray-300)" }} />
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: fleetOffline > 0 ? "var(--warning-500)" : "var(--gray-300)" }} />
                     {fleetOffline}
                   </span>
                 </button>

@@ -64,6 +64,19 @@ export function Photo({ src, alt = "", kind = "face", style, className, onClick,
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
+      /* ALSO CHECK ON MOUNT, not just onError.
+         React attaches its error listener after hydration, so an image that already failed before
+         then — which is exactly what happens on a server-rendered page whose photo host is
+         unreachable — fires its error event into nobody and the fallback never runs. Measured on
+         Portal's Overview: three 36px crops showed the browser's broken-image glyph while every
+         client-rendered photo on the same site fell back correctly. `complete` with a zero
+         naturalWidth is the state of an <img> that has finished and has no picture. */
+      ref={el => {
+        if (el && el.complete && el.naturalWidth === 0) {
+          if (attempt === 0 && retryable) setAttempt(1);
+          else setFailed(true);
+        }
+      }}
       src={resolved}
       alt={alt}
       className={className}

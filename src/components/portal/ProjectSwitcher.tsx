@@ -454,7 +454,13 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                   placeholder={t.searchPlaceholder}
                   style={{
                     width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 32px", borderRadius: RADIUS.control,
-                    border: searchFocused ? "1px solid var(--primary-400)" : BORDER, outline: "none",
+                    /* --line-control at rest (the token for "edge of a box you type in", not the
+                       page hairline) and --primary-100 for the halo — this was the one field in
+                       Portal still taking the shared ring's --gray-100 glow while its border went
+                       purple, so it said the focus thing in two colours. */
+                    border: searchFocused ? "1px solid var(--primary-400)" : "1px solid var(--line-control)",
+                    outline: "none",
+                    boxShadow: searchFocused ? "0 0 0 3px var(--primary-100)" : "none",
                     fontSize: "13px", fontFamily: "inherit",
                   }}
                 />

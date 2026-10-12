@@ -1900,7 +1900,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                               PortalShared. Offline and refusing are both faults; the words tell
                               them apart. */}
                           <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0, fontSize: "12px", fontWeight: 600, color: online ? "var(--gray-500)" : "var(--gray-900)" }}>
-                            <span style={{ width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0, backgroundColor: online ? "var(--gray-300)" : TONE_STYLE.fault.fg }} />
+                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", flexShrink: 0, backgroundColor: online ? "var(--gray-300)" : TONE_STYLE.fault.fg }} />
                             <span style={{ flexShrink: 0 }}>{online ? t.online : c.status === "error" ? t.refusing : t.offline}</span>
                             {/* Two or more, not one or more. Every offline camera dropped at least
                                 once — that is what being offline means — so 「7일간 1회」 next to
