@@ -2102,7 +2102,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
           {/* 4px of top padding, not 8: the thumbnail and its time label move up as a pair so the
               scrollbar below them is not squeezed against the labels. See the paddingBottom note
               on the strip itself — the two numbers are one adjustment. */}
-          <div style={{ padding:"4px 16px 0", position:"relative" }}>
+          <div style={{ padding:"0 16px 0", position:"relative" }}>
             {/* Thumbnail strip — horizontally scrollable. There are more sampled frames
                 (THUMB_COUNT) than fit on screen at once, each a fixed width rather than a
                 flex:1 cell, so the row overflows and scrolls instead of shrinking every
@@ -2120,7 +2120,11 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 rather than a control under it. 16 gives the same 10px of clearance the labels have
                 above them, and with the 4px taken off this block's top padding the thumbnail and
                 its label sit slightly higher as a pair, which is what the room comes from. */}
-            <div className="vca-thin-scrollbar" style={{ position:"relative", paddingBottom:"16px", zIndex:2, display:"flex", alignItems:"flex-end", gap:"4px", overflowX:"auto" }}>
+            {/* 4px of top padding so the selected thumbnail's extra height has somewhere to go —
+                this box clips (overflow-x:auto makes overflow-y:auto), and without it the grown
+                frame's top edge was cut. Taken back off the wrapper's own top padding below, so
+                the strip sits exactly where it did. */}
+            <div className="vca-thin-scrollbar" style={{ position:"relative", paddingTop:"4px", paddingBottom:"16px", zIndex:2, display:"flex", alignItems:"flex-end", gap:"4px", overflowX:"auto" }}>
               {thumbFrames.map((sec, i) => {
                 const isSelected = i === centerThumbIdx;
                 const vipCount = vipByThumb.get(i) ?? 0;
@@ -2148,9 +2152,23 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     // STILL MISSING, and not inventable from here: the strip has no name, so a
                     // screen reader reaching that stop is told nothing. It needs one word of copy
                     // (and an aria-label on this container) from the owner.
-                    className="vca-hover-card"
+                    // No hover outline on the one that is already marked: .vca-hover-card draws a
+                    // --gray-400 ring just outside this card, which on the selected frame lands
+                    // around the gradient ring as a second, greyer edge (owner, 2026-10-12: 호버
+                    // 라인 해결해줘). An unselected frame still gets it — that is what says the
+                    // strip is clickable.
+                    className={isSelected ? undefined : "vca-hover-card"}
                     style={{
-                    position:"relative", width:"128px", flexShrink:0,
+                    position:"relative", flexShrink:0,
+                    /* GROWN, NOT SCALED — see the note on the hour cell. transform let the lifted
+                       thumbnail paint outside the strip, which clips (an overflow-x:auto box
+                       computes overflow-y:auto too), so its top edge was cut (오너: 썸네일쪽 위에
+                       잘리는거). Real width with matching negative side margins keeps the row's
+                       rhythm; aspect-ratio carries the height, and the strip's 4px of top padding
+                       is the room it grows into. */
+                    ...(isSelected
+                      ? { width:"134px", marginLeft:"-3px", marginRight:"-3px" }
+                      : { width:"128px" }),
                     display:"flex", flexDirection:"column", alignItems:"center", gap:"6px", cursor:"pointer",
                   }}>
                     <div className={isSelected ? "vca-grad-ring" : undefined} style={{
@@ -2178,9 +2196,8 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                          goes up into the padding instead of pushing the time labels down. 4% of
                          128x80 is ~5x3px — enough to catch the eye, small enough that the strip's
                          rhythm still reads. zIndex lifts it over its neighbours' edges. */
-                      ...(isSelected ? { transform:"scale(1.04)", transformOrigin:"bottom center", zIndex:1 } : null),
+                      ...(isSelected ? { zIndex:1 } : null),
                       position:"relative",
-                      transition:"transform 0.14s ease",
                     }}>
                       <div style={{ width:"100%", height:"100%", overflow:"hidden", borderRadius:`calc(${RADIUS.inner} - ${framePx}px)`, position:"relative", backgroundColor:"var(--gray-800)" }}>
                         <Photo kind="frame" src={data.bgUrl ?? ""}
