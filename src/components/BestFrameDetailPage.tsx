@@ -1636,8 +1636,25 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
       hours[h] += 1;
       if (h === currentHour) minutes[sgtMinute(when)] += 1;
     }
+    /* And the frame that is on screen right now.
+       The grid counts the store's events; the feed above draws a curated CamData frame, and the
+       two are different sources (see the project note on the app's two data paths). Measured, that
+       crack was visible in one screenshot: the minute cell for the selected minute was empty while
+       the picture above it showed that minute's detections. A row that says 「nothing here」 under a
+       picture of something here is the screen telling a lie, so the frame's own VIP detections are
+       folded in. Not a foreign source — the frame IS this camera's record of that moment. VIP only,
+       because a purple cell on this row claims a VIP sighting and the store has no vehicle or
+       unknown events to balance it with. */
+    for (const d of data.detections) {
+      if (d.type !== "VIP") continue;
+      if (d.date !== trackDate) continue;
+      const [hh, mm] = d.time.split(":").map(Number);
+      if (!Number.isFinite(hh) || !Number.isFinite(mm)) continue;
+      hours[hh % HOURS_IN_DAY] = (hours[hh % HOURS_IN_DAY] ?? 0) + 1;
+      if (hh % HOURS_IN_DAY === currentHour) minutes[mm] = (minutes[mm] ?? 0) + 1;
+    }
     return { hours, minutes, known: true };
-  }, [dayEvents, camId, trackDate, currentHour]);
+  }, [dayEvents, camId, trackDate, currentHour, data.detections]);
   // Sample frame points evenly spread across the visible span — the thumbnails ARE these points
   // (each one is "the frame at this instant"). Real per-second timestamps don't exist for every
   // visible span (a camera might have zero real hits in the current window), so this is a
@@ -2210,9 +2227,11 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   const active = h === currentHour;
                   return (
                     <button key={h} onClick={() => jumpTo(h * 3600 + (selectedSec % 3600))}
-                      /* darken, not a tint: these cells' fill carries whether the hour holds
-                         records, and a hover that repaints the background would erase that. */
-                      className="vca-hover-darken"
+                      /* .vca-hover-quiet, not darken. darken is `filter: brightness(.88)`, which
+                         would drag the crown's --primary-400 to a value that is in no palette —
+                         and that class's own note says it is for a bare glyph with no box to fill.
+                         These cells have a box, so the box tints and the crown keeps its token. */
+                      className="vca-hover-quiet"
                       onMouseEnter={() => setHoveredHour(h)}
                       onMouseLeave={() => setHoveredHour(prev => (prev === h ? null : prev))}
                       style={{
@@ -2258,10 +2277,15 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                          allowed to say it, because what is here IS a VIP detection — the 2026-09-17
                          decision on :239 bars purple from SELECTION marks, not from content.
                          Budget: ~11 of 24 cells ≈ 0.8% of the screen. */
-                      backgroundColor: occupancy.known && occupancy.hours[h] > 0 ? "var(--primary-300)" : "var(--gray-0)",
+                      backgroundColor:"var(--gray-0)",
                       boxShadow: active ? `inset 0 0 0 2px ${SELECTED}` : "none",
+                      display:"flex", alignItems:"center", justifyContent:"center",
                       boxSizing:"border-box",
-                    }} />
+                    }}>
+                      {occupancy.known && occupancy.hours[h] > 0 && (
+                        <TypeIcon type="VIP" color="var(--primary-400)" size={12} solid />
+                      )}
+                    </button>
                   );
                 })}
               </div>
@@ -2292,17 +2316,22 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   const active = m === currentMinute;
                   return (
                     <button key={m} onClick={() => jumpTo(currentHour * 3600 + m * 60 + (selectedSec % 60))}
-                      className="vca-hover-darken"
+                      className="vca-hover-quiet"
                       onMouseEnter={() => setHoveredMinute(m)}
                       onMouseLeave={() => setHoveredMinute(prev => (prev === m ? null : prev))}
                       style={{
                       flex:1, height:"14px", padding:0, border:"none", borderRadius:0,
                       cursor:"pointer",
-                      /* Same three steps as the hour rule, counted inside the selected hour. */
-                      backgroundColor: occupancy.known && occupancy.minutes[m] > 0 ? "var(--primary-300)" : "var(--gray-0)",
+                      /* Same two channels as the hour rule, counted inside the selected hour. */
+                      backgroundColor:"var(--gray-0)",
                       boxShadow: active ? `inset 0 0 0 2px ${SELECTED}` : "none",
+                      display:"flex", alignItems:"center", justifyContent:"center",
                       boxSizing:"border-box",
-                    }} />
+                    }}>
+                      {occupancy.known && occupancy.minutes[m] > 0 && (
+                        <TypeIcon type="VIP" color="var(--primary-400)" size={10} solid />
+                      )}
+                    </button>
                   );
                 })}
               </div>
