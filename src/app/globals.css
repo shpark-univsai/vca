@@ -607,6 +607,10 @@ body {
   scrollbar-color: var(--gray-300) transparent;
 }
 .vca-thin-scrollbar::-webkit-scrollbar {
+  /* BOTH axes. This was `height` alone, written for the horizontal strips that first used the
+     class; styling ::-webkit-scrollbar without a `width` leaves a vertical scroller with no
+     usable bar, which is the opposite of what the class is for. */
+  width: 6px;
   height: 6px;
 }
 .vca-thin-scrollbar::-webkit-scrollbar-track {

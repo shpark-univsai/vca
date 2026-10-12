@@ -1768,7 +1768,9 @@ function LiveSearchSidebar({
         })}
       </div>
 
-      <div className="vca-hide-scrollbar" style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:"18px" }}>
+      {/* Visible bar, with the RedFace picker's column — this sidebar runs to ~480px of hidden
+          content on the VIP tab, and the two screens should not disagree about it. */}
+      <div className="vca-thin-scrollbar" style={{ flex:1, overflowY:"auto", padding:"16px", display:"flex", flexDirection:"column", gap:"18px" }}>
         <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
           {/* No icon — see the rule noted at the RedFace dialog's headings. This one is why the
               four were not a rule: the same 「기간」 carried a calendar here and none there. */}
@@ -4352,8 +4354,21 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
   // also covers a manually uploaded face/body with no target picked — faceSrc/bodySrc already
   // fall back to uploadedFace/uploadedBody, so uploading a photo drives results the same way
   // picking a Recent target or VIP does, instead of the upload being purely cosmetic.
-  const targetCandidates: RedfaceCandidate[] | null = searchType === "PERSON" && (faceSrc || bodySrc)
-    ? buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, genderAbbrevOf(target?.gender ?? gender), 20, siteCameras)
+  /**
+   * True while a face or body image is what the results are built from.
+   *
+   * This is the fork the panel never showed. With an image attached the candidates come from
+   * buildTargetResultRows, whose parameters are the image, the target's own gender and the site's
+   * cameras — it cannot see 복장·소지품·상의/하의/신발색, and it does not read the dates either
+   * (see emptyReason below). So every one of those controls was sitting there taking input that
+   * changed nothing, and 최근 타깃 even switches some of them on by itself (selectRecentTarget).
+   * They are hidden while this is true, and the gender fallback below is cut for the same reason:
+   * a hidden control that still narrows the search is worse than a visible dead one.
+   * (owner, 2026-10-12: 사진이 붙으면 속성 영역을 … 숨김 — 웅)
+   */
+  const photoDrivesResults = searchType === "PERSON" && !!(faceSrc || bodySrc);
+  const targetCandidates: RedfaceCandidate[] | null = photoDrivesResults
+    ? buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, genderAbbrevOf(target?.gender), 20, siteCameras)
         .filter(r => r.similarity >= threshold)
         .map(p => ({ id: p.id, url: p.url, cam: p.cam, time: p.time, similarity: p.similarity, plate: p.plate }))
     : null;
@@ -4374,7 +4389,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
       || topColors.length > 0 || bottomColors.length > 0 || shoesColors.length > 0;
     if (!hasQuery) return null;
     const pool = (faceSrc || bodySrc)
-      ? buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, genderAbbrevOf(target?.gender ?? gender), 20, siteCameras)
+      ? buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, genderAbbrevOf(target?.gender), 20, siteCameras)
       : filterReidData({ searchType, gender, apparel, props, dateRange, threshold: 0, licensePlate, topColors, bottomColors, shoesColors, siteCameras });
     if (!pool.length) return null;
     return { kept: pool.filter(r => r.similarity >= threshold).length, total: pool.length };
@@ -4402,7 +4417,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
     if (targetCandidates) {
       // A target search never reads the dates — buildTargetResultRows does not look at them — so
       // the threshold is the only rule that can have dropped anything here.
-      const pool = buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, genderAbbrevOf(target?.gender ?? gender), 20, siteCameras);
+      const pool = buildTargetResultRows(faceSrc ?? bodySrc!, bodySrc ?? faceSrc!, genderAbbrevOf(target?.gender), 20, siteCameras);
       return { candidates: pool.length, bySimilarity: pool.length, byDate: 0 };
     }
     const query = { searchType, gender, apparel, props, licensePlate, topColors, bottomColors, shoesColors, siteCameras };
@@ -4472,7 +4487,10 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
         */}
         <div style={{ width: hasAnyFilter ? "340px" : "480px", flexShrink:0, backgroundColor:"white", borderRight:BORDER,
           display:"flex", flexDirection:"column", overflow:"hidden", transition:"width 0.25s ease" }}>
-        <div className="vca-hide-scrollbar" style={{ flex:1, minHeight:0,
+        {/* A visible bar, not a hidden one. Until the dialog got a height cap this column never
+            scrolled at all, so the hidden bar cost nothing; now it carries up to ~450px of content
+            below the fold and the operator needs to know it is there (owner, 2026-10-12). */}
+        <div className="vca-thin-scrollbar" style={{ flex:1, minHeight:0,
           padding:"20px", overflowY:"auto", display:"flex", flexDirection:"column", gap:"16px" }}>
 
           {/* The shared control — 레드맵's 사람/차량, the dashboard's EVENTS/SYSTEM and this are one
@@ -4620,12 +4638,14 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
             </>
           )}
 
-          <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-            <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.dateRange}</span>
-            {/* The same default this component is given everywhere else, from T — spelled out
-                as a literal here it stayed English under a Korean label. */}
-            <DateRangeTrigger lang={lang} minDate={retentionFloor} value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText={t.last7days} />
-          </div>
+          {!photoDrivesResults && (
+            <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+              <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.dateRange}</span>
+              {/* The same default this component is given everywhere else, from T — spelled out
+                  as a literal here it stayed English under a Korean label. */}
+              <DateRangeTrigger lang={lang} minDate={retentionFloor} value={dateRange} onApply={setDateRange} mode="split" size="sm" emptyText={t.last7days} />
+            </div>
+          )}
 
           {isVehicle && (
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
@@ -4649,7 +4669,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
             <SimilarityControl value={threshold} onChange={setThreshold} height={34} cost={thresholdCost} />
           </div>
 
-          {!isVehicle && (
+          {!isVehicle && !photoDrivesResults && (
             <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
               {/* A full-width disclosure row, so the hover is a band across the row, not a shade on
                   the word. It was .vca-hover-darken — brightness(.88) over a transparent background,
