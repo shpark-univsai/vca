@@ -2182,7 +2182,19 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               first sight there. */}
           <div style={{ padding:"0 16px 10px" }}>
             <div style={{ position:"relative" }}>
-              <div style={{ display:"flex", gap:"2px" }}>
+              {/* HAIRLINE-SEPARATED CELLS, NOT ROUNDED BLOCKS WITH GAPS (owner, 2026-10-12:
+                  칸 박스로 있어야 시간이나 분을 선택하기 쉬워지는데 … 그냥 스크롤처럼 해버리면
+                  안돼 — after a continuous track was tried and rightly rejected).
+
+                  Each cell used to carry its own 6px radius and a 2px gap, so 24 of them read as a
+                  dashed texture and three greys scattered through it read as a stain. Taking the
+                  divisions away instead made it a scrollbar: nothing to aim at. Every time-slot
+                  grid in the field (SavvyCal, Calendly, Pin, Bonsai, Clockwise, User Interviews)
+                  does the same third thing — cells share their edges, divided by a 1px rule, no
+                  rounding of their own. The gap IS that rule here: the row's background is --line,
+                  so the 1px between cells is the hairline, and the ends round once on the row. */}
+              <div style={{ display:"flex", gap:"1px", backgroundColor:"var(--line)",
+                borderRadius:RADIUS.inner, overflow:"hidden" }}>
                 {Array.from({ length: HOURS_IN_DAY }, (_, h) => {
                   const active = h === currentHour;
                   return (
@@ -2194,18 +2206,16 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       onMouseEnter={() => setHoveredHour(h)}
                       onMouseLeave={() => setHoveredHour(prev => (prev === h ? null : prev))}
                       style={{
-                      flex:1, height:"22px", padding:0, border:"none",
-                      // RADIUS.inner, and the minute ruler below takes the same: these are
-                      // segments of one track, which is the nested case the scale names, and one
-                      // ruler at two tiers cannot be two radii (they were 4px and 2px).
-                      borderRadius:RADIUS.inner, cursor:"pointer",
+                      // No radius of its own: the cells are panes of one grid, and the row rounds
+                      // its own two ends. A radius here is what made 24 of these read as beads.
+                      flex:1, height:"20px", padding:0, border:"none", borderRadius:0, cursor:"pointer",
                       /* Three steps, in order of what the operator needs: --gray-200 nothing
                          happened here, --gray-400 this hour holds records, SELECTED this is the
                          one you are on. Unknown (no camera id) falls back to the plain ground
                          rather than painting every hour as empty. */
                       backgroundColor: active ? SELECTED
                         : occupancy.known && occupancy.hours[h] > 0 ? "var(--gray-400)"
-                        : "var(--gray-200)",
+                        : "var(--gray-100)",
                       boxSizing:"border-box",
                     }} />
                   );
@@ -2231,7 +2241,9 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
               ))}
             </div>
             <div style={{ position:"relative", marginTop:"8px" }}>
-              <div style={{ display:"flex", gap:"1px" }}>
+              {/* Same hairline grid as the hour rule above. */}
+              <div style={{ display:"flex", gap:"1px", backgroundColor:"var(--line)",
+                borderRadius:RADIUS.inner, overflow:"hidden" }}>
                 {Array.from({ length: MINUTES_IN_HOUR }, (_, m) => {
                   const active = m === currentMinute;
                   return (
@@ -2240,12 +2252,12 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       onMouseEnter={() => setHoveredMinute(m)}
                       onMouseLeave={() => setHoveredMinute(prev => (prev === m ? null : prev))}
                       style={{
-                      flex:1, height:"14px", padding:0, border:"none",
-                      borderRadius:RADIUS.inner, cursor:"pointer",
-                      /* Same three steps as the hour bar, counted inside the selected hour. */
+                      flex:1, height:"14px", padding:0, border:"none", borderRadius:0,
+                      cursor:"pointer",
+                      /* Same three steps as the hour rule, counted inside the selected hour. */
                       backgroundColor: active ? SELECTED
                         : occupancy.known && occupancy.minutes[m] > 0 ? "var(--gray-400)"
-                        : "var(--gray-200)",
+                        : "var(--gray-100)",
                       boxSizing:"border-box",
                     }} />
                   );
