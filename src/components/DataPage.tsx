@@ -4438,7 +4438,13 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
          bottom: measured, 21px and one button out of reach at 1440x900, and 96px with SEVEN
          buttons out (「기준 대상으로 지정」 among them) at 1440x620. Its own wrapper is the
          height that is actually free, so filling that is the honest cap. */
-      width:"1092px", maxWidth:"100%", display:"flex", flexDirection:"column", maxHeight:"100%", overflow:"hidden" }}>
+      /* 952px until there is something to show, 1092 after (owner, 2026-10-12: 검색전에도 좁혀진
+         만큼 오른쪽이 좁혀진 상태에서 시작해도될것같은뎅). Before a query the right half is 610px
+         holding one sentence, while the left — the only thing there is to do — sits at 480. The
+         card gives back the same 140px the left column gives up a moment later, on the same flag
+         and the same 0.25s, so picking a target is one motion outward rather than two. */
+      width: hasAnyFilter ? "1092px" : "952px", maxWidth:"100%", transition:"width 0.25s ease",
+      display:"flex", flexDirection:"column", maxHeight:"100%", overflow:"hidden" }}>
 
       <div style={{ padding:"16px 24px", borderBottom:BORDER, display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>

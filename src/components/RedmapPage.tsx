@@ -1742,6 +1742,13 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                     backgroundColor: searching ? "var(--gray-600)" : "var(--gray-900)", color: "white",
                     fontWeight: 800, fontSize: "14px", letterSpacing: "-0.28px",
                     fontFamily: "'SUIT', sans-serif", flexShrink: 0,
+                    /* 16px from the column + 8px here = 24px above the button (owner, 2026-10-12:
+                       엑션버튼이랑 너무 가까워서 좁아서 답답해보여). The column's gap is the
+                       spacing BETWEEN controls; this is the gap between the controls and the thing
+                       that acts on them, and a 40px solid block landing 16px under a 4px slider
+                       read as one stuck to the other. Only the button moves, so the fields above
+                       keep their own rhythm. */
+                    marginTop: "8px",
                   }}
                 >
                   {searching ? t.searching : t.searchPersons}

@@ -699,6 +699,22 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                   <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-400)", marginTop: "2px" }}>{SIGNED_IN_USER.email}</div>
                 </div>
                 <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "0 4px 6px" }} />
+                {/* 마이페이지가 먼저 (owner, 2026-10-12). 포털은 누구에게나 보이지도 않고
+                    (canGoToPortal), 자기 설정보다 자주 가는 곳도 아닙니다. */}
+                <button
+                  className="navbar-dropdown-item"
+                  onClick={() => { setSettingsOpen(false); router.push("/mypage"); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "10px", width: "100%",
+                    padding: "9px 8px", borderRadius: RADIUS.control, border: "none",
+                    cursor: "pointer", textAlign: "left",
+                  }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M12.25 12.25V11.0833C12.25 10.4645 12.0042 9.871 11.5666 9.43342C11.129 8.99583 10.5355 8.75 9.91667 8.75H4.08333C3.46449 8.75 2.871 8.99583 2.43342 9.43342C1.99583 9.871 1.75 10.4645 1.75 11.0833V12.25" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    <path d="M7 6.41667C8.28866 6.41667 9.33333 5.37199 9.33333 4.08333C9.33333 2.79467 8.28866 1.75 7 1.75C5.71133 1.75 4.66666 2.79467 4.66666 4.08333C4.66666 5.37199 5.71133 6.41667 7 6.41667Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                  <span style={{ fontSize: "13px", fontWeight: 600 }}>{t.myPage}</span>
+                </button>
                 {canGoToPortal && (
                 <button
                   className="navbar-dropdown-item"
@@ -717,20 +733,6 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
                   <span style={{ fontSize: "13px", fontWeight: 600 }}>{t.portal}</span>
                 </button>
                 )}
-                <button
-                  className="navbar-dropdown-item"
-                  onClick={() => { setSettingsOpen(false); router.push("/mypage"); }}
-                  style={{
-                    display: "flex", alignItems: "center", gap: "10px", width: "100%",
-                    padding: "9px 8px", borderRadius: RADIUS.control, border: "none",
-                    cursor: "pointer", textAlign: "left",
-                  }}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M12.25 12.25V11.0833C12.25 10.4645 12.0042 9.871 11.5666 9.43342C11.129 8.99583 10.5355 8.75 9.91667 8.75H4.08333C3.46449 8.75 2.871 8.99583 2.43342 9.43342C1.99583 9.871 1.75 10.4645 1.75 11.0833V12.25" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                    <path d="M7 6.41667C8.28866 6.41667 9.33333 5.37199 9.33333 4.08333C9.33333 2.79467 8.28866 1.75 7 1.75C5.71133 1.75 4.66666 2.79467 4.66666 4.08333C4.66666 5.37199 5.71133 6.41667 7 6.41667Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                  </svg>
-                  <span style={{ fontSize: "13px", fontWeight: 600 }}>{t.myPage}</span>
-                </button>
                 {onSidebarPositionChange && (
                   <>
                     <div style={{ height: "1px", backgroundColor: "var(--gray-200)", margin: "6px 4px" }} />
