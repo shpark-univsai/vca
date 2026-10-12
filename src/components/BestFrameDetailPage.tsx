@@ -1962,7 +1962,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   it misleadingly looked like a time indicator) now marks the control that's
                   actually about time. */}
               <div ref={timeDropdownRef} style={{ position:"relative" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:RADIUS.control, padding:"6px 12px", border:"1px solid var(--gray-300)" }}>
+                <div className="vca-field" style={{ display:"flex", alignItems:"center", gap:"6px", backgroundColor:"white", borderRadius:RADIUS.control, padding:"6px 12px", border:"1px solid var(--gray-300)" }}>
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
                     <circle cx="8" cy="8" r="6" stroke="var(--gray-500)" strokeWidth="1.4"/>
                     <path d="M8 5v3l2 2" stroke="var(--gray-500)" strokeWidth="1.4" strokeLinecap="round"/>
@@ -1986,7 +1986,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       const match = e.currentTarget.value.trim().match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
                       if (match) jumpTo(Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3] ?? 0));
                     }}
-                    style={{ width:"66px", border:"none", outline:"none", fontSize:"12px", fontWeight:700, color:"var(--gray-900)", fontFamily:"monospace" }}
+                    style={{ width:"66px", border:"none", outline:"none", boxShadow:"none", fontSize:"12px", fontWeight:700, color:"var(--gray-900)", fontFamily:"monospace" }}
                   />
                   {/* This control used to be <input type="time">, whose native dropdown is where
                       the hour/minute list came from. That input was dropped because the browser

@@ -774,7 +774,7 @@ function GroupDrawer({ group, cameras, otherGroups, portalUsers, t, onSave, onCl
                       padding: "4px 10px", borderRadius: RADIUS.inner, cursor: "pointer", fontFamily: "inherit",
                       fontSize: "10px", fontWeight: 700, border: "none",
                       backgroundColor: view === value ? "white" : "transparent",
-                      color: view === value ? "var(--gray-900)" : "var(--gray-400)",
+                      color: view === value ? "var(--gray-900)" : "var(--gray-500)",
                       boxShadow: view === value ? PANEL_SHADOW : "none",
                     }}>
                     {text}
@@ -1167,7 +1167,7 @@ export default function CameraGroupsTab({ projectId, onGoToCameras, actionsSlot 
                       padding: "4px 10px", borderRadius: RADIUS.inner, border: "none", cursor: "pointer", fontFamily: "inherit",
                       fontSize: "10px", fontWeight: 700,
                       backgroundColor: on ? "white" : "transparent",
-                      color: on ? "var(--gray-900)" : "var(--gray-400)",
+                      color: on ? "var(--gray-900)" : "var(--gray-500)",
                       boxShadow: on ? PANEL_SHADOW : "none",
                     }}>
                     {v === "cards" ? t.viewCards : t.viewMap}

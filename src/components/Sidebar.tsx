@@ -1636,6 +1636,11 @@ function EventsList({ onEventSelect, selectedEventId, locationFilter, onLocation
           <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>{t.goToPage}</span>
           <input type="number" min={1} max={totalPages} value={safePage}
             onChange={e => setPage(Math.max(1, Math.min(totalPages, parseInt(e.target.value) || 1)))}
+            /* The input is its own box, so .vca-field goes on it directly (:focus-within matches
+               the focused element itself). It cleared `outline` but not the shared ring's halo, so
+               focusing it drew a --gray-100 glow and left the border grey — on a white strip that
+               is 1.096, and the operator could not tell which of the two number fields was live. */
+            className="vca-field"
             style={{ width:"32px", textAlign:"center", fontSize:"12px", fontWeight:700, border:"1px solid var(--gray-200)", borderRadius:RADIUS.control, padding:"2px 0", outline:"none", color:"var(--gray-900)" }} />
           <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>/ {totalPages}</span>
           <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={safePage===1} aria-label={t.prevPage} style={{ ...PAGE_BTN, opacity: safePage===1 ? 0.3 : 1 }}>
@@ -1797,9 +1802,9 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
 
       {/* Search */}
       <div style={{ padding:"20px 20px 12px", flexShrink:0 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"8px", border:BORDER, borderRadius:RADIUS.control, padding:"9px 18px", backgroundColor:"white" }}>
+        <div className="vca-field" style={{ display:"flex", alignItems:"center", gap:"8px", border:BORDER, borderRadius:RADIUS.control, padding:"9px 18px", backgroundColor:"white" }}>
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder={t.searchDevices}
-            style={{ flex:1, border:"none", background:"none", outline:"none", fontSize:"12px", fontWeight:600, color:"var(--gray-700)" }} />
+            style={{ flex:1, border:"none", background:"none", outline:"none", boxShadow:"none", fontSize:"12px", fontWeight:600, color:"var(--gray-700)" }} />
           <Search size={18} color="var(--gray-600)" />
         </div>
       </div>
@@ -1919,6 +1924,11 @@ function SystemTab({ onPinDevice, pinnedDeviceId: externalPinnedId }: SystemTabP
           <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>{t.goToPage}</span>
           <input type="number" min={1} max={totalPages} value={safePage}
             onChange={e => setPage(Math.max(1, Math.min(totalPages, parseInt(e.target.value) || 1)))}
+            /* The input is its own box, so .vca-field goes on it directly (:focus-within matches
+               the focused element itself). It cleared `outline` but not the shared ring's halo, so
+               focusing it drew a --gray-100 glow and left the border grey — on a white strip that
+               is 1.096, and the operator could not tell which of the two number fields was live. */
+            className="vca-field"
             style={{ width:"32px", textAlign:"center", fontSize:"12px", fontWeight:700, border:"1px solid var(--gray-200)", borderRadius:RADIUS.control, padding:"2px 0", outline:"none", color:"var(--gray-900)" }} />
           <span style={{ fontSize:"11px", color:"var(--gray-400)" }}>/ {totalPages}</span>
           <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={safePage===1} aria-label={t.prevPage} style={{ ...PAGE_BTN, opacity: safePage===1 ? 0.3 : 1 }}>

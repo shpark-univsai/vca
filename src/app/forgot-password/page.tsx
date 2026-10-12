@@ -279,7 +279,7 @@ function ForgotPasswordFlow() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [focusedField, setFocusedField] = useState<"new" | "confirm" | null>(null);
+  const [focusedField, setFocusedField] = useState<"identifier" | "new" | "confirm" | null>(null);
   const formatValid = isPasswordFormatValid(newPassword);
   const mismatch = confirmPassword.length > 0 && confirmPassword !== newPassword;
   // Enabled only when the form would actually succeed. Checking non-emptiness alone leaves the
@@ -495,12 +495,17 @@ function ForgotPasswordFlow() {
                   <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px" }}>
                     {authConfig.employeeIdLogin ? t.identifierWithId : t.identifierEmailOnly}
                   </label>
+                  {/* The error border still wins over the focused one: clicking into a field whose
+                      value was rejected does not make the rejection go away. Without the focused
+                      branch this field drew nothing at all on focus — the input clears both the
+                      outline and the shared ring's halo, and nothing put either back (2026-10-12). */}
                   <div style={{ display: "flex", alignItems: "center", height: "52px", padding: "0 18px",
-                    border: identifierError ? "1px solid var(--danger-400)" : FIELD_BORDER, borderRadius: RADIUS.control }}>
+                    border: identifierError ? "1px solid var(--danger-400)" : fieldBorder(focusedField === "identifier"), borderRadius: RADIUS.control }}>
                     <input
                       value={identifier}
                       onChange={e => setIdentifier(e.target.value)}
-                      onBlur={() => setIdentifierTouched(true)}
+                      onFocus={() => setFocusedField("identifier")}
+                      onBlur={() => { setIdentifierTouched(true); setFocusedField(null); }}
                       onKeyDown={e => { if (e.key === "Enter") sendCode(); }}
                       placeholder={authConfig.employeeIdLogin ? "EMP-2041 or user@email.com" : "user@email.com"}
                       autoFocus

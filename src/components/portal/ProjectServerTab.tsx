@@ -583,7 +583,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
             style={{
               background: "none", border: "none", cursor: "pointer",
               padding: "0 2px 10px", fontSize: "13px", fontWeight: 700,
-              color: subTab === sub ? "var(--gray-900)" : "var(--gray-400)",
+              color: subTab === sub ? "var(--gray-900)" : "var(--gray-500)",
               borderBottom: subTab === sub ? "2px solid var(--gray-900)" : "2px solid transparent",
             }}>
             {sub === "infra" ? t.subTabInfra : t.subTabApi}

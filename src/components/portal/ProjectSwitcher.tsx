@@ -469,7 +469,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                     style={{
                       background: "none", border: "none", cursor: "pointer",
                       padding: "0 2px 10px", fontSize: "12px", fontWeight: 700,
-                      color: tab === id ? "var(--gray-900)" : "var(--gray-400)",
+                      color: tab === id ? "var(--gray-900)" : "var(--gray-500)",
                       borderBottom: tab === id ? "2px solid var(--gray-900)" : "2px solid transparent",
                     }}
                   >

@@ -2337,7 +2337,7 @@ export default function ProjectVipTab({ projectId, openHealthFilter, onHealthFil
                 style={{
                   padding: "4px 10px", borderRadius: RADIUS.inner, border: "none", cursor: "pointer", fontFamily: "inherit",
                   backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
-                  fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
+                  fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-500)",
                 }}>
                 {v === "grid" ? t.viewGrid : t.viewTable}
               </button>

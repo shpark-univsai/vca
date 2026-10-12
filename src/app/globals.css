@@ -696,7 +696,20 @@ body {
   border-color: var(--primary-300) !important;
   box-shadow: 0 0 0 3px var(--primary-100);
 }
-.vca-field:focus-within input { outline: none; box-shadow: none; }
+.vca-field:focus-within :is(input, textarea, select) { outline: none; box-shadow: none; }
+
+/* The same field, filled instead of outlined — a grey pill with no border of its own (Best Frame's
+   camera search is the one in the product). `.vca-field` cannot help it: there is no border colour
+   to change, and the shared halo it inherits is --gray-100 drawn on a --gray-100 pill, which
+   measures 1.0 — clicking into it changed literally nothing on screen. The outline is drawn
+   OUTSIDE the pill (offset 0, no inset) so it reads as the field lighting up rather than a second
+   box inside it, which is the failure the note above exists for. */
+.vca-field-fill:focus-within {
+  outline: 1px solid var(--primary-300);
+  outline-offset: 0;
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+.vca-field-fill:focus-within :is(input, textarea, select) { outline: none; box-shadow: none; }
 
 /* One ring, not two. A 2px white casing with a dark hairline OUTSIDE it made every dot a
    bullseye, and at this zoom there are fifty-nine of them on one map — concentric rings repeated

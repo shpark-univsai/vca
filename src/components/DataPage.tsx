@@ -1877,7 +1877,7 @@ function LiveSearchSidebar({
         {tab === "Car" && (
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             <span style={{ fontSize:"12px", fontWeight:700, color:"var(--gray-700)" }}>{t.licensePlate}</span>
-            <div style={{ display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 10px",
+            <div className="vca-field" style={{ display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 10px",
               borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white" }}>
               <LicensePlateIconSm />
               <input
@@ -4630,7 +4630,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
           {isVehicle && (
             <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
               <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.licensePlate}</span>
-              <div style={{ display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 10px",
+              <div className="vca-field" style={{ display:"flex", alignItems:"center", gap:"6px", height:"34px", padding:"0 10px",
                 borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white" }}>
                 <LicensePlateIconSm />
                 <input
@@ -4651,8 +4651,14 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
 
           {!isVehicle && (
             <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
-              <button onClick={() => setAttrOpen(o => !o)} className="vca-hover-darken" style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
-                width:"100%", background:"none", border:"none", padding:"0 8px 0 0", cursor:"pointer" }}>
+              {/* A full-width disclosure row, so the hover is a band across the row, not a shade on
+                  the word. It was .vca-hover-darken — brightness(.88) over a transparent background,
+                  which only dims the label a hair and is invisible in use (owner, 2026-10-12).
+                  The padding gives the band height; the matching negative margin cancels it, so the
+                  row occupies exactly the box it did before and the column's gap does not move. */}
+              <button onClick={() => setAttrOpen(o => !o)} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                width:"calc(100% + 16px)", background:"none", border:"none", cursor:"pointer",
+                padding:"6px 8px", margin:"-6px -8px", borderRadius:RADIUS.inner }}>
                 <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-700)", letterSpacing:"-0.2px" }}>{t.tabFilter}</span>
                 <span style={{ display:"flex", color:"var(--gray-400)", transform: attrOpen ? "rotate(180deg)" : "none" }}>
                   <ChevronDownIconSm />

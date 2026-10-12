@@ -2047,7 +2047,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   display: "flex", alignItems: "center", gap: "5px",
                   padding: "4px 10px", borderRadius: RADIUS.inner, border: "none", cursor: "pointer", fontFamily: "inherit",
                   backgroundColor: view === v ? "white" : "transparent", boxShadow: view === v ? PANEL_SHADOW : "none",
-                  fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-400)",
+                  fontSize: "10px", fontWeight: 700, color: view === v ? "var(--gray-900)" : "var(--gray-500)",
                 }}>
                 {/* Both halves carry a mark or neither would: one icon facing a bare word makes
                     the pill look like a button beside a label rather than two of the same thing. */}

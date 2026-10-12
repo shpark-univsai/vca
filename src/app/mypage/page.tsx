@@ -330,6 +330,10 @@ function ThresholdField({ label, value, onChange, min, max }: { label: string; v
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.26px" }}>{label}</span>
         <input
+          /* The input IS the box, so .vca-field goes on it directly (:focus-within matches the
+             focused element itself). It cleared `outline` but not the shared ring's halo, so
+             focusing drew a --gray-100 glow and left the border grey — invisible on white. */
+          className="vca-field"
           type="number"
           min={min}
           max={max}

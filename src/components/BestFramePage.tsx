@@ -1760,7 +1760,10 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
             <p style={{ fontSize:"18px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.36px" }}>{t.liveCamera}</p>
           </div>
           <div style={{ padding:"0 12px 10px" }}>
-            <div style={{ display:"flex", alignItems:"center", backgroundColor:"var(--gray-100)", borderRadius:RADIUS.control, height:"36px", padding:"0 14px", gap:"8px" }}>
+            {/* .vca-field-fill: a borderless pill, so the focus ring goes on the wrapper. The
+                input below clears the shared ring, and what replaced it was --gray-100 on a
+                --gray-100 pill — 1.0, nothing at all (2026-10-12 sweep). */}
+            <div className="vca-field-fill" style={{ display:"flex", alignItems:"center", backgroundColor:"var(--gray-100)", borderRadius:RADIUS.control, height:"36px", padding:"0 14px", gap:"8px" }}>
               <input
                 ref={camSearchInputRef}
                 value={camSearch}
