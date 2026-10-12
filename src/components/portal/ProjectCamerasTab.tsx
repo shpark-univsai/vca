@@ -1369,7 +1369,18 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
     return () => document.removeEventListener("mousedown", handleClick);
   }, [addMenuOpen]);
   const zones = Array.from(new Set(projectCameras.map(c => c.zone).filter(Boolean)));
-  const { sort, toggle: toggleSort } = useTableSort<CameraSortKey>({ key: "status", direction: "asc" });
+  /* Name, not status, as the DEFAULT (owner, 2026-10-12). Sorting by status ascending put every
+     fault at the top, so the first screen of this list was nothing but faults — measured at 1200px
+     it was 10 of 12 rows marked, which is what 「상태 열이 열두 줄 중 열 줄을 주황으로 외치고
+     있었다」 was about. Quieting the status TEXT to --gray-500 did not touch that, because the
+     count of marked rows is set by the ORDER, not by the colour.
+
+     The fault-first ranking itself is kept and is still what the Status header sorts by — see
+     STATUS_RANK and the note on it, which is a deliberate decision (an error outranks silence
+     because a refused connection is something somebody can fix from this screen). It is one click
+     away rather than the state you land in. If the landing state should go back to triage order,
+     this line is the one to change. */
+  const { sort, toggle: toggleSort } = useTableSort<CameraSortKey>({ key: "name", direction: "asc" });
   // Search is not counted. It is visible as text in its own box and clearing it is obvious, whereas
   // a select that says "Offline" looks like a heading until you look twice.
   /**

@@ -190,11 +190,11 @@
   --success-400: #16a34a;
 
   /* Semantic — Warning */
-  --warning-100: #fffbeb;
-  --warning-200: #fef3c7;
-  --warning-300: #fce1b3;
-  --warning-400: #e8600a;
-  --warning-500: #ea580c;
+  --warning-100: #fdece1;
+  --warning-200: #facbaf;
+  --warning-300: #ff7729;
+  --warning-400: #ff5e00;
+  --warning-500: #cc4b00;
 
   /* Semantic — Info */
   --info-100: #f0f8ff;
