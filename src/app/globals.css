@@ -110,24 +110,35 @@
      more active than a hovered one, and the whole toolbar read as clicked. A resting border that
      outranks the states above it has broken something worse than a contrast ratio.
      
-     So the resting edge stays under hover, at #e2e2f0 (1.28:1 on white — the value below; the hue moved
-   in the next paragraph, and #e2e8f0 was what it read before that), and the console does NOT
-     meet 3:1 on control boundaries. That is the deliberate call, recorded here so nobody "fixes"
-     it back by accident. If it is ever revisited, the three states have to move together — rest,
-     hover, focus — not this one alone. It stays a token of its own so the decision has one place
-     to live.
+     So the resting edge stays under hover, and the console does NOT meet 3:1 on control
+     boundaries. That is the deliberate call, recorded here so nobody "fixes" it back by accident.
+
+     WALKED DARKER WITHIN THAT CEILING, 2026-10-13 (owner: 지금은 너무 연하긴해). It read #e2e2f0
+     for two weeks, and measured that is 1.28:1 on a white field against the plain hairline's
+     1.23:1 — a five-hundredths step. The token existed to say 「you can operate this」 and drew a
+     line nobody could tell from a divider; an outlined button on the grey page ground was a shape
+     with no edge. #c4c4d2 is 1.73:1 on white and 1.57:1 on the page.
+
+     THE CEILING DID NOT MOVE, which is why this is not the 2026-09-29 mistake coming back. That
+     one was #90909a at 3.16:1 — ABOVE the hover state, so every resting field outranked a hovered
+     one. This sits a full step UNDER hover (gray-400, 2.56:1), so the ladder still climbs in the
+     right order: divider 1.23 < card edge 1.46 < control edge 1.73 < hover 2.56 < focus. Rest,
+     hover and focus still have to move together if the ceiling is ever revisited — this moved
+     rest alone only because it had room beneath the ceiling, not through it.
 
      AND IT IS THE PURPLE-LEANING NEUTRAL, NOT THE SLATE ONE (owner, 2026-09-29: 배경은 보라빛인데
      테두리는 너무 차가운 파란색 계열의 회색이라서). It was gray-200 straight off the ramp, and
      measured that is hue 214° — the slate half of the grey ramp — sitting on a page ground, a
      hairline and a card edge that are all 240°. One line in the cold family among three in the
-     warm one reads as a different product's rule laid over the surface. Same lightness as
-     gray-200 (91%) and the same R=G, B-above shape as --line, so only the hue moved: 1.28:1 on a
-     white field, a shade above the hairline and still far under the hover state.
+     warm one reads as a different product's rule laid over the surface. It keeps --line's shape —
+     R=G with B fourteen steps above — so the 2026-10-13 darkening above walked down that same
+     line and the hue stayed at 240°; only the lightness moved (it matched gray-200's 91% while
+     the value was #e2e2f0).
      NOTE: the hover and focus borders (gray-400, 215°) are still slate, because they are ramp
      steps the whole product shares — moving those is a bigger call than this token.
-     Figma: 「Line/control」 (added 2026-09-29). */
-  --line-control: #e2e2f0;
+     Figma: 「Line/control」 (added 2026-09-29; value changed 2026-10-13 — the variable needs the
+     same walk or the file and the product disagree). */
+  --line-control: #c4c4d2;
 
   /* SELECTION GRADIENT — the owner's own draft style (Figma 「gradients / 선형」, values read off it
      2026-10-12: 52D5FF 0% · 0047FF 51% · DBB7FF 100%).
