@@ -1861,11 +1861,16 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
               <button
                 onClick={clearAllCams}
                 className="portal-link"
-                style={{ display:"flex", alignItems:"center", gap:"4px", background:"none", border:"none", cursor:"pointer", padding:0, fontSize:"12px", fontWeight:600, color:"var(--primary-400)" }}
+                style={{ display:"flex", alignItems:"center", gap:"4px", background:"none", border:"none", cursor:"pointer", padding:0, fontSize:"12px", fontWeight:600, color:"var(--gray-600)" }}
               >
+                {/* Grey, not the primary (owner, 2026-10-13: 이 리셋버튼은 회색으로 해도되지않을까).
+                    Undoing a selection is a way back, not the thing this header is for — and purple
+                    on this screen is the VIP colour, spent at 5-10%. --gray-600 is 7.66 on white,
+                    louder than the --gray-500 the quiet buttons on Redmap use, because this one
+                    sits beside a --gray-900 count and would disappear under it at 500. */}
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 12a9 9 0 1 0 2.64-6.36L3 8" stroke="var(--primary-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M3 3v5h5" stroke="var(--primary-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3 12a9 9 0 1 0 2.64-6.36L3 8" stroke="var(--gray-600)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3 3v5h5" stroke="var(--gray-600)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
                 {t.resetSelection}
               </button>

@@ -1608,6 +1608,11 @@ function SlidingSearchPanel({ expanded, onExpand, sidebar }: { expanded: boolean
       <div style={{
         position:"absolute", top:0, left:0, bottom:0, width:"48px", backgroundColor:"var(--gray-100)",
         display:"flex", flexDirection:"column", alignItems:"center",
+        /* 20px down, so the button lines up with the camera picker beside it. They are the same
+           height (36) but sat 20px apart because the picker lives inside the content's own
+           "20px 24px" padding and this rail starts at the panel's top edge — the heights matched
+           and the row still looked crooked (owner, 2026-10-13: 이부분은 여전히 높이가 안맞네). */
+        paddingTop:"20px", boxSizing:"border-box",
         opacity: expanded ? 0 : 1, pointerEvents: expanded ? "none" : "auto",
         transition:"opacity 0.15s ease",
       }}>
