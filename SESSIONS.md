@@ -778,3 +778,9 @@ card/modal 16px. 50%는 그대로(아바타·점·달력·썸).
 - **R1**(2026-10-13): 레드맵 — 검색 결과 경로가 한눈에 들어오게 지도를 맞추기.
   **파일 점유: src/components/RedmapMap.tsx (쓰기 허용), RedmapPage.tsx (읽기만).**
   CDP 9472. **git 명령 금지, 커밋 금지.** DataPage.tsx는 Z1/Z2가 읽는 중이니 건드리지 말 것.
+  → **완료(5585801)**: 줌이 아니라 지도가 자기 칸 크기를 몰랐던 것. 실측 A/B 재검증함.
+
+- **S1~S4**(2026-10-13): 스켈레톤을 오늘 바뀐 화면에 맞추기. **파일 하나씩 배타 점유**
+  S1=SkeletonData.tsx · S2=SkeletonBestFrame.tsx · S3=SkeletonRedmap.tsx · S4=SkeletonDashboard.tsx
+  각자 자기 파일만 쓰기, 나머지는 읽기만. **DataPage.tsx·RedmapMap.tsx 쓰기 금지(내가 씀)**.
+  **git 명령 금지, 커밋 금지.** CDP 포트: S1=9481 S2=9482 S3=9483 S4=9484, Canary만.
