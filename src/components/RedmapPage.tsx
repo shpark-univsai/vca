@@ -1366,7 +1366,13 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           <>
             <RedmapDateRange value={dateRange} onChange={setDateRange} />
 
-            <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, backgroundColor: "var(--gray-200)" }} />
+            {/* The same 6px margins the 사람 rule carries, so the two modes space their row
+                identically (owner, 2026-10-13: 사람이랑 자동차랑 그옆에 컴포넌트들의 간격이
+                달라지지않게 사람에 맞춰줘). Without them this rule got the bare 10px row gap and
+                차량 read 6px tighter on both sides of its only group break — a difference that
+                appeared when switching modes, which is the one moment both spacings are compared.
+                The black Search button is not part of this: it sits at the row's right end. */}
+            <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, margin: "0 6px", backgroundColor: "var(--gray-200)" }} />
 
             {/* License plate */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
