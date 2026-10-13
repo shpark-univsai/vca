@@ -3521,7 +3521,12 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
     <div ref={ref} style={{ position:"relative", width:"186px" }}>
       <button onClick={() => setOpen(o => !o)} className="vca-hover-row" style={{
         display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
-        padding:"8px 12px", borderRadius:RADIUS.control, backgroundColor:"white", border:"1px solid var(--primary-400)",
+        /* Height from the token, same as Live Monitoring's picker. That one was taken off its
+           padding on 2026-10-12 and this copy was missed, so the two tabs drew the same control
+           three pixels apart (39 here, 36 there) and this one stood taller than everything it
+           sat beside. */
+        height:CONTROL_HEIGHT, boxSizing:"border-box",
+        padding:"0 12px", borderRadius:RADIUS.control, backgroundColor:"white", border:"1px solid var(--primary-400)",
         cursor:"pointer",
       }}>
         <span style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"14px", fontWeight:700, color:"var(--primary-400)",
