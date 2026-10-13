@@ -736,8 +736,11 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
       transform:"translateZ(0)",
     }}>
       <Photo kind="face" src={p.url} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-      <div style={{ position:"absolute", left:0, right:0, bottom:"46px", height:"72px",
-        background:"linear-gradient(to top, rgba(24, 17, 39,0.72), rgba(24, 17, 39,0))", pointerEvents:"none" }} />
+      {/* NO SCRIM HERE EITHER (owner, 2026-10-13: 모니터링에 카드들에도 까만색이 조금씩 남아서
+          보여). Same band and same cause as the one taken off SearchResultCard: a gradient ending
+          at 72% gray-900 right where the white plate starts, so its darkest edge met white and
+          drew a line. Nothing on this photo is bare text — the camera plate, REDFACE and the
+          hover actions all carry their own fill, and the hover layer has its own --scrim-media. */}
       {/* Only shown in the flat "All Cameras" view — grouped-by-camera carousels already
           show the camera name in their section header, so this would be a duplicate there. */}
       {/*
@@ -2549,19 +2552,35 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
       transform:"translateZ(0)",
     }}>
       <Photo kind="face" src={p.url} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
-      <div style={{ position:"absolute", left:0, right:0, bottom:"64px", height:"80px",
-        background:"linear-gradient(to top, rgba(24, 17, 39,0.72), rgba(24, 17, 39,0))", pointerEvents:"none" }} />
-      <div style={{ position:"absolute", top:8, left:8, fontSize:"10px", fontWeight:800, color:"white",
-        backgroundColor:"var(--label-plate)", padding:"4px 8px", borderRadius:RADIUS.pill, letterSpacing:"-0.2px" }}>
-        {p.cam}
-      </div>
-      {/* Similarity is a property of the match itself (how well this result answers the search),
-          not of the identity label next to it — a precise-looking % right beside "Unknown" read as
-          if there were some specific certainty about an unidentified person. Off the status line,
-          onto the photo, matching the badge ClusterMatchCard/CandidateCard already use for this
-          same number. */}
-      <div style={{ position:"absolute", top:8, right:8 }}>
-        <ScoreBadge score={p.similarity} />
+      {/* NO SCRIM HERE ANY MORE (owner, 2026-10-13: 여기 까만색 보이는건 못지우는거지?).
+          A gradient to 72% gray-900 ran from 64px up, which is exactly where the white label
+          plate starts — so its darkest end met white at a hard edge and drew a black band across
+          the bottom of every result card. A scrim exists to keep text legible over a photo, and
+          there is no text over this photo: the name and time sit on the white plate below, the
+          camera code and score have their own filled pills, and so does REDFACE. It was darkening
+          the one thing the card is for. */}
+      {/* ONE ROW, AND A CARD WIDE ENOUGH FOR IT (owner, 2026-10-13: 검색결과에는 %뱃지가 남아있다).
+          The code was pinned to the left corner and the score to the right, each unaware of the
+          other, and at the 141px the grid was handing out they met in the middle: the score sat ON
+          TOP of the code, which read 「CAM-NOV-00」 with a percentage over the rest. A flex row only
+          moved the loss — then the code ellipsed on every card. Neither is droppable: the code says
+          WHERE and the score says HOW WELL, and this screen is ranked by the second one. So the
+          card got the width instead; see the grid's own note. (The wall card had the same squeeze
+          and answered it by dropping the score — owner, 2026-10-07: 카드엔 유사도를 빼자 — because
+          nothing there is ranked. Here it is.) */}
+      <div style={{ position:"absolute", top:8, left:8, right:8, display:"flex", alignItems:"center",
+        justifyContent:"space-between", gap:"4px", pointerEvents:"none" }}>
+        <span style={{ fontSize:"10px", fontWeight:800, color:"white", backgroundColor:"var(--label-plate)",
+          padding:"4px 6px", borderRadius:RADIUS.pill, letterSpacing:"-0.2px",
+          minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+          {p.cam}
+        </span>
+        {/* Similarity is a property of the match itself (how well this result answers the search),
+            not of the identity label next to it — a precise-looking % right beside 「Unknown」 read
+            as if there were some specific certainty about an unidentified person. Off the status
+            line, onto the photo, matching the badge ClusterMatchCard/CandidateCard already use for
+            this same number. */}
+        <span style={{ flexShrink:0 }}><ScoreBadge score={p.similarity} /></span>
       </div>
       {/* Same REDFACE badge Live Monitoring's MonitorCard uses — a search shouldn't quietly hide
           that one of its hits is already flagged. */}
@@ -2682,7 +2701,14 @@ function SmartSearchResults({ state, results, emptyReason, onCardClick, onRefine
         {results.length === 0 ? (
           <EmptyReasonNote reason={emptyReason} threshold={threshold} />
         ) : (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(133px, 1fr))", gap:"16px", paddingBottom:"24px" }}>
+          <div style={{ display:"grid",
+            /* 156, not 133. Measured at 1512 the old minimum resolved to 141px cards, and a card
+               has to carry a camera code (87px) and a similarity score (42) on one line: 133 of
+               content against 125 of room, so one of the two was always being cut. Widening costs
+               a column (7 to 6) and that is the trade — a result you can read beats one more of
+               them. Anything added to these cards from here is measured against 150px of content
+               room, not against taste. */
+            gridTemplateColumns:"repeat(auto-fill, minmax(156px, 1fr))", gap:"16px", paddingBottom:"24px" }}>
             {results.map(p => <SearchResultCard key={p.id} p={p} onClick={() => onCardClick(p.id)} matchReasons={matchReasons} />)}
           </div>
         )}
