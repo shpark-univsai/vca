@@ -1310,7 +1310,13 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
         backgroundColor: "white", borderBottom: BORDER,
         padding: "0 24px", height: "52px",
         display: "flex", alignItems: "center", flexWrap: "nowrap",
-        gap: "20px", flexShrink: 0,
+        /* 12, not 20 (owner, 2026-10-13: 사이간격이 촘촘해보이질않아서 너무 듬성듬성해보여).
+           Every item on this row sat the same 20px from its neighbour — the mode toggle from the
+           date, the date from the rule, the two photo chips from each other — so nothing on it
+           was grouped with anything. A toolbar reads as finished when the distances say which
+           controls belong together: 8 inside a pair, 12 between neighbours, and 20 across the
+           rule, which the rule earns with its own 8px margins below. */
+        gap: "12px", flexShrink: 0,
       }}>
 
         {/* Mode toggle — the shared control now, so 사람/차량 here and EVENTS/SYSTEM on the
@@ -1386,10 +1392,14 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           <>
             <RedmapDateRange value={dateRange} onChange={setDateRange} />
 
-            <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, backgroundColor: "var(--gray-200)" }} />
+            {/* The rule keeps the wider break it used to get from the row's own gap: 12 + 8 on
+                each side. It is the one place on this row where a bigger distance means something
+                — 「what and when」 on its left, 「who」 on its right. */}
+            <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, margin: "0 8px", backgroundColor: "var(--gray-200)" }} />
 
-            {/* Search by image chips */}
-            <div style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
+            {/* Search by image chips — a pair, so they sit closer to each other than to anything
+                else on the row. */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
               {([
                 { key: "face" as const, label: t.face, image: faceImage },
                 { key: "body" as const, label: t.body, image: bodyImage },
