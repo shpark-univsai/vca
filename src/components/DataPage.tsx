@@ -709,7 +709,13 @@ function HoverActionBtn({ label, icon, color, onClick }:
       // Was a 999px pill. It has a fixed width AND a fixed height and it does something when
       // pressed, which is the one thing the pill step is not for — see shared/controls.
       width:"108px", height:"28px", borderRadius:RADIUS.control, cursor:"pointer",
-      backgroundColor: hovered ? color : "white", border:`1.5px solid ${color}`, color: hovered ? "white" : color,
+      /* HOVER IS THE NEUTRAL FILL, NOT THE BUTTON'S OWN COLOUR (owner, 2026-10-13: 색을 다
+         채우니까 갑갑한 느낌 들어). Three buttons stacked on a photo, each flooding with a
+         saturated hue the moment the pointer crossed it, made the card feel shut. The pointer
+         does not need the colour repeated — the colour is already on the border and the label,
+         and it never moves. --gray-100 is the quiet hover this product uses for a control whose
+         own fill must stay as it is; the lift and the shadow carry the rest. */
+      backgroundColor: hovered ? "var(--gray-100)" : "white", border:`1.5px solid ${color}`, color,
       fontSize:"12px", fontWeight:700, letterSpacing:"-0.22px",
       boxShadow: hovered ? "var(--shadow-popover)" : "var(--shadow-raised)",
       transform: hovered ? "scale(1.04)" : "scale(1)",
