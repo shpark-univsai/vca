@@ -49,11 +49,18 @@ export function Photo({ src, alt = "", kind = "face", style, className, onClick,
         className={className}
         onClick={onClick}
         title={title}
+        /* THE CENTRING GOES AFTER THE SPREAD, NOT BEFORE.
+           Most call sites pass the <img>'s own `display:"block"` through `style`, which is right
+           for a picture and wrong for this box: spread last, it overwrote the flex that centres
+           the glyph, so every failed photo drew its mark against the top-left instead of the
+           middle of the space it owns. Seen on Re-ID's 133x160 result tiles (owner, 2026-10-13).
+           `display` is forced rather than merged because this branch is a box with one child in
+           it, never the picture the caller was describing. */
         style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
           backgroundColor: "var(--gray-100)", color: "var(--gray-400)",
           boxSizing: "border-box", overflow: "hidden",
           ...style,
+          display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
         <PlaceholderGlyph kind={kind} />
