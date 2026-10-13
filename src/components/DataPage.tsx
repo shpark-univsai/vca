@@ -40,7 +40,7 @@ const T = {
   en: {
     scrollToTop: "Scroll to top",
     smartSearch: "Smart search",
-    collapse: "Collapse",
+    hideSearch: "Hide search",
     tabPhoto: "Photo",
     tabFilter: "Filter",
     tabVip: "VIP",
@@ -237,7 +237,7 @@ const T = {
   ko: {
     scrollToTop: "맨 위로",
     smartSearch: "스마트 검색",
-    collapse: "접기",
+    hideSearch: "검색 닫기",
     tabPhoto: "사진",
     tabFilter: "속성",
     tabVip: "VIP",
@@ -943,8 +943,11 @@ function ScrollToTopButton({ containerRef }: { containerRef: React.RefObject<HTM
 // ── Camera Detail View (Figma: "Live monitoring detail") — now the ONLY Live Monitoring
 // screen; the camera-select dropdown's "All Cameras" option covers what the old separate
 // landing page (horizontal per-camera carousels) used to show. ───────────
-function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTab, onGoRedmap, onGoRedmapFrame }:
-  { camId:string; items:(typeof REID_DATA); onSwitchCam:(camId:string)=>void; onCardClick:(id:number)=>void; onNavigateTab?:(tab:DataTab, card:(typeof REID_DATA)[number])=>void; onGoRedmap?:()=>void; onGoRedmapFrame?: (url: string, label: string) => void; }) {
+function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTab, onGoRedmap, onGoRedmapFrame, searchToggle }:
+  { camId:string; items:(typeof REID_DATA); onSwitchCam:(camId:string)=>void; onCardClick:(id:number)=>void; onNavigateTab?:(tab:DataTab, card:(typeof REID_DATA)[number])=>void; onGoRedmap?:()=>void; onGoRedmapFrame?: (url: string, label: string) => void;
+    /* The search panel's own open/close button, handed down so it sits in this row rather than
+       in a rail of its own — see SearchPanelToggle. */
+    searchToggle?: React.ReactNode; }) {
   const [lang] = useLanguage();
   const t = T[lang];
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -963,6 +966,7 @@ function CameraDetailView({ camId, items, onSwitchCam, onCardClick, onNavigateTa
     <div style={{ position:"relative", flex:1, overflow:"hidden" }}>
     <div ref={scrollRef} className="vca-hide-scrollbar" style={{ position:"absolute", inset:0, overflowY:"auto", padding:"20px 24px", backgroundColor:"white", borderRadius:RADIUS.panel, boxSizing:"border-box" }}>
       <div style={{ display:"flex", alignItems:"center", gap:"12px", marginBottom:"12px" }}>
+        {searchToggle}
         <div ref={pickerRef} style={{ position:"relative", width:"152px" }}>
           <button onClick={() => setPickerOpen(o => !o)} className="vca-hover-row" style={{
             display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
@@ -1591,53 +1595,72 @@ function EmptyReasonNote({ reason, threshold }: { reason: SearchEmptyReason | nu
  */
 const ANY_DATE_RANGE: DateRangeValue = { start: new Date("2000-01-01"), end: new Date("2100-01-01") };
 
-function SlidingSearchPanel({ expanded, onExpand, sidebar }: { expanded: boolean; onExpand: () => void; sidebar: React.ReactNode }) {
-  const [lang] = useLanguage();
+function SlidingSearchPanel({ expanded, sidebar }: { expanded: boolean; sidebar: React.ReactNode }) {
   return (
     <div style={{
-      position:"relative", width: expanded ? "320px" : "48px", height:"100%", flexShrink:0,
-      transition:"width 0.28s cubic-bezier(0.32, 0.72, 0, 1)", overflow:"hidden", borderRadius:RADIUS.panel,
+      position:"relative", width: expanded ? "320px" : "0px", height:"100%", flexShrink:0,
+      marginRight: expanded ? "12px" : "0px",
+      transition:"width 0.28s cubic-bezier(0.32, 0.72, 0, 1), margin-right 0.28s cubic-bezier(0.32, 0.72, 0, 1)",
+      overflow:"hidden", borderRadius:RADIUS.panel,
     }}>
       <div style={{ position:"absolute", inset:0, width:"320px" }}>
         {sidebar}
       </div>
-      {/* Covers the full column height, not just the button's own 48x48 square — the sidebar
-          underneath is only clipped to 48px wide when collapsed, not hidden, so anything below
-          the button's height (its header text, tab icons, etc.) would otherwise still show through
-          as a sliver instead of a clean collapsed rail. */}
-      <div style={{
-        position:"absolute", top:0, left:0, bottom:0, width:"48px", backgroundColor:"var(--gray-100)",
-        display:"flex", flexDirection:"column", alignItems:"center",
-        /* 20px down, so the button lines up with the camera picker beside it. They are the same
-           height (36) but sat 20px apart because the picker lives inside the content's own
-           "20px 24px" padding and this rail starts at the panel's top edge — the heights matched
-           and the row still looked crooked (owner, 2026-10-13: 이부분은 여전히 높이가 안맞네). */
-        paddingTop:"20px", boxSizing:"border-box",
-        opacity: expanded ? 0 : 1, pointerEvents: expanded ? "none" : "auto",
-        transition:"opacity 0.15s ease",
-      }}>
-        <button
-          onClick={onExpand}
-          title={T[lang].smartSearch}
-          className="vca-hover-row"
-          style={{
-            /* CONTROL_HEIGHT square, not 48 (owner, 2026-10-12: 돋보기 버튼 높이랑 그옆에 카메라
-               선택 셀렉트버튼 높이가 다른게 살짝 어색해보여). It sat at 48 beside a 39px camera
-               picker — both were off the shared control height, so matching them to each other
-               would only have moved the odd value around. Both are on the token now.
-
-               WIDTH STAYS 48 — the rail's full width. Taking it to a 36 square with the height
-               made the button read as shrunken next to a 152px pill (owner, 2026-10-12: 돋보기가
-               너무 작아진것같긴하다); only the height was ever the mismatch. */
-            width:"48px", height:CONTROL_HEIGHT, borderRadius:RADIUS.control,
-            backgroundColor:"white", border:"none", display:"flex", alignItems:"center", justifyContent:"center",
-            cursor:"pointer", color:"var(--gray-600)", flexShrink:0,
-          }}
-        >
-          <SearchIconSm size={20} />
-        </button>
-      </div>
     </div>
+  );
+}
+
+/**
+ * THE DOOR TO THE SEARCH PANEL, IN THE ROW WHERE THE OTHER CONTROLS ARE.
+ *
+ * WHAT THIS REPLACED. The collapsed panel used to leave a 48px rail down the left side with one
+ * unlabelled magnifier in it. Three things were wrong with it, all measured (2026-10-13):
+ *   · the rail's own fill was --gray-100 and so was the page behind it, so there was no rail on
+ *     screen at all — only a white 48x36 square at 1.09:1 against its ground;
+ *   · both tabs open COLLAPSED, so nobody had folded the panel and nobody had any reason to read
+ *     that square as the way back to one;
+ *   · in Live Monitoring it was the only way into search, and for a 검색만 account it was the only
+ *     way into the whole screen.
+ * Rails that work elsewhere (Hootsuite, Turo, Gorgias) are navigation rails: several icons, a
+ * label under each, on a surface that differs from the content. Products that fold a SEARCH panel
+ * either leave it open (Clay, Apollo, Kiwi) or hide it outright and bring it back with a named
+ * button in the toolbar (Apollo's 「Hide Filters 2」, Glassdoor's 「Filters」). This is the second.
+ *
+ * ONE CONTROL, NOT TWO. Opening and closing are the same button in the same place. The panel's
+ * header used to carry a separate 「‹」 chevron, so the operator learned one shape to close and a
+ * different shape in a different corner to open — the three other panels in this product
+ * (Dashboard, Best Frame, Redmap) have always used one handle for both.
+ *
+ * THE LABEL IS NOT REDUNDANT COPY. 「Smart search」 is also the panel's own heading, but the two
+ * are never on screen together: this button says the panel's name while the panel is shut.
+ */
+function SearchPanelToggle({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
+  return (
+    <button
+      onClick={onToggle}
+      aria-expanded={expanded}
+      className="vca-hover-row"
+      style={{
+        display:"flex", alignItems:"center", gap:"6px", flexShrink:0,
+        height:CONTROL_HEIGHT, boxSizing:"border-box", padding:"0 12px",
+        borderRadius:RADIUS.control, cursor:"pointer",
+        /* Pressed is a grey fill, the way a held-down control reads everywhere else here. Purple
+           is the VIP colour on these screens and the camera picker beside this one already spends
+           it. */
+        backgroundColor: expanded ? "var(--gray-100)" : "white",
+        border: expanded ? "1px solid transparent" : "1px solid var(--line-control)",
+        color: expanded ? "var(--gray-900)" : "var(--gray-700)",
+        fontSize:"14px", fontWeight:700, letterSpacing:"-0.28px", whiteSpace:"nowrap",
+      }}
+    >
+      <SearchIconSm size={16} />
+      {/* The verb while it is open, not the panel's name again — the panel's own heading is on
+          screen at that moment, 200px away, and saying "Smart search" twice in one row of sight
+          is the duplicate this product does not write. Open, the button is what closes it. */}
+      {expanded ? t.hideSearch : t.smartSearch}
+    </button>
   );
 }
 
@@ -1650,7 +1673,7 @@ function LiveSearchSidebar({
   state, tab, onTabChange,
   hatFilter, onHatChange, sleeveFilter, onSleeveChange, bottomsFilter, onBottomsChange, backpackFilter, onBackpackChange,
   emotion, onEmotionChange, ethnicGroup, onEthnicGroupChange,
-  onSearch, onCollapse, searchScreen,
+  onSearch, searchScreen,
 }: {
   state: SearchFilterState;
   tab: LiveSearchTab; onTabChange: (t: LiveSearchTab) => void;
@@ -1662,7 +1685,7 @@ function LiveSearchSidebar({
   ethnicGroup: string; onEthnicGroupChange: (v: string) => void;
   // Seeds the Photo tab's preview from a camera card's own photo (via the "Search" hover
   // button) — optional since the other tab that reuses this sidebar has no such card to seed from.
-  onSearch: () => void; onCollapse: () => void;
+  onSearch: () => void;
   /* WHICH SCREEN THIS SIDEBAR IS STANDING ON (2026-09-23). It is rendered twice — once inside
      모니터링 and once inside Re-ID 분석 — and searching is now granted per screen, so the same
      sidebar is allowed in one place and refused in the other. Reading a single app-wide flag out
@@ -1754,14 +1777,11 @@ function LiveSearchSidebar({
   return (
     <div style={{ width:"320px", flexShrink:0, backgroundColor:"white", borderRadius:RADIUS.panel,
       display:"flex", flexDirection:"column", height:"100%", overflow:"hidden", boxSizing:"border-box" }}>
-      <div style={{ padding:"20px 16px 12px", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+      <div style={{ padding:"20px 16px 12px", display:"flex", alignItems:"center", flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:"8px", color:"var(--gray-900)" }}>
           <SearchIconSm size={16} />
           <span style={{ fontSize:"14px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.28px" }}>{t.smartSearch}</span>
         </div>
-        <button onClick={onCollapse} aria-label={t.collapse} className="vca-hover-quiet" style={{ background:"none", border:"none", borderRadius:RADIUS.inner, padding:"2px", cursor:"pointer", color:"var(--gray-400)", display:"flex" }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </button>
       </div>
 
       <div style={{ display:"flex", padding:"0 12px", gap:"4px", flexShrink:0, borderBottom:BORDER }}>
@@ -2249,10 +2269,9 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     : feed[openCam] ?? []).filter(allowedHere);
 
   return (
-    <div style={{ flex:1, display:"flex", gap:"12px", overflow:"hidden", padding:"20px 24px 12px", backgroundColor:"var(--gray-100)", boxSizing:"border-box" }}>
+    <div style={{ flex:1, display:"flex", overflow:"hidden", padding:"20px 24px 12px", backgroundColor:"var(--gray-100)", boxSizing:"border-box" }}>
       <SlidingSearchPanel
         expanded={searchExpanded}
-        onExpand={() => setSearchExpanded(true)}
         sidebar={
           <LiveSearchSidebar
             searchScreen="live"
@@ -2275,13 +2294,22 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
               // stopped: recording costs the operator nothing, which is the whole argument for
               // keeping the log while leaving the gate off. No purpose — nobody was asked.
               recordSearchAccess({ projectId: scopedProjectId, target: t.logTarget[searchTab], surface: "live" });
-            }} onCollapse={() => setSearchExpanded(false)}
+            }}
           />
         }
       />
       {/* Matches the search sidebar's own rounding — this wide section had none at all before,
           so it sat as a sharp-cornered block next to the sidebar's 12px-rounded card. */}
       <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column", backgroundColor:"white", borderRadius:RADIUS.panel }}>
+        {/* The camera wall carries the toggle inside its own control row, beside the camera
+            picker. Every other state of this card has no such row, and one of them is the whole
+            screen for a 검색만 account — so those get the button on a row of their own rather
+            than losing the only way into search. */}
+        {(searched || !monMayBrowse) && (
+          <div style={{ padding:"20px 24px 0", flexShrink:0 }}>
+            <SearchPanelToggle expanded={searchExpanded} onToggle={() => setSearchExpanded(e => !e)} />
+          </div>
+        )}
         {searched
           ? !hasQuery
             ? <NoQueryPane vehicle={searchType === "VEHICLE"} />
@@ -2292,7 +2320,8 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
               topColors={topColors} bottomColors={bottomColors} shoesColors={shoesColors}
               emotion={emotion} ethnicGroup={ethnicGroup} />
           : monMayBrowse
-            ? <CameraDetailView camId={openCam} items={camDetailItems} onSwitchCam={onOpenCamChange} onCardClick={setDetailId} onNavigateTab={handleNavigate} onGoRedmap={onGoRedmap} onGoRedmapFrame={onGoRedmapFrame} />
+            ? <CameraDetailView camId={openCam} items={camDetailItems} onSwitchCam={onOpenCamChange} onCardClick={setDetailId} onNavigateTab={handleNavigate} onGoRedmap={onGoRedmap} onGoRedmapFrame={onGoRedmapFrame}
+                searchToggle={<SearchPanelToggle expanded={searchExpanded} onToggle={() => setSearchExpanded(e => !e)} />} />
             /* Said, not blank. An empty pane would read as "nothing happened here", which is a
                claim about the site; this is a claim about the account. */
             : <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:"32px", textAlign:"center", fontSize:"13px", lineHeight:1.6, color:"var(--gray-500)" }}>
@@ -3895,10 +3924,9 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
    */
 
   return (
-    <div style={{ flex:1, display:"flex", gap:"12px", overflow:"hidden", padding:"20px 24px 12px", backgroundColor:"var(--gray-100)", boxSizing:"border-box" }}>
+    <div style={{ flex:1, display:"flex", overflow:"hidden", padding:"20px 24px 12px", backgroundColor:"var(--gray-100)", boxSizing:"border-box" }}>
       <SlidingSearchPanel
         expanded={expanded}
-        onExpand={() => setExpanded(true)}
         sidebar={
           <LiveSearchSidebar
             searchScreen="reid"
@@ -3918,12 +3946,13 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
               // attribute-only query is an index lookup. Only the first gets 취소 — see useSearchRun.
               run.start(searchType === "PERSON" && !!searchTarget);
               recordSearchAccess({ projectId: siteProjectId, target: t.logTarget[searchTab], surface: "reid" });
-            }} onCollapse={() => setExpanded(false)}
+            }}
           />
         }
       />
       <div style={{ position:"relative", flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}>
       <div style={{ display:"flex", alignItems:"center", gap:"12px", marginBottom:"12px", flexShrink:0 }}>
+        <SearchPanelToggle expanded={expanded} onToggle={() => setExpanded(e => !e)} />
         <ReidCameraPicker value={camera} onChange={onCameraChange} />
       </div>
       <div style={{ position:"relative", flex:1, overflow:"hidden" }}>
