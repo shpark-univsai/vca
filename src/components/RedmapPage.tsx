@@ -1314,9 +1314,12 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
            Every item on this row sat the same 20px from its neighbour — the mode toggle from the
            date, the date from the rule, the two photo chips from each other — so nothing on it
            was grouped with anything. A toolbar reads as finished when the distances say which
-           controls belong together: 8 inside a pair, 12 between neighbours, and 20 across the
-           rule, which the rule earns with its own 8px margins below. */
-        gap: "12px", flexShrink: 0,
+           controls belong together: 6 inside a pair, 8 between neighbours, and 14 across the rule,
+           which the rule earns with its own 6px margins below. 12 and 20 were the first attempt
+           and still read loose (owner, same day: 지금도 좀 넓어보이는뎅) — on a row whose controls
+           are 232 and 280px wide, the air between them has to be small enough that the controls
+           are what the eye lands on. */
+        gap: "8px", flexShrink: 0,
       }}>
 
         {/* Mode toggle — the shared control now, so 사람/차량 here and EVENTS/SYSTEM on the
@@ -1399,14 +1402,14 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           <>
             <RedmapDateRange value={dateRange} onChange={setDateRange} />
 
-            {/* The rule keeps the wider break it used to get from the row's own gap: 12 + 8 on
-                each side. It is the one place on this row where a bigger distance means something
-                — 「what and when」 on its left, 「who」 on its right. */}
-            <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, margin: "0 8px", backgroundColor: "var(--gray-200)" }} />
+            {/* The rule gets the one wider break on the row: 8 + 6 on each side. It is the only
+                place here where a bigger distance means something — 「what and when」 on its left,
+                「who」 on its right. */}
+            <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, margin: "0 6px", backgroundColor: "var(--gray-200)" }} />
 
             {/* Search by image chips — a pair, so they sit closer to each other than to anything
                 else on the row. */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
               {([
                 { key: "face" as const, label: t.face, image: faceImage },
                 { key: "body" as const, label: t.body, image: bodyImage },
