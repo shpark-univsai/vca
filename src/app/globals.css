@@ -110,7 +110,8 @@
      more active than a hovered one, and the whole toolbar read as clicked. A resting border that
      outranks the states above it has broken something worse than a contrast ratio.
      
-     So the resting edge stays under hover, at #e2e8f0 (1.23:1 on white), and the console does NOT
+     So the resting edge stays under hover, at #e2e2f0 (1.28:1 on white — the value below; the hue moved
+   in the next paragraph, and #e2e8f0 was what it read before that), and the console does NOT
      meet 3:1 on control boundaries. That is the deliberate call, recorded here so nobody "fixes"
      it back by accident. If it is ever revisited, the three states have to move together — rest,
      hover, focus — not this one alone. It stays a token of its own so the decision has one place
@@ -337,6 +338,12 @@ optgroup {
    :where() keeps specificity at zero, so any screen that has designed its own focus treatment
    still wins — the auth screens (primary-400 border) set `outline: none` inline and are untouched
    by this.
+
+   NOTE (2026-10-13): this ring is still --gray-900 while every FIELD now focuses in --primary-400
+   (.vca-field, .vca-field-fill, Portal's FIELD_FOCUS). So a bare <input> next to a TextField in the
+   same form focuses in a different colour — the thing the note on FIELD_FOCUS warns about. Left as
+   it is on purpose for now: this selector also covers BUTTONS, and whether a focused button should
+   wear the primary colour is a decision of its own, not a consequence of the field change.
 
    :focus-visible, not :focus, so a mouse click on a button leaves no ring behind; a text field
    matches it whenever it is focused for typing, which is exactly the case this is for.
@@ -584,7 +591,7 @@ body {
   padding: 0 !important;
   border-radius: 16px !important;
   box-shadow: var(--shadow-popover) !important;
-  border: 1px solid var(--gray-200) !important;
+  border: 1px solid var(--line) !important;
   overflow: hidden;
 }
 
@@ -1189,7 +1196,7 @@ input:autofill {
   display: grid;
   grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
 }
-.portal-invite-grid > * + * { border-left: 1px solid var(--gray-200); }
+.portal-invite-grid > * + * { border-left: 1px solid var(--line); }
 @media (max-width: 820px) {
   .portal-invite-grid { grid-template-columns: minmax(0, 1fr); }
   .portal-invite-grid > * + * { border-left: none; border-top: 1px solid var(--gray-200); }

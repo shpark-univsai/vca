@@ -187,7 +187,11 @@ const T = {
   },
 } as const;
 
-const CARD_BORDER = "1px solid var(--line)";
+/* PANEL_BORDER, not PANEL_BORDER. Portal exports a PANEL_BORDER too and it is --line-card (1.46),
+   a step darker than this one — two different values under one name, which reads as the same thing
+   to whoever opens the second file. The values differing is not the error: Portal's cards sit on a
+   --primary-50 page and these sit on --gray-50. The name was. */
+const PANEL_BORDER = "1px solid var(--line)";
 
 /** Name and address of whoever is being turned away or asked — the line they read out on the
  *  phone. Kept out of the denial copy so the copy stays about the decision. */
@@ -218,7 +222,7 @@ function DoorCard({ icon, name, what, onClick }: {
         // That it happens to be a <button> does not make it a control: nothing on this screen
         // lines up beside it in a row (the shape scale, shared/controls).
         borderRadius: RADIUS.card, backgroundColor: "white",
-        border: hover ? "1px solid var(--primary-300)" : CARD_BORDER,
+        border: hover ? "1px solid var(--primary-300)" : PANEL_BORDER,
         boxShadow: hover ? "var(--shadow-popover)" : "var(--shadow-raised)",
       }}
     >
@@ -261,12 +265,12 @@ function Grants({ permission, appAccess, status, t }: {
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "8px" }}>
       <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-500)", letterSpacing: "-0.24px" }}>{t.holds}</span>
       {/* An inset block inside the page, one step in from the card step. */}
-      <div style={{ border: CARD_BORDER, borderRadius: RADIUS.control, overflow: "hidden" }}>
+      <div style={{ border: PANEL_BORDER, borderRadius: RADIUS.control, overflow: "hidden" }}>
         {rows.map((r, i) => (
           <div key={r.label} style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "11px 14px", backgroundColor: "var(--gray-50)",
-            borderTop: i === 0 ? "none" : CARD_BORDER,
+            borderTop: i === 0 ? "none" : PANEL_BORDER,
           }}>
             <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-600)", letterSpacing: "-0.26px" }}>{r.label}</span>
             <span style={{
@@ -327,7 +331,7 @@ function QuietButton({ label, icon, onClick }: { label: string; icon?: React.Rea
       style={{
         display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
         height: "44px", width: "100%", borderRadius: RADIUS.control, cursor: "pointer",
-        border: CARD_BORDER, backgroundColor: "white",
+        border: PANEL_BORDER, backgroundColor: "white",
         fontSize: "14px", fontWeight: 700, color: "var(--gray-600)", letterSpacing: "-0.28px",
       }}
     >

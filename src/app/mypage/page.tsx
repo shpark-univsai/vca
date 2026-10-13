@@ -146,7 +146,11 @@ const LANGUAGE_OPTIONS = [
 // The console's one hairline value — see --line in globals.css, which was defined for exactly
 // this and then never reached the app: eight files each declared their own gray-200 rule instead,
 // so Portal and the app drew different lines.
-const CARD_BORDER = "1px solid var(--line)";
+/* PANEL_BORDER, not PANEL_BORDER. Portal exports a PANEL_BORDER too and it is --line-card (1.46),
+   a step darker than this one — two different values under one name, which reads as the same thing
+   to whoever opens the second file. The values differing is not the error: Portal's cards sit on a
+   --primary-50 page and these sit on --gray-50. The name was. */
+const PANEL_BORDER = "1px solid var(--line)";
 
 // This browser only. A real list — other devices, their last activity — comes from the backend's
 // session store, which is also what makes ending one possible: with stateless tokens alone there
@@ -235,7 +239,7 @@ function GrantChip({ label, on }: { label: string; on: boolean }) {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ backgroundColor: "white", border: CARD_BORDER, borderRadius: RADIUS.card, padding: "20px", display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
+    <div style={{ backgroundColor: "white", border: PANEL_BORDER, borderRadius: RADIUS.card, padding: "20px", display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
       {children}
     </div>
   );
@@ -292,7 +296,7 @@ function DropdownBtn<V extends string>({ value, options, onSelect, disabledValue
     <div ref={ref} style={{ position: "relative" }}>
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: RADIUS.control, padding: "6px 10px", cursor: "pointer" }}
+        style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: "white", border: "1px solid var(--line)", borderRadius: RADIUS.control, padding: "6px 10px", cursor: "pointer" }}
       >
         <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)", letterSpacing: "-0.24px" }}>
           {options.find(o => o.value === value)?.label ?? value}
@@ -300,7 +304,7 @@ function DropdownBtn<V extends string>({ value, options, onSelect, disabledValue
         <ChevronDownIcon />
       </button>
       {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: RADIUS.panel, boxShadow: "var(--shadow-popover)", minWidth: "150px", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, backgroundColor: "white", border: "1px solid var(--line)", borderRadius: RADIUS.panel, boxShadow: "var(--shadow-popover)", minWidth: "150px", overflow: "hidden" }}>
           {options.map(opt => {
             const unavailable = disabledValues.includes(opt.value);
             const selected = opt.value === value;
@@ -339,7 +343,7 @@ function ThresholdField({ label, value, onChange, min, max }: { label: string; v
           max={max}
           value={value}
           onChange={(e) => onChange(clamp(Number(e.target.value) || min))}
-          style={{ width: "72px", textAlign: "center", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", border: "1px solid var(--gray-200)", borderRadius: RADIUS.control, padding: "6px 8px", outline: "none" }}
+          style={{ width: "72px", textAlign: "center", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", border: "1px solid var(--line)", borderRadius: RADIUS.control, padding: "6px 8px", outline: "none" }}
         />
       </div>
       <input
@@ -933,7 +937,7 @@ export default function MyPage() {
                     </div>
                     <button
                       onClick={() => setShowPasswordModal(true)}
-                      style={{ backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: RADIUS.control, padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.24px" }}
+                      style={{ backgroundColor: "white", border: "1px solid var(--line)", borderRadius: RADIUS.control, padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.24px" }}
                     >
                       {t.change}
                     </button>
@@ -1018,7 +1022,7 @@ export default function MyPage() {
                     </div>
                     <button
                       onClick={() => setShowThresholdModal(true)}
-                      style={{ backgroundColor: "white", border: "1px solid var(--gray-200)", borderRadius: RADIUS.control, padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.24px" }}
+                      style={{ backgroundColor: "white", border: "1px solid var(--line)", borderRadius: RADIUS.control, padding: "6px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 700, color: "var(--gray-700)", letterSpacing: "-0.24px" }}
                     >
                       {t.change}
                     </button>

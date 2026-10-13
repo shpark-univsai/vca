@@ -224,7 +224,8 @@ function usePersistedSidebarTab(): [SidebarTab, (tab: SidebarTab) => void] {
 
 const PAGE_BTN: React.CSSProperties = {
   width:"26px", height:"26px", borderRadius:RADIUS.control,
-  border:"1px solid var(--gray-200)", background:"white",
+  // --line-control, the control-edge token — see the note on STEP_BTN_STYLE in BestFrameDetailPage.
+  border:"1px solid var(--line-control)", background:"white",
   cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
   padding:0,
 };

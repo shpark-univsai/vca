@@ -176,7 +176,11 @@ const BORDER = "1px solid var(--line)";
    switch on and off, and these switch nothing — they move the footage, from a row that also holds
    the date trigger and the time field, both of which are the control step. */
 const STEP_BTN_STYLE: CSSProperties = {
-  padding:"6px 12px", borderRadius:RADIUS.control, border:"1px solid var(--gray-300)", backgroundColor:"white",
+  /* --line-control: the token for a control's resting edge. --gray-300 is 1.48 on white, the same
+     lightness as a CARD edge, so these read as four little cards rather than four buttons; it is
+     also the slate half of the ramp against a 240° page. Hover (--gray-400) and focus
+     (--primary-400) are unchanged, so the ladder is 1.28 → 2.56 → 6.01. */
+  padding:"6px 12px", borderRadius:RADIUS.control, border:"1px solid var(--line-control)", backgroundColor:"white",
   color:"var(--gray-700)", fontSize:"12px", fontWeight:700, cursor:"pointer", whiteSpace:"nowrap",
 };
 /* Hover comes from a class, never from a hovered flag per button. There were sixteen
@@ -2112,7 +2116,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     opens it, which is how every other popover in the app is drawn. Both of these
                     were 8px, the trigger's own value. */}
                 {dateOpen && (
-                  <div style={{ position:"absolute", right:0, top:"calc(100% + 4px)", backgroundColor:"white", borderRadius:RADIUS.panel, boxShadow:"var(--shadow-popover)", border:"1px solid var(--gray-200)", overflow:"hidden", zIndex:50 }}>
+                  <div style={{ position:"absolute", right:0, top:"calc(100% + 4px)", backgroundColor:"white", borderRadius:RADIUS.panel, boxShadow:"var(--shadow-popover)", border:"1px solid var(--line)", overflow:"hidden", zIndex:50 }}>
                     <TrackDateCalendar selected={trackDate} onPick={(d) => { setTrackDate(d); setDateOpen(false); }} />
                   </div>
                 )}
@@ -2169,7 +2173,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                 </div>
                 {timeOpen && (
                   <div style={{ position:"absolute", right:0, top:"calc(100% + 4px)", zIndex:20, display:"flex",
-                    backgroundColor:"white", borderRadius:RADIUS.panel, border:"1px solid var(--gray-200)",
+                    backgroundColor:"white", borderRadius:RADIUS.panel, border:"1px solid var(--line)",
                     boxShadow:"var(--shadow-popover)", overflow:"hidden" }}>
                     {([
                       { label: t.hour, values: Array.from({ length: HOURS_IN_DAY }, (_, h) => h), current: currentHour,

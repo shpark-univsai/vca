@@ -1215,7 +1215,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           }}>
           <div style={{
             width: "730px", height: "303px", boxSizing: "border-box", backgroundColor: "white",
-            border: "1px solid var(--gray-200)", borderRadius: RADIUS.control,
+            border: "1px solid var(--line)", borderRadius: RADIUS.control,
             boxShadow: "var(--shadow-modal)",
             padding: "12px", display: "flex", flexDirection: "column", gap: "10px",
           }}>
@@ -2344,7 +2344,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                 line while open, the same way the circles sit on top of it. */}
                             {openFrameKey === node.key && (
                               <div style={{ marginLeft: "-48px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                                <div style={{ borderRadius: RADIUS.control, overflow: "hidden", border: "1px solid var(--gray-200)" }}>
+                                <div style={{ borderRadius: RADIUS.control, overflow: "hidden", border: "1px solid var(--line)" }}>
                                   <Photo kind="frame" src={frameImageSrc(node.faceUrl)} alt={`Captured frame — ${node.fullLocation} ${node.date} ${node.time}`}
                                        style={{ display: "block", width: "100%", aspectRatio: "16 / 9", objectFit: "cover" }} />
                                 </div>

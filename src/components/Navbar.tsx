@@ -598,7 +598,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               <div className="navbar-dropdown" style={{
                 position: "absolute", top: "calc(100% + 8px)", right: 0,
                 width: "300px", backgroundColor: "white",
-                border: "1px solid var(--gray-200)", borderRadius: "12px",
+                border: "1px solid var(--line)", borderRadius: "12px",
                 boxShadow: "var(--shadow-popover)",
                 animation: "dropdown-in 0.16s cubic-bezier(0.16, 1, 0.3, 1)",
                 transformOrigin: "top right",
@@ -687,7 +687,7 @@ export default function Navbar({ activeTab: externalTab, onTabChange, onNotifica
               <div className="navbar-dropdown" style={{
                 position: "absolute", top: "calc(100% + 8px)", right: 0,
                 width: "200px", backgroundColor: "white",
-                border: "1px solid var(--gray-200)", borderRadius: "12px",
+                border: "1px solid var(--line)", borderRadius: "12px",
                 boxShadow: "var(--shadow-popover)",
                 animation: "dropdown-in 0.16s cubic-bezier(0.16, 1, 0.3, 1)",
                 transformOrigin: "top right",

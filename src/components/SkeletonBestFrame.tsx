@@ -63,7 +63,7 @@ function SidebarSkeleton() {
 
 function FilterRowSkeleton() {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px 12px", flexShrink: 0, borderBottom: "1px solid var(--gray-200)" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px 12px", flexShrink: 0, borderBottom: "1px solid var(--line)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         <Bone w="90px" h="14px" color="var(--gray-300)" />
         <Bone w="46px" h="12px" color="var(--gray-100)" />

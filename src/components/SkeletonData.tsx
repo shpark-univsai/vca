@@ -19,7 +19,7 @@ function Circle({ size, color = "var(--gray-300)" }: { size: string; color?: str
 function SubNavSkeleton() {
   const tabs = ["78px", "96px", "90px", "64px"];
   return (
-    <div aria-hidden="true" style={{ backgroundColor: "white", borderBottom: "1px solid var(--gray-200)", display: "flex", alignItems: "center", padding: "0 20px", height: "46px", flexShrink: 0, gap: "18px" }}>
+    <div aria-hidden="true" style={{ backgroundColor: "white", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", padding: "0 20px", height: "46px", flexShrink: 0, gap: "18px" }}>
       {tabs.map((w, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px", height: "100%", borderBottom: i === 0 ? "2px solid var(--gray-300)" : "2px solid transparent" }}>
           <Bone w="14px" h="14px" color={i === 0 ? "var(--gray-300)" : "var(--gray-100)"} radius="3px" />

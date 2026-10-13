@@ -95,7 +95,7 @@ function ListItemSkeleton({ nameW, subW }: { nameW: string; subW: string }) {
 function SidebarSkeleton() {
   return (
     <div aria-hidden="true" style={{
-      width: "380px", flexShrink: 0, height: "100%", backgroundColor: "white", borderRight: "1px solid var(--gray-200)",
+      width: "380px", flexShrink: 0, height: "100%", backgroundColor: "white", borderRight: "1px solid var(--line)",
       display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "24px", padding: "20px 24px", overflow: "hidden",
     }}>
       {/* The tab toggle, in the shape it will have when it arrives — 8px track, 6px segment, 2px

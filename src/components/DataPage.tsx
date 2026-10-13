@@ -1315,7 +1315,12 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
   return (
     <div ref={ref} style={{ position:"relative", width:"100%" }}>
       <style>{`
-        .vca-simple-select-trigger:hover { border-color:var(--primary-300) !important; }
+        /* Hover is --gray-400, the pointer colour this console uses everywhere; it was
+           --primary-300, which is the OPEN/focus family, so pointing at this select said the same
+           thing as opening it — and said it harder (3.04) than being open said anything at all,
+           since the trigger did not change when open. The ladder now runs resting 1.28 →
+           hover 2.56 → open 6.01, the same three steps Portal's FilterSelect uses. */
+        .vca-simple-select-trigger:hover { border-color:var(--gray-400) !important; }
         /* SELECTED IS GREY, NOT PURPLE (2026-09-17), finishing what 41e858e and 81721ba started.
            These rows are the same thing as .vca-picker-option in globals.css — one row in an open
            dropdown, saying "this is the value you are on" — so they take the same mark:
@@ -1343,7 +1348,11 @@ function SimpleSelect({ value, options, onChange }: { value:string; options:stri
       `}</style>
       <button onClick={() => setOpen(o => !o)} className="vca-simple-select-trigger" style={{
         display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%",
-        height:"32px", padding:"0 10px", borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white", cursor:"pointer",
+        height:"32px", padding:"0 10px", borderRadius:RADIUS.control, backgroundColor:"white", cursor:"pointer",
+        // Resting on the control token, open on the focus one — being open IS this control having
+        // the conversation, so it wears what a focused field wears.
+        border: open ? "1px solid var(--primary-400)" : "1px solid var(--line-control)",
+        boxShadow: open ? "0 0 0 3px var(--primary-100)" : "none",
       }}>
         <span style={{ fontSize:"12px", fontWeight:600, color: value ? "var(--gray-900)" : "var(--gray-400)" }}>{value ? attr(value, lang) : t.filterAll}</span>
         <span style={{ display:"flex", color:"var(--gray-600)", transform: open ? "rotate(180deg)" : "none", transition:"transform 0.15s" }}>
@@ -1909,7 +1918,7 @@ function LiveSearchSidebar({
       </div>
 
       <div style={{ padding:"12px 16px 16px", display:"flex", gap:"8px", flexShrink:0 }}>
-        <button onClick={() => { reset(); setUploadedFace(null); setUploadedBody(null); }} aria-label={t.reset} className="vca-hover-outline" style={{ padding:"0 14px", height:"38px", borderRadius:RADIUS.control, border:"1px solid var(--gray-300)", backgroundColor:"white", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <button onClick={() => { reset(); setUploadedFace(null); setUploadedBody(null); }} aria-label={t.reset} className="vca-hover-outline" style={{ padding:"0 14px", height:"38px", borderRadius:RADIUS.control, border:"1px solid var(--line-control)", backgroundColor:"white", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <ResetIconSm />
         </button>
         {/* Person search is granted per account (PortalUser.appSearch) — reconstructing where
@@ -4840,7 +4849,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
               press, and nothing happened. A control that answers a click by doing nothing is
               worse than no control, because the operator concludes the screen is stuck. */}
           {onCancel && (
-            <button onClick={onCancel} className="vca-hover-outline" style={{ padding:"8px 12px", borderRadius:RADIUS.control, border:"1px solid var(--gray-300)", backgroundColor:"white", fontSize:"13px", fontWeight:700, color:"var(--gray-600)", cursor:"pointer" }}>{t.cancel}</button>
+            <button onClick={onCancel} className="vca-hover-outline" style={{ padding:"8px 12px", borderRadius:RADIUS.control, border:"1px solid var(--line-control)", backgroundColor:"white", fontSize:"13px", fontWeight:700, color:"var(--gray-600)", cursor:"pointer" }}>{t.cancel}</button>
           )}
           <button disabled={!selectedObj} onClick={() => selectedObj && onConfirm(selectedObj)} className="vca-hover-darken" style={{ padding:"8px 12px", borderRadius:RADIUS.control, border:"none",
             backgroundColor: selectedObj ? "var(--primary-400)" : "var(--primary-200)", color:"white", fontSize:"13px", fontWeight:700,
@@ -5695,7 +5704,7 @@ function JointEvidencePanel({ primary, tier, node, onClose, onAnalyzeFrame, date
                   title={t.excludeAssociate}
                   className="vca-hover-row"
                   style={{ display:"flex", alignItems:"center", gap:"4px", padding:"5px 10px", borderRadius:RADIUS.control,
-                    border:"1px solid var(--gray-300)", backgroundColor:"white", cursor:"pointer",
+                    border:"1px solid var(--line-control)", backgroundColor:"white", cursor:"pointer",
                     fontSize:"11px", fontWeight:700, color:"var(--danger-400)", whiteSpace:"nowrap" }}>
                   <XCircleIconSm /> {t.excluded}
                 </button>

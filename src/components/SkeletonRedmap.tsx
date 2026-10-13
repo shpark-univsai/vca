@@ -15,7 +15,7 @@ function Bone({ w, h, color = "var(--gray-200)", radius = "4px" }: { w: string; 
 function SearchBarSkeleton() {
   return (
     <div aria-hidden="true" style={{
-      backgroundColor: "white", borderBottom: "1px solid var(--gray-200)",
+      backgroundColor: "white", borderBottom: "1px solid var(--line)",
       padding: "0 24px", height: "52px",
       display: "flex", alignItems: "center", gap: "0", flexShrink: 0,
     }}>

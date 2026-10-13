@@ -845,13 +845,13 @@ export default function ClientLayout() {
                     // screen with no token behind it. globals.css has four elevation/overlay
                     // roles and none of them is "a glass surface over the map" — the scrims are
                     // dark, and an opaque --gray-0 here would close the window the comment above
-                    // asks for. The hairline is the token it always was; the 74% white wants a
+                    // asks for. The hairline is --line, the token it always was; the 74% white wants a
                     // --glass-surface added to globals.css, which is a shared file and a design
                     // call, so it is reported rather than invented here.
                     // Not a pill. The pill step is for a label-only chip that switches one
                     // condition on and off; this is an icon-and-label button that OPENS the panel
                     // above, and a button is the control step wherever it floats (shared/controls).
-                    border: "1px solid var(--gray-200)", borderRadius: RADIUS.control, padding: "8px 14px",
+                    border: "1px solid var(--line-control)", borderRadius: RADIUS.control, padding: "8px 14px",
                     boxShadow: "var(--shadow-popover)", cursor: "pointer",
                   }}
                 >

@@ -251,7 +251,7 @@ export default function DetectionActivityChart({ onHide }: { onHide?: () => void
     <div className="vca-rise-in" style={{
       backgroundColor: "rgba(255,255,255,0.4)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
       // Floats over the map like a popover, so the panel step — it was the only 11px in the repo.
-      borderRadius: RADIUS.panel, border: "1px solid rgba(226,232,240,0.6)", boxShadow: "var(--shadow-popover)",
+      borderRadius: RADIUS.panel, border: "1px solid var(--line)", boxShadow: "var(--shadow-popover)",
       padding: "18px 22px 14px", display: "flex", flexDirection: "column", gap: "12px",
     }}>
       {/* Whole header row is the click target to minimize (except the camera filter, which
@@ -303,7 +303,7 @@ export default function DetectionActivityChart({ onHide }: { onHide?: () => void
               <div style={{
                 position: "absolute", top: "calc(100% + 4px)", left: 0, width: "160px", backgroundColor: "white",
                 // The trigger is a control (8px); the list it drops is a panel (12px).
-                border: "1px solid var(--gray-200)", borderRadius: RADIUS.panel, boxShadow: "var(--shadow-popover)",
+                border: "1px solid var(--line)", borderRadius: RADIUS.panel, boxShadow: "var(--shadow-popover)",
                 zIndex: 10, overflow: "hidden",
               }}>
                 {([{ id: null as CameraFilter, name: t.allCameras }, ...cameras.map(c => ({ id: c.id as CameraFilter, name: c.name }))]).map(opt => (
