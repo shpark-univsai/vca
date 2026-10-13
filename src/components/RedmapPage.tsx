@@ -1341,11 +1341,18 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           onChange={setMode}
           fill
           style={{ height: "36px", width: "280px", flexShrink: 0 }}
+          /* The icon takes the label's colour, both states (owner, 2026-10-13: 토글에 선택하기전에
+             아이콘 색을 글자색이랑 똑같이 맞춰줘 조금 더 진하게). The unselected icon was --gray-400
+             against a --gray-600 word, so half of one cell sat a step back from the other half and
+             the icon read as disabled while the word beside it did not. SegmentedControl's own
+             rule is active ? --gray-900 : --gray-600 (and the 600 is itself measured — 500 falls
+             to 3.87:1 on the --gray-200 track); these follow it rather than keeping a second
+             opinion about the same cell. */
           options={[
             { value: "person", label: <span className="vca-tb-mode">{t.modePerson}</span>,
-              icon: a => <PersonIcon color={a ? "var(--gray-900)" : "var(--gray-400)"} size={18} /> },
+              icon: a => <PersonIcon color={a ? "var(--gray-900)" : "var(--gray-600)"} size={18} /> },
             { value: "car", label: <span className="vca-tb-mode">{t.modeVehicle}</span>,
-              icon: a => <VehicleIcon color={a ? "var(--gray-900)" : "var(--gray-400)"} size={18} /> },
+              icon: a => <VehicleIcon color={a ? "var(--gray-900)" : "var(--gray-600)"} size={18} /> },
           ]}
         />
 

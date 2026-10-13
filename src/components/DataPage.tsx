@@ -2646,36 +2646,26 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
   );
 }
 
-function SmartSearchResults({ state, results, emptyReason, onCardClick, onRefine, onReset, topColors, bottomColors, shoesColors, emotion, ethnicGroup }:
-  { state: SearchFilterState; results:(typeof REID_DATA); emptyReason: SearchEmptyReason | null; onCardClick:(id:number)=>void; onRefine:()=>void; onReset:()=>void;
-    topColors: string[]; bottomColors: string[]; shoesColors: string[]; emotion: string; ethnicGroup: string }) {
+/**
+ * THE QUESTION, ABOVE THE ANSWER.
+ *
+ * It lived inside SmartSearchResults, so only 모니터링 had it: Re-ID showed its clusters with no
+ * statement of what had been asked, and an operator coming back to the screen — or taking it over
+ * at a shift change — could not tell what the rows were an answer to (owner, 2026-10-13:
+ * 모니터링 검색결과처럼 리아이디검색결과에도 위에 조건 보여줘). One bar, both screens, so the two
+ * can never describe the same query differently.
+ *
+ * A picked target replaces the attribute chips rather than joining them, and that is not tidying:
+ * a target search goes through buildTargetResultRows, which reads none of the attributes. Listing
+ * them beside those results would name filters that did not filter.
+ */
+function SearchConditionBar({ state, topColors, bottomColors, shoesColors, emotion, ethnicGroup, onReset, onRefine }:
+  { state: SearchFilterState; topColors: string[]; bottomColors: string[]; shoesColors: string[];
+    emotion: string; ethnicGroup: string; onReset:()=>void; onRefine:()=>void }) {
   const [lang] = useLanguage();
   const t = T[lang];
   const { searchType, threshold, gender, apparel, props, dateRange, licensePlate, camera, activeTarget, clearActiveTarget } = state;
-  // Captured once when results first land, not read live on every render — otherwise "as of"
-  // would silently keep advancing on any unrelated re-render, making the Refresh button's job
-  // (bump this to "now") indistinguishable from doing nothing.
-  const [refreshedAt, setRefreshedAt] = useState(() => new Date());
-  // A named target (VIP Quick Select / Recent Targets) shouldn't disappear once you're looking at
-  // results — otherwise there's no way to tell "who am I even looking for" without going back to
-  // the form. Reuse the same toggle-off logic the picker rows use, so clearing it here is
-  // identical to clicking it again in the form.
-  const target = activeTarget;
-  const clearTarget = clearActiveTarget;
-  // What each card in the grid actually satisfied to be included — filterReidData() already hard-
-  // filters on these, so every result matches all of them; surfacing that here turns the bare
-  // similarity % into "matched because of X, Y, Z" instead of an unexplained number. None of this
-  // applies once a target is picked, though: those results come from buildTargetResultRows (the
-  // target re-appearing), which never looks at gender/apparel/props/camera/date at all — showing
-  // them as if they're "active filters" on results they don't actually filter is exactly the kind
-  // of disconnect between the filter bar and the results that shouldn't happen.
-  const matchReasons = target ? [] : [
-    ...(gender ? [gender] : []),
-    ...(apparel.length ? [apparel.join("/")] : []),
-    ...(props.length ? [props.join("/")] : []),
-    ...(camera ? [camera] : []),
-  ];
-  const activeChips = target
+  const chips = activeTarget
     ? [searchType === "PERSON" ? t.person : t.tabVehicle, t.similarityAtLeast(threshold)]
     : [
         searchType === "PERSON" ? t.person : t.tabVehicle,
@@ -2691,29 +2681,62 @@ function SmartSearchResults({ state, results, emptyReason, onCardClick, onRefine
               ...(emotion ? [emotion] : []), ...(ethnicGroup ? [ethnicGroup] : []),
             ]),
       ];
+  return (
+    <div style={{ padding:"16px 24px", backgroundColor:"white", borderBottom:BORDER, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"12px" }}>
+      <div className="vca-hide-scrollbar" style={{ display:"flex", alignItems:"center", gap:"8px", overflowX:"auto" }}>
+        {activeTarget && (
+          <FilterChip avatar={activeTarget.face} onRemove={clearActiveTarget}>
+            {t.similarTo} {activeTarget.label}
+          </FilterChip>
+        )}
+        {chips.map((c, i) => <FilterChip key={i}>{c}</FilterChip>)}
+        <button onClick={onReset} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:RADIUS.control, cursor:"pointer",
+          fontSize:"13px", fontWeight:600, color:"var(--gray-600)", flexShrink:0, padding:"4px 6px" }}>
+          <ResetIconSm /> {t.resetFilters}
+        </button>
+      </div>
+      <button onClick={onRefine} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:RADIUS.control, cursor:"pointer", padding:"4px 6px",
+        fontSize:"13px", fontWeight:700, color:"var(--gray-900)", flexShrink:0 }}>
+        <SlidersIconSm size={14} /> {t.refineSearch}
+      </button>
+    </div>
+  );
+}
 
+function SmartSearchResults({ state, results, emptyReason, onCardClick, onRefine, onReset, topColors, bottomColors, shoesColors, emotion, ethnicGroup }:
+  { state: SearchFilterState; results:(typeof REID_DATA); emptyReason: SearchEmptyReason | null; onCardClick:(id:number)=>void; onRefine:()=>void; onReset:()=>void;
+    topColors: string[]; bottomColors: string[]; shoesColors: string[]; emotion: string; ethnicGroup: string }) {
+  const [lang] = useLanguage();
+  const t = T[lang];
+  const { searchType, threshold, gender, apparel, props, camera, activeTarget } = state;
+  // Captured once when results first land, not read live on every render — otherwise "as of"
+  // would silently keep advancing on any unrelated re-render, making the Refresh button's job
+  // (bump this to "now") indistinguishable from doing nothing.
+  const [refreshedAt, setRefreshedAt] = useState(() => new Date());
+  // A named target (VIP Quick Select / Recent Targets) shouldn't disappear once you're looking at
+  // results — otherwise there's no way to tell "who am I even looking for" without going back to
+  // the form. Reuse the same toggle-off logic the picker rows use, so clearing it here is
+  // identical to clicking it again in the form.
+  const target = activeTarget;
+  // What each card in the grid actually satisfied to be included — filterReidData() already hard-
+  // filters on these, so every result matches all of them; surfacing that here turns the bare
+  // similarity % into "matched because of X, Y, Z" instead of an unexplained number. None of this
+  // applies once a target is picked, though: those results come from buildTargetResultRows (the
+  // target re-appearing), which never looks at gender/apparel/props/camera/date at all — showing
+  // them as if they're "active filters" on results they don't actually filter is exactly the kind
+  // of disconnect between the filter bar and the results that shouldn't happen.
+  const matchReasons = target ? [] : [
+    ...(gender ? [gender] : []),
+    ...(apparel.length ? [apparel.join("/")] : []),
+    ...(props.length ? [props.join("/")] : []),
+    ...(camera ? [camera] : []),
+  ];
   const scrollRef = useRef<HTMLDivElement>(null);
   return (
     <div style={{ position:"relative", flex:1, overflow:"hidden" }}>
     <div ref={scrollRef} className="vca-hide-scrollbar" style={{ position:"absolute", inset:0, overflowY:"auto", backgroundColor:"var(--gray-50)" }}>
-      <div style={{ padding:"16px 24px", backgroundColor:"white", borderBottom:BORDER, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"12px" }}>
-        <div className="vca-hide-scrollbar" style={{ display:"flex", alignItems:"center", gap:"8px", overflowX:"auto" }}>
-          {target && (
-            <FilterChip avatar={target.face} onRemove={clearTarget}>
-              {t.similarTo} {target.label}
-            </FilterChip>
-          )}
-          {activeChips.map((c, i) => <FilterChip key={i}>{c}</FilterChip>)}
-          <button onClick={onReset} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:RADIUS.control, cursor:"pointer",
-            fontSize:"13px", fontWeight:600, color:"var(--gray-600)", flexShrink:0, padding:"4px 6px" }}>
-            <ResetIconSm /> {t.resetFilters}
-          </button>
-        </div>
-        <button onClick={onRefine} className="vca-hover-quiet" style={{ display:"flex", alignItems:"center", gap:"6px", background:"none", border:"none", borderRadius:RADIUS.control, cursor:"pointer", padding:"4px 6px",
-          fontSize:"13px", fontWeight:700, color:"var(--gray-900)", flexShrink:0 }}>
-          <SlidersIconSm size={14} /> {t.refineSearch}
-        </button>
-      </div>
+      <SearchConditionBar state={state} topColors={topColors} bottomColors={bottomColors} shoesColors={shoesColors}
+        emotion={emotion} ethnicGroup={ethnicGroup} onReset={onReset} onRefine={onRefine} />
 
       <div style={{ padding:"16px 24px 0" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"16px", flexWrap:"wrap", gap:"8px" }}>
@@ -4075,6 +4098,16 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
         <SearchPanelToggle expanded={expanded} onToggle={() => setExpanded(e => !e)} />
         <ReidCameraPicker value={camera} onChange={onCameraChange} />
       </div>
+      {/* Only once a search has actually been run. Before that the clusters below are this
+          screen's own live trail, not an answer, and naming conditions over them would describe a
+          question nobody asked. */}
+      {hasSearched && searchAllowed && hasQuery && (
+        <div style={{ marginBottom:"12px", borderRadius:RADIUS.panel, overflow:"hidden", flexShrink:0, border:BORDER }}>
+          <SearchConditionBar state={state} topColors={topColors} bottomColors={bottomColors} shoesColors={shoesColors}
+            emotion={emotion} ethnicGroup={ethnicGroup}
+            onReset={reset} onRefine={() => setExpanded(true)} />
+        </div>
+      )}
       <div style={{ position:"relative", flex:1, overflow:"hidden" }}>
       <div ref={scrollRef} className="vca-hide-scrollbar" style={{ position:"absolute", inset:0, overflowY:"auto", display:"flex", flexDirection:"column", gap:"16px" }}>
         {/* A press with nothing set is a form that is not filled in — the panel says so beside
