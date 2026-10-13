@@ -44,5 +44,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# 세션 조정용 — 병렬 작업 배정 기록. 전달물이 아니라 과정 산출물이라 추적하지 않는다.
-SESSIONS.md
+# 세션 조정용 — 병렬 작업 배정 기록.
+#
+# 추적합니다(2026-10-13, 오너: 작업파일은 안올려두되는데 백업용에만 올려줘). 전달물이 아닌
+# 것은 맞지만, 전달에서 빼는 일은 .gitignore가 아니라 반입 커밋이 합니다 — import/frontend-ui-*
+# 브랜치를 만들 때 .claude · skills-lock.json과 함께 트리에서 뺍니다. 무시해 두면 백업 저장소
+# (vca-frontend-history)에도 안 올라가서, 세션이 날아가면 배정 기록이 같이 사라집니다.
