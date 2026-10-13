@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage } from "@/lib/i18n";
+import { useLanguage, type AppLanguage } from "@/lib/i18n";
 
 /** Region shape and copy: see the note at the top of SkeletonDashboard.tsx. */
 const T = {
@@ -12,52 +12,61 @@ function Bone({ w, h, color = "var(--gray-200)", radius = "4px" }: { w: string; 
   return <div className="vca-skeleton-pulse" style={{ width: w, height: h, backgroundColor: color, borderRadius: radius, flexShrink: 0 }} />;
 }
 
-function SearchBarSkeleton() {
+/* The two image chips are the only thing on this row whose width is set by its own text —
+   「얼굴」/「전신」 against "Face"/"Body" — so they are the only thing the skeleton has to ask the
+   language about. Measured in the live toolbar at 1512: ko 120/120, en 134/137. Everything else
+   here is a fixed px width in RedmapPage and is copied straight across. */
+const CHIP_W: Record<AppLanguage, [string, string]> = {
+  ko: ["120px", "120px"],
+  en: ["134px", "137px"],
+};
+
+function SearchBarSkeleton({ lang }: { lang: AppLanguage }) {
+  const [faceW, bodyW] = CHIP_W[lang];
   return (
+    /* gap:20px and padding:0 24px are the real row's own values — the bones below carry no
+       margins of their own, so the spacing comes from the same place in both. */
     <div aria-hidden="true" style={{
       backgroundColor: "white", borderBottom: "1px solid var(--line)",
       padding: "0 24px", height: "52px",
-      display: "flex", alignItems: "center", gap: "0", flexShrink: 0,
+      display: "flex", alignItems: "center", gap: "20px", flexShrink: 0,
     }}>
-      {/* Mode toggle — 8px track, 6px segments, the shape shared/SegmentedControl draws. It was a
-          pill here and a pill there; both moved together. */}
+      {/* Mode toggle — 280px wide, the width the real SegmentedControl is pinned to (it is a
+          bigger question than the date span beside it, so it is deliberately wider). 2px track
+          padding, 2px between segments, `flex:1` each, which lands both at 137px exactly as the
+          real control's `fill` does. */}
       {/* --gray-200, with the real toggle — otherwise the track darkens a step in the frame the
           skeleton hands over, which is exactly the layout-jump this file exists to avoid.
           The unselected bone goes to --gray-300 for the same reason in reverse: at
           --gray-200 it would dissolve into the track it sits on and the toggle would look
           like one segment while loading and two after. */}
-      <div style={{ display: "flex", alignItems: "center", backgroundColor: "var(--gray-200)", borderRadius: "var(--radius-control)", padding: "2px", gap: "2px" }}>
-        <Bone w="76px" h="32px" color="white" radius="var(--radius-inner)" />
-        <Bone w="76px" h="32px" color="var(--gray-300)" radius="var(--radius-inner)" />
+      <div style={{
+        display: "flex", alignItems: "center", width: "280px", height: "36px",
+        backgroundColor: "var(--gray-200)", borderRadius: "var(--radius-control)",
+        padding: "2px", gap: "2px", flexShrink: 0,
+      }}>
+        <div className="vca-skeleton-pulse" style={{ flex: 1, height: "32px", backgroundColor: "white", borderRadius: "var(--radius-inner)" }} />
+        <div className="vca-skeleton-pulse" style={{ flex: 1, height: "32px", backgroundColor: "var(--gray-300)", borderRadius: "var(--radius-inner)" }} />
       </div>
 
-      <div style={{ width: "1px", height: "20px", backgroundColor: "var(--gray-200)", margin: "0 16px" }} />
+      {/* Date range — the trigger's own 232×36 box. */}
+      <Bone w="232px" h="36px" color="var(--gray-100)" radius="var(--radius-control)" />
 
-      {/* Date range */}
-      <Bone w="180px" h="34px" color="var(--gray-100)" radius="var(--radius-control)" />
+      {/* One rule, 24px, where the real row draws one — this used to be three 20px rules spaced
+          by 16px margins, from a version of the toolbar that had a third group. */}
+      <div style={{ width: "1px", height: "24px", backgroundColor: "var(--gray-200)", flexShrink: 0 }} />
 
-      <div style={{ width: "1px", height: "20px", backgroundColor: "var(--gray-200)", margin: "0 16px" }} />
-
-      {/* Search-by-image chips */}
-      <div style={{ display: "flex", gap: "8px" }}>
-        <Bone w="120px" h="36px" color="var(--gray-100)" radius="var(--radius-control)" />
-        <Bone w="120px" h="36px" color="var(--gray-100)" radius="var(--radius-control)" />
+      {/* Face / Body chips */}
+      <div style={{ display: "flex", alignItems: "center", gap: "20px", flexShrink: 0 }}>
+        <Bone w={faceW} h="36px" color="var(--gray-100)" radius="var(--radius-control)" />
+        <Bone w={bodyW} h="36px" color="var(--gray-100)" radius="var(--radius-control)" />
       </div>
 
-      <div style={{ width: "1px", height: "20px", backgroundColor: "var(--gray-200)", margin: "0 16px" }} />
-
-      {/* Similarity */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <Bone w="60px" h="12px" color="var(--gray-100)" />
-        <Bone w="120px" h="20px" color="var(--gray-100)" radius="999px" />
-      </div>
-
-      <div style={{ flex: 1 }} />
-
-      <div style={{ display: "flex", gap: "12px" }}>
-        <Bone w="88px" h="36px" color="var(--gray-50)" radius="8px" />
-        <Bone w="112px" h="36px" color="var(--gray-200)" radius="10px" />
-      </div>
+      {/* Nothing past the chips. Similarity moved into the left panel, Reset only appears once
+          there is something to clear, and in 사람 mode the Search button lives in the panel that
+          arrives with the photo — so on the state this skeleton stands for (see below) the right
+          half of the real row is empty, and drawing bones there would hand over a toolbar that
+          loses two buttons and a slider the moment the data lands. */}
     </div>
   );
 }
@@ -87,15 +96,18 @@ function MapSkeleton() {
 }
 
 // The loading skeleton always represents the landing state (before any search has run) — that's
-// the only state a fresh page load can actually be in. Redmap's left/right panels only mount
-// once a search produces results, so this skeleton matches that: just the search bar and a
-// full-width map, no side panels.
+// the only state a fresh page load can actually be in: ClientLayout draws this instead of
+// RedmapPage while its own `isLoading` is true, which is only ever the first 700ms after mount,
+// and RedmapPage comes up with mode=person, no attached photo and hasSearched=false.
+// Redmap's left panel only mounts once a photo is attached and the right one only once a search
+// produces results, so this skeleton matches that: just the search bar and a full-width map
+// (1512 at this size, not the 872 a three-column search result leaves).
 export default function SkeletonRedmap() {
   const [lang] = useLanguage();
   return (
     <div role="status" aria-busy="true" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, position: "relative" }}>
       <span className="vca-skeleton-loading">{T[lang].loading}</span>
-      <SearchBarSkeleton />
+      <SearchBarSkeleton lang={lang} />
       <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
         <MapSkeleton />
       </div>
