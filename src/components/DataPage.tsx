@@ -1646,12 +1646,14 @@ function SearchPanelToggle({ expanded, onToggle }: { expanded: boolean; onToggle
         display:"flex", alignItems:"center", gap:"6px", flexShrink:0,
         height:CONTROL_HEIGHT, boxSizing:"border-box", padding:"0 12px",
         borderRadius:RADIUS.control, cursor:"pointer",
-        /* Pressed is a grey fill, the way a held-down control reads everywhere else here. Purple
-           is the VIP colour on these screens and the camera picker beside this one already spends
-           it. */
-        backgroundColor: expanded ? "var(--gray-100)" : "white",
-        border: expanded ? "1px solid transparent" : "1px solid var(--line-control)",
-        color: expanded ? "var(--gray-900)" : "var(--gray-700)",
+        /* THE SAME BUTTON IN BOTH STATES. A grey fill marked "pressed" here for about an hour and
+           was the rail's own mistake repeated: --gray-100 is the page's ground on this screen, so
+           the open state drew a button with no edge at all (owner, 2026-10-13: 버튼이 묻혀).
+           Nothing is lost by dropping it — the panel standing open beside it is the state, and the
+           label already says which way the next press goes. */
+        backgroundColor: "white",
+        border: "1px solid var(--line-control)",
+        color: "var(--gray-700)",
         fontSize:"14px", fontWeight:700, letterSpacing:"-0.28px", whiteSpace:"nowrap",
       }}
     >
