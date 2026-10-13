@@ -120,28 +120,70 @@ export default function RedmapMap({
     };
   }, []);
 
+  // ── Keep Leaflet's idea of the box the same as the box ────────
+  // This map is a flex child between two panels that come and go on their own: the results panel
+  // appears the moment a photo is attached, the route-history panel when a search lands, and
+  // either can be collapsed. So the map's width changes without the window ever resizing, and
+  // Leaflet projects coordinates against the size it measured once at init. Measured at 1512:
+  // the panels take the box from 1512 to 872 wide, and a route fitted afterwards was laid out for
+  // the wider box — the second of three nodes landed at x=1393 with the map ending at x=1192,
+  // clipped away entirely. Re-measuring on every box change is what makes a fit mean anything.
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
+    const observed = mapRef.current;
+    const ro = new ResizeObserver(() => {
+      // pan:false — re-measuring must not also shift the view the operator is watching.
+      (mapInstanceRef.current as { invalidateSize?: (o: object) => void } | null)
+        ?.invalidateSize?.({ animate: false, pan: false });
+    });
+    ro.observe(observed);
+    return () => ro.disconnect();
+  }, [mapReady]);
+
   // ── Frame the sightings ───────────────────────────────────────
   // The view used to open on a fixed city centre at zoom 12 and stay there. A site's cameras can
   // be a school campus a few hundred metres across, ten kilometres from that centre — its trail
   // drew correctly and sat off the edge of the screen. Fits to wherever the hits actually are;
   // with no hits the default view is left alone.
   //
-  // Keyed on the coordinates rather than the `hits` array so an unrelated re-render (a hover, a
-  // language change) doesn't yank the map back from wherever the operator has panned to.
-  const positionsKey = hits.filter(h => !h.hidden).map(h => `${h.lat},${h.lng}`).join("|");
+  // Keyed on EVERY hit's coordinates, the hidden ones included, because that key is the identity
+  // of the search result set and nothing else. Hiding is the operator pulling one sighting out of
+  // the trace (see TrackingHit.hidden), which is not a new search — keying on the visible ones
+  // meant every such judgement, and every undo of one, re-framed the map and pulled the view away
+  // from whatever the operator had zoomed in on. Only a different set of results moves the view.
+  const resultSetKey = hits.map(h => `${h.lat},${h.lng}`).join("|");
   useEffect(() => {
-    if (!mapReady || !positionsKey) return;
+    if (!mapReady || !resultSetKey) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const map = mapInstanceRef.current as any;
     if (!map) return;
-    const coords = positionsKey.split("|")
-      .map(pair => pair.split(",").map(Number) as [number, number]);
+    // Hidden sightings are excluded from the frame itself: a node the operator has called a
+    // different person should not be stretching the view to reach it.
+    const coords = hits.filter(h => !h.hidden).map(h => [h.lat, h.lng] as [number, number]);
+    if (coords.length === 0) return;
     import("leaflet").then(({ default: L }) => {
+      // The observer above fires after this effect, so on the search that mounts the panels this
+      // would still be fitted against the old width. Re-measure first, then fit.
+      map.invalidateSize({ animate: false, pan: false });
+      // Asymmetric, because a node is not a dot: the circle sits on the coordinate and its label
+      // card hangs off it — measured at 1512, up to 171px to the right and 71px below the anchor,
+      // and 125px below when the zoomed-out layout puts the card underneath the circle instead.
+      // Even padding fitted the pins and left the cards hanging over the edge.
+      //
       // maxZoom: two sightings from the same camera share one coordinate, and fitting a
       // zero-area bounds would otherwise zoom to the tile server's limit on a single point.
-      map.fitBounds(L.latLngBounds(coords), { padding: [80, 80], maxZoom: 16 });
+      map.fitBounds(L.latLngBounds(coords), {
+        paddingTopLeft: [60, 60],
+        paddingBottomRight: [200, 140],
+        maxZoom: 16,
+        // Short: this is a control room, and a long flight across the map is time the operator
+        // spends waiting to be able to read it.
+        animate: true,
+        duration: 0.35,
+      });
     });
-  }, [positionsKey, mapReady]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultSetKey, mapReady]);
 
   // ── Draw overlays ─────────────────────────────────────────────
   useEffect(() => {
