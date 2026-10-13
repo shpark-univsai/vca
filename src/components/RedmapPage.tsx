@@ -1553,6 +1553,13 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
             className="vca-hover-quiet"
             style={{
               display: "flex", alignItems: "center", gap: "8px",
+              /* PULLED BACK BY ITS OWN PADDING (owner, 2026-10-13: 리셋버튼도 살짝 더 왼쪽으로
+                 옮겨줘). This button has no fill or border, so what the eye measures is where the
+                 icon starts — and its 14px of inner padding put that 24px from the control before
+                 it while every other pair on the row is 10 apart. The negative margin takes the
+                 BOX closer without taking the padding away, so the hit area stays 36px tall and
+                 as wide as it was. 16px to the glyph: still a step apart, no longer adrift. */
+              marginLeft: "-8px",
               height: "36px", padding: "0 14px", borderRadius: RADIUS.control,
               border: "none", backgroundColor: "transparent", cursor: "pointer",
               color: "var(--gray-600)", fontWeight: 700, fontSize: "13px", whiteSpace: "nowrap",
