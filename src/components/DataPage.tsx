@@ -818,7 +818,24 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
         </div>
       )}
       {showActions && (
-        <div style={{ position:"absolute", inset:0, backgroundColor:"var(--scrim-media)",
+        /*
+         * A MISS NO LONGER TAKES YOU SOMEWHERE ELSE (owner, 2026-10-13: 카드에 호버해서 리아이디
+         * 누르면 뜨는건데 — they pressed Re-ID and the detection popup opened instead).
+         *
+         * Measured: the buttons are 28px tall with 7px between them, and this layer used to cover
+         * the whole card while doing nothing with a click. Six pixels above 「Re-ID」 is still on
+         * this layer, so the press fell through to the card underneath and opened the detail
+         * popup — a different screen, silently, from a near-miss on a small target. Three
+         * destinations and a fourth outcome nobody chose.
+         *
+         * So this layer swallows what does not land on a button, and it now STOPS ABOVE THE WHITE
+         * PLATE (74px, measured from the plate's own box below) instead of covering the card. The
+         * plate keeps the card's own click, so 「open this record」 is still one press — on the
+         * strip that holds the record's name and time, which is the part that means the record.
+         * It also stops dimming the one piece of text on the card that is not a button.
+         */
+        <div onClick={e => e.stopPropagation()}
+          style={{ position:"absolute", top:0, left:0, right:0, bottom:"74px", backgroundColor:"var(--scrim-media)",
           display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"8px", zIndex:20 }}>
           {/* THE 600 STEP, BECAUSE THIS BUTTON FILLS (owner, 2026-10-13: 레드맵 초록색 좀
               촌스럽당). These three hover buttons are outlined at rest and FILLED on hover with
