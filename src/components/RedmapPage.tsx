@@ -1314,12 +1314,14 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
            Every item on this row sat the same 20px from its neighbour — the mode toggle from the
            date, the date from the rule, the two photo chips from each other — so nothing on it
            was grouped with anything. A toolbar reads as finished when the distances say which
-           controls belong together: 6 inside a pair, 8 between neighbours, and 14 across the rule,
-           which the rule earns with its own 6px margins below. 12 and 20 were the first attempt
-           and still read loose (owner, same day: 지금도 좀 넓어보이는뎅) — on a row whose controls
-           are 232 and 280px wide, the air between them has to be small enough that the controls
-           are what the eye lands on. */
-        gap: "8px", flexShrink: 0,
+           controls belong together: 8 inside a pair, 10 between neighbours, and 16 across the
+           rule, which the rule earns with its own 6px margins below.
+           Landed between two misses, both the owner's on 2026-10-13: 20/20/20 read as nothing
+           grouped (듬성듬성해보여), then 12/20/8 still loose (지금도 좀 넓어보이는뎅), then 8/14/6
+           too close (이건 너무 좁혀졌는데). The controls here are 232 and 280px wide, so the air
+           between them has to be small enough that the controls are what the eye lands on and
+           wide enough that they are not one object. */
+        gap: "10px", flexShrink: 0,
       }}>
 
         {/* Mode toggle — the shared control now, so 사람/차량 here and EVENTS/SYSTEM on the
@@ -1402,14 +1404,14 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           <>
             <RedmapDateRange value={dateRange} onChange={setDateRange} />
 
-            {/* The rule gets the one wider break on the row: 8 + 6 on each side. It is the only
+            {/* The rule gets the one wider break on the row: 10 + 6 on each side. It is the only
                 place here where a bigger distance means something — 「what and when」 on its left,
                 「who」 on its right. */}
             <div className="vca-tb-rule" style={{ width: "1px", height: "24px", flexShrink: 0, margin: "0 6px", backgroundColor: "var(--gray-200)" }} />
 
             {/* Search by image chips — a pair, so they sit closer to each other than to anything
                 else on the row. */}
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
               {([
                 { key: "face" as const, label: t.face, image: faceImage },
                 { key: "body" as const, label: t.body, image: bodyImage },
@@ -1510,25 +1512,23 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
         )}
 
         {/*
-          A CAPPED SPACER, NOT marginLeft:auto — the gap has a ceiling now (owner, 2026-10-07:
-          서치퍼슨이 너무 오른쪽 끝에 있어서 이동범위가 먼데).
+          THE SPACER IS UNCAPPED AGAIN — the action group sits at the right end of the row
+          (owner, 2026-10-13: 그랬는데 원복시키고싶어졌어).
 
-          `marginLeft:auto` ate every spare pixel, so the wider the window the further the hand
-          travelled: measured from the last chip to Search, 343px at 1280, 522 at 1512, 864 at
-          1920 and 1,504px at 2560. A toolbar that gets harder to use the bigger the screen is
-          backwards. `flex:1 1 auto` with a cap gives the row a ceiling of 501px at every width
-          above 1512 — the spare pixels past the cap simply stay empty at the right.
+          WHAT THIS REVERSES, SO NOBODY RE-DERIVES IT. On 2026-10-07 the same owner asked for the
+          opposite (서치퍼슨이 너무 오른쪽 끝에 있어서 이동범위가 먼데) and the gap was capped at
+          80px. The cost of putting it back is measured and real: from the last control to the
+          button it is 152px at 1280, 387 at 1512 and 795 at 1920 — the wider the window, the
+          further the hand travels. That was raised again today with those numbers and the owner
+          chose the right edge anyway, so this is a decision, not a regression.
 
-          THE LEFT EDGE IS WHY THIS AND NOT CENTRING, which was measured too. Centring the whole
-          row reaches 400px, a hundred better, but it unpins the left: the row would start at 39px
-          at 1280 and 255px at 1920, so Redmap alone would have a left margin that moves with the
-          window while every other screen's toolbar starts at 24. It also drags the mode toggle,
-          the date trigger and the chips sideways on a mode switch, where today only the right
-          side moves. 101px is not worth the one line the rest of the product shares.
+          WHAT THE CAP BOUGHT, AND WHAT IT COST. It kept the button 8px from the control before it
+          at every width, which is the shortest possible travel. It also left the whole right end
+          of the row empty — 387px of nothing at 1512 — and a toolbar with its one dark button
+          parked in the middle of its own row reads unfinished.
 
-          The spacer shrinks to 0 before anything else does (`flex-shrink` defaults to 1 while
-          every control on this row sets 0), so at narrow widths this is exactly what was here
-          before — 1280 and 1440 measure identically with and without it.
+          The spacer still shrinks to 0 before anything else does (`flex-shrink` defaults to 1
+          while every control on this row sets 0), so at narrow widths nothing is pushed off.
         */}
         {/*
           RESET SITS WITH THE CONTROLS IT CLEARS (owner, 2026-10-12: 리셋 버튼은 similarity 에
@@ -1557,7 +1557,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
           </button>
         )}
 
-        <div style={{ flex: "1 1 auto", maxWidth: "80px", minWidth: 0 }} />
+        <div style={{ flex: "1 1 auto", minWidth: 0 }} />
         <div style={{ display: "flex", gap: "12px", flexShrink: 0 }}>
           {/*
             IN 사람 MODE THIS BUTTON'S HOME IS THE PANEL, so the toolbar does not keep a copy —
