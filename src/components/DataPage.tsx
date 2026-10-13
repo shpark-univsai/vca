@@ -525,7 +525,10 @@ const PERSONS = Array.from({length:72},(_,i) => ({
 
 
 // ── Person Detail Modal ────────────────────────────────────────
-function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:MatchItem; onClose:()=>void; onGoRedmap?:()=>void; onGoAnalyzeFrame?:(location:string)=>void }) {
+function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame, matchedAgainstQuery = false }:
+  { item:MatchItem; onClose:()=>void; onGoRedmap?:()=>void; onGoAnalyzeFrame?:(location:string, at?:{ date:string; time:string })=>void;
+    /** This record came out of a search, so its score is 「how like the thing you asked for」. */
+    matchedAgainstQuery?: boolean }) {
   const [lang] = useLanguage();
   useEscapeKey(onClose);
   return (
@@ -543,7 +546,17 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
           <div>
             <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
               <p style={{ fontSize:"13px", fontWeight:700, color:"var(--gray-900)" }}>{T[lang].reidObject(String(item.id).padStart(4,"0"))}</p>
-              <ScoreBadge score={item.similarity} />
+              {/* A SCORE NEEDS SOMETHING TO BE A SCORE OF (owner, 2026-10-13: unknown인데
+                  97프로일순없는뎅). It was drawn on every record, 미확인 included — and 미확인 means
+                  the face was matched against nothing: not a register entry, not a RedFace list,
+                  not a photo anybody searched with. 97.0% beside that word claims a certainty
+                  about a person the screen has just said it cannot name.
+                  Two cases where the number does answer something, and both are kept: a record
+                  the register named (VIP, RedFace, a plate), where it is the confidence in THAT
+                  identity; and a record that came out of a search, where it is likeness to the
+                  target that was searched with — which is why that one is a prop and not a guess
+                  made from the row. */}
+              {(matchedAgainstQuery || item.status !== "Unknown") && <ScoreBadge score={item.similarity} />}
               <span style={{ fontSize:"10px", fontWeight:700, color:"var(--gray-600)", backgroundColor:"var(--gray-100)", padding:"2px 7px", borderRadius:RADIUS.pill }}>{item.cam}</span>
               <span style={{ fontSize:"10px", fontWeight:800, color:REID_STATUS_STYLE[item.status].text, backgroundColor:REID_STATUS_STYLE[item.status].tint, padding:"2px 7px", borderRadius:RADIUS.pill }}>{attr(item.status, lang)}</span>
             </div>
@@ -625,7 +638,10 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame }: { item:Mat
             own popup button) deep-links to that camera's Inspection Detail instead. */}
         <div style={{ padding:"12px 16px", borderTop:BORDER, backgroundColor:"var(--gray-50)", display:"flex", justifyContent:"flex-end", gap:"8px", flexShrink:0 }}>
           <button
-            onClick={() => onGoAnalyzeFrame?.(item.cam)}
+            /* The moment goes with the camera. Without it the frame page opens on whatever that
+               camera's first detection happens to be, which is a different capture than the one
+               this modal is about. */
+            onClick={() => onGoAnalyzeFrame?.(item.cam, item.date ? { date:item.date, time:item.time } : undefined)}
             className="vca-hover-outline"
             style={{ display:"flex", alignItems:"center", gap:"5px", padding:"7px 14px", borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white", fontSize:"12px", fontWeight:600, color:"var(--gray-500)", cursor:"pointer" }}
           >
@@ -777,13 +793,23 @@ function MonitorCard({ p, onClick, showCam = false, fill = false, onNavigateTab,
       {showActions && (
         <div style={{ position:"absolute", inset:0, backgroundColor:"var(--scrim-media)",
           display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"8px", zIndex:20 }}>
+          {/* THE 600 STEP, BECAUSE THIS BUTTON FILLS (owner, 2026-10-13: 레드맵 초록색 좀
+              촌스럽당). These three hover buttons are outlined at rest and FILLED on hover with
+              white text on them, and measured, white on --success-400 (#16a34a) is 3.30:1 and on
+              --warning-500 (#ff5e00) 3.06:1 — both under the 4.5:1 that 12px bold needs, and the
+              bright emerald in particular read as borrowed from somewhere else at that size.
+              The 600 steps are the same two hues walked darker: 6.45:1 and 5.52:1. --primary-400
+              already measures 5.05:1 and stays as it is.
+              Only the button moves. --success-400 and --warning-500 keep saying ON and OFF on the
+              camera rows beside it, where they are small text on white and were never the
+              problem. */}
           <HoverActionBtn label="Re-ID" icon={<ReidIconSm />} color="var(--primary-400)" onClick={e => { e.stopPropagation(); onNavigateTab?.("Re-ID Analysis", p); }} />
-          <HoverActionBtn label="RedFace" icon={<RedFaceIconSm />} color="var(--warning-500)" onClick={e => { e.stopPropagation(); onNavigateTab?.("RedFace", p); }} />
+          <HoverActionBtn label="RedFace" icon={<RedFaceIconSm />} color="var(--warning-600)" onClick={e => { e.stopPropagation(); onNavigateTab?.("RedFace", p); }} />
           {/* Carries this detection's frame across as the search target. It used to call
               onGoRedmap() with nothing — a card that knows exactly who it is showing, opening an
               empty form and asking the operator to describe them from memory. There is no name
               on these records to pass, so the frame is what goes. */}
-          <HoverActionBtn label="Redmap" icon={<RedMapIconSm />} color="var(--success-400)"
+          <HoverActionBtn label="Redmap" icon={<RedMapIconSm />} color="var(--success-600)"
             onClick={e => {
               e.stopPropagation();
               if (onGoRedmapFrame) onGoRedmapFrame(p.url, [p.cam, p.time].filter(Boolean).join(" · "));
@@ -1806,7 +1832,7 @@ function LiveSearchSidebar({
                   <button key={i} onClick={() => selectRecentTarget(i)} className="vca-hover-row" style={{
                     flexShrink:0, display:"flex", alignItems:"center", gap:"8px", padding:"8px", borderRadius:RADIUS.control, cursor:"pointer",
                     backgroundColor:"white",
-                    border: selectedTarget === i ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
+                    border: selectedTarget === i ? "1px solid var(--primary-400)" : "1px solid var(--line-control)",
                     boxShadow: selectedTarget === i ? "0 2px 2px color-mix(in srgb, var(--primary-400) 10%, transparent)" : "none",
                   }}>
                     <Photo kind="face" src={t.face} style={{ width:"32px", height:"32px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
@@ -1955,7 +1981,7 @@ function LiveSearchSidebar({
 // ── Live Monitoring Tab (wrapper: landing ↔ per-camera detail) ──
 function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap, onGoRedmapFrame, onGoAnalyzeFrame }: {
   openCam: string; onOpenCamChange: (v: string) => void;
-  onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void; onGoRedmapFrame?: (url: string, label: string) => void; onGoAnalyzeFrame?: (location: string) => void;
+  onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number]) => void; onGoRedmap?: () => void; onGoRedmapFrame?: (url: string, label: string) => void; onGoAnalyzeFrame?: (location: string, at?: { date: string; time: string }) => void;
 }) {
   const [detailId, setDetailId] = useState<number|null>(null);
   const [feed, setFeed]         = useState(seedLiveFeed);
@@ -2332,7 +2358,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
         }
       </div>
       {detailItem && <DetailModal item={reidToMatchItem(detailItem)} onClose={() => setDetailId(null)} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
-      {searchResultDetailItem && <DetailModal item={reidToMatchItem(searchResultDetailItem)} onClose={() => setSearchDetailId(null)} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
+      {searchResultDetailItem && <DetailModal item={reidToMatchItem(searchResultDetailItem)} matchedAgainstQuery onClose={() => setSearchDetailId(null)} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
     </div>
   );
 }
@@ -2516,7 +2542,7 @@ function AttrChip({ label, active, onClick, size = "md" }: { label:string; activ
       fontWeight: active ? 700 : 600,
       color: active ? "var(--primary-400)" : "var(--gray-700)",
       backgroundColor: active ? "var(--primary-100)" : "white",
-      border: active ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
+      border: active ? "1px solid var(--primary-400)" : "1px solid var(--line-control)",
     }}>{label}</button>
   );
 }
@@ -3566,7 +3592,7 @@ function ImageDropzoneBox({ icon, label, previewSrc, onClick, onClear, aspect, a
          zone's dashed grey, so "has a photo" still reads before you look at the photo. */
       ...(previewSrc
         ? { border:"1px solid var(--primary-300)", backgroundColor:"var(--primary-100)" }
-        : { border:"1px dashed var(--gray-300)", backgroundColor:"white",
+        : { border:"1px dashed var(--line-control)", backgroundColor:"white",
             display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"12px",
             padding:"20px 12px" }) }}>
       {onClick && <ImageDropzoneHoverStyleTag />}
@@ -3690,7 +3716,7 @@ function ReidCameraPicker({ value, onChange }: { value: string; onChange: (v: st
 
 function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavigateTab, onGoRedmap, onGoAnalyzeFrame }: {
   camera: string; onCameraChange: (v: string) => void;
-  seedCard?: (typeof REID_DATA)[number] | null; onSeedConsumed?: () => void; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number], label?: string) => void; onGoRedmap?: () => void; onGoAnalyzeFrame?: (location: string) => void;
+  seedCard?: (typeof REID_DATA)[number] | null; onSeedConsumed?: () => void; onNavigateTab?: (tab: DataTab, card: (typeof REID_DATA)[number], label?: string) => void; onGoRedmap?: () => void; onGoAnalyzeFrame?: (location: string, at?: { date: string; time: string }) => void;
 }) {
   const [lang] = useLanguage();
   const t = T[lang];
@@ -4063,7 +4089,9 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
       <ScrollToTopButton containerRef={scrollRef} />
       </div>
       </div>
-      {detailItem && <DetailModal item={detailItem} onClose={() => setDetailId(null)} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
+      {/* Re-ID's rows are always a cluster around a target, so the score always means likeness
+          to that target — even for a row the register cannot name. */}
+      {detailItem && <DetailModal item={detailItem} matchedAgainstQuery onClose={() => setDetailId(null)} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
     </div>
   );
 }
@@ -4143,7 +4171,7 @@ function CandidateCard({ c, selected, onClick }:
       className="vca-hover-card"
       style={{
       position:"relative", width:"144px", backgroundColor:"white",
-      border: selected ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
+      border: selected ? "1px solid var(--primary-400)" : "1px solid var(--line-control)",
       borderRadius:RADIUS.card, padding:"8px", cursor:"pointer", display:"flex", flexDirection:"column", gap:"8px",
       boxShadow: selected ? "0 4px 8px color-mix(in srgb, var(--primary-400) 11%, transparent)" : "none",
     }}>
@@ -4361,7 +4389,7 @@ function RegistryVipPicker({ selected, onSelect, layout = "row" }:
                        circle because it is a face, not because of a radius step. */
                     display:"flex", alignItems:"center", gap:"6px", padding:"4px 12px 4px 4px", borderRadius:RADIUS.pill,
                     backgroundColor: active ? "var(--primary-100)" : block ? "var(--gray-100)" : "white",
-                    border: active ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
+                    border: active ? "1px solid var(--primary-400)" : "1px solid var(--line-control)",
                     cursor: block ? "default" : "pointer", flexShrink:0,
                     /* The grid gives each chip a fixed track, so a long name ran past the border
                        instead of stopping at it (owner, 2026-10-07: vip 뱃지에 이름이 넘치는뎅).
@@ -4735,7 +4763,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                     <button key={i} onClick={() => selectRecentTarget(i)} className="vca-hover-row" style={{
                       flexShrink:0, display:"flex", alignItems:"center", gap:"8px", padding:"8px", borderRadius:RADIUS.control, cursor:"pointer",
                       backgroundColor:"white",
-                      border: selectedTarget === i ? "1px solid var(--primary-400)" : "1px solid var(--gray-200)",
+                      border: selectedTarget === i ? "1px solid var(--primary-400)" : "1px solid var(--line-control)",
                       boxShadow: selectedTarget === i ? "0 2px 2px color-mix(in srgb, var(--primary-400) 10%, transparent)" : "none",
                     }}>
                       <Photo kind="face" src={t.face} style={{ width:"32px", height:"32px", borderRadius:RADIUS.inner, objectFit:"cover" }} />
@@ -4765,7 +4793,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                   <div onClick={() => faceInputRef.current?.click()} className="vca-image-dropzone-clickable"
                     onMouseEnter={() => setHoverImageBox("face")} onMouseLeave={() => setHoverImageBox(null)} style={hasFace
                     ? { flex:1, height:"84px", borderRadius:RADIUS.panel, border:"1px solid var(--primary-300)", backgroundColor:"var(--primary-100)", overflow:"hidden", position:"relative", cursor:"pointer" }
-                    : { flex:1, height:"84px", borderRadius:RADIUS.panel, border:"1px dashed var(--gray-300)", backgroundColor:"white", cursor:"pointer",
+                    : { flex:1, height:"84px", borderRadius:RADIUS.panel, border:"1px dashed var(--line-control)", backgroundColor:"white", cursor:"pointer",
                         display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"6px", color:"var(--gray-400)" }
                   }>
                     {hasFace ? (
@@ -4797,7 +4825,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                   <div onClick={() => bodyInputRef.current?.click()} className="vca-image-dropzone-clickable"
                     onMouseEnter={() => setHoverImageBox("body")} onMouseLeave={() => setHoverImageBox(null)} style={hasBody
                     ? { flex:1, height:"84px", borderRadius:RADIUS.panel, border:"1px solid var(--primary-300)", backgroundColor:"var(--primary-100)", overflow:"hidden", position:"relative", cursor:"pointer" }
-                    : { flex:1, height:"84px", borderRadius:RADIUS.panel, border:"1px dashed var(--gray-300)", backgroundColor:"white", cursor:"pointer",
+                    : { flex:1, height:"84px", borderRadius:RADIUS.panel, border:"1px dashed var(--line-control)", backgroundColor:"white", cursor:"pointer",
                         display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"6px", color:"var(--gray-400)" }
                   }>
                     {hasBody ? (

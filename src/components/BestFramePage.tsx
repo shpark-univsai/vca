@@ -66,6 +66,8 @@ const T = {
     awaitingCamera: "Awaiting camera",
     noMatchTitle: "No matching camera",
     noMatchDesc: (place: string) => `No Best Frame camera is set up yet for "${place}".`,
+    noFramesTitle: "No analysed frames",
+    noFramesDesc: (place: string) => `${place} has no analysed frames to inspect yet.`,
     unavailableTitle: "Camera unavailable",
     unavailableDesc: (name: string) => `${name} is offline and can't be added to the view.`,
     limitTitle: "Camera limit reached",
@@ -151,6 +153,8 @@ const T = {
     awaitingCamera: "카메라 대기 중",
     noMatchTitle: "일치하는 카메라가 없습니다",
     noMatchDesc: (place: string) => `"${place}"에 설정된 베스트 프레임 카메라가 아직 없습니다.`,
+    noFramesTitle: "분석된 프레임이 없습니다",
+    noFramesDesc: (place: string) => `${place}에는 아직 검사할 프레임이 없습니다.`,
     unavailableTitle: "카메라를 쓸 수 없습니다",
     unavailableDesc: (name: string) => `${name}이(가) 중단 상태여서 화면에 추가할 수 없습니다.`,
     limitTitle: "카메라 개수 상한",
@@ -500,9 +504,25 @@ function cameraForLocationHint(
   cams: Camera[],
   camData: Record<string, CamData>,
   hint: string,
+  /**
+   * The site register, so a camera CODE can be a hint too.
+   *
+   * It could not before, and that broke the one entry point that has a code and nothing else:
+   * 모니터링's detail modal knows 「CAM-BLK-025」 and no place name, so pressing 「프레임 검사」
+   * there matched nothing and raised the 「해당 카메라를 찾을 수 없습니다」 toast every time
+   * (reproduced in the browser, 2026-10-13) — a button that could never work.
+   */
+  register: StoreCamera[] = [],
 ): Camera | undefined {
   const want = hint.trim().toLowerCase();
   if (!want) return undefined;
+  // Exact code first: it is an identifier, not a description, so it cannot be ambiguous and
+  // nothing weaker should get a chance to disagree with it.
+  const byCode = register.find(c => c.code.trim().toLowerCase() === want);
+  if (byCode) {
+    const found = cams.find(c => c.id === byCode.id);
+    if (found) return found;
+  }
   // Cameras the curated feeds did not reach (the bulk-generated majority) have no entry here and
   // read as "". Kept as an explicit guard rather than relied on: "" is a prefix of every string,
   // so any test that ever compares in the other direction matches all of them at once — which is
@@ -1471,13 +1491,17 @@ export default function BestFramePage({ focusLocation, onFocusConsumed, onGoRedm
       // copies of a rule are one edit away from the two entry points disagreeing about which
       // camera a place name means. What differs here is only the no-match path — a toast, not a
       // synthesized tile, because this entry point exists to land on an analysis and there is none.
-      const match = cameraForLocationHint(normalCams, siteCamData, analyzeFrameLocation);
+      const match = cameraForLocationHint(normalCams, siteCamData, analyzeFrameLocation, siteCameras);
       if (match) {
         setNormalCams(prev => prev.map(c => ({ ...c, checked: c.id === match.id })));
         setVideoCams(prev => prev.map(c => ({ ...c, checked: false })));
         setImageCams(prev => prev.map(c => ({ ...c, checked: false })));
         setHighlightCamId(match.id);
         const data = siteCamData[match.id] ?? DEFAULT_DATA;
+        // A camera with no analysed frames has no frame to inspect. Saying so beats landing on
+        // its live view with an empty panel, which is what happened before: the press looked like
+        // it had failed silently.
+        if (!data.detections[0]) showToast({ variant:"warning", title: t.noFramesTitle, desc: t.noFramesDesc(match.name) });
         if (data.detections[0]) setDetailView({
           camId: match.id, data, det: data.detections[0],
           // A request that names a moment lands on that moment's frame; the inspection panel is
