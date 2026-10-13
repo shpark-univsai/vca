@@ -93,8 +93,9 @@ const T = {
     pageRange: (a: number, b: number, n: number) => `${a}–${b} of ${n}`,
     colCoCaptures: "Co-captures",
     analyzeFrame: "Analyze frame",
+    seeOtherSightings: "Re-ID",
     agoOf: (d: string) => `${d} ago`,
-    reidObject: (id: string) => `Re-ID object #REC-${id}`,
+    reidObject: (id: string) => `Detection #REC-${id}`,
     attrClassification: "Attribute classification",
     genderAge: "Gender / age",
     belongings: "Belongings",
@@ -288,8 +289,9 @@ const T = {
     pageRange: (a: number, b: number, n: number) => `${n}건 중 ${a}–${b}`,
     colCoCaptures: "동반감지",
     analyzeFrame: "프레임 분석",
+    seeOtherSightings: "Re-ID",
     agoOf: (d: string) => `${d} 전`,
-    reidObject: (id: string) => `Re-ID 객체 #REC-${id}`,
+    reidObject: (id: string) => `검출 기록 #REC-${id}`,
     attrClassification: "속성 분류",
     genderAge: "성별 / 나이",
     belongings: "소지품",
@@ -525,8 +527,18 @@ const PERSONS = Array.from({length:72},(_,i) => ({
 
 
 // ── Person Detail Modal ────────────────────────────────────────
-function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame, matchedAgainstQuery = false }:
+function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame, onGoReid, matchedAgainstQuery = false }:
   { item:MatchItem; onClose:()=>void; onGoRedmap?:()=>void; onGoAnalyzeFrame?:(location:string, at?:{ date:string; time:string })=>void;
+    /**
+     * Take this detection to Re-ID — where this person has been seen on the other cameras.
+     *
+     * The wall card has had this on hover all along; the detail this modal shows did not, so
+     * opening a capture to look at it CLOSED the one route that answers 「where else」 (owner,
+     * 2026-10-13: 리아이디는 그동안찍힌걸보는건데 그 페이지로 이동하는게 맞지않을까). Omitted,
+     * not drawn disabled, when the caller has nowhere to send it — Re-ID's own modal is already
+     * on that screen, and an account without the grant has no screen to reach.
+     */
+    onGoReid?:()=>void;
     /** This record came out of a search, so its score is 「how like the thing you asked for」. */
     matchedAgainstQuery?: boolean }) {
   const [lang] = useLanguage();
@@ -647,6 +659,15 @@ function DetailModal({ item, onClose, onGoRedmap, onGoAnalyzeFrame, matchedAgain
           >
             {T[lang].analyzeFrame}
           </button>
+          {onGoReid && (
+            <button
+              onClick={onGoReid}
+              className="vca-hover-outline"
+              style={{ display:"flex", alignItems:"center", gap:"5px", padding:"7px 14px", borderRadius:RADIUS.control, border:BORDER, backgroundColor:"white", fontSize:"12px", fontWeight:600, color:"var(--gray-500)", cursor:"pointer" }}
+            >
+              <ReidIconSm /> {T[lang].seeOtherSightings}
+            </button>
+          )}
           <button onClick={onGoRedmap} className="vca-hover-darken" style={{ display:"flex", alignItems:"center", gap:"5px", padding:"7px 14px", borderRadius:RADIUS.control, backgroundColor:"var(--gray-900)", border:"none", color:"white", fontSize:"12px", fontWeight:700, cursor:"pointer" }}>
             {T[lang].trackOnMap}
           </button>
@@ -2363,8 +2384,10 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
               </div>
         }
       </div>
-      {detailItem && <DetailModal item={reidToMatchItem(detailItem)} onClose={() => setDetailId(null)} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
-      {searchResultDetailItem && <DetailModal item={reidToMatchItem(searchResultDetailItem)} matchedAgainstQuery onClose={() => setSearchDetailId(null)} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame} />}
+      {detailItem && <DetailModal item={reidToMatchItem(detailItem)} onClose={() => setDetailId(null)} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame}
+        onGoReid={onNavigateTab ? () => { setDetailId(null); handleNavigate("Re-ID Analysis", detailItem); } : undefined} />}
+      {searchResultDetailItem && <DetailModal item={reidToMatchItem(searchResultDetailItem)} matchedAgainstQuery onClose={() => setSearchDetailId(null)} onGoRedmap={onGoRedmap} onGoAnalyzeFrame={onGoAnalyzeFrame}
+        onGoReid={onNavigateTab ? () => { setSearchDetailId(null); handleNavigate("Re-ID Analysis", searchResultDetailItem); } : undefined} />}
     </div>
   );
 }
