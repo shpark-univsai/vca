@@ -41,6 +41,8 @@ const T = {
     scrollToTop: "Scroll to top",
     smartSearch: "Smart search",
     hideSearch: "Hide search",
+    pickOneCondition: "Set at least one condition to search.",
+    pickPlate: "Enter a license plate to search.",
     tabPhoto: "Photo",
     tabFilter: "Filter",
     tabVip: "VIP",
@@ -210,9 +212,6 @@ const T = {
     searchFailedTitle: "The search failed",
     searchFailedBody: "The server did not answer. Nothing was searched — the query is still here.",
     retrySearch: "Try again",
-    noQueryTitle: "Nothing has been asked yet",
-    noQueryBody: "Pick a target, or set at least one attribute, and search again.",
-    noQueryBodyVehicle: "Enter a license plate and search again.",
     // Same three lines as Redmap's result panel, deliberately worded the same way: two screens
     // answering "why is this empty" differently is what sent an operator back to change the one
     // thing that was not the problem.
@@ -238,6 +237,8 @@ const T = {
     scrollToTop: "맨 위로",
     smartSearch: "스마트 검색",
     hideSearch: "검색 닫기",
+    pickOneCondition: "조건을 하나 이상 설정해야 검색할 수 있습니다.",
+    pickPlate: "차량 번호를 입력해야 검색할 수 있습니다.",
     tabPhoto: "사진",
     tabFilter: "속성",
     tabVip: "VIP",
@@ -400,9 +401,6 @@ const T = {
     searchFailedTitle: "검색에 실패했습니다",
     searchFailedBody: "서버가 응답하지 않았습니다. 검색은 이뤄지지 않았고, 입력한 조건은 그대로 있습니다.",
     retrySearch: "다시 시도",
-    noQueryTitle: "아직 아무것도 묻지 않았습니다",
-    noQueryBody: "대상을 고르거나 조건을 하나 이상 설정한 뒤 다시 검색하세요.",
-    noQueryBodyVehicle: "차량 번호를 입력한 뒤 다시 검색하세요.",
     emptyNoCandidates: "일치하는 감지 기록이 없습니다.",
     emptyNoCandidatesBody: "이 조건에 해당하는 기록이 없습니다.",
     droppedBySimilarity: (n: number, pct: number) => `유사도 ${pct}% 미만 ${n}건`,
@@ -1513,29 +1511,6 @@ function SearchRunPane({ state, slow, onCancel, onRetry }:
   );
 }
 
-/**
- * A search pressed with nothing in it.
- *
- * This is not a result and must never be drawn as one. With no target and no attribute the
- * default seven-day window is the only thing narrowing anything, and on this mock's dates it
- * removes everything — so an empty press answered 「현재 조건에 맞는 결과가 없습니다」, a claim
- * about the site made on behalf of a question nobody asked.
- */
-function NoQueryPane({ vehicle }: { vehicle: boolean }) {
-  const [lang] = useLanguage();
-  const t = T[lang];
-  return (
-    <div style={{ flex: 1, minHeight: "180px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", padding: "32px 24px", textAlign: "center" }}>
-      <SearchIconSm size={24} />
-      <div>
-        <p style={{ margin: 0, fontSize: "13px", fontWeight: 800, color: "var(--gray-800)" }}>{t.noQueryTitle}</p>
-        <p style={{ margin: "4px 0 0", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)" }}>
-          {vehicle ? t.noQueryBodyVehicle : t.noQueryBody}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 /**
  * WHAT FELL OUT, AND TO WHICH RULE — Redmap's answer, brought to the other three.
@@ -1675,7 +1650,7 @@ function LiveSearchSidebar({
   state, tab, onTabChange,
   hatFilter, onHatChange, sleeveFilter, onSleeveChange, bottomsFilter, onBottomsChange, backpackFilter, onBackpackChange,
   emotion, onEmotionChange, ethnicGroup, onEthnicGroupChange,
-  onSearch, searchScreen,
+  onSearch, searchScreen, queryMissing,
 }: {
   state: SearchFilterState;
   tab: LiveSearchTab; onTabChange: (t: LiveSearchTab) => void;
@@ -1688,6 +1663,8 @@ function LiveSearchSidebar({
   // Seeds the Photo tab's preview from a camera card's own photo (via the "Search" hover
   // button) — optional since the other tab that reuses this sidebar has no such card to seed from.
   onSearch: () => void;
+  /** The last press carried no question at all — see the note by the Search button. */
+  queryMissing: boolean;
   /* WHICH SCREEN THIS SIDEBAR IS STANDING ON (2026-09-23). It is rendered twice — once inside
      모니터링 and once inside Re-ID 분석 — and searching is now granted per screen, so the same
      sidebar is allowed in one place and refused in the other. Reading a single app-wide flag out
@@ -1721,35 +1698,24 @@ function LiveSearchSidebar({
   // A real, user-supplied reference photo — not a recent-target/VIP pick — takes over the
   // preview the same way `target` does, and clears itself if the operator picks a target after
   // uploading (so the two "who am I searching for" sources never fight over the same box).
-  const [uploadedFace, setUploadedFace] = useState<string | null>(null);
-  const [uploadedBody, setUploadedBody] = useState<string | null>(null);
+  // The photo itself belongs to the screen, not to this panel: see useUploadedTarget.
+  const { face: uploadedFace, body: uploadedBody, attach, clear: clearUpload } = state.uploads;
   const faceInputRef = useRef<HTMLInputElement>(null);
   const bodyInputRef = useRef<HTMLInputElement>(null);
   // e.target.value is cleared so picking the SAME file again still fires onChange — without it,
-  // detaching an image and re-attaching the identical file silently did nothing. The previous
-  // blob is revoked on both replace and detach so it isn't held for the rest of the session.
+  // detaching an image and re-attaching the identical file silently did nothing.
   const handleFaceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
-    if (uploadedFace) URL.revokeObjectURL(uploadedFace);
-    setUploadedFace(URL.createObjectURL(file));
+    if (file) attach("face", file);
   };
   const handleBodyUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
-    if (uploadedBody) URL.revokeObjectURL(uploadedBody);
-    setUploadedBody(URL.createObjectURL(file));
+    if (file) attach("body", file);
   };
-  const clearUploadedFace = () => {
-    if (uploadedFace) URL.revokeObjectURL(uploadedFace);
-    setUploadedFace(null);
-  };
-  const clearUploadedBody = () => {
-    if (uploadedBody) URL.revokeObjectURL(uploadedBody);
-    setUploadedBody(null);
-  };
+  const clearUploadedFace = () => clearUpload("face");
+  const clearUploadedBody = () => clearUpload("body");
   const faceSrc = uploadedFace ?? target?.face;
   const bodySrc = uploadedBody ?? target?.body;
   // Picking a Recent target/VIP after uploading a photo should switch the preview to THAT
@@ -1760,8 +1726,7 @@ function LiveSearchSidebar({
   const [prevTargetKey, setPrevTargetKey] = useState(targetKey);
   if (targetKey !== prevTargetKey) {
     setPrevTargetKey(targetKey);
-    setUploadedFace(null);
-    setUploadedBody(null);
+    state.uploads.clearAll();
   }
 
   const TABS: { id: LiveSearchTab; label:string; icon:React.ReactNode }[] = [
@@ -1944,8 +1909,18 @@ function LiveSearchSidebar({
         )}
       </div>
 
+      {/* AN EMPTY PRESS IS A FORM THAT IS NOT FILLED IN, AND IT IS ANSWERED HERE.
+          It used to blank the camera wall and draw a pane reading 「아직 아무것도 물어보지
+          않았습니다」 — a whole screen given over to saying that the fields right here are empty,
+          and the wall the operator was watching thrown away to say it. The answer belongs next to
+          the fields and the button that was pressed. (owner, 2026-10-13) */}
+      {queryMissing && (
+        <p style={{ margin:0, padding:"0 16px", fontSize:"12px", fontWeight:600, color:"var(--gray-500)", lineHeight:1.6 }}>
+          {state.searchType === "VEHICLE" ? t.pickPlate : t.pickOneCondition}
+        </p>
+      )}
       <div style={{ padding:"12px 16px 16px", display:"flex", gap:"8px", flexShrink:0 }}>
-        <button onClick={() => { reset(); setUploadedFace(null); setUploadedBody(null); }} aria-label={t.reset} className="vca-hover-outline" style={{ padding:"0 14px", height:"38px", borderRadius:RADIUS.control, border:"1px solid var(--line-control)", backgroundColor:"white", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <button onClick={reset} aria-label={t.reset} className="vca-hover-outline" style={{ padding:"0 14px", height:"38px", borderRadius:RADIUS.control, border:"1px solid var(--line-control)", backgroundColor:"white", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <ResetIconSm />
         </button>
         {/* Person search is granted per account (PortalUser.appSearch) — reconstructing where
@@ -2050,11 +2025,13 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     setHatFilter(""); setSleeveFilter(""); setBottomsFilter(""); setBackpackFilter("");
     setEmotion(""); setEthnicGroup("");
   };
+  const uploads = useUploadedTarget();
   const searchReset = () => {
     setSearchType("PERSON"); setThreshold(70); setGender(""); clearAttrFilters();
     setTopColors([]); setBottomColors([]); setShoesColors([]);
     setSelectedTarget(-1); setVipPerson(null); setSearchDateRange({ start:null, end:null });
-    setLicensePlate(""); setSearchCamera(""); setSearched(false); setSearchTab("Photo");
+    setLicensePlate(""); setSearchCamera(""); setSearchTab("Photo");
+    uploads.clearAll();
   };
   const selectRecentTarget = (i: number) => {
     if (selectedTarget === i) { setSelectedTarget(-1); setGender(""); clearAttrFilters(); return; }
@@ -2116,6 +2093,12 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
   const searchTarget: SearchTargetShape | null = vipPerson?.photoUrl
     ? { face: vipPerson.photoUrl, name: vipPerson.name }
     : selectedTarget >= 0 ? RECENT_TARGETS_EN[selectedTarget]
+    // An attached photo is a target too. It is last of the three because picking a person from
+    // the register or the recent list clears the upload (see the targetKey compare in
+    // LiveSearchSidebar), so the two can never both be set and the order only decides what
+    // happens in the instant between them.
+    : uploads.face || uploads.body
+      ? { face: uploads.face ?? uploads.body!, body: uploads.body ?? undefined }
     : null;
 
   /**
@@ -2143,7 +2126,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
     topColors, toggleTopColor, bottomColors, toggleBottomColor, shoesColors, toggleShoesColor,
     dateRange: searchDateRange, setDateRange: setSearchDateRange, licensePlate, setLicensePlate,
     camera: searchCamera, setCamera: setSearchCamera,
-    activeTarget, clearActiveTarget, thresholdCost,
+    activeTarget, clearActiveTarget, thresholdCost, uploads,
     reset: searchReset,
   };
 
@@ -2157,13 +2140,24 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
    * Whether this press carries a question at all.
    *
    * A camera or a date on their own DO count — "everyone camera 12 saw on Tuesday" is a real
-   * query an operator runs. What does not count is nothing: see NoQueryPane.
+   * query an operator runs. What does not count is nothing — see `queryMissing`, which is
+   * what the panel says beside its own button when a press carried none of this.
    */
   const hasQuery = searchType === "VEHICLE"
     ? licensePlate.trim() !== ""
     : !!searchTarget || !!gender || derivedApparel.length > 0 || derivedProps.length > 0
       || topColors.length > 0 || bottomColors.length > 0 || shoesColors.length > 0
       || !!emotion || !!ethnicGroup || !!searchCamera || !!searchDateRange.start || !!searchDateRange.end;
+
+  /**
+   * A press only takes over the screen if it carried a question.
+   *
+   * Pressing 검색 with nothing set is a form that is not filled in, not an answer about the site,
+   * so it no longer blanks the camera wall to say so — the panel says it beside its own button,
+   * where the fields are (owner, 2026-10-13). 조건 초기화 lands back on the wall for free: the
+   * query is gone, so there is nothing to show.
+   */
+  const showResults = searched && hasQuery;
 
   /** See SearchEmptyReason — the counts the server will owe, measured here meanwhile. */
   const emptyReason = useMemo<SearchEmptyReason | null>(() => {
@@ -2285,6 +2279,7 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
             backpackFilter={backpackFilter} onBackpackChange={setBackpackFilter}
             emotion={emotion} onEmotionChange={setEmotion}
             ethnicGroup={ethnicGroup} onEthnicGroupChange={setEthnicGroup}
+            queryMissing={searched && !hasQuery}
             onSearch={() => {
               setSearched(true);
               // An empty press is not a search and is not logged as one: the look-up log answers
@@ -2307,18 +2302,20 @@ function LiveMonitoringTab({ openCam, onOpenCamChange, onNavigateTab, onGoRedmap
             picker. Every other state of this card has no such row, and one of them is the whole
             screen for a 검색만 account — so those get the button on a row of their own rather
             than losing the only way into search. */}
-        {(searched || !monMayBrowse) && (
+        {(showResults || !monMayBrowse) && (
           <div style={{ padding:"20px 24px 0", flexShrink:0 }}>
             <SearchPanelToggle expanded={searchExpanded} onToggle={() => setSearchExpanded(e => !e)} />
           </div>
         )}
-        {searched
-          ? !hasQuery
-            ? <NoQueryPane vehicle={searchType === "VEHICLE"} />
-            : run.state === "running" || run.state === "failed"
+        {showResults
+          ? run.state === "running" || run.state === "failed"
             ? <SearchRunPane state={run.state} slow={run.slow} onCancel={() => { run.cancel(); setSearched(false); }} onRetry={run.retry} />
             : <SmartSearchResults state={searchState} results={searchResults} emptyReason={emptyReason} onCardClick={setSearchDetailId}
-              onRefine={() => setSearched(false)} onReset={searchReset}
+              /* 「조건 다시 설정」 opens the form and KEEPS the results — it used to drop them and
+                 walk back to the wall, which is what 「조건 초기화」 does, so the two controls at
+                 opposite ends of this header did the same thing. Reset throws the query away;
+                 refine goes back to it. */
+              onRefine={() => setSearchExpanded(true)} onReset={searchReset}
               topColors={topColors} bottomColors={bottomColors} shoesColors={shoesColors}
               emotion={emotion} ethnicGroup={ethnicGroup} />
           : monMayBrowse
@@ -2696,6 +2693,54 @@ function SmartSearchResults({ state, results, emptyReason, onCardClick, onRefine
   );
 }
 
+/**
+ * A REFERENCE PHOTO THE OPERATOR ATTACHED — OWNED BY THE SCREEN, NOT BY THE PANEL.
+ *
+ * It used to be two useState calls inside LiveSearchSidebar, where the panel could draw the
+ * preview but nothing above it could see the photo. So `searchTarget` and `hasQuery` never knew
+ * about it, and attaching a face or a body and pressing 검색 answered 「아직 아무것도 물어보지
+ * 않았습니다」 — the screen denying a question the operator had just asked (owner, 2026-10-13:
+ * 내가 스크린캡쳐한건 조건 사진을 넣은거긴했어; reproduced in the browser before the move).
+ *
+ * Two things rode on that, which is why this is not only a cosmetic miss:
+ *   · `recordSearchAccess` sits behind the same `hasQuery`, so a photo search left NO line in the
+ *     look-up log — the one kind of search that most needs one.
+ *   · attach a photo AND set any attribute and `hasQuery` turned true while `searchTarget` stayed
+ *     null, so the query went to the attribute filter and returned people who had nothing to do
+ *     with the photo, labelled as results.
+ *
+ * Owned beside `activeTarget` and `thresholdCost` for the reason already written there: only the
+ * screen knows every way a target can arrive.
+ */
+interface UploadedTarget {
+  face: string | null;
+  body: string | null;
+  attach: (kind: "face" | "body", file: File) => void;
+  clear: (kind: "face" | "body") => void;
+  clearAll: () => void;
+}
+function useUploadedTarget(): UploadedTarget {
+  const [face, setFace] = useState<string | null>(null);
+  const [body, setBody] = useState<string | null>(null);
+  // Every replace and every detach revokes the blob it drops, so a shift's worth of attaching
+  // does not hold the files for the rest of the session.
+  const attach = (kind: "face" | "body", file: File) => {
+    const url = URL.createObjectURL(file);
+    if (kind === "face") { if (face) URL.revokeObjectURL(face); setFace(url); }
+    else { if (body) URL.revokeObjectURL(body); setBody(url); }
+  };
+  const clear = (kind: "face" | "body") => {
+    if (kind === "face") { if (face) URL.revokeObjectURL(face); setFace(null); }
+    else { if (body) URL.revokeObjectURL(body); setBody(null); }
+  };
+  const clearAll = () => {
+    if (face) URL.revokeObjectURL(face);
+    if (body) URL.revokeObjectURL(body);
+    setFace(null); setBody(null);
+  };
+  return { face, body, attach, clear, clearAll };
+}
+
 interface SearchFilterState {
   searchType: "PERSON"|"VEHICLE"; setSearchType:(v:"PERSON"|"VEHICLE")=>void;
   // selectedTarget/vipPerson are read-only here (for active-state styling) — selection always
@@ -2725,6 +2770,8 @@ interface SearchFilterState {
    */
   activeTarget: { face: string; label: string } | null;
   clearActiveTarget: () => void;
+  /** See useUploadedTarget — a photo the operator attached is a query, so the screen holds it. */
+  uploads: UploadedTarget;
   /**
    * What the current threshold keeps, out of the current query's candidate pool. Null when there
    * is no query to count against — see SimilarityControl. Resolved by the owner for the same
@@ -3012,6 +3059,13 @@ interface ReidCluster {
 // "same person, progressively worse camera conditions" instead of a pixel-identical repeat.
 const MATCH_VARIATION_EXPOSURE = [0, -6, 5, -4, 7, -3, 4, -7, 3, -5, 6, -2];
 function withMatchVariation(url: string, i: number): string {
+  // ONLY A SOURCE THAT CAN TAKE QUERY PARAMS. These are imgix's, and they are appended with a
+  // bare `&` — so a blob: URL from a photo the operator attached came back as
+  // `blob:http://…&blur=1&sat=-2&exp=0`, which resolves to nothing. Every result card after an
+  // uploaded-photo search drew the missing-photo placeholder (2026-10-13, the same day attaching
+  // a photo started counting as a query at all). The same hole swallows any source with no `?`
+  // of its own, including the local files under /public.
+  if (!/^https?:/i.test(url) || !url.includes("?")) return url;
   const blur = 1 + Math.min(i, 7);
   const sat = -(2 + Math.min(i * 2, 22));
   const exp = MATCH_VARIATION_EXPOSURE[i % MATCH_VARIATION_EXPOSURE.length];
@@ -3690,11 +3744,13 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     setHatFilter(""); setSleeveFilter(""); setBottomsFilter(""); setBackpackFilter("");
     setEmotion(""); setEthnicGroup("");
   };
+  const uploads = useUploadedTarget();
   const reset = () => {
     setSearchType("PERSON"); setThreshold(70); setGender(""); clearAttrFilters();
     setTopColors([]); setBottomColors([]); setShoesColors([]);
     setSelectedTarget(-1); setVipPerson(null); setDateRange({ start:null, end:null });
-    setLicensePlate(""); onCameraChange(""); setHasSearched(false); setSearchTab("Photo");
+    setLicensePlate(""); onCameraChange(""); setSearchTab("Photo");
+    uploads.clearAll();
   };
 
   // Deep-link from a Live Monitoring card's "Re-ID" hover button: the crop on that card becomes
@@ -3769,7 +3825,10 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
     // A crop off the wall keeps the gender the detector read off that frame — that one WAS
     // reported, unlike a register entry's, so it is carried rather than dropped.
     : cardTarget ? { face: cardTarget.face, body: cardTarget.url, gender: cardTarget.gender === "M" ? "Male" : cardTarget.gender === "F" ? "Female" : undefined }
-    : null, [vipPerson, selectedTarget, cardTarget]);
+    // A photo the operator attached — the fourth way a target arrives here. See useUploadedTarget.
+    : uploads.face || uploads.body
+      ? { face: uploads.face ?? uploads.body!, body: uploads.body ?? undefined }
+    : null, [vipPerson, selectedTarget, cardTarget, uploads.face, uploads.body]);
 
   /**
    * What this threshold costs, counted against the pool this query actually has — see
@@ -3819,7 +3878,7 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
       else if (selectedTarget >= 0) selectRecentTarget(selectedTarget);
       else setCardTarget(null);
     },
-    thresholdCost,
+    thresholdCost, uploads,
     reset,
   };
 
@@ -3940,9 +3999,10 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
             backpackFilter={backpackFilter} onBackpackChange={setBackpackFilter}
             emotion={emotion} onEmotionChange={setEmotion}
             ethnicGroup={ethnicGroup} onEthnicGroupChange={setEthnicGroup}
+            queryMissing={hasSearched && !hasQuery}
             onSearch={() => {
               setHasSearched(true);
-              // Not a search, so neither a run nor a log line — see NoQueryPane.
+              // Not a search, so neither a run nor a log line — the panel says so itself.
               if (!hasQuery) { run.clear(); return; }
               // A named target or a crop off the wall is a face compared against the archive; an
               // attribute-only query is an index lookup. Only the first gets 취소 — see useSearchRun.
@@ -3959,13 +4019,13 @@ function ReIDContent({ camera, onCameraChange, seedCard, onSeedConsumed, onNavig
       </div>
       <div style={{ position:"relative", flex:1, overflow:"hidden" }}>
       <div ref={scrollRef} className="vca-hide-scrollbar" style={{ position:"absolute", inset:0, overflowY:"auto", display:"flex", flexDirection:"column", gap:"16px" }}>
-        {hasSearched && searchAllowed && !hasQuery
-          ? <NoQueryPane vehicle={searchType === "VEHICLE"} />
-          : hasSearched && searchAllowed && (run.state === "running" || run.state === "failed")
+        {/* A press with nothing set is a form that is not filled in — the panel says so beside
+            its own button rather than this side blanking out. See LiveMonitoringTab.showResults. */}
+        {hasSearched && searchAllowed && hasQuery && (run.state === "running" || run.state === "failed")
           ? <SearchRunPane state={run.state} slow={run.slow} onCancel={() => { run.cancel(); setHasSearched(false); }} onRetry={run.retry} />
           : clusters.length > 0
           ? clusters.map(c => <ClusterCard key={c.id} cluster={c} onNavigateTab={onNavigateTab} onMatchClick={setDetailId} />)
-          : hasSearched && searchAllowed
+          : hasSearched && searchAllowed && hasQuery
           ? <EmptyReasonNote reason={emptyReason} threshold={threshold} />
           : (
             <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--gray-400)", fontSize:"13px", fontWeight:600 }}>
