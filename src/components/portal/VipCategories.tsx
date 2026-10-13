@@ -297,7 +297,7 @@ export function categoryTint(color: VipCategoryColor): { bg: string; fg: string;
   switch (color) {
     case "primary": return { bg: "var(--primary-100)", fg: "var(--primary-400)", dot: "var(--primary-400)" };
     case "info":    return { bg: "var(--info-100)",    fg: "var(--info-600)",    dot: "var(--info-500)" };
-    case "teal":    return { bg: "var(--teal-100)",    fg: "var(--teal-500)",    dot: "var(--teal-500)" };
+    case "teal":    return { bg: "var(--teal-100)",    fg: "var(--teal-600)",    dot: "var(--teal-500)" };
     case "magenta": return { bg: "var(--magenta-100)", fg: "var(--magenta-500)", dot: "var(--magenta-500)" };
     // The three below are no longer offered — see VIP_CATEGORY_COLORS — but categories
     // created before that still carry them, and a chip that cannot resolve its colour is worse

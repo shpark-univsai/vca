@@ -232,6 +232,7 @@
   --teal-100: #e6f6f5;
   --teal-200: #b9e2e0;
   --teal-500: #0d7f7a;
+  --teal-600: #0d7c77;
 
   --magenta-100: #fdeef8;
   --magenta-200: #f6cde8;
@@ -339,11 +340,16 @@ optgroup {
    still wins — the auth screens (primary-400 border) set `outline: none` inline and are untouched
    by this.
 
-   NOTE (2026-10-13): this ring is still --gray-900 while every FIELD now focuses in --primary-400
-   (.vca-field, .vca-field-fill, Portal's FIELD_FOCUS). So a bare <input> next to a TextField in the
-   same form focuses in a different colour — the thing the note on FIELD_FOCUS warns about. Left as
-   it is on purpose for now: this selector also covers BUTTONS, and whether a focused button should
-   wear the primary colour is a decision of its own, not a consequence of the field change.
+   THIS RING STAYS --gray-900. DECIDED 2026-10-13, DO NOT "UNIFY" IT.
+   Every FIELD now focuses in --primary-400 (.vca-field, .vca-field-fill, Portal's FIELD_FOCUS), and
+   the obvious next move looks like bringing this one along. It was put to the owner and refused:
+   「바꾸면 안될것같은뎅..너무 보라색비율이 많아져서」. This selector covers BUTTONS and anything
+   with a tabindex, not just inputs — a console whose every focusable thing rings in the VIP colour
+   spends the 5-10% purple budget on 「the keyboard is here」, which is not what purple means in this
+   product. The cost is known and accepted: a bare <input> that has not been moved to a field
+   component focuses in near-black next to a TextField that focuses in purple. The fix for that is
+   to move the remaining bare inputs onto .vca-field or TextField, one at a time — not to repaint
+   every button.
 
    :focus-visible, not :focus, so a mouse click on a button leaves no ring behind; a text field
    matches it whenever it is focused for typing, which is exactly the case this is for.
