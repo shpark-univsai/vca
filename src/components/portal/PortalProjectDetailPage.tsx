@@ -1850,7 +1850,7 @@ export default function PortalProjectDetailPage({ projectId, tab, onTabChange, o
                               is a fact about that camera, so it belongs on that camera's line. */}
                           <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c.name}</p>
                           <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>{c.zone}</span>
-                          <span style={{ fontSize: "12px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.ip}</span>
+                          <span style={{ fontSize: "12px", color: "var(--gray-400)", fontFamily: "var(--font-mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.ip}</span>
                           {/* Only once the clock is known — before mount there is no "ago" to
                               compute, and a guessed one would be corrected a frame later. */}
                           <span style={{ fontSize: "12px", color: "var(--gray-500)", whiteSpace: "nowrap" }}>

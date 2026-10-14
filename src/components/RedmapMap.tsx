@@ -311,7 +311,7 @@ export default function RedmapMap({
                    </div>
                    <div style="background:white;padding:8px 12px 10px;white-space:nowrap">
                      <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${node.label}</div>
-                     <div style="font-size:13px;color:var(--gray-500);margin-top:2px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">${node.date.slice(5)} ${node.time}</div>
+                     <div style="font-size:13px;color:var(--gray-500);margin-top:2px;font-family:var(--font-mono)">${node.date.slice(5)} ${node.time}</div>
                    </div>
                  </div>
                </div>`
@@ -319,7 +319,7 @@ export default function RedmapMap({
                           font-family:'SUIT',sans-serif;box-shadow:0 4px 10px rgba(24,17,39,0.08);cursor:${hitIndex >= 0 ? "pointer" : "default"}">
                  ${tailHtml}
                  <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${node.label}</div>
-                 <div style="font-size:13px;color:var(--gray-500);margin-top:2px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">${node.date.slice(5)} ${node.time}</div>
+                 <div style="font-size:13px;color:var(--gray-500);margin-top:2px;font-family:var(--font-mono)">${node.date.slice(5)} ${node.time}</div>
                </div>`;
 
           const html = cardBelow

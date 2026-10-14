@@ -355,7 +355,7 @@ function RosterCodeCell({ entry, onReveal, onIssue, t, justIssued }: {
   if (entry.status !== "unused") {
     return (
       <span style={cellRow}>
-        <span style={{ fontSize: "12px", fontFamily: "monospace", color: "var(--gray-300)" }}>••••-••••</span>
+        <span style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: "var(--gray-300)" }}>••••-••••</span>
         {expiryLine}
         {justIssuedChip}
       </span>
@@ -375,7 +375,7 @@ function RosterCodeCell({ entry, onReveal, onIssue, t, justIssued }: {
       title={revealed ? t.codeHide : t.codeReveal}
       aria-label={revealed ? t.codeHide : t.codeReveal}
       aria-pressed={revealed}
-      style={{ display: "flex", alignItems: "center", gap: "6px", border: "none", background: "none", cursor: "pointer", padding: 0, fontFamily: "monospace", fontSize: "12px", fontWeight: revealed ? 700 : 600, color: revealed ? "var(--gray-900)" : "var(--gray-500)" }}
+      style={{ display: "flex", alignItems: "center", gap: "6px", border: "none", background: "none", cursor: "pointer", padding: 0, fontFamily: "var(--font-mono)", fontSize: "12px", fontWeight: revealed ? 700 : 600, color: revealed ? "var(--gray-900)" : "var(--gray-500)" }}
     >
       {revealed ? formatCode(entry.code ?? "") : "••••-••••"}
       {/* THE ICON SHOWS THE STATE, NOT THE ACTION — the way this product's own password fields do
@@ -502,7 +502,7 @@ function PrintSheet({ entries, projectName, onClose, t }: { entries: RosterEntry
           <div key={entry.employeeId} className="roster-print-slip" style={{ border: "1px dashed var(--gray-300)", borderRadius: RADIUS.card, padding: "20px" }}>
             <p style={{ fontSize: "12px", color: "var(--gray-400)" }}>{projectName}</p>
             <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--gray-900)", marginTop: "4px" }}>{entry.name}</p>
-            <p style={{ fontSize: "20px", fontWeight: 800, fontFamily: "monospace", color: "var(--gray-900)", marginTop: "10px", letterSpacing: "1px" }}>
+            <p style={{ fontSize: "20px", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--gray-900)", marginTop: "10px", letterSpacing: "1px" }}>
               {formatCode(entry.code ?? "")}
             </p>
             <p style={{ fontSize: "12px", color: "var(--gray-500)", marginTop: "10px", lineHeight: 1.5 }}>

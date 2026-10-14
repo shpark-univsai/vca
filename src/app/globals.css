@@ -86,6 +86,17 @@
   --gray-800: #272038;
   --gray-900: #181127;
 
+  /* THE MONO STACK, NAMED ONCE.
+     Timestamps, camera codes, plates, licence ids and coordinates are set in a monospace face so
+     their columns line up. There is no mono webfont in this product — `public/fonts` holds SUIT
+     and Jockey One and nothing else — so this is the system's own, and naming the stack is the
+     difference between choosing one and letting each OS choose. It was written two ways: 43 sites
+     said bare `monospace`, which hands the pick to the browser's default (Courier-ish on some
+     setups), and 6 said this stack. One answer now.
+     Figma 「Typography / FONT FAMILIES」 says the same thing in words — it used to name JetBrains
+     Mono, which this product has never shipped (owner, 2026-10-14). */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
   /* Hairlines — table rules, card edges, field borders, dividers.
      Not a step of the grey ramp and not one of the primary ramp: a grey carrying a little of the
      primary so a line reads as part of this product's surface rather than as a neutral rule laid

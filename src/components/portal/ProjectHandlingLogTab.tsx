@@ -633,7 +633,7 @@ export default function ProjectHandlingLogTab({ projectId }: { projectId: string
 
               {/* Monospace, like all three tabs next door — a column of stamps only lines up if the
                   digits do. */}
-              <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>
                 {stampOf(h.at, projectZone)}
               </span>
             </div>

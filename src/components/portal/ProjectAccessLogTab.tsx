@@ -620,7 +620,7 @@ export default function ProjectAccessLogTab({ projectId }: { projectId: string }
               <span style={{ display: "flex", flexDirection: "column", gap: "1px", minWidth: 0 }}>
                 <span style={{
                   fontSize: "12px", fontWeight: 700, color: r.actor ? "var(--gray-900)" : "var(--gray-700)",
-                  fontFamily: r.actor ? "inherit" : "monospace",
+                  fontFamily: r.actor ? "inherit" : "var(--font-mono)",
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
                   {r.actor ?? r.identifier}
@@ -655,11 +655,11 @@ export default function ProjectAccessLogTab({ projectId }: { projectId: string }
               </span>
               {/* Only drawn when the log carries addresses at all — never a column of dashes. */}
               {showIp && (
-                <span style={{ fontSize: "12px", color: r.ip ? "var(--gray-600)" : "var(--gray-300)", fontFamily: r.ip ? "monospace" : "inherit", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: "12px", color: r.ip ? "var(--gray-600)" : "var(--gray-300)", fontFamily: r.ip ? "var(--font-mono)" : "inherit", whiteSpace: "nowrap" }}>
                   {r.ip ?? "—"}
                 </span>
               )}
-              <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>
                 {`${day} ${time}`.trim()}
               </span>
             </div>

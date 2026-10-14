@@ -539,7 +539,7 @@ export default function ProjectSwitcher({ dark, compact, teamId, currentProjectI
                     <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       <ProjectIcon /> {p.name}
                     </span>
-                    <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis" }}>{p.id}</span>
+                    <span style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "var(--font-mono)", overflow: "hidden", textOverflow: "ellipsis" }}>{p.id}</span>
                     <button onClick={e => toggleStar(p.id, e)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0 }}>
                       <StarIcon filled={starred.has(p.id)} />
                     </button>

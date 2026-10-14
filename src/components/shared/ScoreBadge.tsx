@@ -29,7 +29,7 @@ export default function ScoreBadge({ score, size = 10 }: {
   const high = score >= 90, mid = score >= 85;
   return (
     <span style={{
-      fontSize: `${size}px`, fontWeight: 800, fontFamily: "monospace",
+      fontSize: `${size}px`, fontWeight: 800, fontFamily: "var(--font-mono)",
       color: high ? "var(--success-400)" : mid ? "var(--gray-600)" : "var(--gray-500)",
       backgroundColor: high ? "var(--success-100)" : "var(--gray-100)",
       padding: size >= 12 ? "3px 8px" : "2px 6px", borderRadius: RADIUS.pill,

@@ -631,7 +631,7 @@ export default function ProjectLicenseTab({ projectId }: { projectId: string }) 
         </Clause>
 
         <Clause n={2} label={t.clauseTerm}>
-          <p style={{ fontSize: "14px", fontWeight: 700, color: isExpired ? "var(--danger-500)" : "var(--gray-900)", fontFamily: "monospace", letterSpacing: "-0.01em" }}>
+          <p style={{ fontSize: "14px", fontWeight: 700, color: isExpired ? "var(--danger-500)" : "var(--gray-900)", fontFamily: "var(--font-mono)", letterSpacing: "-0.01em" }}>
             {isUnlimitedExpiry ? t.unlimited : (project.licenseExpiresAt ?? "—")}
           </p>
           {project.licenseExpiresAt && nowMs !== null && !isUnlimitedExpiry && (
@@ -963,7 +963,7 @@ function LicenseFileSection({ projectId, t }: {
               style={{
                 width: "100%", boxSizing: "border-box", minHeight: "96px", resize: "vertical",
                 border: BORDER, borderRadius: RADIUS.control, padding: "10px 12px",
-                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "11px",
+                fontFamily: "var(--font-mono)", fontSize: "11px",
                 lineHeight: 1.45, color: "var(--gray-700)", backgroundColor: "white",
               }}
             />
@@ -977,12 +977,12 @@ function LicenseFileSection({ projectId, t }: {
             <div style={{ marginTop: "16px" }}>
               <dl style={{ display: "grid", gridTemplateColumns: "minmax(0, 120px) minmax(0, 1fr)", gap: "6px 16px", margin: 0, fontSize: "12px" }}>
                 <dt style={{ color: "var(--gray-500)" }}>{t.fileLicenceId}</dt>
-                <dd style={{ margin: 0, color: "var(--gray-900)", fontWeight: 600, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{parsed.payload.licenseId}</dd>
+                <dd style={{ margin: 0, color: "var(--gray-900)", fontWeight: 600, fontFamily: "var(--font-mono)" }}>{parsed.payload.licenseId}</dd>
                 <dt style={{ color: "var(--gray-500)" }}>{t.fileIssuedTo}</dt>
                 <dd style={{ margin: 0, color: "var(--gray-700)" }}>{parsed.payload.customer.name}</dd>
                 {parsed.keyId && (<>
                   <dt style={{ color: "var(--gray-500)" }}>{t.fileKeyId}</dt>
-                  <dd style={{ margin: 0, color: "var(--gray-700)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{parsed.keyId}</dd>
+                  <dd style={{ margin: 0, color: "var(--gray-700)", fontFamily: "var(--font-mono)" }}>{parsed.keyId}</dd>
                 </>)}
               </dl>
 

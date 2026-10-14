@@ -219,7 +219,7 @@ function IssueKeyModal({ projectId, onClose }: { projectId: string; onClose: () 
           <p style={{ fontSize: "12px", color: "var(--gray-500)", marginBottom: "12px", lineHeight: 1.5 }}>{t.revealBody}</p>
           <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
             <code style={{
-              flex: 1, minWidth: 0, fontSize: "12px", fontFamily: "monospace", color: "var(--gray-900)",
+              flex: 1, minWidth: 0, fontSize: "12px", fontFamily: "var(--font-mono)", color: "var(--gray-900)",
               backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: RADIUS.control, padding: "10px",
               wordBreak: "break-all", lineHeight: 1.5,
             }}>
@@ -406,11 +406,11 @@ export default function ProjectApiPanel({ projectId }: { projectId: string }) {
                     </p>
                   </div>
                   {/* The prefix and an ellipsis, which is all the console holds. */}
-                  <span style={{ fontSize: "12px", fontFamily: "monospace", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: "var(--gray-600)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {key.prefix}…
                   </span>
                   <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{key.scope === "read" ? t.scopeRead : t.scopeWrite}</span>
-                  <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: key.expiresAt ? "monospace" : "inherit" }}>
+                  <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: key.expiresAt ? "var(--font-mono)" : "inherit" }}>
                     {key.expiresAt ?? t.noExpiry}
                   </span>
                   {/* Empty for one frame before the clock is read, rather than a verdict that
@@ -433,7 +433,7 @@ export default function ProjectApiPanel({ projectId }: { projectId: string }) {
       {/* THE REFERENCE, beside it. */}
       <div style={{ flex: "2 1 320px", minWidth: 0, backgroundColor: "white", border: CARD_BORDER, borderRadius: CARD_RADIUS, boxShadow: PANEL_SHADOW, padding: "20px" }}>
         <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)" }}>{t.baseUrl}</p>
-        <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: RADIUS.control, padding: "8px 10px", overflowX: "auto" }}>
+        <p style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "var(--font-mono)", marginTop: "6px", backgroundColor: "var(--gray-50)", border: BORDER, borderRadius: RADIUS.control, padding: "8px 10px", overflowX: "auto" }}>
           {origin}/api/portal/projects/{projectId}
         </p>
         <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.5, marginTop: "6px" }}>{t.baseUrlNote}</p>
@@ -448,7 +448,7 @@ export default function ProjectApiPanel({ projectId }: { projectId: string }) {
               }}>
                 {ep.method}
               </span>
-              <span style={{ fontSize: "10px", fontFamily: "monospace", color: "var(--gray-900)" }}>{ep.path}</span>
+              <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--gray-900)" }}>{ep.path}</span>
               <span style={{ fontSize: "10px", color: "var(--gray-400)" }}>{ep.desc[lang]}</span>
             </div>
           ))}

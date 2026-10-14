@@ -538,7 +538,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
                   {a.message}
                   {clientMark}
                 </span>
-                <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>
                   {stamp(a.at)}
                 </span>
               </>
@@ -588,7 +588,7 @@ export default function ProjectActivityTab({ projectId }: { projectId: string })
                 </span>
                 {/* Last, and in the same monospace it always had — a column of stamps only lines
                     up if the digits do. */}
-                <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>
                   {stamp(a.at)}
                 </span>
               </>

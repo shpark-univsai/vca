@@ -949,7 +949,7 @@ function GroupDrawer({ group, cameras, otherGroups, portalUsers, t, onSave, onCl
                                   텍스트 조금 살짝만 키워줘) — this is the list somebody reads
                                   sixty rows of, and it sits in a 672px drawer with room for it. */}
                               <span style={{ minWidth: 0, fontSize: "13.5px", fontWeight: 600, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-                              <span style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.code}</span>
+                              <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--gray-400)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.code}</span>
                               {/* THE OVERLAP, ON THE ROW IT IS ABOUT. Counted here and named on
                                   hover: four group names on a row would push the camera's own name
                                   out. The cell is emitted whether or not there is a mark — a grid

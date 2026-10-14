@@ -2247,7 +2247,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                   <div style={{ display: "flex", alignItems: "center", gap: "4px", height: "16px", marginBottom: "2px", color: "var(--gray-500)" }}>
                                     {node.camera && <CameraIconXs />}
                                     <span title={node.camera} style={{
-                                      fontSize: "12px", fontWeight: 700, fontFamily: "monospace", color: "var(--gray-500)",
+                                      fontSize: "12px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--gray-500)",
                                       whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                                     }}>{node.camera ?? ""}</span>
                                   </div>
@@ -2406,7 +2406,7 @@ export default function RedmapPage({ initialSearchName, onInitialSearchConsumed,
                                     Only the duration lives in the data; the word is the UI's. */}
                                 {elapsedText ? (
                                   <span style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                                    <span style={{ fontSize: "12px", fontWeight: 700, fontFamily: "monospace", color: "var(--primary-400)" }}>
+                                    <span style={{ fontSize: "12px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--primary-400)" }}>
                                       {elapsedText}
                                     </span>
                                     <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--gray-700)" }}>

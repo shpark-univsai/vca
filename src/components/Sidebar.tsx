@@ -2121,7 +2121,7 @@ function CollapsedSidebar({ position = "left", onEventSelect, selectedEventId, o
                   onClick={() => onPinDevice?.(isPinned ? null : device)}
                   style={{ width:"40px", height:"40px", borderRadius:RADIUS.control, backgroundColor: isLive ? "var(--gray-900)" : "var(--gray-50)", border: isLive ? "1px solid var(--gray-700)" : "1px solid var(--warning-200)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", position:"relative", flexShrink:0,
                     boxShadow: isPinned ? "0 0 0 2px var(--primary-400)" : "none" }}>
-                  <span style={{ fontSize:"10px", fontWeight:600, color: isLive ? "white" : "var(--warning-500)", fontFamily:"monospace", textAlign:"center" }}>{device.name}</span>
+                  <span style={{ fontSize:"10px", fontWeight:600, color: isLive ? "white" : "var(--warning-500)", fontFamily:"var(--font-mono)", textAlign:"center" }}>{device.name}</span>
                   <div style={{ position:"absolute", bottom:"3px", right:"3px", width:"6px", height:"6px", borderRadius:"50%", backgroundColor: isLive ? "var(--success-400)" : "var(--warning-500)" }} />
                 </div>
               );

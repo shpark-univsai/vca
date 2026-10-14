@@ -969,7 +969,7 @@ export default function CameraMapView({
               <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedCamera.name}</p>
-                  <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{selectedCamera.code}</p>
+                  <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "var(--font-mono)" }}>{selectedCamera.code}</p>
                 </div>
                 <button className="portal-icon-btn" onClick={() => setSelected(null)}
                   style={{ padding: "2px", border: "none", background: "none", cursor: "pointer", color: "var(--gray-400)", display: "flex" }}>

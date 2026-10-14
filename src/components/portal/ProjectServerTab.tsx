@@ -714,7 +714,7 @@ export default function ProjectServerTab({ projectId }: { projectId: string }) {
                       <p style={{ fontSize: "11px", color: "var(--gray-400)", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{server.specification}</p>
                     )}
                   </div>
-                  <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "monospace" }}>{server.port ? `${server.ip}:${server.port}` : server.ip}</span>
+                  <span style={{ fontSize: "12px", color: "var(--gray-600)", fontFamily: "var(--font-mono)" }}>{server.port ? `${server.ip}:${server.port}` : server.ip}</span>
                   <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>{SERVER_TYPE_LABELS[server.type][lang]}</span>
                   {/* gray-600 like the address and the type beside it, not the gray-400 the spec
                       column used: that was the weight for a value nobody had recorded, and this

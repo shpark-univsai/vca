@@ -2621,7 +2621,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                   )}
                   {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
                   {showCameraColumns && <span style={{ fontSize: "12px", color: "var(--gray-300)" }}>—</span>}
-                  <span style={{ fontSize: "10px", color: "var(--gray-600)", fontFamily: "monospace" }}>{u.resolution ?? "—"}</span>
+                  <span style={{ fontSize: "10px", color: "var(--gray-600)", fontFamily: "var(--font-mono)" }}>{u.resolution ?? "—"}</span>
                   {/* THE ANALYSIS STATE IS THIS ROW'S 상태, not an extra column after it. It used
                       to print an em dash under 상태 and put the real answer in the next cell —
                       which is the camera rows' actions column, so every file row's ⋯ ended up one
@@ -2747,7 +2747,7 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                 </button>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.name}</p>
-                  <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "monospace" }}>{cam.code}</p>
+                  <p style={{ fontSize: "10px", color: "var(--gray-400)", fontFamily: "var(--font-mono)" }}>{cam.code}</p>
                 </div>
                 {showKindColumn && (
                 /* Which kind, not just "camera". An AI camera is a different device with a
@@ -2825,8 +2825,8 @@ export default function ProjectCamerasTab({ projectId, openCameraId, onCameraOpe
                     a wall — and they were the smallest text in the table. Monospace runs narrow, so
                     11 here sits at about the width of the 12px column beside it. */}
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: "11px", color: "var(--gray-500)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.ip}</p>
-                  <p style={{ fontSize: "11px", color: "var(--gray-600)", fontFamily: "monospace" }}>{cam.resolution ?? "—"}</p>
+                  <p style={{ fontSize: "11px", color: "var(--gray-500)", fontFamily: "var(--font-mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cam.ip}</p>
+                  <p style={{ fontSize: "11px", color: "var(--gray-600)", fontFamily: "var(--font-mono)" }}>{cam.resolution ?? "—"}</p>
                 </div>
                 {/* A chip that is read, not a control that is pressed.
                     This cell was a <button> styled `background: none; border: none; padding: 0` —

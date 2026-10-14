@@ -141,7 +141,7 @@ export default function CameraDetailPanel({ camera, onClose, onOpenInCameras }: 
             backgroundColor: online ? "var(--gray-300)" : "var(--warning-500)", flexShrink: 0 }} />
           <span style={{ minWidth: 0 }}>
             <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{camera.name}</span>
-            <span style={{ display: "block", fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", fontFamily: "monospace" }}>{camera.code}</span>
+            <span style={{ display: "block", fontSize: "10px", fontWeight: 600, color: "var(--gray-400)", fontFamily: "var(--font-mono)" }}>{camera.code}</span>
           </span>
         </span>
       }
@@ -204,7 +204,7 @@ export default function CameraDetailPanel({ camera, onClose, onOpenInCameras }: 
                 backgroundColor: "rgba(24,17,39,0.72)", padding: "16px", textAlign: "center",
               }}>
                 <p style={{ fontSize: "12px", fontWeight: 700, color: "white" }}>{t.connectingTitle}</p>
-                <p style={{ fontSize: "11px", color: "var(--gray-300)", fontFamily: "monospace", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
+                <p style={{ fontSize: "11px", color: "var(--gray-300)", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>{camera.rtspUrl}</p>
                 {/* Says what it is waiting for. A spinner alone would imply the wait ends. */}
                 <p style={{ fontSize: "11px", color: "var(--gray-400)", lineHeight: 1.45, maxWidth: "320px" }}>{t.connectingHint}</p>
                 <button

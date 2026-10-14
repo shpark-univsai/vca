@@ -327,7 +327,7 @@ export default function ProjectMailPanel({ projectId }: { projectId: string }) {
               </span>
             </div>
             {!override && inherited.mailDomain && (
-              <p style={{ fontSize: "11px", color: "var(--gray-400)", fontFamily: "monospace" }}>
+              <p style={{ fontSize: "11px", color: "var(--gray-400)", fontFamily: "var(--font-mono)" }}>
                 {t.inheritedSummary(inherited.mailDomain, inherited.smtp ? `${inherited.smtp.host}:${inherited.smtp.port}` : "—")}
               </p>
             )}

@@ -2089,7 +2089,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
             <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"10px" }}>
               <button onClick={() => stepBy(-10)} className={HOVER_QUIET} style={STEP_BTN_STYLE}>◀ 10s</button>
               <button onClick={() => stepBy(-1)} className={HOVER_QUIET} style={STEP_BTN_STYLE}>◀ 1s</button>
-              <span style={{ fontSize:"16px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.3px", minWidth:"92px", textAlign:"center", fontFamily:"monospace" }}>
+              <span style={{ fontSize:"16px", fontWeight:800, color:"var(--gray-900)", letterSpacing:"-0.3px", minWidth:"92px", textAlign:"center", fontFamily:"var(--font-mono)" }}>
                 {secToHHMMSS(selectedSec)}
               </span>
               <button onClick={() => stepBy(1)} className={HOVER_QUIET} style={STEP_BTN_STYLE}>1s ▶</button>
@@ -2156,7 +2156,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                       const match = e.currentTarget.value.trim().match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
                       if (match) jumpTo(Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3] ?? 0));
                     }}
-                    style={{ width:"66px", border:"none", outline:"none", boxShadow:"none", fontSize:"12px", fontWeight:700, color:"var(--gray-900)", fontFamily:"monospace" }}
+                    style={{ width:"66px", border:"none", outline:"none", boxShadow:"none", fontSize:"12px", fontWeight:700, color:"var(--gray-900)", fontFamily:"var(--font-mono)" }}
                   />
                   {/* This control used to be <input type="time">, whose native dropdown is where
                       the hour/minute list came from. That input was dropped because the browser
@@ -2189,7 +2189,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                             <button key={v} className="vca-picker-option" data-on={v === col.current}
                               onClick={() => { col.pick(v); setTimeOpen(false); }}
                               style={{ display:"block", width:"100%", padding:"5px 16px", border:"none", cursor:"pointer",
-                                fontSize:"12px", fontWeight: v === col.current ? 800 : 600, fontFamily:"monospace",
+                                fontSize:"12px", fontWeight: v === col.current ? 800 : 600, fontFamily:"var(--font-mono)",
                                 // SELECTED, like every other mark on this screen. This was the last
                                 // purple one, held back because the row's fill comes from
                                 // .vca-picker-option[data-on] in globals.css — shared with the
@@ -2324,7 +2324,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                             {/* Solid (active), not the outline the legend uses — at 10px on a
                                 photo the hollow crown was a few hairlines and read as noise. */}
                             <TypeIcon type="VIP" color="white" size={10} solid />
-                            <span style={{ fontSize:"10px", fontWeight:700, color:"white", fontFamily:"monospace" }}>{vipCount}</span>
+                            <span style={{ fontSize:"10px", fontWeight:700, color:"white", fontFamily:"var(--font-mono)" }}>{vipCount}</span>
                           </div>
                         )}
                         {vipCount >= VIP_CROWD_THRESHOLD && (
@@ -2336,7 +2336,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                     </div>
                     {/* Full absolute HH:MM:SS per thumbnail — clearer than a relative offset
                         when frames are only 2 seconds apart, where "+2s"/"+4s" all look alike. */}
-                    <span style={{ fontSize:"10px", fontWeight:600, color: isSelected ? SELECTED : "var(--gray-500)", fontFamily:"monospace" }}>
+                    <span style={{ fontSize:"10px", fontWeight:600, color: isSelected ? SELECTED : "var(--gray-500)", fontFamily:"var(--font-mono)" }}>
                       {secToHHMMSS(sec)}
                     </span>
                   </div>
@@ -2472,7 +2472,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   position:"absolute", bottom:"calc(100% + 6px)", left:`${((hoveredHour + 0.5) / HOURS_IN_DAY) * 100}%`, transform:"translateX(-50%)",
                   display:"flex", flexDirection:"column", alignItems:"center", pointerEvents:"none", zIndex:5,
                 }}>
-                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:RADIUS.pill, fontFamily:"monospace", whiteSpace:"nowrap" }}>
+                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:RADIUS.pill, fontFamily:"var(--font-mono)", whiteSpace:"nowrap" }}>
                     {(lang === "ko" ? `${pad2(hoveredHour)}${t.hour}` : `${t.hour} ${pad2(hoveredHour)}`)
                       + (occupancy.known && occupancy.hours[hoveredHour] > 0 ? ` ${t.hits(occupancy.hours[hoveredHour])}` : "")}
                   </span>
@@ -2533,7 +2533,7 @@ export default function BestFrameDetailPage({ data, initialDet, onBack, onGoRedm
                   position:"absolute", bottom:"calc(100% + 6px)", left:`${((hoveredMinute + 0.5) / MINUTES_IN_HOUR) * 100}%`, transform:"translateX(-50%)",
                   display:"flex", flexDirection:"column", alignItems:"center", pointerEvents:"none", zIndex:5,
                 }}>
-                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:RADIUS.pill, fontFamily:"monospace", whiteSpace:"nowrap" }}>
+                  <span style={{ fontSize:"12px", fontWeight:800, color:"white", backgroundColor:SELECTED, padding:"4px 10px", borderRadius:RADIUS.pill, fontFamily:"var(--font-mono)", whiteSpace:"nowrap" }}>
                     {(lang === "ko" ? `${pad2(hoveredMinute)}${t.minute}` : `${t.minute} ${pad2(hoveredMinute)}`)
                       + (occupancy.known && occupancy.minutes[hoveredMinute] > 0 ? ` ${t.hits(occupancy.minutes[hoveredMinute])}` : "")}
                   </span>

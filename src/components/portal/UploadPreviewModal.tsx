@@ -162,7 +162,7 @@ export default function UploadPreviewModal({ upload, onClose }: { upload: Upload
         {facts.map(fact => (
           <span key={fact.label} style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
             <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--gray-400)" }}>{fact.label}</span>
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "monospace" }}>{fact.value}</span>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--gray-900)", fontFamily: "var(--font-mono)" }}>{fact.value}</span>
           </span>
         ))}
         <span style={{ flex: 1 }} />

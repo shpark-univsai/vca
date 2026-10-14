@@ -871,7 +871,7 @@ function CameraCard({
                         {det.type === "Unknown" ? (det.group || typeLabel(det.type, lang)) : typeLabel(det.type, lang)}
                       </span>
                     </div>
-                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)", fontFamily:"monospace", flexShrink:0 }}>
+                    <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-500)", fontFamily:"var(--font-mono)", flexShrink:0 }}>
                       {det.time}
                     </span>
                   </div>

@@ -504,7 +504,7 @@ export default function ProjectSearchLogTab({ projectId }: { projectId: string }
             {cell(t.surfaceName[r.surface] ?? r.surface)}
             {cell(r.resultCount === undefined ? t.none : String(r.resultCount), r.resultCount === undefined)}
             {showIp && cell(r.ip ?? t.none, !r.ip)}
-            <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "monospace", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: "12px", color: "var(--gray-500)", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>
               {`${dateKeyIn(new Date(r.at), projectZone)} ${clockMinutesIn(new Date(r.at), projectZone)}`}
             </span>
           </div>

@@ -1210,7 +1210,7 @@ function InviteLinkRow({ name, email, url }: { name: string; email: string; url:
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         {/* user-select stays on: the button is a convenience, not the only way out of the box. */}
-        <code style={{ flex: 1, minWidth: 0, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "12px", color: "var(--gray-700)", wordBreak: "break-all", lineHeight: 1.5 }}>
+        <code style={{ flex: 1, minWidth: 0, fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--gray-700)", wordBreak: "break-all", lineHeight: 1.5 }}>
           {url}
         </code>
         <button onClick={copy}
@@ -2440,7 +2440,7 @@ function TempPasswordModal({ user, mailAvailable, initialCode, onClose, onBack }
                   time. user-select stays on: the copy button is a convenience, not the only way
                   to get it out of the box. */}
               <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "14px", borderRadius: RADIUS.panel, border: "1px solid var(--line)", backgroundColor: "var(--gray-50)" }}>
-                <code style={{ flex: 1, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "18px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "1px", wordBreak: "break-all" }}>
+                <code style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: "18px", fontWeight: 700, color: "var(--gray-900)", letterSpacing: "1px", wordBreak: "break-all" }}>
                   {shownCredential}
                 </code>
                 <button onClick={copy}

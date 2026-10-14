@@ -1974,7 +1974,7 @@ function LiveSearchSidebar({
                 value={licensePlate}
                 onChange={e => setLicensePlate(e.target.value)}
                 placeholder="SGA 1234 X"
-                style={{ flex:1, border:"none", outline:"none", background:"none", fontFamily:"monospace", fontSize:"12px",
+                style={{ flex:1, border:"none", outline:"none", background:"none", fontFamily:"var(--font-mono)", fontSize:"12px",
                   fontWeight:500, color:"var(--gray-900)", letterSpacing:"-0.22px" }}
               />
             </div>
@@ -2666,7 +2666,7 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
         padding:"10px 11px 7px", boxSizing:"border-box", display:"flex", flexDirection:"column", gap:"2px" }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:"6px" }}>
           {p.plate
-            ? <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-900)", fontFamily:"monospace", letterSpacing:"-0.24px" }}>{p.plate}</span>
+            ? <span style={{ fontSize:"12px", fontWeight:800, color:"var(--gray-900)", fontFamily:"var(--font-mono)", letterSpacing:"-0.24px" }}>{p.plate}</span>
             : <span style={{ fontSize:"12px", fontWeight:800, color:status.text, letterSpacing:"-0.24px" }}>{attr(p.status, lang)}</span>}
           {matchReasons.length > 0 && (
             <span title={T[lang].matchedOn(matchReasons.map(r => attr(r, lang)).join(", "))} style={{ fontSize:"10px", fontWeight:800, color:"var(--success-400)", cursor:"help" }}>
@@ -2674,7 +2674,7 @@ function SearchResultCard({ p, onClick, matchReasons = [] }: { p: (typeof REID_D
             </span>
           )}
         </div>
-        <span style={{ fontSize:"10px", color:"var(--gray-400)", fontFamily:"monospace" }}>{cardTimestamp(p.date, p.time)}</span>
+        <span style={{ fontSize:"10px", color:"var(--gray-400)", fontFamily:"var(--font-mono)" }}>{cardTimestamp(p.date, p.time)}</span>
       </div>
       {/* Crop of the same big photo (p.url), not p.face — that field cycles through an unrelated
           stock-photo pool, which would show a different person's face here than the body photo
@@ -3397,7 +3397,7 @@ function ClusterMatchCard({ item, onClick }: { item: MatchItem; onClick?: () => 
         <span style={{ position:"absolute", top:6, left:6 }}><ScoreBadge score={item.similarity} /></span>
       </div>
       <div style={{ padding:"0 8px 8px", display:"flex", flexDirection:"column", gap:"2px" }}>
-        <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-900)", letterSpacing:"-0.2px", fontFamily: item.plate ? "monospace" : undefined }}>
+        <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-900)", letterSpacing:"-0.2px", fontFamily: item.plate ? "var(--font-mono)" : undefined }}>
           {item.plate ?? item.cam}
         </span>
         <span style={{ fontSize:"10px", fontWeight:600, color:"var(--gray-400)", letterSpacing:"-0.2px" }}>{cardTimestamp(item.date, item.time)}</span>
@@ -4263,7 +4263,7 @@ function CandidateCard({ c, selected, onClick }:
         <Photo kind="face" src={c.url} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
         <span style={{ position:"absolute", top:6, right:6 }}><ScoreBadge score={c.similarity} /></span>
         <span style={{ position:"absolute", bottom:6, left:6, fontSize:"10px", fontWeight:600, color:"white",
-          fontFamily: c.plate ? "monospace" : undefined,
+          fontFamily: c.plate ? "var(--font-mono)" : undefined,
           backgroundColor:"var(--label-plate)", border:"1px solid white", padding:"2px 6px", borderRadius:RADIUS.pill }}>{c.plate ?? c.cam}</span>
         {selected && (
           <span style={{ position:"absolute", top:6, left:6, display:"flex", alignItems:"center", gap:"3px",
@@ -4955,7 +4955,7 @@ function PrimaryTargetPickerModal({ onConfirm, onCancel }:
                   value={licensePlate}
                   onChange={e => setLicensePlate(e.target.value)}
                   placeholder="SGA 1234 X"
-                  style={{ flex:1, border:"none", outline:"none", fontFamily:"monospace", fontSize:"12px",
+                  style={{ flex:1, border:"none", outline:"none", fontFamily:"var(--font-mono)", fontSize:"12px",
                     fontWeight:500, color:"var(--gray-900)", letterSpacing:"-0.22px" }}
                 />
               </div>
