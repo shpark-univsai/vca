@@ -42,6 +42,10 @@ src/
 - `next/navigation` → `src/features/vca/compat/navigation` (react-router 기반 shim)
 - `process.env.NEXT_PUBLIC_*` → vite `define`으로 빌드 타임 치환
 - `verbatimModuleSyntax` 미사용 (원본이 type-only import를 구분하지 않음)
+- Tailwind v4 (`@tailwindcss/vite`, 기획자 lock과 같은 버전으로 고정 — UV-62). 화면 코드는 Tailwind 클래스를 쓰지 않지만
+  `globals.css`의 `@import "tailwindcss"`가 깔아주는 **preflight 리셋을 전제로 디자인**됐다(버튼 배경 투명·글꼴 상속·
+  제목/문단 여백 0). 플러그인이 빠지면 그 줄이 조용히 무시되고 브라우저 기본값이 새어 나온다 — 포털 좌측 메뉴의
+  안 고른 항목에 버튼 기본 회색 `#EFEFEF`가 깔려 색이 뒤집혀 보였던 원인. 기획자 원본이 Tailwind를 올리면 버전을 맞출 것.
 
 절차: 기획자가 `import/frontend-ui-YYYYMMDD` 브랜치로 push → 태그로 동결 → 직전 태그와의 diff를
 경로 매핑(`src/components→features/vca/components`, `src/app/mypage/page.tsx→pages/MyPage.tsx` 등)해서
