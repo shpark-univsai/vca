@@ -2,7 +2,7 @@
 
 > 대상 독자: VCA에 참여하는 모든 개발자 (기획자/프론트, 모듈, 백엔드).
 > 이 문서는 전체 그림과 채널 경계를 정의한다. 세부 계약은 아래 두 문서가 원본이다:
-> - **MQTT 계약**: [`backend/vca-mqtt-broker/SPEC.md`](../backend/vca-mqtt-broker/SPEC.md) ([GitHub](https://github.com/univs-dcun/vca-mqtt-broker/blob/main/SPEC.md))
+> - **MQTT 계약**: [`backend/vca-mqtt-broker/SPEC.md`](../backend/vca-mqtt-broker/SPEC.md) ([GitHub](https://github.com/shpark-univsai/vca-mqtt-broker/blob/main/SPEC.md))
 > - **REST 계약**: [`openapi/openapi.json`](../openapi/openapi.json)
 >
 > 역할별 실무 가이드: [모듈 개발자](guide-module-developer.md) · [프론트 개발자](guide-frontend-developer.md)
@@ -23,7 +23,7 @@
 | 구성 요소 | 역할 | 담당 | 저장소 |
 |---|---|---|---|
 | 분석 모듈 | 카메라 프레임 처리, MQTT 발행 + **모듈 API 서빙** (저장·집계 포함) | 모듈 개발자 | (모듈 저장소) |
-| EMQX 브로커 | MQTT 메시지 중계. 브라우저 직결 (WebSocket) | 백엔드 (박상훈) | [vca-mqtt-broker](https://github.com/univs-dcun/vca-mqtt-broker) |
+| EMQX 브로커 | MQTT 메시지 중계. 브라우저 직결 (WebSocket) | 백엔드 (박상훈) | [vca-mqtt-broker](https://github.com/shpark-univsai/vca-mqtt-broker) |
 | 프록시 백엔드 | 브라우저 `/api` → 모듈 API 중계. envelope 변환, 오류 매핑, 타임아웃, (추후) JWT·캐싱 | 백엔드 (박상훈) | `vca/backend/proxy/` |
 | 프론트 SPA | 화면. Vite + React 19 + TS | 화면=기획자, 데이터 연결=백엔드 | `vca/frontend/` |
 

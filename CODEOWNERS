@@ -1,6 +1,6 @@
 # 폴더별 소유권 / 리뷰어 자동 지정.
-#   @univs-dcun    = 백엔드 개발자
-#   @hjkim-univsai = 기획자
+#   @shpark-univsai = 백엔드 개발자
+#   @hjkim-univsai  = 기획자
 
 # 화면 계층 — 기획자
 /frontend/src/features/     @hjkim-univsai
@@ -8,15 +8,15 @@
 /frontend/public/           @hjkim-univsai
 
 # 데이터/연결 + 배포 계층 — 백엔드 개발자
-/frontend/src/api/          @univs-dcun
-/frontend/Dockerfile        @univs-dcun
-/frontend/nginx.conf.template @univs-dcun
-/frontend/docker-entrypoint.sh @univs-dcun
-/backend/                   @univs-dcun
+/frontend/src/api/          @shpark-univsai
+/frontend/Dockerfile        @shpark-univsai
+/frontend/nginx.conf.template @shpark-univsai
+/frontend/docker-entrypoint.sh @shpark-univsai
+/backend/                   @shpark-univsai
 
 # 공유 계약 — 둘 다 리뷰
-/openapi/                   @hjkim-univsai @univs-dcun
+/openapi/                   @hjkim-univsai @shpark-univsai
 
 # 프로젝트 규칙 — 둘 다 리뷰
-/CLAUDE.md                  @hjkim-univsai @univs-dcun
-/CODEOWNERS                 @hjkim-univsai @univs-dcun
+/CLAUDE.md                  @hjkim-univsai @shpark-univsai
+/CODEOWNERS                 @hjkim-univsai @shpark-univsai

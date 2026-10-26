@@ -1,7 +1,7 @@
 # 모듈 개발자 가이드 — VCA MQTT 발행 계약
 
 > 대상 독자: 분석 모듈(카메라 프레임 처리·집계) 개발자.
-> **이 문서 + [MQTT SPEC](https://github.com/univs-dcun/vca-mqtt-broker/blob/main/SPEC.md) + [module-api.json](../openapi/module-api.json)을 클로드 세션에 그대로 전달하면 구현에 필요한 계약 정보가 모두 포함되어 있다.**
+> **이 문서 + [MQTT SPEC](https://github.com/shpark-univsai/vca-mqtt-broker/blob/main/SPEC.md) + [module-api.json](../openapi/module-api.json)을 클로드 세션에 그대로 전달하면 구현에 필요한 계약 정보가 모두 포함되어 있다.**
 > 계약 원본은 두 개 — 실시간은 SPEC.md, 조회 API는 module-api.json. 이 문서는 모듈 관점의 실무 요약이며, 충돌 시 계약 원본이 우선한다.
 
 ## 당신(모듈)의 역할 — 두 가지
@@ -392,7 +392,7 @@
 
 ## 참조 구현 (실행 가능)
 
-`vca-mqtt-broker` 레포의 [`sim/sim.mjs`](https://github.com/univs-dcun/vca-mqtt-broker/blob/main/sim/sim.mjs)가
+`vca-mqtt-broker` 레포의 [`sim/sim.mjs`](https://github.com/shpark-univsai/vca-mqtt-broker/blob/main/sim/sim.mjs)가
 **두 역할 모두의 참조 구현**이다 — MQTT 발행 5종 토픽과 **모듈 API 36개 엔드포인트 전부(v1.10 확정분 —
 v1.11 초안 6종은 계약 합의 후 반영)**를
 계약 그대로 구현한 Node 시뮬레이터. v1.3 비디오는 `sim/assets/`의 실제 H.264 MP4를 Range로
