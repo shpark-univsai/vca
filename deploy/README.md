@@ -20,9 +20,9 @@
 ## 절차
 
 ```bash
-git clone https://github.com/univs-dcun/vca.git && cd vca
+git clone https://github.com/shpark-univsai/vca.git && cd vca
 # 분석 모듈 자리(sim)는 별도 레포 — 모노레포 안에 중첩 클론한다 (vca .gitignore가 이 경로를 제외하므로 커밋되지 않음)
-git clone https://github.com/univs-dcun/vca-mqtt-broker.git backend/vca-mqtt-broker
+git clone https://github.com/shpark-univsai/vca-mqtt-broker.git backend/vca-mqtt-broker
 cd deploy
 cp .env.example .env
 $EDITOR .env        # VCA_HOST(서버 IP/호스트명), VCA_ADMIN_ENC_KEY, VCA_ADMIN_SEED_PASSWORD, POSTGRES_PASSWORD

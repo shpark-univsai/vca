@@ -7,7 +7,7 @@
 | 디렉토리 | 내용 |
 |---|---|
 | `proxy/` | **VCA 프록시 백엔드** (Spring Boot 4, Java 21, WebFlux). 브라우저 `/api` 요청을 모듈 API로 중계 — envelope 변환, 오류 매핑, 타임아웃. DB 없음 (데이터 저장·집계는 모듈 책임) |
-| `vca-mqtt-broker/` | EMQX 브로커 구성 — **별도 레포** ([GitHub](https://github.com/univs-dcun/vca-mqtt-broker), 중첩 클론이라 vca 저장소에는 커밋되지 않음) |
+| `vca-mqtt-broker/` | EMQX 브로커 구성 — **별도 레포** ([GitHub](https://github.com/shpark-univsai/vca-mqtt-broker), 중첩 클론이라 vca 저장소에는 커밋되지 않음) |
 
 전체 구조와 프록시 변환 규칙: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)
 계약: [openapi/openapi.json](../openapi/openapi.json) (브라우저↔프록시) · [openapi/module-api.json](../openapi/module-api.json) (프록시↔모듈)

@@ -9,5 +9,5 @@
 
 # 각 앱(frontend/backend)은 자체 .gitignore 를 둔다.
 
-# 별도 레포로 관리되는 중첩 저장소 (https://github.com/univs-dcun/vca-mqtt-broker)
+# 별도 레포로 관리되는 중첩 저장소 (https://github.com/shpark-univsai/vca-mqtt-broker)
 backend/vca-mqtt-broker/
